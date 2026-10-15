@@ -13,7 +13,7 @@ import (
 	"github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
-	"github.com/grafana/alloy/internal/service/lokipipeline"
+	"github.com/grafana/alloy/internal/service/lokipipelinev2"
 	"github.com/grafana/alloy/internal/service/otel"
 	"github.com/grafana/alloy/internal/service/remotecfg"
 	"github.com/grafana/alloy/internal/service/ui"
@@ -73,7 +73,7 @@ func (v *alloyValidate) Run(configFile string) error {
 				&http.Service{},
 				&labelstore.Service{},
 				&livedebugging.Service{},
-				&lokipipeline.Service{},
+				&lokipipelinev2.Service{},
 				&otel.Service{},
 				&remotecfg.Service{},
 				&ui.Service{},

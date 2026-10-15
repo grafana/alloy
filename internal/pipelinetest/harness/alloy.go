@@ -24,10 +24,10 @@ const (
 )
 
 type Config struct {
-	SinkID               string
-	Source               string
-	DataPath             string
-	LokiConsumerPipeline bool
+	SinkID         string
+	Source         string
+	DataPath       string
+	LokiPipelineV2 bool
 }
 
 // NewAlloy creates and starts an in-process Alloy runtime for pipeline tests

@@ -16,10 +16,11 @@ func RunTest(ctx context.Context, schema TestSchema, cfg TestConfig) error {
 	}
 
 	alloy, err := harness.NewAlloy(harness.Config{
-		SinkID:               "pipelinetest.sink.out",
-		DataPath:             cfg.DataPath,
-		Source:               withPrelude(schema),
-		LokiConsumerPipeline: schema.LokiConsumerPipeline,
+		SinkID:   "pipelinetest.sink.out",
+		DataPath: cfg.DataPath,
+		Source:   withPrelude(schema),
+		// TODO: perhaps we need a generic mechanism for setting all kinds of flags here instead.
+		LokiPipelineV2: schema.Flags.LokiPipelineV2,
 	})
 	if err != nil {
 		return err

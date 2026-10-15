@@ -23,10 +23,33 @@ import (
 	"github.com/grafana/alloy/internal/util"
 )
 
+type sendFunc func(ctx context.Context, entry loki.Entry) error
+
+func sendToV1(recv loki.LogsReceiver) sendFunc {
+	return func(ctx context.Context, entry loki.Entry) error {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case recv.Chan() <- entry:
+			return nil
+		}
+	}
+}
+
+func consumeToV2(c loki.Consumer) sendFunc {
+	// The batch is reused to avoid allocations, so each goroutine needs its own consumeToV2.
+	batch := loki.NewBatch()
+	return func(ctx context.Context, entry loki.Entry) error {
+		batch.Reset()
+		batch.AddEntry(entry.Labels, entry.Created(), entry.Entry)
+		return c.Consume(ctx, batch)
+	}
+}
+
 type tailer struct {
 	metrics   *metrics
 	logger    *slog.Logger
-	receiver  loki.LogsReceiver
+	send      sendFunc
 	positions positions.Positions
 
 	key                positions.Entry
@@ -51,7 +74,7 @@ type tailer struct {
 func newTailer(
 	metrics *metrics,
 	logger *slog.Logger,
-	receiver loki.LogsReceiver,
+	send sendFunc,
 	pos positions.Positions,
 	componentStopping func() bool,
 	opts sourceOptions,
@@ -60,7 +83,7 @@ func newTailer(
 	return &tailer{
 		metrics:              metrics,
 		logger:               logger.With("component", "tailer", "path", opts.path),
-		receiver:             receiver,
+		send:                 send,
 		positions:            pos,
 		key:                  positions.Entry{Path: opts.path, Labels: opts.labels.String()},
 		labels:               opts.labels.Merge(model.LabelSet{labelFilename: model.LabelValue(opts.path)}),
@@ -178,7 +201,6 @@ func (t *tailer) tail(ctx context.Context, pos int64) {
 
 	var (
 		lastOffset          = pos
-		entries             = t.receiver.Chan()
 		positionInterval    = t.positions.SyncPeriod()
 		lastUpdatedPosition = time.Time{}
 	)
@@ -241,19 +263,21 @@ func (t *tailer) tail(ctx context.Context, pos int64) {
 		}
 
 		t.metrics.readLines.WithLabelValues(t.key.Path).Inc()
-		select {
-		case <-ctx.Done():
-			return
-		case entries <- loki.NewEntry(t.labels, push.Entry{
+		if err := t.send(ctx, loki.NewEntry(t.labels, push.Entry{
 			Timestamp: line.Time,
 			Line:      line.Text,
-		}):
+		})); err == nil {
 			lastOffset = line.Offset
 			if time.Since(lastUpdatedPosition) >= positionInterval {
 				lastUpdatedPosition = time.Now()
 				size, _ := t.file.Size()
 				t.updateStats(lastOffset, size)
 			}
+		} else {
+			if !errors.Is(err, context.Canceled) {
+				t.logger.Error("failed to send entry", "err", err)
+			}
+			return
 		}
 	}
 }
