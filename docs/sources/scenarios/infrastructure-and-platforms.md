@@ -1,6 +1,7 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/scenarios/infrastructure-and-platforms/
 description: Runnable scenarios that monitor hosts, containers, network devices, cloud providers, and Kubernetes with Grafana Alloy
+review_date: 2026-10-15
 menuTitle: Infrastructure and platforms
 title: Infrastructure and platform scenarios
 weight: 600
@@ -10,8 +11,11 @@ weight: 600
 
 These scenarios monitor the layer your applications run on: Linux and Windows hosts, Docker containers, network devices, cloud provider APIs, and Kubernetes clusters.
 
-Most pair a platform exporter such as [`prometheus.exporter.unix`][prometheus.exporter.unix], [`prometheus.exporter.windows`][prometheus.exporter.windows], or [`prometheus.exporter.snmp`][prometheus.exporter.snmp] with log collection from the same machine, so a single scenario produces both metrics and logs.
-The Kubernetes scenarios use [`discovery.kubernetes`][discovery.kubernetes] to find targets as workloads come and go.
+Most pair a platform exporter such as [`prometheus.exporter.unix`][prometheus.exporter.unix] or [`prometheus.exporter.windows`][prometheus.exporter.windows] with log collection from the same machine.
+A single scenario then produces both metrics and logs.
+
+Others collect metrics alone, such as the scenario built on [`prometheus.exporter.snmp`][prometheus.exporter.snmp].
+The Kubernetes scenarios mostly rely on Helm charts, though one scrapes kube-state-metrics and cAdvisor directly with [`discovery.kubernetes`][discovery.kubernetes].
 
 {{< docs/shared lookup="scenarios/infrastructure-and-platforms.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
