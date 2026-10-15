@@ -3,24 +3,27 @@ package loki
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"sync"
 )
 
-var _ Consumer = (*FanoutConsumer)(nil)
+var _ Consumer = (*FanoutV2)(nil)
 
-func NewFanoutConsumer(consumers []Consumer) *FanoutConsumer {
-	return &FanoutConsumer{
-		consumers: consumers,
+// NewFanoutV2 creates a FanoutV2 that passes batches to children.
+func NewFanoutV2(children []LogsReceiver) *FanoutV2 {
+	return &FanoutV2{
+		consumers: consumersFrom(children),
 	}
 }
 
-type FanoutConsumer struct {
+// FanoutV2 passes batches to multiple LogsReceivers through Loki pipeline V2.
+type FanoutV2 struct {
 	mut       sync.RWMutex
 	consumers []Consumer
 }
 
-func (f *FanoutConsumer) Consume(ctx context.Context, batch Batch) error {
+func (f *FanoutV2) Consume(ctx context.Context, batch Batch) error {
 	// NOTE: We snapshot the consumer list under a brief read lock and release it
 	// before delivering, rather than holding the lock for the whole fan-out.
 	//
@@ -58,7 +61,11 @@ func (f *FanoutConsumer) Consume(ctx context.Context, batch Batch) error {
 	return errors.Join(errs...)
 }
 
-func (f *FanoutConsumer) Update(consumers []Consumer) {
+// UpdateChildren updates the receivers that batches are passed to. It panics
+// when a receiver does not support Loki pipeline V2.
+func (f *FanoutV2) UpdateChildren(children []LogsReceiver) {
+	consumers := consumersFrom(children)
+
 	f.mut.RLock()
 	if !slices.Equal(f.consumers, consumers) {
 		// Upgrade lock to write.
@@ -78,4 +85,21 @@ func isReportableError(err error) bool {
 	// stops we shut down components from sources to sinks so we should
 	// never hit this error.
 	return err != nil && !errors.Is(err, ErrConsumerStopped)
+}
+
+func consumersFrom(children []LogsReceiver) []Consumer {
+	consumers := make([]Consumer, 0, len(children))
+	for _, child := range children {
+		if child == nil {
+			consumers = append(consumers, nil)
+			continue
+		}
+
+		c, ok := child.(Consumer)
+		if !ok {
+			panic(fmt.Sprintf("fatal error in experimental Loki pipeline V2: %v does not support Loki pipeline V2", child))
+		}
+		consumers = append(consumers, c)
+	}
+	return consumers
 }
