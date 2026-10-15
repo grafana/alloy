@@ -276,7 +276,6 @@ func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, profileTy
 								fr.SourceFile,
 							),
 						}}
-						location.Mapping.HasFunctions = true
 					}
 
 				default:
@@ -289,7 +288,6 @@ func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, profileTy
 								libpf.Intern("[unknown]"),
 							)},
 						}
-						location.Mapping.HasFunctions = true
 					} else if fr.FunctionName != libpf.NullString {
 						location.Line = []profile.Line{{
 							Line: int64(fr.SourceLine),
@@ -298,8 +296,6 @@ func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, profileTy
 								fr.SourceFile,
 							)},
 						}
-						location.Mapping.HasFunctions = true
-						location.Mapping.HasLineNumbers = true
 					}
 				}
 			}
@@ -360,7 +356,6 @@ func (p *PPROFReporter) symbolizeNativeFrame(
 			return
 		}
 		name = p.demangle(name)
-		loc.Mapping.HasFunctions = true
 		line := profile.Line{Function: b.Function(name, si.FilePath)}
 		loc.Line = append(loc.Line, line)
 	})
@@ -376,5 +371,4 @@ func (p *PPROFReporter) symbolizeStub(b *ProfileBuilder, location *profile.Locat
 			fr.SourceFile,
 		),
 	}}
-	location.Mapping.HasFunctions = true
 }

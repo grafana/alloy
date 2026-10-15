@@ -153,7 +153,6 @@ func (p *ProfileBuilder) CommLocation(comm string) *profile.Location {
 		loc.Line = []profile.Line{{
 			Function: p.Function(commInterned, libpf.Intern("")),
 		}}
-		p.dummyMapping.HasFunctions = true
 	}
 	return loc
 }
@@ -198,7 +197,7 @@ func (p *ProfileBuilder) Function(function, file libpf.String) *profile.Function
 }
 
 func (p *ProfileBuilder) Write(dst io.Writer) (int64, error) {
-	p.clearPartialHasFunctions()
+	p.setSymbolizationFlags()
 	gzipWriter := gzipWriterPool.Get().(*gzip.Writer)
 	gzipWriter.Reset(dst)
 	defer func() {
@@ -216,12 +215,19 @@ func (p *ProfileBuilder) Write(dst io.Writer) (int64, error) {
 	return 0, nil
 }
 
-// Pyroscope zeroes addresses in HasFunctions mappings, which turns unsymbolized locations into empty ones.
-func (p *ProfileBuilder) clearPartialHasFunctions() {
+// Pyroscope zeroes addresses in HasFunctions mappings, so the flag must hold for every location.
+func (p *ProfileBuilder) setSymbolizationFlags() {
 	for _, loc := range p.Profile.Location {
-		if len(loc.Line) == 0 && loc.Mapping != nil {
-			loc.Mapping.HasFunctions = false
-			loc.Mapping.HasLineNumbers = false
+		loc.Mapping.HasFunctions, loc.Mapping.HasLineNumbers = true, true
+	}
+	for _, loc := range p.Profile.Location {
+		if len(loc.Line) == 0 {
+			loc.Mapping.HasFunctions, loc.Mapping.HasLineNumbers = false, false
+		}
+		for _, l := range loc.Line {
+			if l.Line == 0 {
+				loc.Mapping.HasLineNumbers = false
+			}
 		}
 	}
 }
