@@ -102,10 +102,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.MultilineConfig != nil:
-		s, err = newMultilineStage(*cfg.MultilineConfig, opts)
-		if err != nil {
-			return nil, err
-		}
+		s = newMultilineStage(*cfg.MultilineConfig, opts)
 	case cfg.PackConfig != nil:
 		s, err = newPackStage(*cfg.PackConfig, opts)
 		if err != nil {
