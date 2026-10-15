@@ -161,6 +161,7 @@ func New(logger *slog.Logger, reg prometheus.Registerer, id string, args Argumen
 type Component struct {
 	logger                 *slog.Logger
 	args                   Arguments
+	argsMut                sync.RWMutex
 	dynamicProfilingPolicy bool
 	argsUpdate             chan Arguments
 	appendable             *pyroscope.Fanout
@@ -227,7 +228,9 @@ func (c *Component) Run(ctx context.Context) error {
 }
 
 func (c *Component) updateArgs(newArgs Arguments) {
+	c.argsMut.Lock()
 	c.args = newArgs
+	c.argsMut.Unlock()
 	c.targetFinder.Update(c.args.targetsOptions(c.dynamicProfilingPolicy))
 	c.appendable.UpdateChildren(newArgs.ForwardTo)
 	c.metrics.targetsActive.Set(float64(len(c.args.Targets)))
