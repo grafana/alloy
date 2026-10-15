@@ -49,11 +49,10 @@ var (
 type Component struct {
 	opts       component.Options
 	pipelineV2 bool
+	receiver   loki.LogsReceiver
 
-	mut      sync.RWMutex
-	stopped  bool
-	args     Arguments
-	receiver loki.LogsReceiver
+	mut     sync.RWMutex
+	stopped bool
 }
 
 // New creates a new loki.echo component.
