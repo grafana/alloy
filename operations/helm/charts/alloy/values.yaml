@@ -295,7 +295,7 @@ controller:
   # -- Number of pods to deploy. Ignored when controller.type is 'daemonset'.
   replicas: 1
 
-  # -- Extra labels to add to the controller.
+  # -- Extra labels to add to the controller and the pdb.
   extraLabels: {}
 
   # -- Annotations to add to controller.
