@@ -231,7 +231,7 @@ func (c *QueryDetails) emit(database, queryHash, queryText string) {
 		c.logger.Warn("failed to sanitize query text", "database", database, "query_hash", queryHash, "err", err)
 		return
 	}
-	statementText := stripSQLServerParameterDeclarations(commentFree)
+	statementText := strings.TrimSpace(stripSQLServerParameterDeclarations(commentFree))
 
 	obfuscated := c.obfuscator.Obfuscate(statementText, sqllexer.WithDBMS(sqllexer.DBMSSQLServer))
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(

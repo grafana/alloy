@@ -141,7 +141,7 @@ func TestQueryDetails_SkipsWhenQueryStoreUnavailable(t *testing.T) {
 	require.Empty(t, lokiClient.Received())
 }
 
-func TestQueryDetails_ObfuscatesQueryTextWithoutNormalizing(t *testing.T) {
+func TestQueryDetails_ObfuscatesAndTrimsQueryTextWithoutNormalizingStructure(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
@@ -160,7 +160,7 @@ func TestQueryDetails_ObfuscatesQueryTextWithoutNormalizing(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	queryText := "(@minTotal decimal(18,2))SELECT *\n\tFROM [dbo].[orders] o /* pick up the big ones */\n\tJOIN customers c ON c.id = o.customer_id\n\tWHERE o.total > 100"
+	queryText := "(@minTotal decimal(18,2))SELECT *\n\tFROM [dbo].[orders] o /* pick up the big ones */\n\tJOIN customers c ON c.id = o.customer_id\n\tWHERE o.total > 100 -- trailing comment\n\t"
 
 	expectQueryText(t, mock, []string{testHash}, []driver.Value{queryHashBytes, queryText})
 
@@ -175,6 +175,7 @@ func TestQueryDetails_ObfuscatesQueryTextWithoutNormalizing(t *testing.T) {
 	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, entries[0].Labels)
 	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" querytext="SELECT *\n\tFROM [dbo].[orders] o  \n\tJOIN customers c ON c.id = o.customer_id\n\tWHERE o.total > ?"`, entries[0].Line)
 	require.NotContains(t, entries[0].Line, "pick up the big ones")
+	require.NotContains(t, entries[0].Line, "trailing comment")
 
 	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, entries[1].Labels)
 	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" table="dbo.orders"`, entries[1].Line)
