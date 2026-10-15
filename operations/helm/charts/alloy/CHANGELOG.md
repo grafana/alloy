@@ -10,6 +10,8 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Enhancements
+
 - Add support to provide extraLabels to alloy pdb (@jfengupgrade)
 
 ### Enhancements
