@@ -195,15 +195,22 @@ func New(l *slog.Logger, c *Config) (integrations.Integration, error) {
 		Count:     1,
 		Recursive: true,
 	}
-	contCol := metrics.NewPrometheusCollector(rm, containerLabelFunc, includedMetrics, clock.RealClock{}, reqOpts)
+	// The library manager doesn't watch for OOM kills, so watch the kernel log
+	// here and report the counts through the collector.
+	oomCounts := newOOMCounter()
+	var oomSrc oomSource
+	if includedMetrics.Has(container.OOMMetrics) {
+		oomSrc = kmsgOOMSource(l)
+	}
+	contCol := metrics.NewPrometheusCollector(&oomInfoProvider{containerInfoProvider: rm, counter: oomCounts}, containerLabelFunc, includedMetrics, clock.RealClock{}, reqOpts)
 
 	start := func(ctx context.Context) error {
-		<-ctx.Done()
-
-		if err := rm.Stop(); err != nil {
-			return fmt.Errorf("failed to stop manager: %w", err)
-		}
-		return nil
+		return runWithOOMWatcher(ctx, l, oomSrc, oomCounts, func() error {
+			if err := rm.Stop(); err != nil {
+				return fmt.Errorf("failed to stop manager: %w", err)
+			}
+			return nil
+		})
 	}
 
 	ci := integrations.NewCollectorIntegration(
