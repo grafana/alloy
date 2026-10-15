@@ -62,8 +62,9 @@ type ConsumerStreamBatcher struct {
 	labels    model.LabelSet
 	flushSize int
 
-	entries []push.Entry
 	created int64
+	batch   Batch
+	entries []push.Entry
 }
 
 // NewConsumerStreamBatcher creates a StreamBatcher that collects entries
@@ -90,10 +91,11 @@ func (b *ConsumerStreamBatcher) Flush(ctx context.Context) error {
 		return nil
 	}
 
-	batch := NewBatch()
-	batch.Add(NewStreamWithCreatedUnixMicro(b.labels, b.created, b.entries...))
-	err := b.consumer.Consume(ctx, batch)
+	defer func() {
+		b.batch.Reset()
+		b.entries = b.entries[:0]
+	}()
 
-	b.entries = b.entries[:0]
-	return err
+	b.batch.Add(NewStreamWithCreatedUnixMicro(b.labels, b.created, b.entries...))
+	return b.consumer.Consume(ctx, b.batch)
 }
