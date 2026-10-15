@@ -17,6 +17,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
+	"github.com/grafana/alloy/internal/service/lokipipeline"
 )
 
 // A Controller is a testing controller which controls a single component.
@@ -188,6 +189,8 @@ func (c *Controller) buildComponent(dataPath string, args component.Arguments, o
 				return labelstore.New(nil, prometheus.DefaultRegisterer), nil
 			case livedebugging.ServiceName:
 				return livedebugging.NewLiveDebugging(), nil
+			case lokipipeline.ServiceName:
+				return lokipipeline.New(lokipipeline.Options{}), nil
 			default:
 				return nil, fmt.Errorf("no service named %s defined", name)
 			}

@@ -19,6 +19,8 @@ func RunTest(ctx context.Context, schema TestSchema, cfg TestConfig) error {
 		SinkID:   "pipelinetest.sink.out",
 		DataPath: cfg.DataPath,
 		Source:   withPrelude(schema),
+
+		LokiPipelineV2: schema.Flags.LokiPipelineV2,
 	})
 	if err != nil {
 		return err

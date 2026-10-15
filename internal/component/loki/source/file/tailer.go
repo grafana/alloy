@@ -26,11 +26,10 @@ import (
 type tailer struct {
 	metrics   *metrics
 	logger    *slog.Logger
-	receiver  loki.LogsReceiver
+	batcher   loki.StreamBatcher
 	positions positions.Positions
 
 	key                positions.Entry
-	labels             model.LabelSet
 	legacyPositionUsed bool
 
 	tailFromEnd          bool
@@ -51,19 +50,20 @@ type tailer struct {
 func newTailer(
 	metrics *metrics,
 	logger *slog.Logger,
-	receiver loki.LogsReceiver,
+	newBatcher func(labels model.LabelSet) loki.StreamBatcher,
 	pos positions.Positions,
 	componentStopping func() bool,
 	opts sourceOptions,
 ) *tailer {
 
+	labels := opts.labels.Merge(model.LabelSet{labelFilename: model.LabelValue(opts.path)})
+
 	return &tailer{
 		metrics:              metrics,
 		logger:               logger.With("component", "tailer", "path", opts.path),
-		receiver:             receiver,
+		batcher:              newBatcher(labels),
 		positions:            pos,
 		key:                  positions.Entry{Path: opts.path, Labels: opts.labels.String()},
-		labels:               opts.labels.Merge(model.LabelSet{labelFilename: model.LabelValue(opts.path)}),
 		running:              atomic.NewBool(false),
 		tailFromEnd:          opts.tailFromEnd,
 		legacyPositionUsed:   opts.legacyPositionUsed,
@@ -164,7 +164,7 @@ func (t *tailer) initRun() (int64, error) {
 	return pos, nil
 }
 
-// tail reads lines from the file and forwards them to the receiver, periodically
+// tail reads lines from the file and forwards them to the batcher, periodically
 // recording the read offset. It blocks until ctx is canceled or the file is fully read.
 func (t *tailer) tail(ctx context.Context, pos int64) {
 	t.running.Store(true)
@@ -177,16 +177,20 @@ func (t *tailer) tail(ctx context.Context, pos int64) {
 	}
 
 	var (
-		lastOffset          = pos
-		entries             = t.receiver.Chan()
 		positionInterval    = t.positions.SyncPeriod()
 		lastUpdatedPosition = time.Time{}
+
+		// readOffset is the offset after the last line added to the batcher,
+		// deliveredOffset after the last flushed one. Only deliveredOffset is
+		// stored in positions.
+		readOffset      = pos
+		deliveredOffset = pos
 	)
 
 	defer func() {
 		t.running.Store(false)
 		size, _ := t.file.Size()
-		t.updateStats(lastOffset, size)
+		t.updateStats(deliveredOffset, size)
 
 		if err := t.file.Close(); err != nil {
 			if util.IsEphemeralOrFileClosed(err) {
@@ -208,52 +212,65 @@ func (t *tailer) tail(ctx context.Context, pos int64) {
 		}
 	}()
 
-	nextLine := func() (*tail.Line, error) {
-		for {
-			select {
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			default:
+	// flush delivers added entries and then advances deliveredOffset. Entries that
+	// fail to be delivered are dropped, unless the tailer is stopping so they are
+	// read again on the next run.
+	flush := func() {
+		if err := t.batcher.Flush(ctx); err != nil {
+			if ctx.Err() != nil {
+				return
 			}
+			t.logger.Warn("failed to send entries, dropping them", "err", err)
+		}
 
-			line, err := t.file.Next()
-			if !errors.Is(err, io.EOF) {
-				return line, err
-			}
-
-			if t.decompression.Enabled {
-				return t.file.Flush()
-			}
-
-			if err := t.file.Wait(ctx); err != nil {
-				return nil, err
-			}
+		deliveredOffset = readOffset
+		if time.Since(lastUpdatedPosition) >= positionInterval {
+			lastUpdatedPosition = time.Now()
+			size, _ := t.file.Size()
+			t.updateStats(deliveredOffset, size)
 		}
 	}
 
 	for {
-		line, err := nextLine()
-		if err != nil {
-			if !errors.Is(err, context.Canceled) && !errors.Is(err, io.EOF) {
-				t.logger.Error("failed to tail file", "err", err)
-			}
+		if ctx.Err() != nil {
 			return
 		}
 
-		t.metrics.readLines.WithLabelValues(t.key.Path).Inc()
-		select {
-		case <-ctx.Done():
+		line, err := t.file.Next()
+		if errors.Is(err, io.EOF) && t.decompression.Enabled {
+			// Compressed files are read once, so return any trailing data without a newline.
+			line, err = t.file.Flush()
+		}
+
+		switch {
+		case errors.Is(err, io.EOF):
+			// Nothing more to read right now so we flush what we have.
+			flush()
+			if t.decompression.Enabled {
+				return
+			}
+			if err := t.file.Wait(ctx); err != nil {
+				if !errors.Is(err, context.Canceled) && !errors.Is(err, io.EOF) {
+					t.logger.Error("failed to wait for new data", "err", err)
+				}
+				return
+			}
+			continue
+		case err != nil:
+			t.logger.Error("failed to tail file", "err", err)
+			// Lines read before the error are not guaranteed to be read again, so deliver them.
+			flush()
 			return
-		case entries <- loki.NewEntry(t.labels, push.Entry{
+		}
+
+		readOffset = line.Offset
+		t.metrics.readLines.WithLabelValues(t.key.Path).Inc()
+		full := t.batcher.Add(push.Entry{
 			Timestamp: line.Time,
 			Line:      line.Text,
-		}):
-			lastOffset = line.Offset
-			if time.Since(lastUpdatedPosition) >= positionInterval {
-				lastUpdatedPosition = time.Now()
-				size, _ := t.file.Size()
-				t.updateStats(lastOffset, size)
-			}
+		})
+		if full {
+			flush()
 		}
 	}
 }

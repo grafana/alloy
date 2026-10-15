@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFanoutConsumer_Consume(t *testing.T) {
+func TestFanoutV2_Consume(t *testing.T) {
 	firstErr := errors.New("first consumer failed")
 	lastErr := errors.New("last consumer failed")
 
@@ -22,8 +22,8 @@ func TestFanoutConsumer_Consume(t *testing.T) {
 		lastBatch  Batch
 	)
 
-	fanout := NewFanoutConsumer([]Consumer{
-		consumerFunc{
+	fanout := NewFanoutV2([]LogsReceiver{
+		NewLogsReceiverV2(consumerFunc{
 			consume: func(_ context.Context, batch Batch) error {
 				batch.FilterMap(func(entry Entry) (Entry, bool) {
 					entry.Line = "mutated by first"
@@ -33,13 +33,13 @@ func TestFanoutConsumer_Consume(t *testing.T) {
 				firstBatch = batch
 				return firstErr
 			},
-		},
-		consumerFunc{
+		}, "first"),
+		NewLogsReceiverV2(consumerFunc{
 			consume: func(_ context.Context, batch Batch) error {
 				lastBatch = batch
 				return lastErr
 			},
-		},
+		}, "last"),
 	})
 
 	var batch Batch
@@ -58,25 +58,25 @@ func TestFanoutConsumer_Consume(t *testing.T) {
 	require.Equal(t, "original", lastStreams[0].Entries[0].Line)
 }
 
-func TestFanoutConsumer_NilConsumer(t *testing.T) {
-	fanout := NewFanoutConsumer([]Consumer{nil})
+func TestFanoutV2_NilConsumer(t *testing.T) {
+	fanout := NewFanoutV2([]LogsReceiver{nil})
 	require.NotPanics(t, func() {
 		require.NoError(t, fanout.Consume(context.Background(), NewBatch()))
 	})
 }
 
-func TestFanoutConsumer_ConsumerStopped(t *testing.T) {
-	fanout := NewFanoutConsumer([]Consumer{
-		consumerFunc{
+func TestFanoutV2_ConsumerStopped(t *testing.T) {
+	fanout := NewFanoutV2([]LogsReceiver{
+		NewLogsReceiverV2(consumerFunc{
 			consume: func(_ context.Context, batch Batch) error {
 				return ErrConsumerStopped
 			},
-		},
-		consumerFunc{
+		}, "first"),
+		NewLogsReceiverV2(consumerFunc{
 			consume: func(_ context.Context, batch Batch) error {
 				return ErrConsumerStopped
 			},
-		},
+		}, "second"),
 	})
 
 	require.NoError(t, fanout.Consume(context.Background(), NewBatch()))

@@ -39,7 +39,7 @@ func TestTailer(t *testing.T) {
 	tailer := newTailer(
 		newMetrics(nil),
 		l,
-		ch1,
+		channelBatcher(ch1),
 		positionsFile,
 		func() bool { return true },
 		sourceOptions{
@@ -135,7 +135,7 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 	tailer := newTailer(
 		newMetrics(nil),
 		l,
-		ch1,
+		channelBatcher(ch1),
 		positionsFile,
 		func() bool { return false },
 		sourceOptions{
@@ -200,7 +200,7 @@ func TestTailerDeleteFileInstant(t *testing.T) {
 	tailer := newTailer(
 		newMetrics(nil),
 		l,
-		ch1,
+		channelBatcher(ch1),
 		positionsFile,
 		func() bool { return true },
 		sourceOptions{
@@ -268,7 +268,7 @@ func TestTailerCancelWhileSendBlocked(t *testing.T) {
 	tailer := newTailer(
 		newMetrics(nil),
 		l,
-		recv,
+		channelBatcher(recv),
 		positionsFile,
 		func() bool { return true },
 		sourceOptions{
@@ -332,7 +332,7 @@ func TestTailerCorruptedPositions(t *testing.T) {
 	tailer := newTailer(
 		newMetrics(nil),
 		l,
-		ch1,
+		channelBatcher(ch1),
 		positionsFile,
 		func() bool { return true },
 		sourceOptions{
@@ -431,7 +431,7 @@ func TestTailer_Compressions(t *testing.T) {
 	tailer := newTailer(
 		newMetrics(nil),
 		logger,
-		handler.Receiver(),
+		channelBatcher(handler.Receiver()),
 		positionsFile,
 		// We return false here to verify that position is kept and we don't re-ingest the file.
 		func() bool { return false },
@@ -475,7 +475,7 @@ func TestTailer_GigantiqueGunzipFile(t *testing.T) {
 	tailer := newTailer(
 		newMetrics(prometheus.NewRegistry()),
 		logging.NewSlogNop(),
-		handler.Receiver(),
+		channelBatcher(handler.Receiver()),
 		positions.NewNop(),
 		func() bool { return false },
 		sourceOptions{
@@ -505,7 +505,7 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 		tailer := newTailer(
 			newMetrics(prometheus.NewRegistry()),
 			logging.NewSlogNop(),
-			handler.Receiver(),
+			channelBatcher(handler.Receiver()),
 			positions.NewNop(),
 			func() bool { return false },
 			sourceOptions{
@@ -534,7 +534,7 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 		tailer := newTailer(
 			newMetrics(prometheus.NewRegistry()),
 			logging.NewSlogNop(),
-			handler.Receiver(),
+			channelBatcher(handler.Receiver()),
 			positions.NewNop(),
 			func() bool { return false },
 			sourceOptions{
@@ -562,7 +562,7 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 		tailer := newTailer(
 			newMetrics(prometheus.NewRegistry()),
 			logging.NewSlogNop(),
-			handler.Receiver(),
+			channelBatcher(handler.Receiver()),
 			positions.NewNop(),
 			func() bool { return false },
 			sourceOptions{
@@ -587,4 +587,10 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 			`5.202.214.160 - - [26/Jan/2019:19:45:25 +0330] "GET / HTTP/1.1" 200 30975 "https://www.zanbil.ir/" "Mozilla/5.0 (Windows NT 6.2; WOW64; rv:21.0) Gecko/20100101 Firefox/21.0" "-"`,
 		)
 	})
+}
+
+func channelBatcher(recv loki.LogsReceiver) func(model.LabelSet) loki.StreamBatcher {
+	return func(labels model.LabelSet) loki.StreamBatcher {
+		return loki.NewChannelStreamBatcher(loki.NewFanout([]loki.LogsReceiver{recv}), labels)
+	}
 }

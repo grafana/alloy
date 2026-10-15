@@ -25,6 +25,7 @@ import (
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
+	"github.com/grafana/alloy/internal/service/lokipipeline"
 	remotecfg_service "github.com/grafana/alloy/internal/service/remotecfg"
 )
 
@@ -228,6 +229,7 @@ func attemptLoadingAlloyConfig(t *testing.T, bb []byte) {
 			labelstore.New(nil, prometheus.DefaultRegisterer),
 			remotecfgService,
 			livedebugging.New(),
+			lokipipeline.New(lokipipeline.Options{}),
 		},
 		EnableCommunityComps: true,
 	})

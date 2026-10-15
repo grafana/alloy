@@ -1,0 +1,28 @@
+flags:
+  feature.loki.pipeline-v2.enabled: true
+
+config: |
+  loki.source.file "f" {
+    targets = [
+      {
+        __path__     = "./tests/loki-pipeline-v2-file/app.log",
+        service_name = "app",
+      },
+    ]
+
+    forward_to = [pipelinetest.loki.receiver, loki.echo.e.receiver]
+  }
+
+  loki.echo "e" {}
+
+assert:
+  loki:
+    - type: count
+      count: 3
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            service_name: app
+        line: 'ts=2026-10-15T12:00:01Z level=warn msg="second line"'
