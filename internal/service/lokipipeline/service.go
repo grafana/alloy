@@ -1,7 +1,7 @@
 // Package lokipipeline implements the lokipipeline service, which exposes the
-// --feature.loki.consumer-pipeline.enabled flag to components. The service is
-// temporary and will be removed once the migration of Loki components to the
-// consumer pipeline is complete (https://github.com/grafana/alloy/issues/4953).
+// --feature.loki.pipeline-v2.enabled flag to components. The service is
+// temporary and will be removed once the migration of Loki components to
+// pipeline v2 is complete (https://github.com/grafana/alloy/issues/4953).
 package lokipipeline
 
 import (
@@ -17,15 +17,15 @@ const ServiceName = "lokipipeline"
 
 // Options configures the lokipipeline service.
 type Options struct {
-	// ConsumerPipeline enables passing logs between Loki components through
+	// PipelineV2 enables passing logs between Loki components through
 	// consumers instead of channels.
-	ConsumerPipeline bool
+	PipelineV2 bool
 }
 
 // Data is the runtime data exposed by the lokipipeline service.
 type Data interface {
-	// ConsumerPipelineEnabled reports whether the consumer pipeline is enabled.
-	ConsumerPipelineEnabled() bool
+	// PipelineV2Enabled reports whether pipeline v2 is enabled.
+	PipelineV2Enabled() bool
 }
 
 type Service struct {
@@ -64,6 +64,6 @@ func (s *Service) Data() any {
 	return s
 }
 
-func (s *Service) ConsumerPipelineEnabled() bool {
-	return s.opts.ConsumerPipeline
+func (s *Service) PipelineV2Enabled() bool {
+	return s.opts.PipelineV2
 }
