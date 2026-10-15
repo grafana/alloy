@@ -46,10 +46,8 @@ type Fanout struct {
 
 	useLabelStore         bool
 	seriesRefMappingStore *appenders.SeriesRefMappingStore
-	// deadRefThreshold is updated on every children change. Any store-issued ref
-	// below this value was issued before the last topology change and must be
-	// zeroed before forwarding to a child appender.
-	deadRefThreshold storage.SeriesRef
+	// mapped forces seriesRefMapping even for a single child. Never cleared.
+	mapped bool
 }
 
 func normalizeChildren(children []storage.AppendableV2) []storage.AppendableV2 {
@@ -99,16 +97,6 @@ func NewFanout(children []storage.AppendableV2, componentID string, register pro
 // UpdateChildren allows changing of the children of the fanout.
 //
 // When children change, the store is cleared to start a new ref generation.
-// This guards against two ref collision hazards that arise when the appender
-// type changes between passthrough (1 child) and seriesRefMapping (N children):
-//
-// passthrough → seriesRefMapping: a cached raw child ref (e.g. WAL ref) may collide
-// numerically with a store-issued unique ref for a different series. The store guards
-// against this with a label hash check on every mapping lookup.
-//
-// seriesRefMapping → passthrough: a cached store-issued unique ref is meaningless to
-// the child and must not be forwarded. Clear returns the new generation boundary;
-// the passthrough zeros any ref below it before forwarding.
 func (f *Fanout) UpdateChildren(children []storage.AppendableV2) {
 	c := normalizeChildren(children)
 
@@ -116,7 +104,14 @@ func (f *Fanout) UpdateChildren(children []storage.AppendableV2) {
 	defer f.mut.Unlock()
 
 	if !slices.Equal(f.children, c) {
-		f.deadRefThreshold = f.seriesRefMappingStore.Clear()
+		// Callers keep sending refs from the old children, and a passthrough would hand
+		// them to the new child as its own. seriesRefMapping only forwards refs the
+		// current children returned, so use it from the first real change on. Setting
+		// the first children doesn't count, since no refs exist yet.
+		if len(f.children) > 0 {
+			f.mapped = true
+		}
+		f.seriesRefMappingStore.Clear()
 	}
 	f.children = c
 }
@@ -167,7 +162,7 @@ func (f *Fanout) Appender(ctx context.Context) storage.Appender {
 		}
 	}
 
-	return appenders.New(children, f.seriesRefMappingStore, f.deadRefThreshold, f.writeLatency, f.samplesCounter)
+	return appenders.New(children, f.seriesRefMappingStore, f.mapped, f.writeLatency, f.samplesCounter)
 }
 
 // Stop clears the Fanout's ref mappings and ends its background work. Owning
@@ -176,7 +171,7 @@ func (f *Fanout) Stop() {
 	f.mut.Lock()
 	defer f.mut.Unlock()
 
-	f.deadRefThreshold = f.seriesRefMappingStore.Clear()
+	f.seriesRefMappingStore.Clear()
 	f.seriesRefMappingStore.Stop()
 }
 

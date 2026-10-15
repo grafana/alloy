@@ -86,6 +86,15 @@ The `--windows.priority` flag is in [Public preview][] and is not covered by {{<
 [backward compatibility]: ../../../introduction/backward-compatibility/
 {{< /admonition >}}
 
+### Direct fan-out
+
+With `--feature.prometheus.direct-fanout.enabled`, each component that forwards metrics tracks series references for its own destinations instead of using a global label store.
+A component with a single destination skips this tracking and passes series references straight to that destination.
+
+After you change a component's `forward_to` list, the component tracks series references for the rest of the process lifetime, even if the new list has a single destination.
+This keeps references from the previous destinations from reaching the new ones, but the component uses more memory and CPU until {{< param "PRODUCT_NAME" >}} restarts.
+Updating the configuration of a `prometheus.remote_write`, `prometheus.relabel`, or `prometheus.enrich` destination doesn't count as a change to `forward_to`.
+
 ### Deprecated flags
 
 * `--cluster.use-discovery-v1`: This flag is deprecated and has no effect.

@@ -243,37 +243,70 @@ func (s *recordingStore) AppenderV2(context.Context) storage.AppenderV2 {
 	panic("AppenderV2 not implemented")
 }
 
-// TestFanout_SeriesRefMappingToPassthroughTransition verifies that when the fanout
-// transitions from seriesRefMapping (2 children) to passthrough (1 child) via
-// UpdateChildren, store-issued unique refs cached by callers are zeroed before
-// forwarding so the child allocates a fresh ref.
-func TestFanout_SeriesRefMappingToPassthroughTransition(t *testing.T) {
+// TestFanout_StaysMappedAfterDroppingToOneChild verifies that a fanout going from
+// 2 children to 1 keeps mapping refs instead of switching to passthrough.
+func TestFanout_StaysMappedAfterDroppingToOneChild(t *testing.T) {
 	child1 := newRecordingStore()
 	child2 := newRecordingStore()
 	fanout := prometheus.NewFanout([]storage.AppendableV2{child1, child2}, "test", promclient.NewRegistry(), nil)
 
-	// Phase 1 (2 children → seriesRefMapping): store issues unique ref 1 for lblsA.
 	app1 := fanout.Appender(t.Context())
 	lblsA := labels.FromStrings("job", "seriesA")
 	uniqueRef, err := app1.Append(0, lblsA, 1, 1.0)
 	require.NoError(t, err)
 	require.NoError(t, app1.Commit())
-	require.Equal(t, storage.SeriesRef(1), uniqueRef)
 
-	// Transition to 1 child.
 	walChild := newRecordingStore()
 	fanout.UpdateChildren([]storage.AppendableV2{walChild})
 
-	// Phase 2 (1 child → passthrough): caller re-sends the store-issued unique ref.
-	// The passthrough must zero it so the child allocates a fresh ref.
+	// The old unique ref is unmapped, so the child gets 0 and the fanout maps its new ref.
 	app2 := fanout.Appender(t.Context())
-	_, err = app2.Append(uniqueRef, lblsA, 2, 2.0)
+	newRef, err := app2.Append(uniqueRef, lblsA, 2, 2.0)
+	require.NoError(t, err)
+	_, err = app2.Append(newRef, lblsA, 3, 3.0)
 	require.NoError(t, err)
 	require.NoError(t, app2.Commit())
 
-	// The child must have been called with ref=0, not the store-issued unique ref.
-	require.Equal(t, storage.SeriesRef(0), walChild.appender.appendRefs[0],
-		"child must be called with ref=0, not the store-issued unique ref")
+	require.Equal(t, []storage.SeriesRef{0, 5001}, walChild.appender.appendRefs)
+}
+
+// TestFanout_SwappingSingleChildDoesNotForwardOldChildRefs verifies that a raw ref
+// from the old child never reaches its replacement.
+func TestFanout_SwappingSingleChildDoesNotForwardOldChildRefs(t *testing.T) {
+	oldChild := newRecordingStore()
+	fanout := prometheus.NewFanout([]storage.AppendableV2{oldChild}, "test", promclient.NewRegistry(), nil)
+
+	app1 := fanout.Appender(t.Context())
+	lbls := labels.FromStrings("job", "series")
+	oldRef, err := app1.Append(0, lbls, 1, 1.0)
+	require.NoError(t, err)
+	require.NoError(t, app1.Commit())
+	require.Equal(t, storage.SeriesRef(5001), oldRef, "a single child starts as passthrough")
+
+	newChild := newRecordingStore()
+	fanout.UpdateChildren([]storage.AppendableV2{newChild})
+
+	app2 := fanout.Appender(t.Context())
+	_, err = app2.Append(oldRef, lbls, 2, 2.0)
+	require.NoError(t, err)
+	require.NoError(t, app2.Commit())
+
+	require.Equal(t, []storage.SeriesRef{0}, newChild.appender.appendRefs)
+}
+
+// TestFanout_SettingFirstChildrenKeepsPassthrough verifies that a fanout created
+// without children still uses passthrough for its first single child.
+func TestFanout_SettingFirstChildrenKeepsPassthrough(t *testing.T) {
+	fanout := prometheus.NewFanout(nil, "test", promclient.NewRegistry(), nil)
+	child := newRecordingStore()
+	fanout.UpdateChildren([]storage.AppendableV2{child})
+
+	app := fanout.Appender(t.Context())
+	ref, err := app.Append(0, labels.FromStrings("job", "series"), 1, 1.0)
+	require.NoError(t, err)
+	require.NoError(t, app.Commit())
+
+	require.Equal(t, storage.SeriesRef(5001), ref, "passthrough returns the child's ref")
 }
 
 // TestFanout_PassthroughToSeriesRefMappingTransition verifies that when the fanout
