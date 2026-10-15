@@ -7,11 +7,11 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
-	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/google/pprof/profile"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
@@ -79,6 +79,9 @@ func TestPyroscopeEbpfPerlIntegration(t *testing.T) {
 		_ = ebpfComponent.Run(ctx)
 	}()
 
+	// Root first; "*" matches exactly one frame (__libc_start_call_main, unsymbolized).
+	expected := []string{"_start", "__libc_start_main", "*", "main", "perl_run", "Perl_runops_standard"}
+	var seen [][]string
 	require.Eventually(t, func() bool {
 		res, err := test.Query(pyroscopeEndpoint, &querierv1.SelectMergeProfileRequest{
 			ProfileTypeID: `process_cpu:cpu:nanoseconds:cpu:nanoseconds`,
@@ -90,7 +93,41 @@ func TestPyroscopeEbpfPerlIntegration(t *testing.T) {
 			t.Logf("Error querying endpoint: %v", err)
 			return false
 		}
-		return strings.Contains(res.String(), "Perl_runops_standard")
-	}, 90*time.Second, time.Second, "perl stacks missing from Pyroscope")
+		seen = stacks(res)
+		for _, st := range seen {
+			if hasPrefix(st, expected) && len(st) > len(expected) {
+				return true
+			}
+		}
+		return false
+	}, 90*time.Second, time.Second, "no perl stack with prefix %v (perl frames on top); got %d stacks: %v", expected, len(seen), seen)
 	cancel()
+}
+
+func stacks(p *profile.Profile) [][]string {
+	res := make([][]string, 0, len(p.Sample))
+	for _, s := range p.Sample {
+		st := make([]string, 0, len(s.Location))
+		for i := len(s.Location) - 1; i >= 0; i-- {
+			name := ""
+			if l := s.Location[i]; len(l.Line) > 0 {
+				name = l.Line[0].Function.Name
+			}
+			st = append(st, name)
+		}
+		res = append(res, st)
+	}
+	return res
+}
+
+func hasPrefix(stack, prefix []string) bool {
+	if len(stack) < len(prefix) {
+		return false
+	}
+	for i, want := range prefix {
+		if want != "*" && stack[i] != want {
+			return false
+		}
+	}
+	return true
 }
