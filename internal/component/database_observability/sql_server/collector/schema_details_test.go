@@ -19,6 +19,90 @@ import (
 	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
 
+func TestTableRegistryIsValid(t *testing.T) {
+	registry := NewTableRegistry()
+	registry.SetTablesForDatabase("books_store", []*tableInfo{
+		{database: "books_store", schema: "dbo", tableName: "rentals"},
+		{database: "books_store", schema: "sales", tableName: "Orders"},
+		{database: "books_store", schema: "archive", tableName: "Orders"},
+	})
+
+	tests := []struct {
+		name       string
+		database   string
+		parsedName string
+		wantName   string
+		wantValid  bool
+	}{
+		{
+			name:       "unqualified table",
+			database:   "books_store",
+			parsedName: "rentals",
+			wantName:   "rentals",
+			wantValid:  true,
+		},
+		{
+			name:       "schema qualified table",
+			database:   "books_store",
+			parsedName: "sales.Orders",
+			wantName:   "sales.Orders",
+			wantValid:  true,
+		},
+		{
+			name:       "case insensitive fallback returns canonical name",
+			database:   "books_store",
+			parsedName: "SALES.orders",
+			wantName:   "sales.Orders",
+			wantValid:  true,
+		},
+		{
+			name:       "same canonical unqualified name across schemas is valid",
+			database:   "books_store",
+			parsedName: "orders",
+			wantName:   "Orders",
+			wantValid:  true,
+		},
+		{
+			name:       "table alias is not valid",
+			database:   "books_store",
+			parsedName: "r",
+			wantName:   "r",
+			wantValid:  false,
+		},
+		{
+			name:       "unknown database",
+			database:   "missing",
+			parsedName: "rentals",
+			wantName:   "rentals",
+			wantValid:  false,
+		},
+		{
+			name:       "three part name is not guessed",
+			database:   "books_store",
+			parsedName: "books_store.dbo.rentals",
+			wantName:   "books_store.dbo.rentals",
+			wantValid:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotName, gotValid := registry.IsValid(tt.database, tt.parsedName)
+			require.Equal(t, tt.wantName, gotName)
+			require.Equal(t, tt.wantValid, gotValid)
+		})
+	}
+
+	registry.SetTablesForDatabase("books_store", []*tableInfo{
+		{database: "books_store", schema: "dbo", tableName: "books"},
+	})
+	_, oldTableValid := registry.IsValid("books_store", "rentals")
+	require.False(t, oldTableValid)
+	resolved, newTableValid := registry.IsValid("books_store", "books")
+	require.True(t, newTableValid)
+	require.Equal(t, "books", resolved)
+}
+
 func TestSchemaDetails(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
@@ -118,6 +202,9 @@ func TestSchemaDetails(t *testing.T) {
 		}, 5*time.Second, 100*time.Millisecond)
 
 		require.NoError(t, mock.ExpectationsWereMet())
+		resolved, valid := collector.GetTableRegistry().IsValid("some_db", "dbo.some_table")
+		require.True(t, valid)
+		require.Equal(t, "dbo.some_table", resolved)
 
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"auto_increment":true,"primary_key":true},{"name":"category","type":"int","not_null":true}],"indexes":[{"name":"PK_some_table","type":"CLUSTERED","columns":["id"],"unique":true,"nullable":false}],"foreign_keys":[{"name":"fk_name","column_name":"category","referenced_table_name":"categories","referenced_column_name":"id"}]}`))
 
@@ -1127,6 +1214,9 @@ func TestSchemaDetailsUseFailurePreservesThrottle(t *testing.T) {
 	c.lastEmittedAt["db_b"] = map[string]time.Time{
 		schemaTableKey("dbo", "existing_table"): seededAt,
 	}
+	c.tableRegistry.SetTablesForDatabase("db_b", []*tableInfo{
+		{database: "db_b", schema: "dbo", tableName: "existing_table"},
+	})
 
 	expectListDatabases(mock, "db_a", "db_b")
 
@@ -1145,6 +1235,9 @@ func TestSchemaDetailsUseFailurePreservesThrottle(t *testing.T) {
 
 	require.Contains(t, c.lastEmittedAt, "db_b")
 	require.Equal(t, seededAt, c.lastEmittedAt["db_b"][schemaTableKey("dbo", "existing_table")])
+	resolved, valid := c.tableRegistry.IsValid("db_b", "existing_table")
+	require.True(t, valid)
+	require.Equal(t, "existing_table", resolved)
 }
 
 // TestSchemaDetailsMidScanBreakPreservesThrottle verifies that a scan error
@@ -1172,6 +1265,9 @@ func TestSchemaDetailsMidScanBreakPreservesThrottle(t *testing.T) {
 	c.lastEmittedAt["some_db"] = map[string]time.Time{
 		schemaTableKey("dbo", "existing_table"): seededAt,
 	}
+	c.tableRegistry.SetTablesForDatabase("some_db", []*tableInfo{
+		{database: "some_db", schema: "dbo", tableName: "existing_table"},
+	})
 
 	expectListDatabases(mock, "some_db")
 	expectUseDatabase(mock, "some_db")
@@ -1189,6 +1285,9 @@ func TestSchemaDetailsMidScanBreakPreservesThrottle(t *testing.T) {
 
 	require.Contains(t, c.lastEmittedAt, "some_db")
 	require.Equal(t, seededAt, c.lastEmittedAt["some_db"][schemaTableKey("dbo", "existing_table")])
+	resolved, valid := c.tableRegistry.IsValid("some_db", "existing_table")
+	require.True(t, valid)
+	require.Equal(t, "existing_table", resolved)
 }
 
 // TestSchemaDetailsUndiscoveredDatabaseEvicted verifies that a database no

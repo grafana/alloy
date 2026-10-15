@@ -150,11 +150,18 @@ func TestQueryDetails_NormalizesQueryText(t *testing.T) {
 	lokiClient := loki.NewCollectingHandler()
 	defer lokiClient.Stop()
 
+	tableRegistry := NewTableRegistry()
+	tableRegistry.SetTablesForDatabase(testDatabase, []*tableInfo{
+		{database: testDatabase, schema: "dbo", tableName: "orders"},
+		{database: testDatabase, schema: "dbo", tableName: "customers"},
+	})
+
 	c, err := NewQueryDetails(QueryDetailsArguments{
 		DB:              db,
 		CollectInterval: time.Minute,
 		EntryHandler:    lokiClient,
 		Tracker:         trackerFor(testHash),
+		TableRegistry:   tableRegistry,
 		Logger:          util.TestAlloyLogger(t).Slog(),
 	})
 	require.NoError(t, err)
@@ -177,9 +184,46 @@ func TestQueryDetails_NormalizesQueryText(t *testing.T) {
 	require.NotContains(t, entries[0].Line, `\t`)
 
 	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, entries[1].Labels)
-	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" table="dbo.orders"`, entries[1].Line)
+	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" table="dbo.orders" validated="true"`, entries[1].Line)
 	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, entries[2].Labels)
-	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" table="customers"`, entries[2].Line)
+	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" table="customers" validated="true"`, entries[2].Line)
+}
+
+func TestQueryDetailsMarksUpdateAliasAsNotValidated(t *testing.T) {
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	tableRegistry := NewTableRegistry()
+	tableRegistry.SetTablesForDatabase(testDatabase, []*tableInfo{
+		{database: testDatabase, schema: "dbo", tableName: "rentals"},
+	})
+
+	c, err := NewQueryDetails(QueryDetailsArguments{
+		EntryHandler:  lokiClient,
+		TableRegistry: tableRegistry,
+		Logger:        util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+
+	c.emit(testDatabase, testHash, `UPDATE r
+		SET r.status = @p2
+		FROM rentals r
+		INNER JOIN (
+			SELECT TOP (@p1) id
+			FROM rentals
+			WHERE status = @p3
+		) target ON r.id = target.id`)
+
+	require.Eventually(t, func() bool {
+		return len(lokiClient.Received()) == 3
+	}, 5*time.Second, 20*time.Millisecond)
+
+	entries := lokiClient.Received()
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, entries[0].Labels)
+	require.ElementsMatch(t, []string{
+		`level="info" database="books_store" query_hash="0011223344556677" table="rentals" validated="true"`,
+		`level="info" database="books_store" query_hash="0011223344556677" table="r" validated="false"`,
+	}, []string{entries[1].Line, entries[2].Line})
 }
 
 func TestQueryDetails_DedupesRepeatedHashWithinCycle(t *testing.T) {
