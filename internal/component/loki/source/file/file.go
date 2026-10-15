@@ -23,6 +23,7 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/lokipipeline"
 )
 
 func init() {
@@ -200,17 +201,23 @@ type Component struct {
 	// scheduling when file matching is enabled.
 	watcher *time.Ticker
 
-	handler loki.LogsReceiver
 	posFile positions.Positions
 
-	fanout *loki.Fanout
+	pipelineV2 bool
+	fanout     *loki.Fanout
+	fanoutV2   *loki.FanoutV2
 
 	stopping atomic.Bool
 }
 
 // New creates a new loki.source.file component.
 func New(o component.Options, args Arguments) (*Component, error) {
-	err := os.MkdirAll(o.DataPath, 0750)
+	svc, err := o.GetServiceData(lokipipeline.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
+	err = os.MkdirAll(o.DataPath, 0750)
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}
@@ -232,13 +239,14 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 
 	c := &Component{
-		opts:      o,
-		metrics:   newMetrics(o.Registerer),
-		handler:   loki.NewLogsReceiver(),
-		fanout:    loki.NewFanout(args.ForwardTo),
-		posFile:   positionsFile,
-		scheduler: source.NewScheduler[positions.Entry](),
-		watcher:   time.NewTicker(args.FileMatch.SyncPeriod),
+		opts:       o,
+		metrics:    newMetrics(o.Registerer),
+		posFile:    positionsFile,
+		pipelineV2: svc.(lokipipeline.Data).PipelineV2Enabled(),
+		fanout:     loki.NewFanout(nil),
+		fanoutV2:   loki.NewFanoutV2(nil),
+		scheduler:  source.NewScheduler[positions.Entry](),
+		watcher:    time.NewTicker(args.FileMatch.SyncPeriod),
 	}
 
 	// Call to Update() to start sources and set receivers once at the start.
@@ -262,30 +270,20 @@ func (c *Component) Run(ctx context.Context) error {
 		c.posFile.Stop()
 	}()
 
-	var wg sync.WaitGroup
-
-	// Start consume and fanout loop
-	wg.Go(func() { loki.Consume(ctx, c.handler, c.fanout) })
-
-	wg.Go(func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-c.watcher.C:
-				c.mut.Lock()
-				if !c.args.FileMatch.Enabled {
-					c.mut.Unlock()
-					continue
-				}
-				c.scheduleSources()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-c.watcher.C:
+			c.mut.Lock()
+			if !c.args.FileMatch.Enabled {
 				c.mut.Unlock()
+				continue
 			}
+			c.scheduleSources()
+			c.mut.Unlock()
 		}
-	})
-
-	wg.Wait()
-	return nil
+	}
 }
 
 // Update implements component.Component.
@@ -297,7 +295,11 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
+	if c.pipelineV2 {
+		c.fanoutV2.UpdateChildren(newArgs.ForwardTo)
+	} else {
+		c.fanout.UpdateChildren(newArgs.ForwardTo)
+	}
 
 	// Choose resolver on FileMatch.
 	if newArgs.FileMatch.Enabled {
@@ -402,7 +404,7 @@ func (c *Component) newSource(opts sourceOptions) (source.Source[positions.Entry
 	tailer := newTailer(
 		c.metrics,
 		c.opts.Logger,
-		c.handler,
+		c.newBatcher,
 		c.posFile,
 		c.IsStopping,
 		opts,
@@ -417,6 +419,14 @@ func (c *Component) newSource(opts sourceOptions) (source.Source[positions.Entry
 		MinBackoff: 1 * time.Second,
 		MaxBackoff: 10 * time.Second,
 	}), nil
+}
+
+func (c *Component) newBatcher(labels model.LabelSet) loki.StreamBatcher {
+	const pipelineV2BatchSize = 100
+	if c.pipelineV2 {
+		return loki.NewConsumerStreamBatcher(c.fanoutV2, labels, pipelineV2BatchSize)
+	}
+	return loki.NewChannelStreamBatcher(c.fanout, labels)
 }
 
 func (c *Component) IsStopping() bool {
