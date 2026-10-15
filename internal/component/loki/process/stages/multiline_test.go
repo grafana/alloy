@@ -15,10 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/regexp"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -409,36 +407,6 @@ func TestValidateMultilineConfig(t *testing.T) {
 
 			var cfg MultilineConfig
 			err := syntax.Unmarshal([]byte(tt.config), &cfg)
-			if tt.expectErr {
-				require.Error(t, err)
-				return
-			}
-			require.NoError(t, err)
-		})
-	}
-}
-
-func TestNewMultilineStage(t *testing.T) {
-	tests := []struct {
-		name       string
-		expression *regexp.Regexp
-		expectErr  bool
-	}{
-		{name: "valid", expression: regexp.MustCompile(`^START`)},
-		{name: "nil expression", expression: nil, expectErr: true},
-		{name: "zero value expression", expression: &regexp.Regexp{}, expectErr: true},
-		{name: "empty expression", expression: regexp.MustCompile(``), expectErr: true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cfg := defaultMultilineConfig
-			cfg.Expression = tt.expression
-
-			_, err := newMultilineStage(cfg, stageOpts{
-				slogger: util.TestAlloyLogger(t).Slog(),
-				next:    func(_ context.Context, _ []Entry) error { return nil },
-			})
 			if tt.expectErr {
 				require.Error(t, err)
 				return

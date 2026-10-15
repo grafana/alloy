@@ -63,18 +63,14 @@ var (
 )
 
 // newMultilineStage creates a multilineStage from config
-func newMultilineStage(config MultilineConfig, opts stageOpts) (*multilineStage, error) {
-	if config.Expression.IsEmpty() {
-		return nil, errMultilineStageEmptyConfig
-	}
-
+func newMultilineStage(config MultilineConfig, opts stageOpts) *multilineStage {
 	return &multilineStage{
 		next:    opts.next,
 		logger:  opts.slogger.With("stage", "multiline"),
 		cfg:     config,
 		streams: newMultilineStreamsStriped(),
 		done:    make(chan struct{}),
-	}, nil
+	}
 }
 
 // multilineStage matches lines to determine whether the following lines belong to a block and should be collapsed
