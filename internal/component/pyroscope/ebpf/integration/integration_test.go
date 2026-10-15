@@ -40,7 +40,7 @@ func TestPyroscopeEbpfPerlIntegration(t *testing.T) {
 	wg := sync.WaitGroup{}
 	defer wg.Wait()
 	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
+	defer cancel()
 
 	l := testlog.TestLogger(t)
 	_, pyroscopeEndpoint := pyroutil.StartPyroscopeContainer(t, ctx, l)
@@ -101,7 +101,6 @@ func TestPyroscopeEbpfPerlIntegration(t *testing.T) {
 		}
 		return false
 	}, 90*time.Second, time.Second, "no perl stack with prefix %v (perl frames on top); got %d stacks: %v", expected, len(seen), seen)
-	cancel()
 }
 
 func stacks(p *profile.Profile) [][]string {
