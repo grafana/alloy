@@ -23,9 +23,6 @@ const (
 	// command runs from.
 	defaultRevisionFile = "scenarios-docs/revision.go"
 
-	// indexPage is the landing page that imports the preamble.
-	indexPage = "_index.md"
-
 	httpTimeout = 30 * time.Second
 )
 
@@ -154,9 +151,6 @@ func SharedImport(slug string) string {
 
 // pageFor returns the hand-written page that must import the given slug.
 func pageFor(slug string) string {
-	if slug == preambleSlug {
-		return indexPage
-	}
 	return slug + ".md"
 }
 

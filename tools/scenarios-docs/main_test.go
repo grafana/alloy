@@ -412,16 +412,16 @@ func TestVerifyPages(t *testing.T) {
 	pages := []Page{{Slug: preambleSlug, Title: "Run a scenario"}, {Slug: "logs", Title: "Logs"}}
 
 	err := verifyPages(dir, pages)
-	require.ErrorContains(t, err, "_index.md is missing, for category \"Run a scenario\"")
+	require.ErrorContains(t, err, "run-a-scenario.md is missing, for category \"Run a scenario\"")
 	require.ErrorContains(t, err, "logs.md is missing, for category \"Logs\"")
 
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "_index.md"),
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "run-a-scenario.md"),
 		[]byte("intro\n\n"+SharedImport(preambleSlug)+"\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "logs.md"), []byte("intro only\n"), 0o644))
 
 	err = verifyPages(dir, pages)
 	require.ErrorContains(t, err, "logs.md doesn't import its table")
-	require.NotContains(t, err.Error(), "_index.md")
+	require.NotContains(t, err.Error(), "run-a-scenario.md")
 
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "logs.md"),
 		[]byte("intro\n\n"+SharedImport("logs")+"\n"), 0o644))
@@ -478,7 +478,7 @@ func TestSyncCommandWithSourceFile(t *testing.T) {
 	require.NoDirExists(t, sharedDir)
 
 	for slug, name := range map[string]string{
-		preambleSlug:           "_index.md",
+		preambleSlug:           preambleSlug + ".md",
 		"logs":                 "logs.md",
 		"opentelemetry-engine": "opentelemetry-engine.md",
 	} {
