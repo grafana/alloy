@@ -73,6 +73,7 @@ type Component struct {
 var (
 	_ component.Component     = (*Component)(nil)
 	_ component.LiveDebugging = (*Component)(nil)
+	_ storage.Appendable      = (*Component)(nil)
 )
 
 // New creates a new otelcol.receiver.prometheus component.
@@ -90,7 +91,18 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	if err := res.Update(c); err != nil {
 		return nil, err
 	}
+
+	// Export the component itself rather than the appendable Update builds. Upstream
+	// fanouts treat a new receiver as a change of destination.
+	o.OnStateChange(Exports{Receiver: res})
 	return res, nil
+}
+
+// Appender implements storage.Appendable.
+func (c *Component) Appender(ctx context.Context) storage.Appender {
+	c.mut.RLock()
+	defer c.mut.RUnlock()
+	return c.appendable.Appender(ctx)
 }
 
 // Run implements Component.
@@ -169,9 +181,6 @@ func (c *Component) Update(newConfig component.Arguments) error {
 		return err
 	}
 	c.appendable = appendable
-
-	// Export the receiver.
-	c.opts.OnStateChange(Exports{Receiver: c.appendable})
 
 	return nil
 }
