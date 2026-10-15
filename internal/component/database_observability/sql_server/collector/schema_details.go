@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -39,6 +40,7 @@ type SchemaDetails struct {
 	excludeSchemas   []string
 	excludeDatabases []string
 	entryHandler     loki.EntryHandler
+	tableRegistry    *TableRegistry
 
 	// lastEmittedAt records the wall-clock time at which OP_CREATE_STATEMENT
 	// was last emitted for a table. The outer key is the database name and
@@ -62,6 +64,106 @@ type tableInfo struct {
 	tableName    string
 	tableType    string
 	b64TableSpec string
+}
+
+// TableRegistry is a source-of-truth cache of databases, schemas, and tables
+// reported by information_schema.tables.
+type TableRegistry struct {
+	mu     sync.RWMutex
+	tables map[string]map[string]map[string]struct{}
+}
+
+func NewTableRegistry() *TableRegistry {
+	return &TableRegistry{
+		tables: make(map[string]map[string]map[string]struct{}),
+	}
+}
+
+// SetTablesForDatabase atomically replaces all known tables for a database.
+func (tr *TableRegistry) SetTablesForDatabase(database string, tablesInfo []*tableInfo) {
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+
+	delete(tr.tables, database)
+	if len(tablesInfo) == 0 {
+		return
+	}
+
+	tr.tables[database] = make(map[string]map[string]struct{})
+	for _, info := range tablesInfo {
+		if tr.tables[database][info.schema] == nil {
+			tr.tables[database][info.schema] = make(map[string]struct{})
+		}
+		tr.tables[database][info.schema][info.tableName] = struct{}{}
+	}
+}
+
+// IsValid resolves a parsed table name against the database's known tables.
+// Unqualified names are checked across schemas because Query Store does not
+// expose the originating user's default schema.
+func (tr *TableRegistry) IsValid(database, parsedTableName string) (string, bool) {
+	tr.mu.RLock()
+	defer tr.mu.RUnlock()
+
+	schemas, ok := tr.tables[database]
+	if !ok {
+		return parsedTableName, false
+	}
+
+	schemaName, tableName, qualified := splitSchemaQualifiedTable(parsedTableName)
+	if qualified {
+		resolvedSchema, ok := resolveUniqueName(schemas, schemaName)
+		if !ok {
+			return parsedTableName, false
+		}
+		resolvedTable, ok := resolveUniqueName(schemas[resolvedSchema], tableName)
+		if !ok {
+			return parsedTableName, false
+		}
+		return resolvedSchema + "." + resolvedTable, true
+	}
+
+	var resolved string
+	for _, tables := range schemas {
+		candidate, ok := resolveUniqueName(tables, tableName)
+		if !ok {
+			continue
+		}
+		if resolved != "" && resolved != candidate {
+			return parsedTableName, false
+		}
+		resolved = candidate
+	}
+	if resolved == "" {
+		return parsedTableName, false
+	}
+	return resolved, true
+}
+
+func splitSchemaQualifiedTable(name string) (schemaName, tableName string, qualified bool) {
+	parts := strings.Split(name, ".")
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return "", name, false
+	}
+	return parts[0], parts[1], true
+}
+
+func resolveUniqueName[V any](values map[string]V, requested string) (string, bool) {
+	if _, ok := values[requested]; ok {
+		return requested, true
+	}
+
+	resolved := ""
+	for candidate := range values {
+		if !strings.EqualFold(candidate, requested) {
+			continue
+		}
+		if resolved != "" {
+			return "", false
+		}
+		resolved = candidate
+	}
+	return resolved, resolved != ""
 }
 
 type tableSpec struct {
@@ -103,6 +205,7 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 		excludeSchemas:   args.ExcludeSchemas,
 		excludeDatabases: args.ExcludeDatabases,
 		entryHandler:     args.EntryHandler,
+		tableRegistry:    NewTableRegistry(),
 		lastEmittedAt:    map[string]map[string]time.Time{},
 		now:              time.Now,
 		logger:           args.Logger.With("collector", SchemaDetailsCollector),
@@ -114,6 +217,10 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 
 func (c *SchemaDetails) Name() string {
 	return SchemaDetailsCollector
+}
+
+func (c *SchemaDetails) GetTableRegistry() *TableRegistry {
+	return c.tableRegistry
 }
 
 func (c *SchemaDetails) Start(ctx context.Context) error {
@@ -305,6 +412,10 @@ func (c *SchemaDetails) extractSchemaForDatabase(ctx context.Context, conn *sql.
 	})
 	if err != nil {
 		return err
+	}
+
+	if scanComplete {
+		c.tableRegistry.SetTablesForDatabase(dbName, tables)
 	}
 
 	if len(tables) == 0 {

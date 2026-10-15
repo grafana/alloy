@@ -35,6 +35,7 @@ type QueryDetailsArguments struct {
 	Tracker            QueryTracker
 	ExcludeCurrentUser bool
 	EntryHandler       loki.EntryHandler
+	TableRegistry      *TableRegistry
 
 	Logger *slog.Logger
 }
@@ -48,6 +49,7 @@ type QueryDetails struct {
 	tracker            QueryTracker
 	obfuscator         *sqllexer.Obfuscator
 	normalizer         *sqllexer.Normalizer
+	tableRegistry      *TableRegistry
 
 	// lastEmittedAt records the wall-clock time at which OP_QUERY_ASSOCIATION
 	// was last emitted for a (database, query_hash), used to throttle logging
@@ -73,6 +75,7 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 		entryHandler:       args.EntryHandler,
 		tracker:            args.Tracker,
 		obfuscator:         sqllexer.NewObfuscator(),
+		tableRegistry:      args.TableRegistry,
 		normalizer: sqllexer.NewNormalizer(
 			sqllexer.WithCollectTables(true),
 			sqllexer.WithKeepIdentifierQuotation(true),
@@ -233,10 +236,16 @@ func (c *QueryDetails) emit(database, queryHash, queryText string) {
 	}
 
 	for _, table := range metadata.Tables {
+		validated := false
+		resolvedTable := table
+		if c.tableRegistry != nil {
+			resolvedTable, validated = c.tableRegistry.IsValid(database, table)
+		}
+
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			database_observability.OP_QUERY_PARSED_TABLE_NAME,
-			fmt.Sprintf(`database=%q query_hash=%q table=%q`, database, queryHash, table),
+			fmt.Sprintf(`database=%q query_hash=%q table=%q validated="%t"`, database, queryHash, resolvedTable, validated),
 		)
 	}
 }
