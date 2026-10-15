@@ -79,6 +79,11 @@ func TestPyroscopeEbpfPerlIntegration(t *testing.T) {
 		_ = ebpfComponent.Run(ctx)
 	}()
 
+	require.Eventually(t, func() bool {
+		return samplesSent(t, reg, "ebpf-perl") > 0
+	}, 90*time.Second, time.Second, "pyroscope.ebpf sent no perl samples")
+	t.Logf("pyroscope.ebpf sent %v perl samples", samplesSent(t, reg, "ebpf-perl"))
+
 	// Root first; "*" matches exactly one frame (__libc_start_call_main, unsymbolized).
 	expected := []string{"_start", "__libc_start_main", "*", "main", "perl_run", "Perl_runops_standard"}
 	var seen [][]string
@@ -129,4 +134,22 @@ func hasPrefix(stack, prefix []string) bool {
 		}
 	}
 	return true
+}
+
+func samplesSent(t *testing.T, reg *prometheus.Registry, serviceName string) float64 {
+	mfs, err := reg.Gather()
+	require.NoError(t, err)
+	for _, mf := range mfs {
+		if mf.GetName() != "pyroscope_ebpf_pprof_samples_total" {
+			continue
+		}
+		for _, m := range mf.GetMetric() {
+			for _, l := range m.GetLabel() {
+				if l.GetName() == "service_name" && l.GetValue() == serviceName {
+					return m.GetCounter().GetValue()
+				}
+			}
+		}
+	}
+	return 0
 }
