@@ -2,6 +2,7 @@ package rules
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -10,6 +11,7 @@ import (
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,8 +28,9 @@ import (
 )
 
 type fakeMimirClient struct {
-	rulesMut sync.RWMutex
-	rules    map[string][]client.MimirRuleGroup
+	rulesMut     sync.RWMutex
+	rules        map[string][]client.MimirRuleGroup
+	listFailures atomic.Int32
 }
 
 var _ client.RulerInterface = &fakeMimirClient{}
@@ -73,6 +76,9 @@ func (m *fakeMimirClient) deleteLocked(namespace, group string) {
 }
 
 func (m *fakeMimirClient) ListRules(_ context.Context, namespace string) (map[string][]client.MimirRuleGroup, error) {
+	if remaining := m.listFailures.Load(); remaining > 0 && m.listFailures.CompareAndSwap(remaining, remaining-1) {
+		return nil, errors.New("connection refused")
+	}
 	m.rulesMut.RLock()
 	defer m.rulesMut.RUnlock()
 	output := make(map[string][]client.MimirRuleGroup)
