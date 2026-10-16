@@ -32,7 +32,9 @@ type tailerTask struct {
 
 var _ runner.Task = (*tailerTask)(nil)
 
-const maxTailerLifetime = 1 * time.Hour
+// maxTailerLifetime is how long a log stream is kept open before it's
+// reopened. It's a variable so that tests can shorten it.
+var maxTailerLifetime = 1 * time.Hour
 
 func (tt *tailerTask) Hash() uint64 { return tt.Target.Hash() }
 
@@ -99,15 +101,18 @@ func (t *tailer) Run(ctx context.Context) {
 
 	bo := backoff.New(ctx, retailBackoff)
 
-	handler := loki.NewEntryMutatorHandler(t.opts.Handler, func(e loki.Entry) loki.Entry {
-		// A log line got read, we can reset the backoff period now.
-		bo.Reset()
-		return e
-	})
-	defer handler.Stop()
-
 	for bo.Ongoing() {
-		err := t.tail(ctx, handler)
+		start := time.Now()
+		forwarded, err := t.tail(ctx, t.opts.Handler)
+		if forwarded > 0 || time.Since(start) >= maxTailerLifetime {
+			// New log lines were read, or the stream stayed open for its whole
+			// lifetime, so we can reset the backoff period now. Lines that were
+			// already forwarded before the re-tail don't count: a container that
+			// isn't running returns the same lines on every re-tail, and must be
+			// re-tailed with a growing backoff instead of in a tight loop.
+			bo.Reset()
+		}
+
 		if err == nil {
 			// Check if we should stop tailing this container
 			// Fetch pod info once and use different logic for job pods vs regular pods
@@ -139,14 +144,16 @@ func (t *tailer) Run(ctx context.Context) {
 		}
 
 		if err != nil {
-			t.target.Report(time.Now().UTC(), err)
+			t.target.reportError(err)
 			t.log.Warn("tailer stopped; will retry", "err", err)
 		}
 		bo.Wait()
 	}
 }
 
-func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
+// tail opens a log stream for the target and processes it until the stream
+// ends. It returns the number of log lines forwarded to handler.
+func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) (int, error) {
 	// Set a maximum lifetime of the tail to ensure that connections are
 	// reestablished. This avoids an issue where the Kubernetes API server stops
 	// responding with new logs while the connection is kept open.
@@ -194,16 +201,16 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 
 	stream, err := req.Stream(ctx)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	k8sServerVersion, err := t.opts.Client.Discovery().ServerVersion()
 	if err != nil {
-		return err
+		return 0, err
 	}
 	k8sComparableServerVersion, err := semver.ParseTolerant(k8sServerVersion.GitVersion)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	// Create a new rolling average calculator to determine the average delta
@@ -265,17 +272,27 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 }
 
 // processLogStream reads log lines from a reader and processes them.
-// It returns when the context is done, the stream ends, or an error occurs.
-func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, handler loki.EntryHandler, sinceTime time.Time, positionsEnt positions.Entry, calc *rollingAverageCalculator) error {
+// It returns when the context is done, the stream ends, or an error occurs,
+// along with the number of log lines forwarded to handler.
+func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, handler loki.EntryHandler, sinceTime time.Time, positionsEnt positions.Entry, calc *rollingAverageCalculator) (int, error) {
 	ch := handler.Chan()
 	reader := bufio.NewReader(stream)
 	lastReadTime := sinceTime
+
+	// The stream starts at sinceTime rounded down to the second, so it
+	// replays lines that were already forwarded. Lines before sinceTime are
+	// skipped below. Of the lines at exactly sinceTime, skip the ones that
+	// were already forwarded; the others share the timestamp but are new.
+	replayed := t.target.entriesAt(sinceTime)
+
+	var forwarded int
 	for {
 		line, err := reader.ReadString('\n')
 
 		// Try processing the line before handling the error, since data may still
-		// be returned alongside an EOF.
-		if len(line) != 0 {
+		// be returned alongside an EOF. A line cut off by any other error is
+		// incomplete; the next tail reads it again in full.
+		if len(line) != 0 && (err == nil || errors.Is(err, io.EOF)) {
 			calc.AddTimestamp(time.Now())
 
 			entryTimestamp, entryLine := parseKubernetesLog(line)
@@ -283,6 +300,10 @@ func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, han
 			// (SinceTime has second precision). Do not compare against the previous
 			// line: stdout and stderr are stamped independently by the runtime.
 			if entryTimestamp.Before(sinceTime) {
+				continue
+			}
+			if replayed > 0 && entryTimestamp.Equal(sinceTime) {
+				replayed--
 				continue
 			}
 
@@ -293,7 +314,7 @@ func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, han
 
 			select {
 			case <-ctx.Done():
-				return nil
+				return forwarded, nil
 			case ch <- entry:
 				// Save position after it's been sent over the channel. The saved
 				// position seeds sinceTime for the next tail, so it never moves
@@ -302,7 +323,8 @@ func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, han
 					lastReadTime = entryTimestamp
 				}
 				t.opts.Positions.Put(positionsEnt.Path, positionsEnt.Labels, lastReadTime.UnixMicro())
-				t.target.Report(lastReadTime, nil)
+				t.target.reportEntry(entryTimestamp)
+				forwarded++
 			}
 		}
 
@@ -314,9 +336,9 @@ func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, han
 		// indicate that the logs are done, and could point to a brief network
 		// outage.
 		if err != nil && (errors.Is(err, io.EOF) || ctx.Err() != nil) {
-			return nil
+			return forwarded, nil
 		} else if err != nil {
-			return err
+			return forwarded, err
 		}
 	}
 }
