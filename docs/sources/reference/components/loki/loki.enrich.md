@@ -24,11 +24,18 @@ All labels in the map must match for enrichment to occur.
 
 {{< admonition type="warning" >}}
 The `target_match_label` and `logs_match_label` arguments are deprecated in favor of `target_to_log_match`.
-If `target_to_log_match` is set, it takes precedence.
-Replace `target_match_label = "hostname"` with `target_to_log_match = {"hostname" = "hostname"}`.
+These deprecated arguments will be removed in a future release.
+
+The deprecated arguments behave as follows:
+
+- `target_match_label` is the target label to match against.
+- `logs_match_label` is the log label to match against `target_match_label`. If you don't set it, the component uses the value of `target_match_label`.
+- If you set `logs_match_label` without `target_match_label` or `target_to_log_match`, the component fails to start.
+- If you set `target_to_log_match`, the component ignores `target_match_label` and `logs_match_label`.
+
+To migrate, replace `target_match_label = "hostname"` with `target_to_log_match = {"hostname" = "hostname"}`.
 If you also set `logs_match_label`, use it as the map value.
 For example, replace `target_match_label = "hostname"` and `logs_match_label = "host"` with `target_to_log_match = {"hostname" = "host"}`.
-These deprecated arguments will be removed in a future release.
 {{< /admonition >}}
 
 ## Usage
@@ -61,8 +68,11 @@ You can use the following arguments with `loki.enrich`:
 | `target_match_label`  | `string`             | Deprecated. Use `target_to_log_match` instead.                                           |         | no       |
 | `target_to_log_match` | `map(string)`        | Map of target label names to log label names. All entries must match for enrichment.     |         | no       |
 
-You must set either `target_to_log_match` or the deprecated `target_match_label`.
+{{< admonition type="note" >}}
+`target_to_log_match` and `target_match_label` are both optional, but you must set at least one of them.
 If you set neither, the component fails to start.
+{{< /admonition >}}
+
 The keys and values in `target_to_log_match` can't be empty strings.
 
 ## Blocks
@@ -170,9 +180,14 @@ The component matches logs to discovered targets and enriches them with addition
 1. If a match is found, it copies the requested `labels_to_copy` from the discovered target to the log entry. If `labels_to_copy` is empty, all labels are copied.
 1. The log entry, enriched or unchanged, is forwarded to the configured receivers.
 
-If a log entry is missing any of the labels in `target_to_log_match`, or any of those labels has an empty value, the log entry isn't enriched.
-The component ignores targets that are missing any of the matching labels, or that have an empty value for any of them.
-If multiple targets have the same values for all matching labels, the component uses the last of those targets in the `targets` list.
+The component handles the following cases:
+
+- If no target matches a log entry, the component forwards the log entry unchanged.
+- If a log entry is missing any of the labels in `target_to_log_match`, or any of those labels has an empty value, the component forwards the log entry unchanged.
+- If a target is missing any of the matching labels, or any of them has an empty value, the component ignores that target.
+- If multiple targets have the same values for all matching labels, the component uses the last of those targets in the `targets` list.
+  The discovery component determines the order of targets, and the order can change between updates.
+  To get predictable results, make sure the matching labels identify a single target.
 
 {{< admonition type="caution" >}}
 By default, `loki.enrich` is ready as soon as it starts, even if no targets have been discovered.
