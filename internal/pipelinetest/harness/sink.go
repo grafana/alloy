@@ -221,7 +221,10 @@ func (s *Sink) Consume(_ context.Context, batch loki.Batch) error {
 
 	for _, stream := range batch.Streams() {
 		for _, e := range stream.Entries {
-			s.lokiEntries = append(s.lokiEntries, loki.NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), stream.Created(), e))
+			s.lokiEntries = append(
+				s.lokiEntries,
+				loki.NewEntryWithCreatedUnixMicro(stream.Labels, stream.Created(), e),
+			)
 		}
 	}
 	return nil
