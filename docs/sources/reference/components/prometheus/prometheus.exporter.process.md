@@ -65,9 +65,9 @@ You can use the following block with `prometheus.exporter.process`:
 
 {{< docs/alloy-config >}}
 
-| Name        | Description                                                                    | Required |
-| ----------- | ------------------------------------------------------------------------------ | -------- |
-| [matcher][] | A collection of matching rules to use for deciding which processes to monitor. | no       |
+| Block                | Description                                 | Required |
+| -------------------- | ------------------------------------------- | -------- |
+| [`matcher`][matcher] | Configures a group of processes to monitor. | no       |
 
 [matcher]: #matcher
 
