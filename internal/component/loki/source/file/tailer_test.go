@@ -320,7 +320,11 @@ func testTailerCancelWhileSendBlocked(t *testing.T, send sendFunc, firstLine fun
 
 	// Stop tailer while the send of the second line is blocked.
 	cancel()
-	<-done
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("tailer deadlocked while send was blocked")
+	}
 
 	pos, err := positionsFile.Get(path, labels.String())
 	require.NoError(t, err)
