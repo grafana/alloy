@@ -2319,7 +2319,7 @@ func Test_query_details_stat_statements_different_limits_warning(t *testing.T) {
 		args := Arguments{
 			DataSourceName:        alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
 			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 200},
-			PrometheusExporter: &PrometheusExporterArguments{DisableDefaultMetrics: true, CustomQueriesConfigPath: "/etc/custom-queries.yml"},
+			PrometheusExporter:    &PrometheusExporterArguments{DisableDefaultMetrics: true, CustomQueriesConfigPath: "/etc/custom-queries.yml"},
 		}
 
 		require.NoError(t, c.Update(args))
