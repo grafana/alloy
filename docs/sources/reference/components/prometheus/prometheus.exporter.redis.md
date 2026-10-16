@@ -61,7 +61,13 @@ You can use the following arguments with `prometheus.exporter.redis`:
 | `tls_client_cert_file`        | `string`       | Name of the client certificate file (including full path) if the server requires TLS client authentication.             |            | no       |
 | `tls_client_key_file`         | `string`       | Name of the client key file (including full path) if the server requires TLS client authentication.                     |            | no       |
 
-If `redis_password_file` is defined, it takes precedence over `redis_password`.
+You can supply the Redis password with `redis_password`, `redis_password_file`, or `redis_password_map_file`.
+Set only one of `redis_password_file` and `redis_password_map_file`.
+If you set both of them, the component fails with an invalid configuration error.
+
+You can set `redis_password` together with one of the file arguments.
+If you set `redis_password_file`, the component uses the password from that file and ignores `redis_password`.
+If you set `redis_password_map_file`, the component ignores `redis_password` only for the addresses that the file maps.
 
 When `check_key_groups` isn't set, no key groups are made.
 
