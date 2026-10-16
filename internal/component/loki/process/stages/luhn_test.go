@@ -532,6 +532,48 @@ func TestValidateLuhnFilterConfig(t *testing.T) {
 			},
 		},
 		{
+			name:  "min_length set uses default replacement",
+			input: `min_length = 10`,
+			expected: LuhnFilterConfig{
+				Replacement: "**REDACTED**",
+				MinLength:   10,
+			},
+		},
+		{
+			name:  "replacement set uses default min_length",
+			input: `replacement = "X"`,
+			expected: LuhnFilterConfig{
+				Replacement: "X",
+				MinLength:   13,
+			},
+		},
+		{
+			name:  "min_length of one",
+			input: `min_length = 1`,
+			expected: LuhnFilterConfig{
+				Replacement: "**REDACTED**",
+				MinLength:   1,
+			},
+		},
+		{
+			name:  "delimiters",
+			input: `delimiters = " -"`,
+			expected: LuhnFilterConfig{
+				Replacement: "**REDACTED**",
+				MinLength:   13,
+				Delimiters:  " -",
+			},
+		},
+		{
+			name:  "empty skip_regex",
+			input: `skip_regex = ""`,
+			expected: LuhnFilterConfig{
+				Replacement: "**REDACTED**",
+				MinLength:   13,
+				SkipRegex:   *regexp.MustCompile(""),
+			},
+		},
+		{
 			name:      "zero min_length error",
 			input:     `min_length = 0`,
 			expectErr: true,
