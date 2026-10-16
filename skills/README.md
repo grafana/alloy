@@ -22,8 +22,14 @@ From the root of your Alloy clone, install every skill into the project for the 
 npx skills add . --skill '*' -a claude-code cursor pi codex gemini-cli
 ```
 
-This writes the skills to `.agents/skills/` and `.claude/skills/` and records them in
-`skills-lock.json`. All three are in `.gitignore`.
+`skills/` is the source of truth. Make every change there, never in the installed copies.
+
+The install copies each skill into `.agents/skills/`, where Cursor, Pi, Codex and Gemini CLI read
+it. `.claude/skills/` holds symlinks to those copies for Claude Code. The install is recorded in
+`skills-lock.json`. All three paths are in `.gitignore`.
+
+Because the installed skills are copies, they don't pick up later changes to `skills/`. Run the
+install command again after you pull or edit skills.
 
 To install them globally instead, for use outside an Alloy clone:
 
