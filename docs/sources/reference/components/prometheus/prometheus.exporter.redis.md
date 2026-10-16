@@ -67,7 +67,9 @@ When `check_key_groups` isn't set, no key groups are made.
 
 The `check_key_groups_batch_size` argument name reflects key groups for backwards compatibility, but applies to both key and key groups.
 
-The `script_path` argument may also be specified as a comma-separated string of paths, though it's encouraged to use `script_paths` when using multiple Lua scripts.
+The `script_path` argument accepts a comma-separated string of paths, but use `script_paths` when you have multiple Lua scripts.
+Set either `script_path` or `script_paths`, not both.
+If you set both, the component fails with an invalid configuration error.
 
 Any leftover key groups beyond `max_distinct_key_groups` are aggregated in the 'overflow' bucket.
 
