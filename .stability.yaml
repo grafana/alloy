@@ -1,0 +1,217 @@
+# Tracking list for non-GA (experimental and public-preview) behavior.
+#
+# Every entry needs a `reason` explaining why the item is not yet generally
+# available, and an `expires` date that forces periodic re-review. When `expires`
+# passes, CI fails on that entry until it is renewed or the item graduates.
+# See internal/cmd/stabilitycheck/ for the tool that consumes this file.
+#
+# Two sections:
+#   components: Every non-GA component MUST have an entry. The tool enumerates
+#     the component registry, so an untracked non-GA component fails CI.
+#     Community components are NOT tracked here.
+#   features:   Non-GA behavior that is not a component (config blocks, stdlib
+#     functions, CLI features). This list is HAND-MAINTAINED and NOT guaranteed
+#     complete — there is no registry to enumerate, so the tool cannot detect an
+#     untracked feature. Add an entry when you add a non-GA feature.
+#
+# Keep entries in each section sorted alphabetically by `name`. The check fails
+# if they are not.
+
+components:
+  - name: database_observability.sql_server
+    stability: experimental
+    reason: "Added to Alloy in v1.18.0 (2026-07-17)."
+    expires: 2027-01-01
+  - name: loki.enrich
+    stability: experimental
+    reason: "Added to Alloy in v1.8.0 (2025-04-09)."
+    expires: 2026-10-01
+  - name: loki.secretfilter
+    stability: public-preview
+    reason: "Added to Alloy in v1.5.0 (2024-11-13)."
+    expires: 2026-10-01
+  - name: mimir.alerts.kubernetes
+    stability: experimental
+    reason: "Added to Alloy in v1.12.0 (2025-12-01)."
+    expires: 2026-10-01
+  - name: otelcol.auth.google
+    stability: public-preview
+    reason: "Upstream OpenTelemetry Collector component googleclientauthextension is beta. Added to Alloy in v1.16.0 (2026-04-22)."
+    expires: 2026-10-01
+  - name: otelcol.connector.count
+    stability: experimental
+    reason: "Upstream OpenTelemetry Collector component countconnector is alpha. Added to Alloy in v1.13.0 (2026-02-05)."
+    expires: 2026-10-01
+  - name: otelcol.connector.signaltometrics
+    stability: experimental
+    reason: "Upstream OpenTelemetry Collector component signaltometricsconnector is alpha. Added to Alloy in v1.18.0 (2026-07-17)."
+    expires: 2026-10-01
+  - name: otelcol.exporter.awss3
+    stability: experimental
+    reason: "Upstream OpenTelemetry Collector component awss3exporter is alpha. Added to Alloy in v1.1.0 (2024-05-14)."
+    expires: 2026-10-01
+  - name: otelcol.exporter.debug
+    stability: experimental
+    reason: "Upstream OpenTelemetry Collector component debugexporter is alpha. Added to Alloy in v1.3.0 (2024-08-05)."
+    expires: 2026-10-01
+  - name: otelcol.exporter.faro
+    stability: public-preview
+    reason: "Upstream OpenTelemetry Collector component faroexporter is alpha. This does not match the current public-preview level; review whether it should be experimental. Added to Alloy in v1.10.0 (2025-07-16)."
+    expires: 2026-10-01
+  - name: otelcol.exporter.file
+    stability: public-preview
+    reason: "Upstream OpenTelemetry Collector component fileexporter is alpha. This does not match the current public-preview level; review whether it should be experimental. Added to Alloy in v1.12.0 (2025-12-01)."
+    expires: 2026-10-01
+  - name: otelcol.exporter.syslog
+    stability: public-preview
+    reason: "Upstream OpenTelemetry Collector component syslogexporter is alpha. This does not match the current public-preview level; review whether it should be experimental. Added to Alloy in v1.6.0 (2025-01-22)."
+    expires: 2026-10-01
+  - name: otelcol.processor.cumulativetodelta
+    stability: public-preview
+    reason: "Upstream OpenTelemetry Collector component cumulativetodeltaprocessor is beta. Added to Alloy in v1.7.0 (2025-02-24)."
+    expires: 2026-10-01
+  - name: otelcol.processor.deltatocumulative
+    stability: experimental
+    reason: "Upstream OpenTelemetry Collector component deltatocumulativeprocessor is alpha. Added to Alloy in v1.2.0 (2024-06-26)."
+    expires: 2026-10-01
+  - name: otelcol.processor.interval
+    stability: experimental
+    reason: "Upstream OpenTelemetry Collector component intervalprocessor is alpha. Added to Alloy in v1.4.0 (2024-09-25)."
+    expires: 2026-10-01
+  - name: otelcol.processor.redaction
+    stability: experimental
+    reason: "Upstream OpenTelemetry Collector component redactionprocessor is beta for traces and alpha for logs and metrics. The beta traces support does not match the current experimental level; review the level. Added to Alloy in v1.19.0 (2026-08-21)."
+    expires: 2026-10-01
+  - name: otelcol.receiver.awscloudwatch
+    stability: experimental
+    reason: "Upstream OpenTelemetry Collector component awscloudwatchreceiver is alpha. Added to Alloy in v1.8.0 (2025-04-09)."
+    expires: 2026-10-01
+  - name: otelcol.receiver.awsecscontainermetrics
+    stability: experimental
+    reason: "Upstream OpenTelemetry Collector component awsecscontainermetricsreceiver is beta. This does not match the current experimental level; review whether it should be public-preview. Added to Alloy in v1.11.0 (2025-09-30)."
+    expires: 2026-10-01
+  - name: otelcol.receiver.awss3
+    stability: experimental
+    reason: "Upstream OpenTelemetry Collector component awss3receiver is alpha. Added to Alloy in v1.13.0 (2026-02-05)."
+    expires: 2026-10-01
+  - name: otelcol.receiver.cloudflare
+    stability: experimental
+    reason: "Upstream OpenTelemetry Collector component cloudflarereceiver is alpha. Added to Alloy in v1.12.0 (2025-12-01)."
+    expires: 2026-10-01
+  - name: otelcol.receiver.datadog
+    stability: experimental
+    reason: "Upstream OpenTelemetry Collector component datadogreceiver is alpha. Added to Alloy in v1.2.0 (2024-06-26)."
+    expires: 2026-10-01
+  - name: otelcol.receiver.faro
+    stability: public-preview
+    reason: "Upstream OpenTelemetry Collector component faroreceiver is alpha. This does not match the current public-preview level; review whether it should be experimental. Added to Alloy in v1.10.0 (2025-07-16)."
+    expires: 2026-10-01
+  - name: otelcol.receiver.filelog
+    stability: public-preview
+    reason: "Upstream OpenTelemetry Collector component filelogreceiver is beta. Added to Alloy in v1.7.0 (2025-02-24)."
+    expires: 2026-10-01
+  - name: otelcol.receiver.fluentforward
+    stability: experimental
+    reason: "Upstream OpenTelemetry Collector component fluentforwardreceiver is beta. This does not match the current experimental level; review whether it should be public-preview. Added to Alloy in v1.11.0 (2025-09-30)."
+    expires: 2026-10-01
+  - name: otelcol.receiver.nginx
+    stability: public-preview
+    reason: "Upstream OpenTelemetry Collector component nginxreceiver is beta. Added to Alloy in v1.17.0 (2026-06-11)."
+    expires: 2026-10-01
+  - name: otelcol.receiver.splunkhec
+    stability: public-preview
+    reason: "Upstream OpenTelemetry Collector component splunkhecreceiver is beta. Added to Alloy in v1.9.0 (2025-06-02)."
+    expires: 2026-10-01
+  - name: otelcol.receiver.syslog
+    stability: public-preview
+    reason: "Upstream OpenTelemetry Collector component syslogreceiver is beta. Added to Alloy in v1.6.0 (2025-01-22)."
+    expires: 2026-10-01
+  - name: otelcol.receiver.tcplog
+    stability: experimental
+    reason: "Upstream OpenTelemetry Collector component tcplogreceiver is alpha. Added to Alloy in v1.7.0 (2025-02-24)."
+    expires: 2026-10-01
+  - name: otelcol.receiver.vcenter
+    stability: experimental
+    reason: "Upstream OpenTelemetry Collector component vcenterreceiver is alpha. Added to Alloy before v1.0.0 (not recorded in the changelog)."
+    expires: 2026-10-01
+  - name: otelcol.storage.file
+    stability: public-preview
+    reason: "Upstream OpenTelemetry Collector component filestorage is beta. Added to Alloy in v1.9.0 (2025-06-02)."
+    expires: 2026-10-01
+  - name: prometheus.enrich
+    stability: experimental
+    reason: "Added to Alloy in v1.11.0 (2025-09-30)."
+    expires: 2026-10-01
+  - name: prometheus.exporter.catchpoint
+    stability: experimental
+    reason: "Added to Alloy in v1.2.0 (2024-06-26)."
+    expires: 2026-10-01
+  - name: prometheus.exporter.static
+    stability: experimental
+    reason: "Added to Alloy in v1.11.3 (2025-10-27)."
+    expires: 2026-10-01
+  - name: prometheus.operator.scrapeconfigs
+    stability: experimental
+    reason: "Added to Alloy in v1.8.0 (2025-04-09)."
+    expires: 2026-10-01
+  - name: pyroscope.enrich
+    stability: experimental
+    reason: "Added to Alloy in v1.13.0 (2026-02-05)."
+    expires: 2026-10-01
+features:
+  - name: GraphQL API endpoint
+    stability: experimental
+    reason: "Alloy HTTP GraphQL API (the /graphql endpoint) for querying component and pipeline state. Experimental feature gated by the minimum stability level. Added to Alloy in v1.17.0 (2026-06-11)."
+    expires: 2026-10-01
+  - name: Windows process priority
+    stability: public-preview
+    reason: "Alloy run feature: the --windows.priority flag sets the Windows process priority for Alloy. Gated at public-preview by the minimum stability level. Added to Alloy in v1.8.0 (2025-04-09)."
+    expires: 2026-10-01
+  - name: configuration conversion
+    stability: public-preview
+    reason: "Alloy configuration conversion, which converts a supported source configuration (such as Prometheus, Promtail, or Grafana Agent) to Alloy syntax. Exposed as the convert CLI command and the --config.format flag on run. Public-preview feature gated by the minimum stability level. Added to Alloy before v1.0.0 (not recorded in the changelog)."
+    expires: 2026-10-01
+  - name: debug graph page
+    stability: experimental
+    reason: "Alloy debug UI Graph page, which shows the live component graph. Experimental feature gated by the minimum stability level. Added to Alloy before v1.0.0 (not recorded in the changelog)."
+    expires: 2026-10-01
+  - name: foreach block
+    stability: experimental
+    reason: "Alloy config block foreach, which starts a pipeline for each item in a list. Experimental config block gated by the minimum stability level. Added to Alloy in v1.7.0 (2025-02-24)."
+    expires: 2026-10-01
+  - name: gql command
+    stability: experimental
+    reason: "Alloy gql CLI subcommand, which queries a running Alloy instance through its GraphQL API. Experimental feature gated by the minimum stability level. Added to Alloy in v1.17.0 (2026-06-11)."
+    expires: 2026-10-01
+  - name: loki.source.syslog raw_format_options block
+    stability: experimental
+    reason: "Experimental raw_format_options block in the loki.source.syslog component. Gated by the minimum stability level. Added to Alloy in v1.13.0 (2026-02-05); dated from git history, not the changelog."
+    expires: 2026-10-01
+  - name: loki.source.syslog rfc3164_cisco_components block
+    stability: experimental
+    reason: "Experimental rfc3164_cisco_components block in the loki.source.syslog component. Gated by the minimum stability level. Added to Alloy in v1.13.0 (2026-02-05); dated from git history, not the changelog."
+    expires: 2026-10-01
+  - name: loki.write queue_config block
+    stability: experimental
+    reason: "Experimental queue_config block in the loki.write component, which configures the queue-based remote-write client. Gated by the minimum stability level. Added to Alloy before v1.0.0 (not recorded in the changelog)."
+    expires: 2026-10-01
+  - name: loki.write wal block
+    stability: experimental
+    reason: "Experimental wal block in the loki.write component, which configures the Write-Ahead Log for the Loki remote-write client. Gated by the minimum stability level. Added to Alloy before v1.0.0 (not recorded in the changelog)."
+    expires: 2026-10-01
+  - name: otel-supervisor command
+    stability: experimental
+    reason: "Alloy otel-supervisor CLI command, which runs Alloy under an OpenTelemetry supervisor. Experimental feature gated by the minimum stability level. Added to Alloy in v1.19.0 (2026-08-21)."
+    expires: 2026-10-01
+  - name: prometheus.remote_write Remote Write v2
+    stability: experimental
+    reason: "Experimental Remote Write v2 protocol support in prometheus.remote_write, enabled through the protobuf_message argument. Gated by the minimum stability level. Added to Alloy in v1.11.0 (2025-09-30)."
+    expires: 2026-10-01
+  - name: stdlib array.combine_maps
+    stability: experimental
+    reason: "Alloy stdlib function array.combine_maps. Experimental stdlib identifier gated by the minimum stability level. Added to Alloy in v1.5.0 (2024-11-13)."
+    expires: 2026-10-01
+  - name: stdlib array.group_by
+    stability: experimental
+    reason: "Alloy stdlib function array.group_by, which groups items in an array by a key. Experimental stdlib identifier gated by the minimum stability level. Added to Alloy in v1.10.0 (2025-07-16)."
+    expires: 2026-10-01
