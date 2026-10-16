@@ -18,6 +18,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/coreos/go-systemd/v22/daemon"
 	"github.com/fatih/color"
 	"github.com/grafana/ckit/advertise"
 	"github.com/grafana/ckit/peer"
@@ -523,6 +524,13 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 		ReadyFunc: func() bool { return ready() },
 		ReloadFunc: func() error {
 			return reload()
+		},
+		NotifyFunc: func() {
+			if sent, err := daemon.SdNotify(false, daemon.SdNotifyReady); err != nil {
+				slogger.Warn("failed to send systemd readiness notification", "err", err)
+			} else if sent {
+				slogger.Debug("sent readiness notification to systemd")
+			}
 		},
 
 		HTTPListenAddr:   fr.httpListenAddr,
