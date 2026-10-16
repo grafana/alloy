@@ -2,31 +2,27 @@ package stages
 
 import (
 	"context"
-	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/grafana/alloy/internal/component/common/regexp"
+	"github.com/grafana/alloy/syntax"
 )
 
 // LuhnFilterConfig configures a processing stage that filters out Luhn-valid numbers.
 type LuhnFilterConfig struct {
-	Replacement string  `alloy:"replacement,attr,optional"`
-	Source      *string `alloy:"source,attr,optional"`
-	MinLength   int     `alloy:"min_length,attr,optional"`
-	Delimiters  string  `alloy:"delimiters,attr,optional"`
-	SkipRegex   string  `alloy:"skip_regex,attr,optional"`
+	Replacement string        `alloy:"replacement,attr,optional"`
+	Source      *string       `alloy:"source,attr,optional"`
+	MinLength   int           `alloy:"min_length,attr,optional"`
+	Delimiters  string        `alloy:"delimiters,attr,optional"`
+	SkipRegex   regexp.Regexp `alloy:"skip_regex,attr,optional"`
 }
 
-// validateLuhnFilterConfig validates the LuhnFilterConfig.
-func validateLuhnFilterConfig(c *LuhnFilterConfig) error {
-	if c.Replacement == "" {
-		c.Replacement = "**REDACTED**"
-	}
-	if c.MinLength < 1 {
-		c.MinLength = 13
-	}
+var _ syntax.Validator = (*LuhnFilterConfig)(nil)
+
+func (c *LuhnFilterConfig) Validate() error {
 	if c.Source != nil && *c.Source == "" {
 		return errEmptyRegexStageSource
 	}
@@ -36,25 +32,22 @@ func validateLuhnFilterConfig(c *LuhnFilterConfig) error {
 var _ entryProcessor = (*luhnFilterStage)(nil)
 
 // newLuhnFilterStage creates a new LuhnFilterStage.
-func newLuhnFilterStage(config LuhnFilterConfig, opts stageOpts) (*luhnFilterStage, error) {
-	if err := validateLuhnFilterConfig(&config); err != nil {
-		return nil, err
+func newLuhnFilterStage(config LuhnFilterConfig, opts stageOpts) *luhnFilterStage {
+	if config.Replacement == "" {
+		config.Replacement = "**REDACTED**"
+	}
+	if config.MinLength < 1 {
+		config.MinLength = 13
 	}
 
-	var skipRegex *regexp.Regexp
-	if config.SkipRegex != "" {
-		var err error
-		skipRegex, err = regexp.Compile(config.SkipRegex)
-		if err != nil {
-			return nil, fmt.Errorf("%v: %w", errCouldNotCompileRegex, err)
-		}
+	s := &luhnFilterStage{
+		next:   opts.next,
+		config: &config,
 	}
-
-	return &luhnFilterStage{
-		next:      opts.next,
-		config:    &config,
-		skipRegex: skipRegex,
-	}, nil
+	if !config.SkipRegex.IsEmpty() {
+		s.skipRegex = &config.SkipRegex
+	}
+	return s
 }
 
 // luhnFilterStage applies Luhn algorithm filtering to log entries.
