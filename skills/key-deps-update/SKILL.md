@@ -7,6 +7,7 @@ description: >-
   and go.mod, fix build and test failures, and note user-facing changes. Use when bumping OTel,
   Prometheus, Beyla or Loki in the Alloy repo, or when asked to run some of the key dependency
   update steps.
+disable-model-invocation: true
 metadata:
   tags: alloy, dependencies, opentelemetry, prometheus, beyla, loki, go-modules
   example_prompts:

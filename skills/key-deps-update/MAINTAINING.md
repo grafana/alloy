@@ -6,22 +6,24 @@ in [`scripts/`](scripts/).
 ## How to use this
 
 Install the skill as described in [`skills/README.md`](../README.md), or point your agent at
-`SKILL.md` directly. Then, from the root of an Alloy checkout, give it a prompt like this:
+`SKILL.md` directly. The skill only runs when you invoke it by name: `/key-deps-update` in Claude
+Code and Cursor, `/skill:key-deps-update` in Pi, or `$key-deps-update` in Codex. From the root of
+an Alloy checkout, give it a prompt like this:
 
 ```text
-Update all the key dependencies.
+/key-deps-update update all the key dependencies.
 ```
 
 Or if you want to update only one key dependency, you can try this:
 
 ```text
-Update only the Prometheus key dependencies.
+/key-deps-update update only the Prometheus dependencies.
 ```
 
 Or if you only want to execute some first steps, try this:
 
 ```text
-Run steps 1-3 of the key dependency update.
+/key-deps-update execute only steps 1-3.
 ```
 
 If your LLM agent supports planning mode, it may provide better results if you use it.
