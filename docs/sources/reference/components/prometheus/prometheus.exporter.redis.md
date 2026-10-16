@@ -69,6 +69,9 @@ You can set `redis_password` together with one of the file arguments.
 If you set `redis_password_file`, the component uses the password from that file and ignores `redis_password`.
 If you set `redis_password_map_file`, the component ignores `redis_password` only for the addresses that the file maps.
 
+Set `tls_client_cert_file` and `tls_client_key_file` together.
+If you set only one of them, the component fails with an invalid configuration error.
+
 When `check_key_groups` isn't set, no key groups are made.
 
 The `check_key_groups_batch_size` argument name reflects key groups for backwards compatibility, but applies to both key and key groups.
@@ -84,6 +87,8 @@ The `is_cluster` argument must be set to `true` when connecting to a Redis clust
 {{< admonition type="note" >}}
 Setting `export_client_port` increases the cardinality of all Redis metrics.
 {{< /admonition >}}
+
+The component sets the `instance` label on its exported targets to the value of `redis_addr`.
 
 ## Blocks
 
