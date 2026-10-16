@@ -42,12 +42,13 @@ You can use the following arguments with `prometheus.exporter.redis`:
 | `export_client_port`          | `bool`         | Whether to include the client's port when exporting the client list.                                                    |            | no       |
 | `export_key_values`           | `bool`         | Whether to export key values as labels when using `check_keys` or `check_single_keys`.                                  | `true`     | no       |
 | `incl_system_metrics`         | `bool`         | Whether to include system metrics. For example `redis_total_system_memory_bytes`.                                       |            | no       |
+| `include_exporter_metrics`    | `bool`         | Report metrics about the exporter itself.                                                                               | `false`    | no       |
 | `is_cluster`                  | `bool`         | Whether the connection is to a Redis cluster.                                                                           |            | no       |
 | `is_tile38`                   | `bool`         | Whether to scrape Tile38-specific metrics.                                                                              |            | no       |
 | `max_distinct_key_groups`     | `int`          | The maximum number of distinct key groups with the most memory utilization to present as distinct metrics per database. | `100`      | no       |
 | `namespace`                   | `string`       | Namespace for the metrics.                                                                                              | `"redis"`  | no       |
 | `ping_on_connect`             | `bool`         | Whether to ping the Redis instance after connecting.                                                                    |            | no       |
-| `redis_metrics_only`          | `bool`         | Whether to just export metrics or to also export go runtime metrics.                                                    |            | no       |
+| `redis_metrics_only`          | `bool`         | Export only Redis metrics and omit Go process and runtime metrics.                                                      |            | no       |
 | `redis_password_file`         | `string`       | Path of a file containing a password.                                                                                   |            | no       |
 | `redis_password_map_file`     | `string`       | Path of a JSON file containing a map of Redis URIs to passwords.                                                        |            | no       |
 | `redis_password`              | `secret`       | Password of the Redis instance.                                                                                         |            | no       |
