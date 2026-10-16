@@ -101,18 +101,19 @@ The `name` argument can use the following template variables. By default it uses
 - `{{.Cgroups}}`: The cgroups, if supported, of the process (`/proc/self/cgroup`). This is particularly useful for identifying to which container a process belongs.
 
 {{< admonition type="note" >}}
-Using `PID` or `StartTime` is discouraged, as it's almost never what you want, and is likely to result in high cardinality metrics.
+Avoid `PID` and `StartTime`.
+They're almost never what you want, and they're likely to result in high cardinality metrics.
 {{< /admonition >}}
 
-The value that's used for matching `comm` list elements is derived from reading the second field of `/proc/<pid>/stat`, stripped of parens.
+The component derives the value for matching `comm` list elements from the second field of `/proc/<pid>/stat`, with the parentheses removed.
 
 For values in `exe`, if there are no slashes, only the basename of `argv[0]` needs to match.
 Otherwise, the name must be an exact match.
 For example, `"postgres"` may match any PostgreSQL binary, but `/usr/local/bin/postgres` only matches a PostgreSQL process with that exact path.
-If any of the strings match, the process is tracked.
+If any of the strings match, the component tracks the process.
 
-The component applies each regular expression in `cmdline` to the process's full command line, which is the elements of `argv` joined by spaces.
-Every regular expression must match for the process to be tracked.
+The component applies each regular expression in `cmdline` to the process's full command line, which it builds by joining the elements of `argv` with spaces.
+Every regular expression must match before the component tracks the process.
 The component adds named regular expression captures, for example `(?P<version>[0-9]+)`, to the `.Matches` map for use in `name`.
 
 ## Exported fields
