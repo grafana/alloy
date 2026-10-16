@@ -16,6 +16,11 @@ The `prometheus.exporter.process` component embeds the [`process_exporter`](http
 
 {{< docs/shared lookup="reference/components/exporter-clustering-warning.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
+{{< admonition type="note" >}}
+The `prometheus.exporter.process` component only works on Linux systems.
+On other operating systems, {{< param "PRODUCT_NAME" >}} writes a warning to the logs and the component doesn't collect process metrics.
+{{< /admonition >}}
+
 ## Usage
 
 ```alloy
@@ -47,6 +52,9 @@ For example, when you set `remove_empty_groups` to `false` and the `name` argume
 The old process groups continue to report metrics with values of 0, even though no running processes are associated with them, leading to high cardinality.
 Set `remove_empty_groups` to `true` to remove the old groups, and prevent the high cardinality.
 
+The component sets the `instance` label on its exported targets to the `HOSTNAME` environment variable.
+If `HOSTNAME` isn't set, the component uses the operating system hostname, or `unknown` if it can't determine one.
+
 ## Blocks
 
 You can use the following block with `prometheus.exporter.process`:
@@ -72,6 +80,9 @@ Each `matcher` block configuration can match multiple processes, which are track
 | `exe`     | `list(string)` | A list of strings that match `argv[0]` for a process.                                            |                  | no       |
 | `name`    | `string`       | The name to use for identifying the process group name in the metric.                            | `"{{.ExeBase}}"` | no       |
 
+Each `matcher` block must set at least one of `cmdline`, `comm`, or `exe`.
+If you set none of them, the component fails with an invalid configuration error.
+
 The `name` argument can use the following template variables. By default it uses the base path of the executable:
 
 * `{{.Comm}}`: Basename of the original executable from /proc/\<pid\>/stat.
@@ -94,9 +105,9 @@ Otherwise, the name must be an exact match.
 For example, `"postgres"` may match any PostgreSQL binary, but `/usr/local/bin/postgres` only matches a PostgreSQL process with that exact path.
 If any of the strings match, the process is tracked.
 
-Each regular expression in `cmdline` must match the corresponding `argv` for the process to be tracked.
-The first element that is matched is `argv[1]`.
-Regular expression captures are added to the `.Matches` map for use in the name.
+The component applies each regular expression in `cmdline` to the process's full command line, which is the elements of `argv` joined by spaces.
+Every regular expression must match for the process to be tracked.
+The component adds named regular expression captures, for example `(?P<version>[0-9]+)`, to the `.Matches` map for use in `name`.
 
 ## Exported fields
 
