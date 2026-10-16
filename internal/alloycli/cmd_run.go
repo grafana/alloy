@@ -42,7 +42,7 @@ import (
 	httpservice "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
-	"github.com/grafana/alloy/internal/service/lokipipeline"
+	"github.com/grafana/alloy/internal/service/lokipipelinev2"
 	otel_service "github.com/grafana/alloy/internal/service/otel"
 	remotecfgservice "github.com/grafana/alloy/internal/service/remotecfg"
 	uiservice "github.com/grafana/alloy/internal/service/ui"
@@ -250,6 +250,8 @@ func mountRunFlags(r *alloyRun, fset *pflag.FlagSet) {
 	fset.BoolVar(&r.enableDirectFanout, "feature.prometheus.direct-fanout.enabled", r.enableDirectFanout, "Enable experimental direct fanout for metric forwarding without a global label store")
 
 	fset.BoolVar(&r.enableLokiPipelineV2, "feature.loki.pipeline-v2.enabled", r.enableLokiPipelineV2, "Enable experimental pipeline v2 for passing logs between Loki components")
+	// Hidden until the Loki components are migrated to pipeline v2.
+	_ = fset.MarkHidden("feature.loki.pipeline-v2.enabled")
 
 	addDeprecatedFlags(fset)
 }
@@ -568,7 +570,7 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 	}
 
 	labelService := labelstore.New(slogger, reg, !fr.enableDirectFanout)
-	lokiService := lokipipeline.New(lokipipeline.Options{PipelineV2: fr.enableLokiPipelineV2})
+	lokiService := lokipipelinev2.New(lokipipelinev2.Options{PipelineV2: fr.enableLokiPipelineV2})
 	alloyseed.Init(fr.storagePath, slogger)
 
 	f, err := alloy_runtime.New(alloy_runtime.Options{
