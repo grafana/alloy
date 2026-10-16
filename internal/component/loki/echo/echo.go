@@ -7,6 +7,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/lokipipelinev2"
 	"github.com/grafana/loki/pkg/push"
 )
 
@@ -52,13 +53,26 @@ type Component struct {
 	mut      sync.RWMutex
 	args     Arguments
 	receiver loki.LogsReceiver
+
+	pipelineV2Enabled bool
 }
 
 // New creates a new loki.echo component.
 func New(o component.Options, args Arguments) (*Component, error) {
+	svc, err := o.GetServiceData(lokipipelinev2.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
 	c := &Component{
-		opts:     o,
-		receiver: loki.NewLogsReceiver(loki.WithComponentID(o.ID)),
+		opts:              o,
+		pipelineV2Enabled: svc.(lokipipelinev2.Data).Enabled(),
+	}
+
+	if c.pipelineV2Enabled {
+		c.receiver = loki.NewLogsReceiverV2(c, o.ID)
+	} else {
+		c.receiver = loki.NewLogsReceiver(loki.WithComponentID(o.ID))
 	}
 
 	// Call to Update() once at the start.
@@ -75,6 +89,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
+	if c.pipelineV2Enabled {
+		<-ctx.Done()
+		return nil
+	}
+
 	for {
 		select {
 		case <-ctx.Done():

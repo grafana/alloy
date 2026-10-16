@@ -18,10 +18,17 @@ const (
 
 // TestSchema describes a declarative pipeline test loaded from a text file.
 type TestSchema struct {
+	Flags  FlagsSchema     `yaml:"flags,omitempty"`
 	Config ConfigSchema    `yaml:"config"`
 	Inputs InputSchema     `yaml:"inputs"`
 	Mocks  MockSchema      `yaml:"mocks"`
 	Assert AssertionSchema `yaml:"assert"`
+}
+
+// FlagsSchema holds the Alloy run flags enabled for a pipeline test.
+// TODO: more flags may need support here, perhaps with something more generic.
+type FlagsSchema struct {
+	LokiPipelineV2 bool `yaml:"feature.loki.pipelineV2.enabled,omitempty"`
 }
 
 type ConfigSchema string

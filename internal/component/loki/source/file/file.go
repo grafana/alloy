@@ -23,6 +23,7 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/lokipipelinev2"
 )
 
 func init() {
@@ -205,6 +206,9 @@ type Component struct {
 
 	fanout *loki.Fanout
 
+	pipelineV2Enabled bool
+	fanoutV2          *loki.FanoutV2
+
 	stopping atomic.Bool
 }
 
@@ -231,14 +235,21 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 
+	svc, err := o.GetServiceData(lokipipelinev2.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
 	c := &Component{
-		opts:      o,
-		metrics:   newMetrics(o.Registerer),
-		handler:   loki.NewLogsReceiver(),
-		fanout:    loki.NewFanout(args.ForwardTo),
-		posFile:   positionsFile,
-		scheduler: source.NewScheduler[positions.Entry](),
-		watcher:   time.NewTicker(args.FileMatch.SyncPeriod),
+		opts:              o,
+		metrics:           newMetrics(o.Registerer),
+		handler:           loki.NewLogsReceiver(),
+		fanout:            loki.NewFanout(args.ForwardTo),
+		pipelineV2Enabled: svc.(lokipipelinev2.Data).Enabled(),
+		fanoutV2:          loki.NewFanoutV2(),
+		posFile:           positionsFile,
+		scheduler:         source.NewScheduler[positions.Entry](),
+		watcher:           time.NewTicker(args.FileMatch.SyncPeriod),
 	}
 
 	// Call to Update() to start sources and set receivers once at the start.
@@ -264,8 +275,10 @@ func (c *Component) Run(ctx context.Context) error {
 
 	var wg sync.WaitGroup
 
-	// Start consume and fanout loop
-	wg.Go(func() { loki.Consume(ctx, c.handler, c.fanout) })
+	if !c.pipelineV2Enabled {
+		// Start consume and fanout loop, only needed for Loki pipeline V1.
+		wg.Go(func() { loki.Consume(ctx, c.handler, c.fanout) })
+	}
 
 	wg.Go(func() {
 		for {
@@ -297,7 +310,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
+	c.updateFanout(newArgs.ForwardTo)
 
 	// Choose resolver on FileMatch.
 	if newArgs.FileMatch.Enabled {
@@ -402,7 +415,7 @@ func (c *Component) newSource(opts sourceOptions) (source.Source[positions.Entry
 	tailer := newTailer(
 		c.metrics,
 		c.opts.Logger,
-		c.handler,
+		c.newSend(),
 		c.posFile,
 		c.IsStopping,
 		opts,
@@ -417,6 +430,21 @@ func (c *Component) newSource(opts sourceOptions) (source.Source[positions.Entry
 		MinBackoff: 1 * time.Second,
 		MaxBackoff: 10 * time.Second,
 	}), nil
+}
+
+func (c *Component) updateFanout(children []loki.LogsReceiver) {
+	if c.pipelineV2Enabled {
+		c.fanoutV2.UpdateChildren(children)
+		return
+	}
+	c.fanout.UpdateChildren(children)
+}
+
+func (c *Component) newSend() sendFunc {
+	if c.pipelineV2Enabled {
+		return consumeToV2(c.fanoutV2)
+	}
+	return sendToV1(c.handler)
 }
 
 func (c *Component) IsStopping() bool {

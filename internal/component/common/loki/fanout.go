@@ -2,6 +2,8 @@ package loki
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"slices"
 	"sync"
 )
@@ -87,4 +89,38 @@ func (f *Fanout) UpdateChildren(children []LogsReceiver) {
 	} else {
 		f.mut.RUnlock()
 	}
+}
+
+type FanoutV2 struct {
+	mut       sync.RWMutex
+	consumers []Consumer
+}
+
+func NewFanoutV2() *FanoutV2 {
+	return &FanoutV2{}
+}
+
+func (f *FanoutV2) Consume(ctx context.Context, batch Batch) error {
+	f.mut.RLock()
+	defer f.mut.RUnlock()
+	var errs []error
+	for _, c := range f.consumers {
+		errs = append(errs, c.Consume(ctx, batch))
+	}
+	return errors.Join(errs...)
+}
+
+func (f *FanoutV2) UpdateChildren(children []LogsReceiver) {
+	consumers := make([]Consumer, 0, len(children))
+	for _, child := range children {
+		c, ok := child.(Consumer)
+		if !ok {
+			panic(fmt.Sprintf("fatal error in experimental Loki pipeline V2: %v does not support Loki pipeline V2", child))
+		}
+		consumers = append(consumers, c)
+	}
+
+	f.mut.Lock()
+	defer f.mut.Unlock()
+	f.consumers = consumers
 }

@@ -50,6 +50,23 @@ func NewLogsReceiver(opts ...LogReceiverOption) LogsReceiver {
 	return l
 }
 
+func NewLogsReceiverV2(c Consumer, componentID string) LogsReceiver {
+	return &logsReceiverV2{Consumer: c, componentID: componentID}
+}
+
+type logsReceiverV2 struct {
+	Consumer
+	componentID string
+}
+
+func (l *logsReceiverV2) Chan() chan Entry {
+	panic("fatal error in experimental Loki pipeline V2: " + l.componentID + ".receiver only supports Loki pipeline V2")
+}
+
+func (l *logsReceiverV2) String() string {
+	return l.componentID + ".receiver"
+}
+
 // LogsBatchReceiver is an interface providing `chan []Entry`. This should be used when
 // multiple entries need to be sent over a channel.
 type LogsBatchReceiver interface {
