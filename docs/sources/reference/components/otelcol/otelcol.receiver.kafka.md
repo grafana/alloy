@@ -186,8 +186,8 @@ The `logs` block configures how to receive logs from Kafka brokers.
 | -------------------- | -------------------------- | --------------------------------------------------------------------------------------------------- | --------------- | -------- |
 | `encoding`           | `string`                   | The built-in encoding for logs. Refer to [Supported encodings](#supported-encodings).               | `"otlp_proto"`  | no       |
 | `encoding_extension` | `capsule(otelcol.Handler)` | An encoding extension handler to decode logs. Refer to [Encoding extensions](#encoding-extensions). |                 | no       |
-| `topic`              | `string`                   | (Deprecated: use `topics` instead) The name of the Kafka topic on which logs will be received.      | `""`            | no       |
-| `topics`             | `list(string)`             | The names of the Kafka topics on which logs will be received.                                       | `["otlp_logs"]` | no       |
+| `topic`              | `string`                   | (Deprecated: use `topics` instead) The name of the Kafka topic to receive logs from.                | `""`            | no       |
+| `topics`             | `list(string)`             | The names of the Kafka topics to receive logs from.                                                 | `["otlp_logs"]` | no       |
 
 You can't set `encoding` and `encoding_extension` in the same block.
 
@@ -204,8 +204,8 @@ The `metrics` block configures how to receive metrics from Kafka brokers.
 | -------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------ | -------- |
 | `encoding`           | `string`                   | The built-in encoding for metrics. Refer to [Supported encodings](#supported-encodings).               | `"otlp_proto"`     | no       |
 | `encoding_extension` | `capsule(otelcol.Handler)` | An encoding extension handler to decode metrics. Refer to [Encoding extensions](#encoding-extensions). |                    | no       |
-| `topic`              | `string`                   | (Deprecated: use `topics` instead) The name of the Kafka topic on which metrics will be received.      | `""`               | no       |
-| `topics`             | `list(string)`             | The names of the Kafka topics on which metrics will be received.                                       | `["otlp_metrics"]` | no       |
+| `topic`              | `string`                   | (Deprecated: use `topics` instead) The name of the Kafka topic to receive metrics from.                | `""`               | no       |
+| `topics`             | `list(string)`             | The names of the Kafka topics to receive metrics from.                                                 | `["otlp_metrics"]` | no       |
 
 You can't set `encoding` and `encoding_extension` in the same block.
 
@@ -222,8 +222,8 @@ The `traces` block configures how to receive traces from Kafka brokers.
 | -------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------- | ---------------- | -------- |
 | `encoding`           | `string`                   | The built-in encoding for traces. Refer to [Supported encodings](#supported-encodings).               | `"otlp_proto"`   | no       |
 | `encoding_extension` | `capsule(otelcol.Handler)` | An encoding extension handler to decode traces. Refer to [Encoding extensions](#encoding-extensions). |                  | no       |
-| `topic`              | `string`                   | (Deprecated: use `topics` instead) The name of the Kafka topic on which traces will be received.      | `""`             | no       |
-| `topics`             | `list(string)`             | The names of the Kafka topics on which traces will be received.                                       | `["otlp_spans"]` | no       |
+| `topic`              | `string`                   | (Deprecated: use `topics` instead) The name of the Kafka topic to receive traces from.                | `""`             | no       |
+| `topics`             | `list(string)`             | The names of the Kafka topics to receive traces from.                                                 | `["otlp_spans"]` | no       |
 
 You can't set `encoding` and `encoding_extension` in the same block.
 
