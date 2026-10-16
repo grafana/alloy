@@ -75,7 +75,7 @@ You can use the following block with `prometheus.exporter.process`:
 
 ### `matcher`
 
-Each `matcher` block configuration can match multiple processes, which are tracked as a single process "group."
+Each `matcher` block can match multiple processes, which the component tracks as a single process "group."
 
 You can use the following arguments with the `matcher` block:
 
