@@ -14,6 +14,8 @@ title: prometheus.exporter.redis
 
 The `prometheus.exporter.redis` component embeds the [`redis_exporter`](https://github.com/oliver006/redis_exporter) for collecting metrics from a Redis database.
 
+You can specify multiple `prometheus.exporter.redis` components by giving them different labels.
+
 ## Usage
 
 ```alloy
