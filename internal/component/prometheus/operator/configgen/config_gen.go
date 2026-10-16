@@ -37,11 +37,27 @@ func applyScrapeClassHTTPClientConfig(httpCfg *commonConfig.HTTPClientConfig, sc
 	if sc == nil {
 		return
 	}
-	if !epHasTLS && sc.TLSConfig != nil {
-		httpCfg.TLSConfig = *sc.TLSConfig.Convert()
+	if sc.TLSConfig != nil {
+		if epHasTLS {
+			mergeScrapeClassTLSConfig(&httpCfg.TLSConfig, sc.TLSConfig.Convert())
+		} else {
+			httpCfg.TLSConfig = *sc.TLSConfig.Convert()
+		}
 	}
 	if !epHasAuth && sc.Authorization != nil {
 		httpCfg.Authorization = sc.Authorization.Convert()
+	}
+}
+
+func mergeScrapeClassTLSConfig(tc *commonConfig.TLSConfig, class *commonConfig.TLSConfig) {
+	if tc.CA == "" && tc.CAFile == "" {
+		tc.CA, tc.CAFile = class.CA, class.CAFile
+	}
+	if tc.Cert == "" && tc.CertFile == "" {
+		tc.Cert, tc.CertFile = class.Cert, class.CertFile
+	}
+	if tc.Key == "" && tc.KeyFile == "" {
+		tc.Key, tc.KeyFile = class.Key, class.KeyFile
 	}
 }
 

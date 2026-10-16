@@ -57,9 +57,8 @@ type ScrapeClass struct {
 	// Default marks this class as the one applied to resources that do not
 	// reference a scrape class. At most one class may be the default.
 	Default bool `alloy:"default,attr,optional"`
-
-	// TLSConfig is applied to a resource's endpoints unless the endpoint sets
-	// its own TLS configuration.
+	// TLSConfig is merged into a resource's endpoints unless the endpoint sets
+	// its own complete TLS configuration.
 	TLSConfig *config.TLSConfig `alloy:"tls_config,block,optional"`
 
 	// Authorization is applied to a resource's endpoints unless the endpoint

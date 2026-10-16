@@ -22,8 +22,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 
+	alloy_config "github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/prometheus/operator"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -701,22 +703,65 @@ func TestGenerateServiceMonitorConfigScrapeClassDefaultApplied(t *testing.T) {
 	requireRuleOrder(t, cfg.MetricRelabelConfigs, "metric_from_class", "metric_from_endpoint")
 }
 
-func TestGenerateServiceMonitorConfigScrapeClassEndpointOverridesTLS(t *testing.T) {
-	cg := scrapeClassTestGenerator()
+func TestGenerateServiceMonitorConfigScrapeClassTLSMerge(t *testing.T) {
+	cg := &ConfigGenerator{
+		Client: &kubernetes.ClientArguments{},
+		// Lets the endpoint set tlsConfig.caFile.
+		AllowArbitraryFileAccess: true,
+		ScrapeClasses: operator.NewScrapeClassIndex([]operator.ScrapeClass{{
+			Name:    "mesh",
+			Default: true,
+			TLSConfig: &alloy_config.TLSConfig{
+				CAFile:             "/class/ca.crt",
+				CertFile:           "/class/client.crt",
+				KeyFile:            "/class/client.key",
+				InsecureSkipVerify: true,
+			},
+		}}),
+	}
 	m := &promopv1.ServiceMonitor{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sm"}}
-	// The endpoint sets its own (empty) TLS config, so the class TLS must not apply.
-	ep := promopv1.Endpoint{
-		HTTPConfigWithProxyAndTLSFiles: promopv1.HTTPConfigWithProxyAndTLSFiles{
-			HTTPConfigWithTLSFiles: promopv1.HTTPConfigWithTLSFiles{
-				TLSConfig: &promopv1.TLSConfig{},
+
+	tests := []struct {
+		name     string
+		tls      *promopv1.TLSConfig
+		expected commonConfig.TLSConfig
+	}{
+		{
+			name: "class fills CA, cert and key but not other settings",
+			tls: &promopv1.TLSConfig{
+				SafeTLSConfig: promopv1.SafeTLSConfig{ServerName: ptr.To("example.com")},
+			},
+			expected: commonConfig.TLSConfig{
+				CAFile:     "/class/ca.crt",
+				CertFile:   "/class/client.crt",
+				KeyFile:    "/class/client.key",
+				ServerName: "example.com",
+			},
+		},
+		{
+			name: "endpoint CA takes precedence over the class CA",
+			tls: &promopv1.TLSConfig{
+				TLSFilesConfig: promopv1.TLSFilesConfig{CAFile: "/endpoint/ca.crt"},
+			},
+			expected: commonConfig.TLSConfig{
+				CAFile:   "/endpoint/ca.crt",
+				CertFile: "/class/client.crt",
+				KeyFile:  "/class/client.key",
 			},
 		},
 	}
-
-	cfg, err := cg.GenerateServiceMonitorConfig(m, ep, 0, promk8s.RoleEndpoint)
-	require.NoError(t, err)
-
-	assert.False(t, cfg.HTTPClientConfig.TLSConfig.InsecureSkipVerify, "endpoint TLS should take precedence over the class")
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ep := promopv1.Endpoint{
+				HTTPConfigWithProxyAndTLSFiles: promopv1.HTTPConfigWithProxyAndTLSFiles{
+					HTTPConfigWithTLSFiles: promopv1.HTTPConfigWithTLSFiles{TLSConfig: tc.tls},
+				},
+			}
+			cfg, err := cg.GenerateServiceMonitorConfig(m, ep, 0, promk8s.RoleEndpoint)
+			require.NoError(t, err)
+			assert.Equal(t, tc.expected, cfg.HTTPClientConfig.TLSConfig)
+		})
+	}
 }
 
 func TestGenerateServiceMonitorConfigScrapeClassNotDefined(t *testing.T) {
