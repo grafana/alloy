@@ -190,31 +190,32 @@ The following fields are exported and can be referenced by other components:
 
 ## Example
 
-This example decodes Azure resource logs that are copied from Azure Blob Storage to an Amazon S3 bucket.
-`otelcol.receiver.awss3` uses `otelcol.encoding.azure` to decode S3 objects with keys that end in `.json`.
-`otelcol.encoding.azure` only decodes Front Door access logs and drops records from all other categories.
+This example decodes Azure resource logs that Azure Diagnostic Settings stream to an Azure Event Hubs namespace.
+`otelcol.receiver.kafka` reads the event hub through the Kafka-compatible endpoint of the namespace and uses `otelcol.encoding.azure` to decode each message.
+Event Hubs doesn't fully support leader epochs, so the example sets `use_leader_epoch` to `false`.
 The receiver forwards the decoded logs to `otelcol.exporter.debug`:
 
 ```alloy
-otelcol.encoding.azure "default" {
+otelcol.encoding.azure "default" { }
+
+otelcol.receiver.kafka "default" {
+	brokers          = ["<NAMESPACE>.servicebus.windows.net:9093"]
+	protocol_version = "2.0.0"
+	use_leader_epoch = false
+
+	authentication {
+		sasl {
+			username  = "$ConnectionString"
+			password  = sys.env("EVENTHUBS_CONNECTION_STRING")
+			mechanism = "PLAIN"
+		}
+	}
+
+	tls { }
+
 	logs {
-		include_categories = ["FrontDoorAccessLog"]
-	}
-}
-
-otelcol.receiver.awss3 "default" {
-	start_time = "2024-01-01 01:00"
-	end_time   = "2024-01-02"
-
-	s3downloader {
-		region    = "us-west-1"
-		s3_bucket = "mybucket"
-		s3_prefix = "azure-logs"
-	}
-
-	encoding {
-		extension = otelcol.encoding.azure.default.handler
-		suffix    = ".json"
+		topics             = ["<EVENT_HUB>"]
+		encoding_extension = otelcol.encoding.azure.default.handler
 	}
 
 	output {
@@ -224,3 +225,8 @@ otelcol.receiver.awss3 "default" {
 
 otelcol.exporter.debug "default" {}
 ```
+
+Replace the following:
+
+- _`<NAMESPACE>`_: The name of your Event Hubs namespace.
+- _`<EVENT_HUB>`_: The name of the event hub that receives the resource logs.
