@@ -66,6 +66,11 @@ func (cg *ConfigGenerator) GeneratePodMonitorConfig(m *promopv1.PodMonitor, ep p
 		cfg.ScrapeNativeHistograms = &vCopy
 	}
 
+	if m.Spec.ConvertClassicHistogramsToNHCB != nil {
+		vCopy := *m.Spec.ConvertClassicHistogramsToNHCB
+		cfg.ConvertClassicHistogramsToNHCB = &vCopy
+	}
+
 	if ep.Path != "" {
 		cfg.MetricsPath = ep.Path
 	}
