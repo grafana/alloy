@@ -38,14 +38,14 @@ You can use the following arguments with `prometheus.exporter.process`:
 
 | Name                  | Type     | Description                                                                                         | Default   | Required |
 | --------------------- | -------- | --------------------------------------------------------------------------------------------------- | --------- | -------- |
-| `gather_smaps`        | `bool`   | Gather metrics from the smaps file for a process.                                                   | `true`    | no       |
+| `gather_smaps`        | `bool`   | Gather proportional memory metrics for a process from the smaps files.                              | `true`    | no       |
 | `procfs_path`         | `string` | The procfs mount point.                                                                             | `"/proc"` | no       |
 | `recheck_on_scrape`   | `bool`   | Recheck process names on each scrape.                                                               | `false`   | no       |
-| `remove_empty_groups` | `bool`   | Forget process groups with no processes.                                                            | `false`   | no       |
+| `remove_empty_groups` | `bool`   | Remove process groups that contain no processes.                                                    | `false`   | no       |
 | `track_children`      | `bool`   | Track children of a tracked process in the same group, unless a child belongs to a different group. | `true`    | no       |
 | `track_threads`       | `bool`   | Report metrics for each thread name in addition to each group name.                                 | `true`    | no       |
 
-If you set `remove_empty_groups` to the default, `false`, the process "groups" created by the `matcher` blocks continue to report metrics even after the processes in that group have stopped running.
+If you set `remove_empty_groups` to the default, `false`, the process "groups" that the `matcher` blocks create continue to report metrics even after the processes in that group have stopped running.
 This ensures you can see when a process count drops to zero, but it can cause unbounded growth in reported metrics and memory usage if your `matcher` generates dynamic group names based on specific PIDs.
 The reporting continues until you restart {{< param "PRODUCT_NAME" >}}.
 
@@ -106,10 +106,10 @@ The `name` argument can use the following template variables. By default it uses
 - `{{.ExeBase}}`: Basename of the executable from `argv[0]`.
 - `{{.ExeFull}}`: Fully qualified path of the executable.
 - `{{.Username}}`: Username of the effective user.
-- `{{.Matches}}`: Map containing all regular expression capture groups resulting from matching a process with the `cmdline` rule group.
+- `{{.Matches}}`: A map of the named capture groups from the `cmdline` regular expressions.
 - `{{.PID}}`: PID of the process. The component copies the PID from the first executable found.
-- `{{.StartTime}}`: The start time of the process. This is useful when combined with PID as PIDs get reused over time.
-- `{{.Cgroups}}`: The cgroups of the process, from `/proc/self/cgroup`, if supported. This is particularly useful for identifying to which container a process belongs.
+- `{{.StartTime}}`: The start time of the process. This is useful with `PID`, because PIDs get reused over time.
+- `{{.Cgroups}}`: The cgroups of the process, from `/proc/self/cgroup`, if supported. This is particularly useful for identifying which container a process belongs to.
 
 {{< admonition type="note" >}}
 Avoid `PID` and `StartTime`.
