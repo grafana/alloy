@@ -3,32 +3,36 @@ package loki
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"sync"
 )
 
-var _ Consumer = (*FanoutConsumer)(nil)
+var _ Consumer = (*FanoutV2)(nil)
 
-func NewFanoutConsumer(consumers []Consumer) *FanoutConsumer {
-	return &FanoutConsumer{
-		consumers: consumers,
+// NewFanoutV2 creates a FanoutV2 that passes batches to children. It panics
+// when a receiver does not support Loki pipeline V2.
+func NewFanoutV2(children []LogsReceiver) *FanoutV2 {
+	return &FanoutV2{
+		consumers: consumersFrom(children),
 	}
 }
 
-type FanoutConsumer struct {
+// FanoutV2 passes batches to multiple LogsReceivers through Loki pipeline V2.
+type FanoutV2 struct {
 	mut       sync.RWMutex
 	consumers []Consumer
 }
 
-func (f *FanoutConsumer) Consume(ctx context.Context, batch Batch) error {
+func (f *FanoutV2) Consume(ctx context.Context, batch Batch) error {
 	// NOTE: We snapshot the consumer list under a brief read lock and release it
 	// before delivering, rather than holding the lock for the whole fan-out.
 	//
 	// This is safe because delivery is a plain function call: a consumer that has
 	// stopped returns ErrConsumerStopped instead of blocking, so delivering against
-	// a stale snapshot can never deadlock — a consumer removed concurrently with
+	// a stale snapshot can never deadlock. A consumer removed concurrently with
 	// delivery simply reports that it has stopped (see isReportableError). The
-	// snapshot stays valid because Update replaces the slice rather than mutating it
+	// snapshot stays valid because UpdateChildren replaces the slice rather than mutating it
 	// in place. Releasing the lock early also keeps a slow consumer from blocking
 	// reconfiguration.
 
@@ -58,7 +62,11 @@ func (f *FanoutConsumer) Consume(ctx context.Context, batch Batch) error {
 	return errors.Join(errs...)
 }
 
-func (f *FanoutConsumer) Update(consumers []Consumer) {
+// UpdateChildren updates the receivers that batches are passed to. It panics
+// when a receiver does not support Loki pipeline V2.
+func (f *FanoutV2) UpdateChildren(children []LogsReceiver) {
+	consumers := consumersFrom(children)
+
 	f.mut.RLock()
 	if !slices.Equal(f.consumers, consumers) {
 		// Upgrade lock to write.
@@ -78,4 +86,21 @@ func isReportableError(err error) bool {
 	// stops we shut down components from sources to sinks so we should
 	// never hit this error.
 	return err != nil && !errors.Is(err, ErrConsumerStopped)
+}
+
+func consumersFrom(children []LogsReceiver) []Consumer {
+	consumers := make([]Consumer, 0, len(children))
+	for _, child := range children {
+		if child == nil {
+			consumers = append(consumers, nil)
+			continue
+		}
+
+		c, ok := child.(Consumer)
+		if !ok {
+			panic(fmt.Sprintf("fatal error in experimental Loki pipeline V2: %v does not support Loki pipeline V2", child))
+		}
+		consumers = append(consumers, c)
+	}
+	return consumers
 }
