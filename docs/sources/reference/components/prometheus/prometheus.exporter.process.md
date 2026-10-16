@@ -42,7 +42,7 @@ You can use the following arguments with `prometheus.exporter.process`:
 | `procfs_path`         | `string` | The procfs mount point.                                                                             | `"/proc"` | no       |
 | `recheck_on_scrape`   | `bool`   | Recheck process names on each scrape.                                                               | `false`   | no       |
 | `remove_empty_groups` | `bool`   | Forget process groups with no processes.                                                            | `false`   | no       |
-| `track_children`      | `bool`   | Track children of a tracked process in the parent's group, unless a child belongs to its own group. | `true`    | no       |
+| `track_children`      | `bool`   | Track children of a tracked process in the same group, unless a child belongs to a different group. | `true`    | no       |
 | `track_threads`       | `bool`   | Report metrics for each thread name in addition to each group name.                                 | `true`    | no       |
 
 If you set `remove_empty_groups` to the default, `false`, the process "groups" created by the `matcher` blocks continue to report metrics even after the processes in that group have stopped running.
@@ -81,7 +81,7 @@ You can use the following arguments with the `matcher` block:
 
 | Name      | Type           | Description                                                                                      | Default          | Required |
 | --------- | -------------- | ------------------------------------------------------------------------------------------------ | ---------------- | -------- |
-| `cmdline` | `list(string)` | A list of regular expressions applied to the `argv` of the process.                              |                  | no       |
+| `cmdline` | `list(string)` | A list of regular expressions to match against the elements of `argv` joined by spaces.          |                  | no       |
 | `comm`    | `list(string)` | A list of strings that match the base executable name for a process, truncated to 15 characters. |                  | no       |
 | `exe`     | `list(string)` | A list of strings that match `argv[0]` for a process.                                            |                  | no       |
 | `name`    | `string`       | The name to use for identifying the process group name in the metric.                            | `"{{.ExeBase}}"` | no       |
@@ -112,7 +112,7 @@ Otherwise, the name must be an exact match.
 For example, `"postgres"` may match any PostgreSQL binary, but `/usr/local/bin/postgres` only matches a PostgreSQL process with that exact path.
 If any of the strings match, the component tracks the process.
 
-The component applies each regular expression in `cmdline` to the process's full command line, which it builds by joining the elements of `argv` with spaces.
+The component applies each regular expression in `cmdline` to the full command line of the process, which it builds by joining the elements of `argv` with spaces.
 Every regular expression must match before the component tracks the process.
 The component adds named regular expression captures, for example `(?P<version>[0-9]+)`, to the `.Matches` map for use in `name`.
 
