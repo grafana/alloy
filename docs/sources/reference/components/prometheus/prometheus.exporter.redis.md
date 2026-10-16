@@ -31,8 +31,8 @@ You can use the following arguments with `prometheus.exporter.redis`:
 | Name                          | Type           | Description                                                                                                             | Default    | Required |
 | ----------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------- | -------- |
 | `redis_addr`                  | `string`       | Address (host and port) of the Redis instance to connect to.                                                            |            | yes      |
-| `check_key_groups_batch_size` | `int`          | Check key or key groups batch size hint for the underlying SCAN.                                                        | `10000`    | no       |
 | `check_key_groups`            | `list(string)` | List of Lua regular expressions (regex) for grouping keys.                                                              |            | no       |
+| `check_key_groups_batch_size` | `int`          | Check key or key groups batch size hint for the underlying SCAN.                                                        | `10000`    | no       |
 | `check_keys`                  | `list(string)` | List of key-patterns to export value and length/size, searched for with SCAN.                                           |            | no       |
 | `check_single_keys`           | `list(string)` | List of single keys to export value and length/size.                                                                    |            | no       |
 | `check_single_streams`        | `list(string)` | List of single streams to export info about streams, groups, and consumers.                                             |            | no       |
@@ -51,9 +51,9 @@ You can use the following arguments with `prometheus.exporter.redis`:
 | `namespace`                   | `string`       | Namespace for the metrics.                                                                                              | `"redis"`  | no       |
 | `ping_on_connect`             | `bool`         | Whether to ping the Redis instance after connecting.                                                                    |            | no       |
 | `redis_metrics_only`          | `bool`         | Export only Redis metrics and omit Go process and runtime metrics.                                                      |            | no       |
+| `redis_password`              | `secret`       | Password of the Redis instance.                                                                                         |            | no       |
 | `redis_password_file`         | `string`       | Path of a file containing a password.                                                                                   |            | no       |
 | `redis_password_map_file`     | `string`       | Path of a JSON file containing a map of Redis URIs to passwords.                                                        |            | no       |
-| `redis_password`              | `secret`       | Password of the Redis instance.                                                                                         |            | no       |
 | `redis_user`                  | `string`       | User name to use for authentication. Redis ACL for Redis 6.0 and newer.                                                 |            | no       |
 | `script_path`                 | `string`       | Path to Lua Redis script for collecting extra metrics.                                                                  |            | no       |
 | `script_paths`                | `list(string)` | List of paths to Lua Redis scripts for collecting extra metrics.                                                        |            | no       |
