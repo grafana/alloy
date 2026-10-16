@@ -54,7 +54,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		varStore = &varSourceMapsStore{}
 
 		metrics = newMetricsExporter(o.Registerer)
-		logs    = newLogsExporter(o.Logger.With("exporter", "logs"), varStore, args.LogFormat)
+		logs    = newLogsExporter(o.Logger.With("exporter", "logs"), varStore, args.LogFormat, args.Output.LogsSendTimeout)
 		traces  = newTracesExporter()
 	)
 
@@ -146,6 +146,7 @@ func (c *Component) Update(args component.Arguments) error {
 	// Start cleanup for new store
 	c.lazySourceMaps.Start()
 
+	c.logs.SetSendTimeout(newArgs.Output.LogsSendTimeout)
 	c.logs.SetReceivers(newArgs.Output.Logs)
 	c.traces.SetConsumers(newArgs.Output.Traces)
 
