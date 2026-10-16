@@ -147,6 +147,7 @@ func AddLabelsMiddleware(additionalLabels model.LabelSet) EntryMiddleware {
 // Used in tests.
 type CollectingHandler struct {
 	ch      chan Entry
+	done    chan struct{}
 	entries []Entry
 	once    sync.Once
 	mut     sync.Mutex
@@ -155,20 +156,28 @@ type CollectingHandler struct {
 
 func NewCollectingHandler() *CollectingHandler {
 	c := &CollectingHandler{
-		ch: make(chan Entry),
+		ch:   make(chan Entry),
+		done: make(chan struct{}),
 	}
 	c.wg.Go(func() {
-		for e := range c.ch {
-			c.mut.Lock()
-			c.entries = append(c.entries, e)
-			c.mut.Unlock()
+		for {
+			select {
+			case <-c.done:
+				return
+			case e := <-c.ch:
+				c.mut.Lock()
+				c.entries = append(c.entries, e)
+				c.mut.Unlock()
+			}
 		}
 	})
 	return c
 }
 
+// Stop stops collecting entries. The channel is not closed, so a sender that
+// is still running after Stop blocks instead of panicking.
 func (c *CollectingHandler) Stop() {
-	c.once.Do(func() { close(c.ch) })
+	c.once.Do(func() { close(c.done) })
 	c.wg.Wait()
 }
 
