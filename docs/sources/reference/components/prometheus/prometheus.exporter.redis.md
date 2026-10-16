@@ -36,7 +36,7 @@ You can use the following arguments with `prometheus.exporter.redis`:
 | `check_single_streams`        | `list(string)` | List of single streams to export info about streams, groups, and consumers.                                             |            | no       |
 | `check_streams`               | `list(string)` | List of stream-patterns to export info about streams, groups, and consumers to search for with SCAN.                    |            | no       |
 | `config_command`              | `string`       | What to use for the CONFIG command.                                                                                     | `"CONFIG"` | no       |
-| `connection_timeout`          | `duration`     | Timeout for connection to Redis instance (in Golang duration format).                                                   | `"15s"`    | no       |
+| `connection_timeout`          | `duration`     | Timeout for the connection to the Redis instance.                                                                       | `"15s"`    | no       |
 | `count_keys`                  | `list(string)` | List of individual keys to export counts for.                                                                           |            | no       |
 | `export_client_list`          | `bool`         | Whether to scrape Client List specific metrics.                                                                         |            | no       |
 | `export_client_port`          | `bool`         | Whether to include the client's port when exporting the client list.                                                    |            | no       |
