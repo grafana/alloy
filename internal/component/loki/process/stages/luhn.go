@@ -2,6 +2,7 @@ package stages
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"strings"
 	"unicode"
@@ -9,6 +10,12 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/regexp"
 	"github.com/grafana/alloy/syntax"
+)
+
+var (
+	errLuhnMinLength   = errors.New("min_length must be greater than zero")
+	errLuhnReplacement = errors.New("replacement must not be empty")
+	errLuhnEmptySource = errors.New("empty source")
 )
 
 // LuhnFilterConfig configures a processing stage that filters out Luhn-valid numbers.
@@ -20,41 +27,43 @@ type LuhnFilterConfig struct {
 	SkipRegex   regexp.Regexp `alloy:"skip_regex,attr,optional"`
 }
 
-var _ syntax.Validator = (*LuhnFilterConfig)(nil)
+var (
+	_ syntax.Validator = (*LuhnFilterConfig)(nil)
+	_ syntax.Defaulter = (*LuhnFilterConfig)(nil)
+)
 
 func (c *LuhnFilterConfig) Validate() error {
+	if c.MinLength < 1 {
+		return errLuhnMinLength
+	}
+	if c.Replacement == "" {
+		return errLuhnReplacement
+	}
 	if c.Source != nil && *c.Source == "" {
-		return errEmptyRegexStageSource
+		return errLuhnEmptySource
 	}
 	return nil
+}
+
+func (c *LuhnFilterConfig) SetToDefault() {
+	c.Replacement = "**REDACTED**"
+	c.MinLength = 13
 }
 
 var _ entryProcessor = (*luhnFilterStage)(nil)
 
 // newLuhnFilterStage creates a new LuhnFilterStage.
 func newLuhnFilterStage(config LuhnFilterConfig, opts stageOpts) *luhnFilterStage {
-	if config.Replacement == "" {
-		config.Replacement = "**REDACTED**"
-	}
-	if config.MinLength < 1 {
-		config.MinLength = 13
-	}
-
-	s := &luhnFilterStage{
+	return &luhnFilterStage{
 		next:   opts.next,
 		config: &config,
 	}
-	if !config.SkipRegex.IsEmpty() {
-		s.skipRegex = &config.SkipRegex
-	}
-	return s
 }
 
 // luhnFilterStage applies Luhn algorithm filtering to log entries.
 type luhnFilterStage struct {
-	next      nextFn
-	config    *LuhnFilterConfig
-	skipRegex *regexp.Regexp
+	next   nextFn
+	config *LuhnFilterConfig
 }
 
 func (l *luhnFilterStage) process(ctx context.Context, entries []Entry) error {
@@ -80,8 +89,8 @@ func (l *luhnFilterStage) processEntry(e Entry) Entry {
 
 	var updated string
 	// Replace Luhn-valid numbers in the input.
-	if l.skipRegex != nil {
-		updated = replaceLuhnValidNumbersSkipRegex(input, l.config.Replacement, l.config.MinLength, l.config.Delimiters, l.skipRegex)
+	if !l.config.SkipRegex.IsEmpty() {
+		updated = replaceLuhnValidNumbersSkipRegex(input, l.config.Replacement, l.config.MinLength, l.config.Delimiters, &l.config.SkipRegex)
 	} else if l.config.Delimiters != "" {
 		updated = replaceLuhnValidNumbersWithDelimiters(input, l.config.Replacement, l.config.MinLength, l.config.Delimiters)
 	} else {

@@ -78,8 +78,9 @@ func TestReplaceLuhnValidNumbers(t *testing.T) {
 }
 
 func TestLuhnFilterStage(t *testing.T) {
+	uuidRegex := *regexp.MustCompile(`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`)
+
 	const (
-		uuidRegex     = `[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`
 		nonLuhnUUID   = "a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4"
 		luhnUUID      = "a3f1b2e4-c5d6-7e8f-4242-424242424242"
 		luhnCard      = "4242424242424242"
@@ -92,20 +93,18 @@ func TestLuhnFilterStage(t *testing.T) {
 
 	type testCase struct {
 		name     string
-		cfg      string
+		cfg      LuhnFilterConfig
 		entries  []Entry
 		expected []Entry
 	}
 
-	// base is shared by every case that doesn't override
+	// base is the LuhnFilterConfig shared by every case that doesn't override
 	// replacement, min length, delimiters, or skip regex.
-	base := fmt.Sprintf(`
-	stage.luhn {
-		replacement = %q
-		min_length  = 12
-		skip_regex  = %q
+	base := LuhnFilterConfig{
+		Replacement: replacement,
+		MinLength:   12,
+		SkipRegex:   uuidRegex,
 	}
-	`, replacement, uuidRegex)
 
 	tests := []testCase{
 		{
@@ -140,13 +139,11 @@ func TestLuhnFilterStage(t *testing.T) {
 		},
 		{
 			name: "Luhn number contained by a skip match is preserved",
-			cfg: fmt.Sprintf(`
-			stage.luhn {
-				replacement = %q
-				min_length  = 12
-				skip_regex  = "safe-card=[0-9]+"
-			}
-			`, replacement),
+			cfg: LuhnFilterConfig{
+				Replacement: replacement,
+				MinLength:   12,
+				SkipRegex:   *regexp.MustCompile(`safe-card=[0-9]+`),
+			},
 			entries: []Entry{
 				newEntry(map[string]any{}, model.LabelSet{}, "safe-card="+luhnCard, now),
 			},
@@ -156,13 +153,11 @@ func TestLuhnFilterStage(t *testing.T) {
 		},
 		{
 			name: "Luhn number equal to a skip match is preserved",
-			cfg: fmt.Sprintf(`
-			stage.luhn {
-				replacement = %q
-				min_length  = 12
-				skip_regex  = %q
-			}
-			`, replacement, luhnCard),
+			cfg: LuhnFilterConfig{
+				Replacement: replacement,
+				MinLength:   12,
+				SkipRegex:   *regexp.MustCompile(luhnCard),
+			},
 			entries: []Entry{
 				newEntry(map[string]any{}, model.LabelSet{}, "card="+luhnCard, now),
 			},
@@ -222,13 +217,11 @@ func TestLuhnFilterStage(t *testing.T) {
 		},
 		{
 			name: "one skip match can contain multiple Luhn numbers",
-			cfg: fmt.Sprintf(`
-			stage.luhn {
-				replacement = %q
-				min_length  = 12
-				skip_regex  = "safe=[0-9/]+"
-			}
-			`, replacement),
+			cfg: LuhnFilterConfig{
+				Replacement: replacement,
+				MinLength:   12,
+				SkipRegex:   *regexp.MustCompile(`safe=[0-9/]+`),
+			},
 			entries: []Entry{
 				newEntry(map[string]any{}, model.LabelSet{}, "safe="+luhnCard+"/"+anotherCard, now),
 			},
@@ -238,13 +231,11 @@ func TestLuhnFilterStage(t *testing.T) {
 		},
 		{
 			name: "partial overlap does not suppress redaction",
-			cfg: fmt.Sprintf(`
-			stage.luhn {
-				replacement = %q
-				min_length  = 12
-				skip_regex  = "42424242$"
-			}
-			`, replacement),
+			cfg: LuhnFilterConfig{
+				Replacement: replacement,
+				MinLength:   12,
+				SkipRegex:   *regexp.MustCompile(`42424242$`),
+			},
 			entries: []Entry{
 				newEntry(map[string]any{}, model.LabelSet{}, "card="+luhnCard, now),
 			},
@@ -254,13 +245,11 @@ func TestLuhnFilterStage(t *testing.T) {
 		},
 		{
 			name: "zero-length skip matches do not suppress redaction",
-			cfg: fmt.Sprintf(`
-			stage.luhn {
-				replacement = %q
-				min_length  = 12
-				skip_regex  = "^|$"
-			}
-			`, replacement),
+			cfg: LuhnFilterConfig{
+				Replacement: replacement,
+				MinLength:   12,
+				SkipRegex:   *regexp.MustCompile(`^|$`),
+			},
 			entries: []Entry{
 				newEntry(map[string]any{}, model.LabelSet{}, "card="+luhnCard, now),
 			},
@@ -280,44 +269,25 @@ func TestLuhnFilterStage(t *testing.T) {
 		},
 		{
 			name: "Luhn number below minimum length is unchanged",
-			cfg: fmt.Sprintf(`
-			stage.luhn {
-				replacement = %q
-				min_length  = 13
-				skip_regex  = %q
-			}
-			`, replacement, uuidRegex),
+			cfg: LuhnFilterConfig{
+				Replacement: replacement,
+				MinLength:   13,
+				SkipRegex:   uuidRegex,
+			},
 			entries: []Entry{
 				newEntry(map[string]any{}, model.LabelSet{}, "number=424242424242", now),
 			},
 			expected: []Entry{
 				newEntry(map[string]any{}, model.LabelSet{}, "number=424242424242", now),
-			},
-		},
-		{
-			name: "defaults are applied for empty replacement and invalid min length",
-			cfg: `
-			stage.luhn {
-				replacement = ""
-				min_length  = -10
-			}
-			`,
-			entries: []Entry{
-				newEntry(map[string]any{}, model.LabelSet{}, "card="+luhnCard+" number=424242424242", now),
-			},
-			expected: []Entry{
-				newEntry(map[string]any{}, model.LabelSet{}, "card="+replacement+" number=424242424242", now),
 			},
 		},
 		{
 			name: "custom replacement is used",
-			cfg: fmt.Sprintf(`
-			stage.luhn {
-				replacement = "[SECRET]"
-				min_length  = 12
-				skip_regex  = %q
-			}
-			`, uuidRegex),
+			cfg: LuhnFilterConfig{
+				Replacement: "[SECRET]",
+				MinLength:   12,
+				SkipRegex:   uuidRegex,
+			},
 			entries: []Entry{
 				newEntry(map[string]any{}, model.LabelSet{}, "card="+luhnCard, now),
 			},
@@ -327,14 +297,12 @@ func TestLuhnFilterStage(t *testing.T) {
 		},
 		{
 			name: "delimited card is redacted",
-			cfg: fmt.Sprintf(`
-			stage.luhn {
-				replacement = %q
-				min_length  = 12
-				delimiters  = "-"
-				skip_regex  = %q
-			}
-			`, replacement, uuidRegex),
+			cfg: LuhnFilterConfig{
+				Replacement: replacement,
+				MinLength:   12,
+				Delimiters:  "-",
+				SkipRegex:   uuidRegex,
+			},
 			entries: []Entry{
 				newEntry(map[string]any{}, model.LabelSet{}, "card="+delimitedCard, now),
 			},
@@ -344,14 +312,12 @@ func TestLuhnFilterStage(t *testing.T) {
 		},
 		{
 			name: "delimited card contained by a skip match is preserved",
-			cfg: fmt.Sprintf(`
-			stage.luhn {
-				replacement = %q
-				min_length  = 12
-				delimiters  = "-"
-				skip_regex  = "safe-card=[0-9-]+"
-			}
-			`, replacement),
+			cfg: LuhnFilterConfig{
+				Replacement: replacement,
+				MinLength:   12,
+				Delimiters:  "-",
+				SkipRegex:   *regexp.MustCompile(`safe-card=[0-9-]+`),
+			},
 			entries: []Entry{
 				newEntry(map[string]any{}, model.LabelSet{}, "safe-card="+delimitedCard, now),
 			},
@@ -361,14 +327,12 @@ func TestLuhnFilterStage(t *testing.T) {
 		},
 		{
 			name: "source without a Luhn number replaces the entry",
-			cfg: fmt.Sprintf(`
-			stage.luhn {
-				replacement = %q
-				min_length  = 12
-				skip_regex  = %q
-				source      = "message"
-			}
-			`, replacement, uuidRegex),
+			cfg: LuhnFilterConfig{
+				Replacement: replacement,
+				MinLength:   12,
+				SkipRegex:   uuidRegex,
+				Source:      ptr("message"),
+			},
 			entries: []Entry{
 				newEntry(map[string]any{"message": "payment accepted"}, model.LabelSet{}, "original log line", now),
 			},
@@ -378,14 +342,12 @@ func TestLuhnFilterStage(t *testing.T) {
 		},
 		{
 			name: "source preserves UUID and redacts card",
-			cfg: fmt.Sprintf(`
-			stage.luhn {
-				replacement = %q
-				min_length  = 12
-				skip_regex  = %q
-				source      = "message"
-			}
-			`, replacement, uuidRegex),
+			cfg: LuhnFilterConfig{
+				Replacement: replacement,
+				MinLength:   12,
+				SkipRegex:   uuidRegex,
+				Source:      ptr("message"),
+			},
 			entries: []Entry{
 				newEntry(map[string]any{"message": "session=" + luhnUUID + " card=" + luhnCard}, model.LabelSet{}, "original log line", now),
 			},
@@ -395,14 +357,12 @@ func TestLuhnFilterStage(t *testing.T) {
 		},
 		{
 			name: "skip regex is evaluated against source rather than entry",
-			cfg: fmt.Sprintf(`
-			stage.luhn {
-				replacement = %q
-				min_length  = 12
-				skip_regex  = %q
-				source      = "message"
-			}
-			`, replacement, uuidRegex),
+			cfg: LuhnFilterConfig{
+				Replacement: replacement,
+				MinLength:   12,
+				SkipRegex:   uuidRegex,
+				Source:      ptr("message"),
+			},
 			entries: []Entry{
 				newEntry(map[string]any{"message": "card=" + luhnCard}, model.LabelSet{}, "session="+luhnUUID, now),
 			},
@@ -412,14 +372,12 @@ func TestLuhnFilterStage(t *testing.T) {
 		},
 		{
 			name: "missing source leaves entry unchanged",
-			cfg: fmt.Sprintf(`
-			stage.luhn {
-				replacement = %q
-				min_length  = 12
-				skip_regex  = %q
-				source      = "message"
-			}
-			`, replacement, uuidRegex),
+			cfg: LuhnFilterConfig{
+				Replacement: replacement,
+				MinLength:   12,
+				SkipRegex:   uuidRegex,
+				Source:      ptr("message"),
+			},
 			entries: []Entry{
 				newEntry(map[string]any{}, model.LabelSet{}, "original log line", now),
 			},
@@ -429,14 +387,12 @@ func TestLuhnFilterStage(t *testing.T) {
 		},
 		{
 			name: "non-string source leaves entry unchanged",
-			cfg: fmt.Sprintf(`
-			stage.luhn {
-				replacement = %q
-				min_length  = 12
-				skip_regex  = %q
-				source      = "message"
-			}
-			`, replacement, uuidRegex),
+			cfg: LuhnFilterConfig{
+				Replacement: replacement,
+				MinLength:   12,
+				SkipRegex:   uuidRegex,
+				Source:      ptr("message"),
+			},
 			entries: []Entry{
 				newEntry(map[string]any{"message": 42}, model.LabelSet{}, "original log line", now),
 			},
@@ -446,15 +402,13 @@ func TestLuhnFilterStage(t *testing.T) {
 		},
 		{
 			name: "source supports delimiters",
-			cfg: fmt.Sprintf(`
-			stage.luhn {
-				replacement = %q
-				min_length  = 12
-				delimiters  = " -"
-				skip_regex  = %q
-				source      = "message"
-			}
-			`, replacement, uuidRegex),
+			cfg: LuhnFilterConfig{
+				Replacement: replacement,
+				MinLength:   12,
+				Delimiters:  " -",
+				SkipRegex:   uuidRegex,
+				Source:      ptr("message"),
+			},
 			entries: []Entry{
 				newEntry(map[string]any{"message": "card=" + delimitedCard + " session=" + luhnUUID}, model.LabelSet{}, "original log line", now),
 			},
@@ -468,7 +422,7 @@ func TestLuhnFilterStage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			runPipelineTest(t, loadConfig(tt.cfg), tt.entries, tt.expected)
+			runPipelineTest(t, []StageConfig{{LuhnFilterConfig: &tt.cfg}}, tt.entries, tt.expected)
 		})
 	}
 }
@@ -568,6 +522,29 @@ func TestValidateLuhnFilterConfig(t *testing.T) {
 				Source:      nil,
 				MinLength:   10,
 			},
+		},
+		{
+			name:  "defaults",
+			input: ``,
+			expected: LuhnFilterConfig{
+				Replacement: "**REDACTED**",
+				MinLength:   13,
+			},
+		},
+		{
+			name:      "zero min_length error",
+			input:     `min_length = 0`,
+			expectErr: true,
+		},
+		{
+			name:      "negative min_length error",
+			input:     `min_length = -10`,
+			expectErr: true,
+		},
+		{
+			name:      "empty replacement error",
+			input:     `replacement = ""`,
+			expectErr: true,
 		},
 		{
 			name: "empty source error",
