@@ -84,7 +84,7 @@ You can use the following arguments with the `matcher` block:
 | `cmdline` | `list(string)` | A list of regular expressions to match against the elements of `argv` joined by spaces.          |                  | no       |
 | `comm`    | `list(string)` | A list of strings that match the base executable name for a process, truncated to 15 characters. |                  | no       |
 | `exe`     | `list(string)` | A list of strings that match `argv[0]` for a process.                                            |                  | no       |
-| `name`    | `string`       | The name to use for identifying the process group name in the metric.                            | `"{{.ExeBase}}"` | no       |
+| `name`    | `string`       | The name to use for the process group in metrics.                                                | `"{{.ExeBase}}"` | no       |
 
 Each `matcher` block must set at least one of `cmdline`, `comm`, or `exe`.
 If you set none of them, the component fails with an invalid configuration error.
