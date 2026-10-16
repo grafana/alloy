@@ -36,14 +36,14 @@ prometheus.exporter.process "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.process`:
 
-| Name                  | Type     | Description                                       | Default   | Required |
-| --------------------- | -------- | ------------------------------------------------- | --------- | -------- |
-| `gather_smaps`        | `bool`   | Gather metrics from the smaps file for a process. | `true`    | no       |
-| `procfs_path`         | `string` | The procfs mount point.                           | `"/proc"` | no       |
-| `recheck_on_scrape`   | `bool`   | Recheck process names on each scrape.             | `false`   | no       |
-| `remove_empty_groups` | `bool`   | Forget process groups with no processes.          | `false`   | no       |
-| `track_children`      | `bool`   | Whether to track a process' children.             | `true`    | no       |
-| `track_threads`       | `bool`   | Report metrics for a process' individual threads. | `true`    | no       |
+| Name                  | Type     | Description                                                                                         | Default   | Required |
+| --------------------- | -------- | --------------------------------------------------------------------------------------------------- | --------- | -------- |
+| `gather_smaps`        | `bool`   | Gather metrics from the smaps file for a process.                                                   | `true`    | no       |
+| `procfs_path`         | `string` | The procfs mount point.                                                                             | `"/proc"` | no       |
+| `recheck_on_scrape`   | `bool`   | Recheck process names on each scrape.                                                               | `false`   | no       |
+| `remove_empty_groups` | `bool`   | Forget process groups with no processes.                                                            | `false`   | no       |
+| `track_children`      | `bool`   | Track children of a tracked process in the parent's group, unless a child belongs to its own group. | `true`    | no       |
+| `track_threads`       | `bool`   | Report metrics for a process' individual threads.                                                   | `true`    | no       |
 
 If you set `remove_empty_groups` to the default, `false`, the process "groups" created by the `matcher` blocks continue to report metrics even after the processes in that group have stopped running.
 This ensures you can see when a process count drops to zero, but it can cause unbounded growth in reported metrics and memory usage if your `matcher` generates dynamic group names based on specific PIDs.
