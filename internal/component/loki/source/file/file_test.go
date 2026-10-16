@@ -124,9 +124,6 @@ func TestComponent(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 
 	runTests(t, func(t *testing.T, match FileMatch) {
-		ctx, cancel := context.WithCancel(componenttest.TestContext(t))
-		defer cancel()
-
 		// Create file to log to.
 		f, err := os.CreateTemp(t.TempDir(), "example")
 		require.NoError(t, err)
@@ -137,8 +134,8 @@ func TestComponent(t *testing.T) {
 
 		ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
 
-		go func() {
-			err := ctrl.Run(ctx, Arguments{
+		runInBackground(t, func(ctx context.Context) error {
+			return ctrl.Run(ctx, Arguments{
 				Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
 					"__path__": f.Name(),
 					"foo":      "bar",
@@ -146,8 +143,7 @@ func TestComponent(t *testing.T) {
 				ForwardTo: []loki.LogsReceiver{ch1, ch2},
 				FileMatch: match,
 			})
-			require.NoError(t, err)
-		}()
+		})
 
 		ctrl.WaitRunning(time.Minute)
 
@@ -180,9 +176,6 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 
 	runTests(t, func(t *testing.T, match FileMatch) {
-		ctx, cancel := context.WithCancel(componenttest.TestContext(t))
-		defer cancel()
-
 		// Create file to log to.
 		f, err := os.CreateTemp(t.TempDir(), "example")
 		require.NoError(t, err)
@@ -193,8 +186,8 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 
 		ch1 := loki.NewLogsReceiver()
 
-		go func() {
-			err := ctrl.Run(ctx, Arguments{
+		runInBackground(t, func(ctx context.Context) error {
+			return ctrl.Run(ctx, Arguments{
 				Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
 					"__path__": f.Name(),
 					"foo":      "bar",
@@ -202,12 +195,11 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 				ForwardTo: []loki.LogsReceiver{ch1},
 				FileMatch: match,
 			})
-			require.NoError(t, err)
-		}()
+		})
 
 		ctrl.WaitRunning(time.Minute)
 
-		workerCtx, cancelWorkers := context.WithCancel(ctx)
+		workerCtx, cancelWorkers := context.WithCancel(componenttest.TestContext(t))
 		var wg sync.WaitGroup
 		wg.Add(2)
 
@@ -325,9 +317,6 @@ func TestUpdate_NoLeak(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 
 	runTests(t, func(t *testing.T, match FileMatch) {
-		ctx, cancel := context.WithCancel(componenttest.TestContext(t))
-		defer cancel()
-
 		// Create file to tail.
 		f, err := os.CreateTemp(t.TempDir(), "example")
 		require.NoError(t, err)
@@ -345,10 +334,9 @@ func TestUpdate_NoLeak(t *testing.T) {
 			FileMatch: match,
 		}
 
-		go func() {
-			err := ctrl.Run(ctx, args)
-			require.NoError(t, err)
-		}()
+		runInBackground(t, func(ctx context.Context) error {
+			return ctrl.Run(ctx, args)
+		})
 
 		ctrl.WaitRunning(time.Minute)
 
@@ -398,8 +386,7 @@ func TestTwoTargets(t *testing.T) {
 		c, err := New(opts, args)
 		require.NoError(t, err)
 
-		ctx, cancel := context.WithCancel(t.Context())
-		go c.Run(ctx)
+		stop := runInBackground(t, c.Run)
 		time.Sleep(100 * time.Millisecond)
 
 		_, err = f.Write([]byte("text\n"))
@@ -426,15 +413,9 @@ func TestTwoTargets(t *testing.T) {
 		}
 		require.True(t, foundF1)
 		require.True(t, foundF2)
-		cancel()
-		// Verify that positions.yml is written. NOTE: if we didn't wait for it, there would be a race condition between
-		// temporary directory being cleaned up and this file being created.
-		require.Eventually(t, func() bool {
-			if _, err := os.Stat(filepath.Join(opts.DataPath, "positions.yml")); errors.Is(err, os.ErrNotExist) {
-				return false
-			}
-			return true
-		}, 5*time.Second, 10*time.Millisecond, "expected positions.yml file to be written eventually")
+		// Shutting down the component writes positions.yml.
+		stop()
+		require.FileExists(t, filepath.Join(opts.DataPath, "positions.yml"))
 	})
 }
 
@@ -679,6 +660,31 @@ func runTests(t *testing.T, run func(t *testing.T, match FileMatch)) {
 			run(t, m)
 		})
 	}
+}
+
+// runInBackground calls run in a new goroutine. The returned stop function
+// cancels run's context and waits for it to return; it is also registered as
+// a test cleanup. Waiting matters for goleak: on shutdown the component writes
+// the positions file, which can be slow enough on Windows for goleak to report
+// the still-running goroutines as leaked.
+func runInBackground(t *testing.T, run func(ctx context.Context) error) (stop func()) {
+	t.Helper()
+
+	ctx, cancel := context.WithCancel(componenttest.TestContext(t))
+	runErr := make(chan error, 1)
+	go func() { runErr <- run(ctx) }()
+
+	stop = sync.OnceFunc(func() {
+		cancel()
+		select {
+		case err := <-runErr:
+			require.NoError(t, err)
+		case <-time.After(30 * time.Second):
+			require.FailNow(t, "timed out waiting for Run to exit")
+		}
+	})
+	t.Cleanup(stop)
+	return stop
 }
 
 func checkMsg(t *testing.T, ch loki.LogsReceiver, msg string, timeout time.Duration, labelSet model.LabelSet) {
