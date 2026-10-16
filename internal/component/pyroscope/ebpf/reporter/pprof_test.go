@@ -425,7 +425,7 @@ Locations
      3: 0x0 M=1 f2 :239:0 s=0()
      4: 0x0 M=1 f2 :240:0 s=0()
 Mappings
-1: 0x0/0x0/0x0   [FN][LN]
+1: 0x0/0x0/0x0   
 `
 	assert.Equal(t, expected, p.String())
 }
