@@ -1,8 +1,8 @@
-// Package lokipipeline implements the lokipipeline service, which exposes the
+// Package lokipipelinev2 implements the lokipipelinev2 service, which exposes the
 // --feature.loki.pipeline-v2.enabled flag to components. The service is
 // temporary and will be removed once the migration of Loki components to
 // pipeline v2 is complete (https://github.com/grafana/alloy/issues/4953).
-package lokipipeline
+package lokipipelinev2
 
 import (
 	"context"
@@ -12,17 +12,17 @@ import (
 	"github.com/grafana/alloy/internal/service"
 )
 
-// ServiceName defines the name used for the lokipipeline service.
-const ServiceName = "lokipipeline"
+// ServiceName defines the name used for the lokipipelinev2 service.
+const ServiceName = "lokipipelinev2"
 
-// Options configures the lokipipeline service.
+// Options configures the lokipipelinev2 service.
 type Options struct {
 	// PipelineV2 enables passing logs between Loki components through
 	// consumers instead of channels.
 	PipelineV2 bool
 }
 
-// Data is the runtime data exposed by the lokipipeline service.
+// Data is the runtime data exposed by the lokipipelinev2 service.
 type Data interface {
 	// PipelineV2Enabled reports whether pipeline v2 is enabled.
 	PipelineV2Enabled() bool
@@ -37,7 +37,7 @@ var (
 	_ Data            = (*Service)(nil)
 )
 
-// New creates a new lokipipeline service.
+// New creates a new lokipipelinev2 service.
 func New(opts Options) *Service {
 	return &Service{opts: opts}
 }
@@ -48,7 +48,7 @@ func (*Service) Run(ctx context.Context, _ service.Host) error {
 }
 
 func (*Service) Update(_ any) error {
-	return fmt.Errorf("lokipipeline service does not support configuration")
+	return fmt.Errorf("lokipipelinev2 service does not support configuration")
 }
 
 func (*Service) Definition() service.Definition {
