@@ -30,13 +30,20 @@ func NewCollectingConsumer() *CollectingConsumer {
 type CollectingConsumer struct {
 	mut     sync.Mutex
 	batches []Batch
+	entries []Entry
 }
 
 func (c *CollectingConsumer) Consume(_ context.Context, batch Batch) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	c.batches = append(c.batches, batch.Clone())
+	batch = batch.Clone()
+	c.batches = append(c.batches, batch)
+	for _, s := range batch.Streams() {
+		for _, e := range s.Entries {
+			c.entries = append(c.entries, NewEntryWithCreatedUnixMicro(s.Labels, s.Created(), e))
+		}
+	}
 	return nil
 }
 
@@ -45,6 +52,13 @@ func (c *CollectingConsumer) Batches() []Batch {
 	defer c.mut.Unlock()
 
 	return slices.Clone(c.batches)
+}
+
+func (c *CollectingConsumer) Entries() []Entry {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	return slices.Clone(c.entries)
 }
 
 var _ Consumer = (*NopConsumer)(nil)
