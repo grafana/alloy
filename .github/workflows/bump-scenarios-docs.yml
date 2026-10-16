@@ -1,0 +1,65 @@
+name: Bump alloy-scenarios documentation
+
+on:
+  schedule:
+    # Mondays at 09:00 UTC.
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+
+permissions: {}
+
+env:
+  ALLOYBOT_APP_NAME: grafana-alloybot
+
+concurrency:
+  group: bump-scenarios-docs
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    if: github.repository == 'grafana/alloy'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - name: Generate token 🔐
+        uses: grafana/shared-workflows/actions/create-github-app-token@46f48da11e78ebdba7a8747ae456b11062fac83e # create-github-app-token/v0.3.1
+        id: app-token
+        with:
+          github_app: ${{ env.ALLOYBOT_APP_NAME }}
+
+      - name: Checkout repository 🛎️
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Set up tools 🏗️
+        uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
+        with:
+          install_args: go task
+
+      - name: Pin the latest alloy-scenarios commit and regenerate 📌
+        run: task docs:scenarios-bump
+
+      # create-pull-request opens nothing when the working tree has no changes,
+      # so this is a no-op whenever alloy-scenarios has not moved.
+      - name: Create or update pull request 📝
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          sign-commits: true
+          add-paths: |
+            tools/scenarios-docs/revision.go
+            docs/sources/shared/scenarios
+          branch: docs/bump-alloy-scenarios
+          base: ${{ github.event.repository.default_branch }}
+          commit-message: "docs: update alloy-scenarios index"
+          title: "docs: update alloy-scenarios index"
+          body: |
+            Automated update of the scenario tables in the documentation.
+
+            This pins a newer `grafana/alloy-scenarios` commit in `tools/scenarios-docs/revision.go` and regenerates `docs/sources/shared/scenarios/` with `task docs:scenarios-bump`.
+
+            Review the diff of the generated files. The workflow fails instead of publishing a broken page when the generator fails, when the scenarios README structure changed, or when a new category has no page in `docs/sources/scenarios/` that imports it.

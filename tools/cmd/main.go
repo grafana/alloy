@@ -11,6 +11,7 @@ import (
 	"github.com/grafana/alloy/tools/govulncheck"
 	"github.com/grafana/alloy/tools/lint"
 	"github.com/grafana/alloy/tools/release"
+	scenariosdocs "github.com/grafana/alloy/tools/scenarios-docs"
 	syncreplaces "github.com/grafana/alloy/tools/sync-replaces"
 )
 
@@ -36,6 +37,7 @@ func newRootCommand() *cobra.Command {
 		govulncheck.Command(),
 		release.Command(),
 		lint.Command(),
+		scenariosdocs.Command(),
 		syncreplaces.Command(),
 	)
 
