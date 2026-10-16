@@ -21,6 +21,8 @@ The `prometheus.exporter.process` component only works on Linux systems.
 On other operating systems, {{< param "PRODUCT_NAME" >}} writes a warning to the logs and the component doesn't collect process metrics.
 {{< /admonition >}}
 
+You can specify multiple `prometheus.exporter.process` components by giving them different labels.
+
 ## Usage
 
 ```alloy
