@@ -89,6 +89,17 @@ You can use the following arguments with the `matcher` block:
 Each `matcher` block must set at least one of `cmdline`, `comm`, or `exe`.
 If you set none of them, the component fails with an invalid configuration error.
 
+The component derives the value for matching `comm` list elements from the second field of `/proc/<pid>/stat`, with the parentheses removed.
+
+For values in `exe`, if there are no slashes, only the basename of `argv[0]` needs to match.
+Otherwise, the name must be an exact match.
+For example, `"postgres"` may match any PostgreSQL binary, but `/usr/local/bin/postgres` only matches a PostgreSQL process with that exact path.
+If any of the strings match, the component tracks the process.
+
+The component applies each regular expression in `cmdline` to the full command line of the process, which it builds by joining the elements of `argv` with spaces.
+Every regular expression must match before the component tracks the process.
+The component adds named regular expression captures, for example `(?P<version>[0-9]+)`, to the `.Matches` map for use in `name`.
+
 The `name` argument can use the following template variables. By default it uses the base path of the executable:
 
 - `{{.Comm}}`: Basename of the original executable from `/proc/<pid>/stat`.
@@ -104,17 +115,6 @@ The `name` argument can use the following template variables. By default it uses
 Avoid `PID` and `StartTime`.
 They're almost never what you want, and they're likely to result in high cardinality metrics.
 {{< /admonition >}}
-
-The component derives the value for matching `comm` list elements from the second field of `/proc/<pid>/stat`, with the parentheses removed.
-
-For values in `exe`, if there are no slashes, only the basename of `argv[0]` needs to match.
-Otherwise, the name must be an exact match.
-For example, `"postgres"` may match any PostgreSQL binary, but `/usr/local/bin/postgres` only matches a PostgreSQL process with that exact path.
-If any of the strings match, the component tracks the process.
-
-The component applies each regular expression in `cmdline` to the full command line of the process, which it builds by joining the elements of `argv` with spaces.
-Every regular expression must match before the component tracks the process.
-The component adds named regular expression captures, for example `(?P<version>[0-9]+)`, to the `.Matches` map for use in `name`.
 
 ## Exported fields
 
