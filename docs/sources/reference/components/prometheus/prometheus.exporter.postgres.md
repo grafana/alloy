@@ -13,7 +13,7 @@ title: prometheus.exporter.postgres
 
 # `prometheus.exporter.postgres`
 
-The `prometheus.exporter.postgres` component embeds the [`postgres_exporter`][postgres-exporter] for collecting metrics from a PostgreSQL database.
+The `prometheus.exporter.postgres` component embeds the [`postgres_exporter`][postgres-exporter] to collect metrics from a PostgreSQL database.
 
 You can specify multiple `prometheus.exporter.postgres` components by giving them different labels.
 
