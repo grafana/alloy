@@ -75,6 +75,8 @@ You can use the following block with `prometheus.exporter.process`:
 
 Each `matcher` block configuration can match multiple processes, which are tracked as a single process "group."
 
+You can use the following arguments with the `matcher` block:
+
 | Name      | Type           | Description                                                                                      | Default          | Required |
 | --------- | -------------- | ------------------------------------------------------------------------------------------------ | ---------------- | -------- |
 | `cmdline` | `list(string)` | A list of regular expressions applied to the `argv` of the process.                              |                  | no       |
