@@ -80,7 +80,7 @@ You can use the following arguments with `pyroscope.ebpf`:
 | `collect_interval`            | `duration`               | How frequently to collect profiles.                                                                                  | `"15s"`          | no       |
 | `collect_kernel_profile`      | `bool`                   | Deprecated (no-op), previously enabled collection of kernel-space profiles.                                          | `true`           | no       |
 | `collect_user_profile`        | `bool`                   | Deprecated (no-op), previously enabled collection of user-space profiles.                                            | `true`           | no       |
-| `comm`                        | `string`                 | How the component includes the process command name in profiles. One of `none`, `label`, `stackframe`, or `both`.        | `"none"`         | no       |
+| `comm`                        | `string`                 | How the component includes the process command name in profiles. One of `none`, `label`, `stackframe`, or `both`.    | `"none"`         | no       |
 | `container_id_cache_size`     | `int`                    | Deprecated (no-op), previously controlled the size of the PID -> container ID table LRU cache.                       | `1024`           | no       |
 | `demangle`                    | `string`                 | C++ `demangle` mode. Available options are: `none`, `simplified`, `templates`, or `full`.                            | `"none"`         | no       |
 | `dotnet_enabled`              | `bool`                   | A flag to enable or disable .NET profiling.                                                                          | `true`           | no       |
@@ -134,23 +134,19 @@ Several arguments carry the label "Deprecated (no-op)". These arguments once con
 
 ## Debug information
 
-* `elf_cache` per build id and per same file symbol tables and their sizes in symbols count.
-* `pid_cache` per process elf symbol tables and their sizes in symbols count.
-* `targets` the active targets the component tracks.
+`pyroscope.ebpf` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
 The following Prometheus metrics are exposed:
 
-| Name                                              | Type        | Description                                                                                    |
-| ------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------- |
-| `pyroscope_ebpf_active_targets`                   | `gauge`     | Number of active targets the component tracks.                                                 |
-| `pyroscope_ebpf_pprofs_total`                     | `counter`   | Number of pprof profiles collected by the eBPF component, per `service_name`.                  |
-| `pyroscope_ebpf_pprof_bytes_total`                | `counter`   | Total number of bytes in pprof profiles collected by the eBPF component, per `service_name`.   |
-| `pyroscope_ebpf_pprof_samples_total`              | `counter`   | Total number of samples in pprof profiles collected by the eBPF component, per `service_name`. |
-| `pyroscope_ebpf_profiling_sessions_failing_total` | `counter`   | Number of profiling sessions failed.                                                           |
-| `pyroscope_ebpf_profiling_sessions_total`         | `counter`   | Number of profiling sessions started by the eBPF component.                                    |
-| `pyroscope_fanout_latency`                        | `histogram` | Write latency for sending to direct and indirect components.                                   |
+| Name                                              | Type        | Description                                                                   |
+| ------------------------------------------------- | ----------- | ----------------------------------------------------------------------------- |
+| `pyroscope_ebpf_active_targets`                   | `gauge`     | Number of active targets the component tracks.                                |
+| `pyroscope_ebpf_pprofs_total`                     | `counter`   | Number of pprof profiles collected by the eBPF component, per `service_name`. |
+| `pyroscope_ebpf_profiling_sessions_failing_total` | `counter`   | Number of profiling sessions failed.                                          |
+| `pyroscope_ebpf_profiling_sessions_total`         | `counter`   | Number of profiling sessions started by the eBPF component.                   |
+| `pyroscope_fanout_latency`                        | `histogram` | Write latency for sending to direct and indirect components.                  |
 
 ### eBPF profiler internal metrics
 
