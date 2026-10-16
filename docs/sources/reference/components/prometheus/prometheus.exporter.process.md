@@ -98,7 +98,7 @@ The `name` argument can use the following template variables. By default it uses
 - `{{.Matches}}`: Map containing all regular expression capture groups resulting from matching a process with the `cmdline` rule group.
 - `{{.PID}}`: PID of the process. Note that the PID is copied from the first executable found.
 - `{{.StartTime}}`: The start time of the process. This is useful when combined with PID as PIDs get reused over time.
-- `{{.Cgroups}}`: The cgroups, if supported, of the process (`/proc/self/cgroup`). This is particularly useful for identifying to which container a process belongs.
+- `{{.Cgroups}}`: The cgroups of the process, from `/proc/self/cgroup`, if supported. This is particularly useful for identifying to which container a process belongs.
 
 {{< admonition type="note" >}}
 Avoid `PID` and `StartTime`.
