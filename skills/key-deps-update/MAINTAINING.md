@@ -1,25 +1,27 @@
-# Key dependency updates
+# Maintaining the key-deps-update skill
 
-In this directory you will find prompts and tools for the LLM agents to help with the process of updating the key dependencies of the Alloy project.
+This file is for people editing the skill. The agent follows [`SKILL.md`](SKILL.md) and the tools
+in [`scripts/`](scripts/).
 
 ## How to use this
 
-Use your preferred LLM agent and give it a prompt like this:
+Install the skill as described in [`skills/README.md`](../README.md), or point your agent at
+`SKILL.md` directly. Then, from the root of an Alloy checkout, give it a prompt like this:
 
 ```text
-Follow instructions in the key-dep-updates.md and update all the key dependencies.
+Update all the key dependencies.
 ```
 
 Or if you want to update only one key dependency, you can try this:
 
 ```text
-Follow instructions in the key-dep-updates.md and update only the Prometheus dependencies.
+Update only the Prometheus key dependencies.
 ```
 
 Or if you only want to execute some first steps, try this:
 
 ```text
-Follow instructions in the key-dep-updates.md and execute only steps 1-3.
+Run steps 1-3 of the key dependency update.
 ```
 
 If your LLM agent supports planning mode, it may provide better results if you use it.
@@ -38,7 +40,7 @@ Below are some guidelines for writing and improving the LLM agent prompt for the
 
 - When all you need to provide is a snippet of a single command, best practice is to write it in the "Snippets" markdown section directly, especially if it's using commands that LLM will likely know how to use. This will require LLM to jump between the prompt and the snippets section, which is not ideal, but will work well as long as it's not becoming too complex.
 
-- For more complex tools, multi-step commands, or things that can be reliably done with code, we should write a separate Go tool in `./tools` directory. Follow the example of existing tools. This way the LLM can discover and use the tools as needed, reducing its 'cognitive load' and improving performance. This approach is backed by [insights from Anthropic](https://www.anthropic.com/engineering/code-execution-with-mcp).
+- For more complex tools, multi-step commands, or things that can be reliably done with code, we should write a separate Go tool in the `./scripts` directory. Follow the example of existing tools. This way the LLM can discover and use the tools as needed, reducing its 'cognitive load' and improving performance. This approach is backed by [insights from Anthropic](https://www.anthropic.com/engineering/code-execution-with-mcp).
 
 ## Future improvement ideas
 
