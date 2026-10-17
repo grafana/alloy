@@ -1,0 +1,9 @@
+clients:
+  - url: http://localhost/loki/api/v1/push
+scrape_configs:
+  - job_name: syslog_default
+    syslog:
+      listen_address: localhost:4000
+      idle_timeout: 1m
+tracing: { enabled: false }
+server: { register_instrumentation: false }
