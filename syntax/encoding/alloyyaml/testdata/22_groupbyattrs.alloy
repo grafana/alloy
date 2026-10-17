@@ -1,0 +1,31 @@
+otelcol.receiver.otlp "default" {
+	grpc {
+		endpoint = "localhost:4317"
+	}
+
+	http {
+		endpoint = "localhost:4318"
+	}
+
+	output {
+		metrics = [otelcol.processor.groupbyattrs.default.input]
+		logs    = [otelcol.processor.groupbyattrs.default.input]
+		traces  = [otelcol.processor.groupbyattrs.default.input]
+	}
+}
+
+otelcol.processor.groupbyattrs "default" {
+	keys = ["k8s.namespace.name", "k8s.deployment.name"]
+
+	output {
+		metrics = [otelcol.exporter.otlp.default.input]
+		logs    = [otelcol.exporter.otlp.default.input]
+		traces  = [otelcol.exporter.otlp.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+	}
+}
