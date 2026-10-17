@@ -121,6 +121,9 @@ func LoadSNMPConfig(snmpConfigFile string, customSnmpCfg *snmp_config.Config, st
 				return nil, fmt.Errorf("failed to load embedded snmp config: %w", err)
 			}
 		}
+		if err := validateSNMPConfig(customSnmpCfg); err != nil {
+			return nil, err
+		}
 		return customSnmpCfg, nil
 	case "merge":
 		var finalCfg *snmp_config.Config
@@ -135,10 +138,28 @@ func LoadSNMPConfig(snmpConfigFile string, customSnmpCfg *snmp_config.Config, st
 		if len(customSnmpCfg.Modules) > 0 {
 			maps.Copy(finalCfg.Modules, customSnmpCfg.Modules)
 		}
+		if err := validateSNMPConfig(finalCfg); err != nil {
+			return nil, err
+		}
 		return finalCfg, nil
 	default:
 		return nil, fmt.Errorf("unsupported snmp config merge strategy is used: '%s'", strategy)
 	}
+}
+
+// validateSNMPConfig rejects module and auth entries with empty definitions.
+func validateSNMPConfig(cfg *snmp_config.Config) error {
+	for name, module := range cfg.Modules {
+		if module == nil {
+			return fmt.Errorf("snmp module %q has an empty definition", name)
+		}
+	}
+	for name, auth := range cfg.Auths {
+		if auth == nil {
+			return fmt.Errorf("snmp auth %q has an empty definition", name)
+		}
+	}
+	return nil
 }
 
 func NewSNMPMetrics(reg prometheus.Registerer) collector.Metrics {
