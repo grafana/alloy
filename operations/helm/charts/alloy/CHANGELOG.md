@@ -12,6 +12,8 @@ Unreleased
 
 ### Enhancements
 
+- Add support to provide extraLabels to alloy pdb (@jfengupgrade)
+
 - Add `alloy.resizePolicy` and `configReloader.resizePolicy` to configure in-place resource resize behavior for each container. (@younsl)
 
 1.13.1 (2026-09-28)
