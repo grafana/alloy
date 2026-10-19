@@ -12,7 +12,7 @@ title: prometheus.exporter.snmp
 
 # `prometheus.exporter.snmp`
 
-The `prometheus.exporter.snmp` component embeds the [`snmp_exporter`](https://github.com/prometheus/snmp_exporter/tree/{{< param "SNMP_VERSION" >}}).
+The `prometheus.exporter.snmp` component embeds the [`snmp_exporter`][snmp-exporter].
 The `snmp_exporter` lets you collect SNMP data and expose them as Prometheus metrics.
 
 {{< admonition type="note" >}}
@@ -55,7 +55,7 @@ You can use the following arguments with `prometheus.exporter.snmp`:
 | `targets`               | `list(map(string))`  | SNMP targets.                                                                                                                |             | no       |
 
 The `config_file` argument points to a YAML file defining which snmp_exporter modules to use.
-Refer to [snmp_exporter](https://github.com/prometheus/snmp_exporter/tree/{{< param "SNMP_VERSION" >}}?tab=readme-ov-file#configuration) for details on how to generate a configuration file.
+Refer to the [`snmp_exporter` configuration documentation][snmp-exporter-config] for details on how to generate a configuration file.
 
 The `config` argument must be a YAML document as string defining which SNMP modules and authorizations to use.
 `config` is typically loaded by using the exports of another component.
@@ -366,6 +366,8 @@ The YAML file in this example looks like this:
 [file]: ../../local/local.file/
 [disc]: ../../discovery/discovery.file/
 [target]: #target
+[snmp-exporter]: https://github.com/prometheus/snmp_exporter/tree/{{< param "SNMP_VERSION" >}}
+[snmp-exporter-config]: https://github.com/prometheus/snmp_exporter/tree/{{< param "SNMP_VERSION" >}}?tab=readme-ov-file#configuration
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
