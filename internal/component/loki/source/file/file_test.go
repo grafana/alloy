@@ -23,6 +23,7 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/service/lokipipelinev2"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -368,10 +369,11 @@ func TestTwoTargets(t *testing.T) {
 	runTests(t, func(t *testing.T, match FileMatch) {
 		// Create opts for component
 		opts := component.Options{
-			Logger:        logging.NewSlogNop(),
-			Registerer:    prometheus.NewRegistry(),
-			OnStateChange: func(e component.Exports) {},
-			DataPath:      t.TempDir(),
+			Logger:         logging.NewSlogNop(),
+			Registerer:     prometheus.NewRegistry(),
+			OnStateChange:  func(e component.Exports) {},
+			GetServiceData: getServiceData,
+			DataPath:       t.TempDir(),
 		}
 
 		f, err := os.CreateTemp(opts.DataPath, "example")
@@ -501,10 +503,11 @@ func TestEncoding(t *testing.T) {
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
 				opts := component.Options{
-					Logger:        logging.NewSlogNop(),
-					Registerer:    prometheus.NewRegistry(),
-					OnStateChange: func(e component.Exports) {},
-					DataPath:      t.TempDir(),
+					Logger:         logging.NewSlogNop(),
+					Registerer:     prometheus.NewRegistry(),
+					OnStateChange:  func(e component.Exports) {},
+					GetServiceData: getServiceData,
+					DataPath:       t.TempDir(),
 				}
 
 				filePath, err := filepath.Abs(filepath.Join("testdata", "encoding", tc.filename))
@@ -690,4 +693,11 @@ func checkMsg(t *testing.T, ch loki.LogsReceiver, msg string, timeout time.Durat
 	case <-time.After(timeout):
 		require.FailNow(t, "failed waiting for log line")
 	}
+}
+
+func getServiceData(name string) (any, error) {
+	if name == lokipipelinev2.ServiceName {
+		return lokipipelinev2.New(lokipipelinev2.Options{}), nil
+	}
+	return nil, fmt.Errorf("no service named %s defined", name)
 }
