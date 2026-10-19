@@ -624,11 +624,12 @@ func TestComponentV2(t *testing.T) {
 				require.Equal(c, "line 3", entries[len(entries)-1].Line)
 			}, 5*time.Second, 10*time.Millisecond)
 
-			// The healthy consumer gets line 1 again on every retry, then lines 2 and 3 once.
+			// The lines are sent as one batch, so the healthy consumer gets the whole batch again on every retry.
 			entries := healthy.Entries()
-			require.GreaterOrEqual(t, len(entries), 4)
+			require.GreaterOrEqual(t, len(entries), 6)
 			require.Equal(t, "line 1", entries[0].Line)
-			require.Equal(t, "line 1", entries[1].Line)
+			require.Equal(t, "line 2", entries[1].Line)
+			require.Equal(t, "line 3", entries[2].Line)
 			require.Equal(t, "line 1", entries[len(entries)-3].Line)
 			require.Equal(t, "line 2", entries[len(entries)-2].Line)
 			require.Equal(t, "line 3", entries[len(entries)-1].Line)
@@ -656,7 +657,7 @@ func TestComponentV2(t *testing.T) {
 			require.NoError(t, err)
 
 			require.EventuallyWithT(t, func(c *assert.CollectT) {
-				require.Equal(c, 4, recv.ConsumeCalls())
+				require.Equal(c, 2, recv.ConsumeCalls())
 			}, 5*time.Second, 10*time.Millisecond)
 
 			// Line 4 was dropped and is the last line, so the position only includes it if the

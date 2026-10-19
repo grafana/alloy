@@ -5,7 +5,6 @@ import (
 	"encoding"
 	"errors"
 	"fmt"
-	"log/slog"
 	"maps"
 	"os"
 	"path/filepath"
@@ -421,12 +420,12 @@ type sourceOptions struct {
 
 // newSource will return a decompressor source if enabled, otherwise a tailer source.
 func (c *Component) newSource(opts sourceOptions) (source.Source[positions.Entry], error) {
-	logger := c.opts.Logger.With("component", "tailer", "path", opts.path)
+	//logger := c.opts.Logger.With("component", "tailer", "path", opts.path)
 
 	tailer := newTailer(
 		c.metrics,
-		logger,
-		c.newSend(logger),
+		c.opts.Logger,
+		c.newBatcher,
 		c.posFile,
 		c.IsStopping,
 		opts,
@@ -443,11 +442,13 @@ func (c *Component) newSource(opts sourceOptions) (source.Source[positions.Entry
 	}), nil
 }
 
-func (c *Component) newSend(logger *slog.Logger) sendFunc {
+func (c *Component) newBatcher(labels model.LabelSet) loki.StreamBatcher {
 	if c.pipelineV2 {
-		return sendToV2(logger, c.fanoutV2)
+		// FIXME(kalleep): Should we make this configurable?
+		const pipelineV2BatchSize = 100
+		return loki.NewStreamBatcherV2(c.opts.Logger, c.fanoutV2, labels, pipelineV2BatchSize)
 	}
-	return sendToV1(c.handler)
+	return loki.NewStreamBatcherV1(c.handler, labels)
 }
 
 func (c *Component) IsStopping() bool {
