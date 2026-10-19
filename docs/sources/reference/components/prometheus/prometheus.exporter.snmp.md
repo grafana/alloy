@@ -112,11 +112,11 @@ The label of the block is required and is used in the target's `job` label.
 
 The `walk_param` block defines an individual SNMP connection profile that can be used to override default SNMP settings.
 The `walk_param` block may be specified multiple times to define multiple SNMP connection profiles.
+The label of the block is required and is the name that the `walk_params` argument of a target refers to.
 
 | Name              | Type       | Description                                   | Default | Required |
 | ----------------- | ---------- | --------------------------------------------- | ------- | -------- |
 | `max_repetitions` | `int`      | How many objects to request with GET/GETBULK. | `25`    | no       |
-| `name`            | `string`   | Name of the module to override.               |         | no       |
 | `retries`         | `int`      | How many times to retry a failed request.     | `3`     | no       |
 | `timeout`         | `duration` | Timeout for each individual SNMP request.     |         | no       |
 
