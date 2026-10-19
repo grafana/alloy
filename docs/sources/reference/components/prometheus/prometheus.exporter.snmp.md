@@ -105,7 +105,7 @@ You can use the following arguments with the `target` block:
 | -------------- | ------------- | --------------------------------------------------------------------- | ------- | -------- |
 | `address`      | `string`      | The address of SNMP device.                                           |         | yes      |
 | `auth`         | `string`      | SNMP authentication profile to use.                                   | `""`    | no       |
-| `labels`       | `map(string)` | Map of labels to apply to all metrics captured from the target.       | `""`    | no       |
+| `labels`       | `map(string)` | Map of labels to apply to all metrics captured from the target.       | `{}`    | no       |
 | `module`       | `string`      | SNMP modules to use for polling, separated by comma.                  | `""`    | no       |
 | `snmp_context` | `string`      | Override the `context_name` parameter in the SNMP configuration file. | `""`    | no       |
 | `walk_params`  | `string`      | Config to use for this target.                                        | `""`    | no       |
