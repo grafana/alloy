@@ -53,7 +53,7 @@ func (p Pipeline) Opts(o component.Options) component.Options {
 }
 
 // Send sends entries to recv with p.
-func (p Pipeline) Send(t *testing.T, recv loki.LogsReceiver, entries ...loki.Entry) {
+func (p Pipeline) Send(t testing.TB, recv loki.LogsReceiver, entries ...loki.Entry) {
 	t.Helper()
 
 	if !p.pipelineV2 {
@@ -78,7 +78,7 @@ func (p Pipeline) Send(t *testing.T, recv loki.LogsReceiver, entries ...loki.Ent
 }
 
 // NewReceiver returns a Receiver that is forwarded to with p.
-func (p Pipeline) NewReceiver(t *testing.T) *Receiver {
+func (p Pipeline) NewReceiver(t testing.TB) *Receiver {
 	if !p.pipelineV2 {
 		handler := loki.NewCollectingHandler()
 		t.Cleanup(handler.Stop)
