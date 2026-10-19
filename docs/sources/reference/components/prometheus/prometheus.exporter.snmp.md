@@ -61,9 +61,9 @@ The `config` argument must be a YAML document as string defining which SNMP modu
 `config` is typically loaded by using the exports of another component.
 For example,
 
-* `local.file.LABEL.content`
-* `remote.http.LABEL.content`
-* `remote.s3.LABEL.content`
+- `local.file.LABEL.content`
+- `remote.http.LABEL.content`
+- `remote.s3.LABEL.content`
 
 Set either `config` or `config_file`, not both.
 If you set both, the component fails with an invalid configuration error.
@@ -77,11 +77,11 @@ If you use both, the component fails with an invalid configuration error.
 
 You can set the following labels on a target:
 
-* `name`: The name of the target (required).
-* `address` or `__address__`: The address of SNMP device (required).
-* `module`: SNMP modules to use for polling, separated by comma.
-* `auth`: The SNMP authentication profile to use.
-* `walk_params`: The configuration to use for this target.
+- `name`: The name of the target (required).
+- `address` or `__address__`: The address of SNMP device (required).
+- `module`: SNMP modules to use for polling, separated by comma.
+- `auth`: The SNMP authentication profile to use.
+- `walk_params`: The configuration to use for this target.
 
 Any other labels defined are added to the scraped metrics.
 
@@ -243,9 +243,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 The following example uses the alternative way to pass targets:
 
