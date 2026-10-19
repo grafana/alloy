@@ -52,6 +52,31 @@ func (p Pipeline) Opts(o component.Options) component.Options {
 	return o
 }
 
+// Send sends entries to recv with p.
+func (p Pipeline) Send(t *testing.T, recv loki.LogsReceiver, entries ...loki.Entry) {
+	t.Helper()
+
+	if !p.pipelineV2 {
+		for _, e := range entries {
+			select {
+			case recv.Chan() <- e:
+			case <-time.After(5 * time.Second):
+				require.FailNow(t, "timed out sending entry")
+			}
+		}
+		return
+	}
+
+	c, ok := recv.(loki.Consumer)
+	require.True(t, ok, "receiver does not support Loki pipeline V2")
+
+	batch := loki.NewBatch()
+	for _, e := range entries {
+		batch.AddEntry(e.Labels, e.Created(), e.Entry)
+	}
+	require.NoError(t, c.Consume(t.Context(), batch))
+}
+
 // NewReceiver returns a Receiver that is forwarded to with p.
 func (p Pipeline) NewReceiver(t *testing.T) *Receiver {
 	if !p.pipelineV2 {
@@ -108,4 +133,14 @@ func (r *Receiver) Next(t *testing.T, n int) []loki.Entry {
 	entries := r.entries()[r.consumed:end]
 	r.consumed = end
 	return entries
+}
+
+// NoNext requires that no entries arrive after the ones previous calls to
+// Next returned, for d.
+func (r *Receiver) NoNext(t *testing.T, d time.Duration) {
+	t.Helper()
+
+	require.Never(t, func() bool {
+		return len(r.entries()) > r.consumed
+	}, d, 10*time.Millisecond, "expected no more entries")
 }
