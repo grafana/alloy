@@ -12,9 +12,11 @@ title: prometheus.exporter.redis
 
 # `prometheus.exporter.redis`
 
-The `prometheus.exporter.redis` component embeds the [`redis_exporter`](https://github.com/oliver006/redis_exporter) for collecting metrics from a Redis database.
+The `prometheus.exporter.redis` component embeds the [`redis_exporter`][redis-exporter] to collect metrics from a Redis database.
 
 You can specify multiple `prometheus.exporter.redis` components by giving them different labels.
+
+[redis-exporter]: https://github.com/oliver006/redis_exporter
 
 ## Usage
 
@@ -40,17 +42,17 @@ You can use the following arguments with `prometheus.exporter.redis`:
 | `config_command`              | `string`       | What to use for the CONFIG command.                                                                                     | `"CONFIG"` | no       |
 | `connection_timeout`          | `duration`     | Timeout for the connection to the Redis instance.                                                                       | `"15s"`    | no       |
 | `count_keys`                  | `list(string)` | List of individual keys to export counts for.                                                                           |            | no       |
-| `export_client_list`          | `bool`         | Whether to scrape Client List specific metrics.                                                                         |            | no       |
-| `export_client_port`          | `bool`         | Whether to include the client's port when exporting the client list.                                                    |            | no       |
+| `export_client_list`          | `bool`         | Whether to scrape Client List specific metrics.                                                                         | `false`    | no       |
+| `export_client_port`          | `bool`         | Whether to include the client's port when exporting the client list.                                                    | `false`    | no       |
 | `export_key_values`           | `bool`         | Whether to export key values as labels when using `check_keys` or `check_single_keys`.                                  | `true`     | no       |
-| `incl_system_metrics`         | `bool`         | Whether to include system metrics. For example `redis_total_system_memory_bytes`.                                       |            | no       |
+| `incl_system_metrics`         | `bool`         | Whether to include system metrics. For example `redis_total_system_memory_bytes`.                                       | `false`    | no       |
 | `include_exporter_metrics`    | `bool`         | Report metrics about the exporter itself.                                                                               | `false`    | no       |
-| `is_cluster`                  | `bool`         | Whether the connection is to a Redis cluster.                                                                           |            | no       |
-| `is_tile38`                   | `bool`         | Whether to scrape Tile38-specific metrics.                                                                              |            | no       |
+| `is_cluster`                  | `bool`         | Whether the connection is to a Redis cluster.                                                                           | `false`    | no       |
+| `is_tile38`                   | `bool`         | Whether to scrape Tile38-specific metrics.                                                                              | `false`    | no       |
 | `max_distinct_key_groups`     | `int`          | The maximum number of distinct key groups with the most memory utilization to present as distinct metrics per database. | `100`      | no       |
 | `namespace`                   | `string`       | Namespace for the metrics.                                                                                              | `"redis"`  | no       |
-| `ping_on_connect`             | `bool`         | Whether to ping the Redis instance after connecting.                                                                    |            | no       |
-| `redis_metrics_only`          | `bool`         | Export only Redis metrics and omit Go process and runtime metrics.                                                      |            | no       |
+| `ping_on_connect`             | `bool`         | Whether to ping the Redis instance after connecting.                                                                    | `false`    | no       |
+| `redis_metrics_only`          | `bool`         | Export only Redis metrics and omit Go process and runtime metrics.                                                      | `false`    | no       |
 | `redis_password`              | `secret`       | Password of the Redis instance.                                                                                         |            | no       |
 | `redis_password_file`         | `string`       | Path of a file containing a password.                                                                                   |            | no       |
 | `redis_password_map_file`     | `string`       | Path of a JSON file containing a map of Redis URIs to passwords.                                                        |            | no       |
@@ -58,7 +60,7 @@ You can use the following arguments with `prometheus.exporter.redis`:
 | `script_path`                 | `string`       | Path to Lua Redis script for collecting extra metrics.                                                                  |            | no       |
 | `script_paths`                | `list(string)` | List of paths to Lua Redis scripts for collecting extra metrics.                                                        |            | no       |
 | `set_client_name`             | `bool`         | Whether to set client name to `redis_exporter`.                                                                         | `true`     | no       |
-| `skip_tls_verification`       | `bool`         | Whether to skip TLS verification.                                                                                       |            | no       |
+| `skip_tls_verification`       | `bool`         | Whether to skip TLS verification.                                                                                       | `false`    | no       |
 | `tls_ca_cert_file`            | `string`       | Name of the CA certificate file (including full path) if the server requires TLS client authentication.                 |            | no       |
 | `tls_client_cert_file`        | `string`       | Name of the client certificate file (including full path) if the server requires TLS client authentication.             |            | no       |
 | `tls_client_key_file`         | `string`       | Name of the client key file (including full path) if the server requires TLS client authentication.                     |            | no       |
