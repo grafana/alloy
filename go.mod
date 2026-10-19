@@ -121,6 +121,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/oliver006/redis_exporter v1.86.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.162.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/connector/exceptionsconnector v0.162.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.162.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.162.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.162.0

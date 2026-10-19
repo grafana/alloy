@@ -8,6 +8,7 @@ require (
 	github.com/grafana/alloy v1.21.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor v0.0.0-00010101000000-000000000000
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.162.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/connector/exceptionsconnector v0.162.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/grafanacloudconnector v0.162.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.162.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.162.0
