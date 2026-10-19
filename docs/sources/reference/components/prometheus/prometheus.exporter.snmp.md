@@ -19,6 +19,8 @@ The `snmp_exporter` lets you collect SNMP data and expose them as Prometheus met
 `prometheus.exporter.snmp` uses the latest configuration introduced in version {{< param "SNMP_VERSION" >}} of the Prometheus `snmp_exporter`.
 {{< /admonition >}}
 
+You can specify multiple `prometheus.exporter.snmp` components by giving them different labels.
+
 ## Usage
 
 ```alloy
@@ -84,6 +86,7 @@ You can set the following labels on a target:
 Any other labels defined are added to the scraped metrics.
 
 The component sets the `instance` label on its exported targets to the component ID, for example, `prometheus.exporter.snmp.example`.
+The component also appends the target name to the `job` label of each exported target, for example, `integrations/snmp/network_switch_1`.
 
 ## Blocks
 
