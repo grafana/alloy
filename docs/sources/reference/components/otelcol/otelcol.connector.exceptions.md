@@ -129,8 +129,8 @@ When the input signal is logs, it looks in the log record attributes and then in
 
 If the attribute is missing:
 
-* If `default` isn't set, the dimension is omitted.
-* If `default` is set, the dimension is added with the value of `default`.
+* If you don't set `default`, `otelcol.connector.exceptions` omits the dimension.
+* If you set `default`, `otelcol.connector.exceptions` adds the dimension with that value.
 
 You can't use `service.name`, `span.name`, `span.kind`, or `status.code` as a dimension name because they're already added by default.
 
