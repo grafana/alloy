@@ -158,36 +158,36 @@ The following example uses a [`prometheus.scrape` component][scrape] to collect 
 
 ```alloy
 prometheus.exporter.snmp "example" {
-    config_file = "snmp_modules.yml"
+  config_file = "snmp_modules.yml"
 
-    target "network_switch_1" {
-        address     = "192.168.1.2"
-        module      = "system,if_mib"
-        walk_params = "public"
-        labels = {
-            "env" = "dev",
-        }
+  target "network_switch_1" {
+    address     = "192.168.1.2"
+    module      = "system,if_mib"
+    walk_params = "public"
+    labels = {
+      "env" = "dev",
     }
+  }
 
-    target "network_router_2" {
-        address     = "192.168.1.3"
-        module      = "system,if_mib,mikrotik"
-        walk_params = "private"
-    }
+  target "network_router_2" {
+    address     = "192.168.1.3"
+    module      = "system,if_mib,mikrotik"
+    walk_params = "private"
+  }
 
-    walk_param "private" {
-        retries = "2"
-    }
+  walk_param "private" {
+    retries = "2"
+  }
 
-    walk_param "public" {
-        retries = "2"
-    }
+  walk_param "public" {
+    retries = "2"
+  }
 }
 
 // Configure a prometheus.scrape component to collect SNMP metrics.
 prometheus.scrape "demo" {
-    targets    = prometheus.exporter.snmp.example.targets
-    forward_to = [ /* ... */ ]
+  targets    = prometheus.exporter.snmp.example.targets
+  forward_to = [ /* ... */ ]
 }
 ```
 
@@ -195,49 +195,49 @@ The following example uses an embedded configuration with secrets:
 
 ```alloy
 local.file "snmp_config" {
-    filename  = "snmp_modules.yml"
-    is_secret = true
+  filename  = "snmp_modules.yml"
+  is_secret = true
 }
 
 prometheus.exporter.snmp "example" {
-    config = local.file.snmp_config.content
+  config = local.file.snmp_config.content
 
-    target "network_switch_1" {
-        address     = "192.168.1.2"
-        module      = "system,if_mib"
-        walk_params = "public"
-    }
+  target "network_switch_1" {
+    address     = "192.168.1.2"
+    module      = "system,if_mib"
+    walk_params = "public"
+  }
 
-    target "network_router_2" {
-        address     = "192.168.1.3"
-        module      = "system,if_mib,mikrotik"
-        walk_params = "private"
-    }
+  target "network_router_2" {
+    address     = "192.168.1.3"
+    module      = "system,if_mib,mikrotik"
+    walk_params = "private"
+  }
 
-    walk_param "private" {
-        retries = "2"
-    }
+  walk_param "private" {
+    retries = "2"
+  }
 
-    walk_param "public" {
-        retries = "2"
-    }
+  walk_param "public" {
+    retries = "2"
+  }
 }
 
 // Configure a prometheus.scrape component to collect SNMP metrics.
 prometheus.scrape "demo" {
-    targets    = prometheus.exporter.snmp.example.targets
-    forward_to = [prometheus.remote_write.demo.receiver]
+  targets    = prometheus.exporter.snmp.example.targets
+  forward_to = [prometheus.remote_write.demo.receiver]
 }
 
 prometheus.remote_write "demo" {
-    endpoint {
-        url = "<PROMETHEUS_REMOTE_WRITE_URL>"
+  endpoint {
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
-        basic_auth {
-            username = "<USERNAME>"
-            password = "<PASSWORD>"
-        }
+    basic_auth {
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
+  }
 }
 ```
 
@@ -251,37 +251,37 @@ The following example uses the alternative way to pass targets:
 
 ```alloy
 prometheus.exporter.snmp "example" {
-    config_file = "snmp_modules.yml"
+  config_file = "snmp_modules.yml"
 
-    targets = [
-        {
-            "name"        = "network_switch_1",
-            "address"     = "192.168.1.2",
-            "module"      = "system,if_mib",
-            "walk_params" = "public",
-            "env"         = "dev",
-        },
-        {
-            "name"        = "network_router_2",
-            "address"     = "192.168.1.3",
-            "module"      = "system,if_mib,mikrotik",
-            "walk_params" = "private",
-        },
-    ]
+  targets = [
+    {
+      "name"        = "network_switch_1",
+      "address"     = "192.168.1.2",
+      "module"      = "system,if_mib",
+      "walk_params" = "public",
+      "env"         = "dev",
+    },
+    {
+      "name"        = "network_router_2",
+      "address"     = "192.168.1.3",
+      "module"      = "system,if_mib,mikrotik",
+      "walk_params" = "private",
+    },
+  ]
 
-    walk_param "private" {
-        retries = "2"
-    }
+  walk_param "private" {
+    retries = "2"
+  }
 
-    walk_param "public" {
-        retries = "2"
-    }
+  walk_param "public" {
+    retries = "2"
+  }
 }
 
 // Configure a prometheus.scrape component to collect SNMP metrics.
 prometheus.scrape "demo" {
-    targets    = prometheus.exporter.snmp.example.targets
-    forward_to = [ /* ... */ ]
+  targets    = prometheus.exporter.snmp.example.targets
+  forward_to = [ /* ... */ ]
 }
 ```
 
