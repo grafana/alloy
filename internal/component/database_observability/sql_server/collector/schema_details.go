@@ -103,6 +103,18 @@ func (tr *TableRegistry) HasDatabase(database string) bool {
 	return ok
 }
 
+// PruneDatabases removes databases that are no longer returned by discovery.
+func (tr *TableRegistry) PruneDatabases(discovered map[string]struct{}) {
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+
+	for database := range tr.tables {
+		if _, ok := discovered[database]; !ok {
+			delete(tr.tables, database)
+		}
+	}
+}
+
 // IsValid resolves a parsed table name against the database's known tables.
 // Unqualified names are checked across schemas because Query Store does not
 // expose the originating user's default schema.
@@ -328,6 +340,7 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 			delete(c.lastEmittedAt, db)
 		}
 	}
+	c.tableRegistry.PruneDatabases(discovered)
 
 	return nil
 }

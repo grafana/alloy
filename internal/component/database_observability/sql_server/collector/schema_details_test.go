@@ -1322,6 +1322,9 @@ func TestSchemaDetailsUndiscoveredDatabaseEvicted(t *testing.T) {
 	c.lastEmittedAt["gone_db"] = map[string]time.Time{
 		schemaTableKey("dbo", "old_table"): time.Now(),
 	}
+	c.tableRegistry.SetTablesForDatabase("gone_db", []*tableInfo{
+		{database: "gone_db", schema: "dbo", tableName: "old_table"},
+	})
 
 	expectListDatabases(mock, "some_db")
 	expectUseDatabase(mock, "some_db")
@@ -1334,6 +1337,10 @@ func TestSchemaDetailsUndiscoveredDatabaseEvicted(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 
 	require.NotContains(t, c.lastEmittedAt, "gone_db")
+	require.False(t, c.tableRegistry.HasDatabase("gone_db"))
+	_, valid := c.tableRegistry.IsValid("gone_db", "old_table")
+	require.False(t, valid)
+	require.True(t, c.tableRegistry.HasDatabase("some_db"))
 }
 
 func expectListDatabases(mock sqlmock.Sqlmock, databases ...string) {
