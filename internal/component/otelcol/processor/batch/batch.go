@@ -48,18 +48,24 @@ var (
 	_ processor.Arguments = Arguments{}
 )
 
-// DefaultArguments holds default settings for Arguments.
-var DefaultArguments = Arguments{
-	Timeout:                  200 * time.Millisecond,
-	SendBatchSize:            2000,
-	SendBatchMaxSize:         3000,
-	MetadataCardinalityLimit: 1000,
-}
+// DefaultArguments holds default settings for Arguments, derived from upstream.
+var DefaultArguments = func() Arguments {
+	var a Arguments
+	a.SetToDefault()
+	return a
+}()
 
-// SetToDefault implements syntax.Defaulter.
+// SetToDefault implements syntax.Defaulter. Panics on error because
+// SetToDefault can't return one.
 func (args *Arguments) SetToDefault() {
-	*args = DefaultArguments
+	*args = Arguments{}
 	args.DebugMetrics.SetToDefault()
+	if err := otelcol.DefaultsFrom(batchprocessor.NewFactory().CreateDefaultConfig(), args); err != nil {
+		panic(err)
+	}
+	// Declared divergences from upstream, kept for Grafana Cloud batching history.
+	args.SendBatchSize = 2000
+	args.SendBatchMaxSize = 3000
 }
 
 // Validate implements syntax.Validator.
@@ -72,13 +78,9 @@ func (args *Arguments) Validate() error {
 
 // Convert implements processor.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	cfg := batchprocessor.NewFactory().CreateDefaultConfig().(*batchprocessor.Config)
-	cfg.Timeout = args.Timeout
-	cfg.SendBatchSize = args.SendBatchSize
-	cfg.SendBatchMaxSize = args.SendBatchMaxSize
-	cfg.MetadataKeys = args.MetadataKeys
-	cfg.MetadataCardinalityLimit = args.MetadataCardinalityLimit
-	return cfg, nil
+	return otelcol.ConvertViaConfmap(args, batchprocessor.NewFactory(),
+		otelcol.WithConvertSkip("output", "debug_metrics"),
+	)
 }
 
 // Extensions implements processor.Arguments.
