@@ -69,8 +69,11 @@ If you set both, the component fails with an invalid configuration error.
 Set `config_merge_strategy` to `merge` to add additional configuration to the embedded SNMP configuration.
 For example, if you need to add a few custom `auth` settings without regenerating the whole configuration.
 
-The `targets` argument is an alternative to the [target](#target) block. This is useful when SNMP targets are supplied by another component.
-The following labels can be set to a target:
+The `targets` argument is an alternative to the [`target`][target] block, and is useful when another component supplies the SNMP targets.
+Use either `target` blocks or the `targets` argument, not both.
+If you use both, the component fails with an invalid configuration error.
+
+You can set the following labels on a target:
 
 * `name`: The name of the target (required).
 * `address` or `__address__`: The address of SNMP device (required).
@@ -357,6 +360,7 @@ The YAML file in this example looks like this:
 [scrape]: ../prometheus.scrape/
 [file]: ../../local/local.file/
 [disc]: ../../discovery/discovery.file/
+[target]: #target
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
