@@ -168,6 +168,10 @@ It doesn't accept metrics.
 
 `otelcol.connector.exceptions` doesn't expose any component-specific debug information.
 
+## Debug metrics
+
+`otelcol.connector.exceptions` doesn't expose any component-specific debug metrics.
+
 ## Examples
 
 ### Convert span exceptions to logs
