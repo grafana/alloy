@@ -52,17 +52,13 @@ var (
 	_ processor.Arguments = Arguments{}
 )
 
-// DefaultArguments holds default settings for Arguments.
-var DefaultArguments = Arguments{
-	DecisionWait:            30 * time.Second,
-	NumTraces:               50000,
-	ExpectedNewTracesPerSec: 0,
-}
-
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = DefaultArguments
+	*args = Arguments{}
 	args.DebugMetrics.SetToDefault()
+	if err := otelcol.DefaultsFrom(tsp.NewFactory().CreateDefaultConfig(), args); err != nil {
+		panic(err)
+	}
 }
 
 // Validate implements syntax.Validator.
@@ -80,27 +76,10 @@ func (args *Arguments) Validate() error {
 
 // Convert implements processor.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	var otelPolicyCfgs []tsp.PolicyCfg
-	for _, policyCfg := range args.PolicyCfgs {
-		otelPolicyCfgs = append(otelPolicyCfgs, policyCfg.Convert())
-	}
-
-	// Build on the factory's default config rather than a zero-value struct: the
-	// processor requires a sampling strategy, but upstream keeps that field
-	// unexported, so CreateDefaultConfig is the only way to set it.
-	cfg := tsp.NewFactory().CreateDefaultConfig().(*tsp.Config)
-	cfg.DecisionWait = args.DecisionWait
-	cfg.DecisionWaitAfterRootReceived = args.DecisionWaitAfterRootReceived
-	cfg.NumTraces = args.NumTraces
-	cfg.BlockOnOverflow = args.BlockOnOverflow
-	cfg.ExpectedNewTracesPerSec = args.ExpectedNewTracesPerSec
-	cfg.SampleOnFirstMatch = args.SampleOnFirstMatch
-	cfg.DropPendingTracesOnShutdown = args.DropPendingTracesOnShutdown
-	cfg.MaximumTraceSizeBytes = args.MaximumTraceSizeBytes
-	cfg.NumShards = args.NumShards
-	cfg.PolicyCfgs = otelPolicyCfgs
-	cfg.DecisionCache = args.DecisionCache.Convert()
-	return cfg, nil
+	return otelcol.ConvertViaConfmap(args, tsp.NewFactory(),
+		otelcol.WithConvertSkip("output", "debug_metrics"),
+		otelcol.WithConvertRename("policy", "policies", nil),
+	)
 }
 
 // Extensions implements processor.Arguments.
