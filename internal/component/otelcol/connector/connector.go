@@ -28,8 +28,10 @@ import (
 	"github.com/grafana/alloy/internal/slogadapter"
 )
 
+// Each constant must occupy a distinct bit: connectors combine them with the
+// bitwise OR operator to declare the signal pairs they support.
 const (
-	ConnectorTracesToTraces = iota + 1
+	ConnectorTracesToTraces = 1 << iota
 	ConnectorTracesToMetrics
 	ConnectorTracesToLogs
 	ConnectorMetricsToTraces
@@ -202,11 +204,11 @@ func (p *Connector) Update(args component.Arguments) error {
 	}
 
 	if !outputsToLogs(connectorType) && len(next.Logs) > 0 {
-		return errors.New("logs output is not supported yet")
+		return errors.New("this connector cannot output logs")
 	}
 
 	if !outputsToTraces(connectorType) && len(next.Traces) > 0 {
-		return errors.New("traces output is not supported yet")
+		return errors.New("this connector cannot output traces")
 	}
 
 	if len(next.Metrics) > 0 {
