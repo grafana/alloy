@@ -177,11 +177,11 @@ prometheus.exporter.snmp "example" {
   }
 
   walk_param "private" {
-    retries = "2"
+    retries = 2
   }
 
   walk_param "public" {
-    retries = "2"
+    retries = 2
   }
 }
 
@@ -216,11 +216,11 @@ prometheus.exporter.snmp "example" {
   }
 
   walk_param "private" {
-    retries = "2"
+    retries = 2
   }
 
   walk_param "public" {
-    retries = "2"
+    retries = 2
   }
 }
 
@@ -271,11 +271,11 @@ prometheus.exporter.snmp "example" {
   ]
 
   walk_param "private" {
-    retries = "2"
+    retries = 2
   }
 
   walk_param "public" {
-    retries = "2"
+    retries = 2
   }
 }
 
@@ -294,23 +294,23 @@ local.file "targets" {
 }
 
 prometheus.exporter.snmp "example" {
-    config_file = "snmp_modules.yml"
+  config_file = "snmp_modules.yml"
 
-    targets = encoding.from_yaml(local.file.targets.content)
+  targets = encoding.from_yaml(local.file.targets.content)
 
-    walk_param "private" {
-        retries = "2"
-    }
+  walk_param "private" {
+    retries = 2
+  }
 
-    walk_param "public" {
-        retries = "2"
-    }
+  walk_param "public" {
+    retries = 2
+  }
 }
 
 // Configure a prometheus.scrape component to collect SNMP metrics.
 prometheus.scrape "demo" {
-    targets    = prometheus.exporter.snmp.example.targets
-    forward_to = [ /* ... */ ]
+  targets    = prometheus.exporter.snmp.example.targets
+  forward_to = [ /* ... */ ]
 }
 ```
 
