@@ -169,8 +169,7 @@ It doesn't accept metrics.
 
 ### Convert span exceptions to logs
 
-The following example accepts traces, converts the exceptions recorded on spans into log records, and writes the log records to Loki.
-The traces are written to Tempo.
+The following example accepts traces, converts the exceptions recorded on spans into log records, writes the log records to Loki, and writes the traces to Tempo.
 
 ```alloy
 otelcol.receiver.otlp "default" {
