@@ -186,31 +186,117 @@ func receive(t *testing.T, receiver loki.LogsReceiver, n int) []loki.Entry {
 }
 
 func TestArguments(t *testing.T) {
-	tests := []struct {
-		name       string
-		config     string
-		wantAPIURL string
-		wantErr    string
-	}{
+	type testCase struct {
+		name      string
+		config    string
+		expected  Arguments
+		expectErr bool
+	}
+
+	tests := []testCase{
 		{
-			name:       "api_url defaults to the Cloudflare API",
-			config:     `api_token = "t"` + "\n" + `zone_id = "z"` + "\n" + `forward_to = []`,
-			wantAPIURL: "https://api.cloudflare.com/client/v4",
+			name: "api_url defaults to the Cloudflare API",
+			config: `
+				api_token = "t"
+				zone_id = "z"
+				forward_to = []
+			`,
+			expected: Arguments{
+				APIToken:   alloytypes.Secret("t"),
+				ZoneID:     "z",
+				APIURL:     "https://api.cloudflare.com/client/v4",
+				Workers:    3,
+				PullRange:  time.Minute,
+				FieldsType: FieldsTypeDefault,
+				ForwardTo:  []loki.LogsReceiver{},
+			},
 		},
 		{
-			name:       "api_url can be set",
-			config:     `api_token = "t"` + "\n" + `zone_id = "z"` + "\n" + `api_url = "http://localhost:8080/client/v4"` + "\n" + `forward_to = []`,
-			wantAPIURL: "http://localhost:8080/client/v4",
+			name: "api_url can be set",
+			config: `
+				api_token = "t"
+				zone_id = "z"
+				api_url = "http://localhost:8080/client/v4"
+				forward_to = []
+			`,
+			expected: Arguments{
+				APIToken:   alloytypes.Secret("t"),
+				ZoneID:     "z",
+				APIURL:     "http://localhost:8080/client/v4",
+				Workers:    3,
+				PullRange:  time.Minute,
+				FieldsType: FieldsTypeDefault,
+				ForwardTo:  []loki.LogsReceiver{},
+			},
 		},
 		{
-			name:    "api_url must be absolute",
-			config:  `api_token = "t"` + "\n" + `zone_id = "z"` + "\n" + `api_url = "/client/v4"` + "\n" + `forward_to = []`,
-			wantErr: "api_url must be an absolute http or https URL",
+			name: "api_url must be absolute",
+			config: `
+				api_token = "t"
+				zone_id = "z"
+				api_url = "/client/v4"
+				forward_to = []
+			`,
+			expectErr: true,
 		},
 		{
-			name:    "api_url must be http or https",
-			config:  `api_token = "t"` + "\n" + `zone_id = "z"` + "\n" + `api_url = "ftp://example.com"` + "\n" + `forward_to = []`,
-			wantErr: "api_url must be an absolute http or https URL",
+			name: "api_url must be http or https",
+			config: `
+				api_token = "t"
+				zone_id = "z"
+				api_url = "ftp://example.com"
+				forward_to = []
+			`,
+			expectErr: true,
+		},
+		{
+			name: "api_token must not be empty",
+			config: `
+				api_token = ""
+				zone_id = "z"
+				forward_to = []
+			`,
+			expectErr: true,
+		},
+		{
+			name: "pull_range must not be negative",
+			config: `
+				api_token = "t"
+				zone_id = "z"
+				pull_range = "-1m"
+				forward_to = []
+			`,
+			expectErr: true,
+		},
+		{
+			name: "fields_type must be known",
+			config: `
+				api_token = "t"
+				zone_id = "z"
+				fields_type = "unknown"
+				forward_to = []
+			`,
+			expectErr: true,
+		},
+		{
+			name: "custom fields_type with additional_fields",
+			config: `
+				api_token = "t"
+				zone_id = "z"
+				fields_type = "custom"
+				additional_fields = ["ClientIP"]
+				forward_to = []
+			`,
+			expected: Arguments{
+				APIToken:         alloytypes.Secret("t"),
+				ZoneID:           "z",
+				APIURL:           "https://api.cloudflare.com/client/v4",
+				Workers:          3,
+				PullRange:        time.Minute,
+				FieldsType:       FieldsTypeCustom,
+				AdditionalFields: []string{"ClientIP"},
+				ForwardTo:        []loki.LogsReceiver{},
+			},
 		},
 	}
 
@@ -218,12 +304,12 @@ func TestArguments(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var args Arguments
 			err := syntax.Unmarshal([]byte(tc.config), &args)
-			if tc.wantErr != "" {
-				require.ErrorContains(t, err, tc.wantErr)
+			if tc.expectErr {
+				require.Error(t, err)
 				return
 			}
 			require.NoError(t, err)
-			require.Equal(t, tc.wantAPIURL, args.APIURL)
+			require.Equal(t, tc.expected, args)
 		})
 	}
 }
