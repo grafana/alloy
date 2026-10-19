@@ -127,7 +127,10 @@ func (tr *TableRegistry) IsValid(database, parsedTableName string) (string, bool
 		return parsedTableName, false
 	}
 
-	schemaName, tableName, qualified := splitSchemaQualifiedTable(parsedTableName)
+	schemaName, tableName, qualified, ok := parseSQLServerTableIdentifier(parsedTableName)
+	if !ok {
+		return parsedTableName, false
+	}
 	if qualified {
 		resolvedSchema, ok := resolveUniqueName(schemas, schemaName)
 		if !ok {
@@ -140,16 +143,23 @@ func (tr *TableRegistry) IsValid(database, parsedTableName string) (string, bool
 		return resolvedSchema + "." + resolvedTable, true
 	}
 
+	for _, tables := range schemas {
+		if _, ok := tables[tableName]; ok {
+			return tableName, true
+		}
+	}
+
 	var resolved string
 	for _, tables := range schemas {
-		candidate, ok := resolveUniqueName(tables, tableName)
-		if !ok {
-			continue
+		for candidate := range tables {
+			if !strings.EqualFold(candidate, tableName) {
+				continue
+			}
+			if resolved != "" && resolved != candidate {
+				return parsedTableName, false
+			}
+			resolved = candidate
 		}
-		if resolved != "" && resolved != candidate {
-			return parsedTableName, false
-		}
-		resolved = candidate
 	}
 	if resolved == "" {
 		return parsedTableName, false
@@ -157,12 +167,75 @@ func (tr *TableRegistry) IsValid(database, parsedTableName string) (string, bool
 	return resolved, true
 }
 
-func splitSchemaQualifiedTable(name string) (schemaName, tableName string, qualified bool) {
-	parts := strings.Split(name, ".")
-	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-		return "", name, false
+func parseSQLServerTableIdentifier(name string) (schemaName, tableName string, qualified, ok bool) {
+	if name == "" {
+		return "", "", false, false
 	}
-	return parts[0], parts[1], true
+
+	var parts []string
+	for i := 0; i < len(name); {
+		if len(parts) == 2 {
+			return "", "", false, false
+		}
+
+		part, next, valid := scanSQLServerIdentifierPart(name, i)
+		if !valid || part == "" {
+			return "", "", false, false
+		}
+		parts = append(parts, part)
+		if next == len(name) {
+			break
+		}
+		if name[next] != '.' || next+1 == len(name) {
+			return "", "", false, false
+		}
+		i = next + 1
+	}
+
+	switch len(parts) {
+	case 1:
+		return "", parts[0], false, true
+	case 2:
+		return parts[0], parts[1], true, true
+	default:
+		return "", "", false, false
+	}
+}
+
+func scanSQLServerIdentifierPart(name string, start int) (part string, next int, ok bool) {
+	if start >= len(name) {
+		return "", start, false
+	}
+
+	if name[start] == '[' || name[start] == '"' {
+		closing := byte(']')
+		if name[start] == '"' {
+			closing = '"'
+		}
+
+		var b strings.Builder
+		for i := start + 1; i < len(name); i++ {
+			if name[i] == closing {
+				if i+1 < len(name) && name[i+1] == closing {
+					b.WriteByte(closing)
+					i++
+					continue
+				}
+				return b.String(), i + 1, true
+			}
+			b.WriteByte(name[i])
+		}
+		return "", len(name), false
+	}
+
+	end := start
+	for end < len(name) && name[end] != '.' {
+		if name[end] == '[' || name[end] == ']' || name[end] == '"' {
+			return "", end, false
+		}
+		end++
+	}
+	return name[start:end], end, end > start
 }
 
 func resolveUniqueName[V any](values map[string]V, requested string) (string, bool) {

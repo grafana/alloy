@@ -23,7 +23,10 @@ func TestTableRegistryIsValid(t *testing.T) {
 	registry := NewTableRegistry()
 	registry.SetTablesForDatabase("books_store", []*tableInfo{
 		{database: "books_store", schema: "dbo", tableName: "rentals"},
+		{database: "books_store", schema: "dbo", tableName: "Order.Details"},
+		{database: "books_store", schema: "dbo", tableName: "a]b"},
 		{database: "books_store", schema: "sales", tableName: "Orders"},
+		{database: "books_store", schema: "sales", tableName: "Order.Details"},
 		{database: "books_store", schema: "archive", tableName: "Orders"},
 	})
 	require.True(t, registry.HasDatabase("books_store"))
@@ -65,6 +68,83 @@ func TestTableRegistryIsValid(t *testing.T) {
 			wantValid:  true,
 		},
 		{
+			name:       "bracket quoted unqualified table",
+			database:   "books_store",
+			parsedName: "[rentals]",
+			wantName:   "rentals",
+			wantValid:  true,
+		},
+		{
+			name:       "double quoted unqualified table",
+			database:   "books_store",
+			parsedName: `"rentals"`,
+			wantName:   "rentals",
+			wantValid:  true,
+		},
+		{
+			name:       "bracket quoted schema and table",
+			database:   "books_store",
+			parsedName: "[sales].[Orders]",
+			wantName:   "sales.Orders",
+			wantValid:  true,
+		},
+		{
+			name:       "mixed quoting on schema and table",
+			database:   "books_store",
+			parsedName: "[sales].Orders",
+			wantName:   "sales.Orders",
+			wantValid:  true,
+		},
+		{
+			name:       "unquoted schema with bracket quoted table",
+			database:   "books_store",
+			parsedName: "sales.[Orders]",
+			wantName:   "sales.Orders",
+			wantValid:  true,
+		},
+		{
+			name:       "double quoted schema and table",
+			database:   "books_store",
+			parsedName: `"sales"."Orders"`,
+			wantName:   "sales.Orders",
+			wantValid:  true,
+		},
+		{
+			name:       "bracket quoted unqualified table containing dot",
+			database:   "books_store",
+			parsedName: "[Order.Details]",
+			wantName:   "Order.Details",
+			wantValid:  true,
+		},
+		{
+			name:       "bracket quoted schema qualified table containing dot",
+			database:   "books_store",
+			parsedName: "[sales].[Order.Details]",
+			wantName:   "sales.Order.Details",
+			wantValid:  true,
+		},
+		{
+			name:       "escaped closing bracket in table name",
+			database:   "books_store",
+			parsedName: "[a]]b]",
+			wantName:   "a]b",
+			wantValid:  true,
+		},
+		{
+			name:       "unterminated bracket quote is not valid",
+			database:   "books_store",
+			parsedName: "[rentals",
+			wantName:   "[rentals",
+			wantValid:  false,
+		},
+		{
+			name:       "empty bracket quote is not valid",
+			database:   "books_store",
+			parsedName: "[]",
+			wantName:   "[]",
+			wantValid:  false,
+		},
+		{
 			name:       "table alias is not valid",
 			database:   "books_store",
 			parsedName: "r",
@@ -94,6 +174,39 @@ func TestTableRegistryIsValid(t *testing.T) {
 			require.Equal(t, tt.wantValid, gotValid)
 		})
 	}
+
+	t.Run("prefers exact match across schemas over differently cased table in another schema", func(t *testing.T) {
+		mixedCaseRegistry := NewTableRegistry()
+		mixedCaseRegistry.SetTablesForDatabase("books_store", []*tableInfo{
+			{database: "books_store", schema: "dbo", tableName: "Orders"},
+			{database: "books_store", schema: "archive", tableName: "orders"},
+		})
+
+		gotName, gotValid := mixedCaseRegistry.IsValid("books_store", "Orders")
+		require.True(t, gotValid)
+		require.Equal(t, "Orders", gotName)
+
+		gotName, gotValid = mixedCaseRegistry.IsValid("books_store", "orders")
+		require.True(t, gotValid)
+		require.Equal(t, "orders", gotName)
+
+		gotName, gotValid = mixedCaseRegistry.IsValid("books_store", "ORDERS")
+		require.False(t, gotValid)
+		require.Equal(t, "ORDERS", gotName)
+	})
+
+	t.Run("rejects case insensitive collision within a schema even when another schema has a single match", func(t *testing.T) {
+		collisionRegistry := NewTableRegistry()
+		collisionRegistry.SetTablesForDatabase("books_store", []*tableInfo{
+			{database: "books_store", schema: "dbo", tableName: "Orders"},
+			{database: "books_store", schema: "dbo", tableName: "orders"},
+			{database: "books_store", schema: "archive", tableName: "Orders"},
+		})
+
+		gotName, gotValid := collisionRegistry.IsValid("books_store", "ORDERS")
+		require.False(t, gotValid)
+		require.Equal(t, "ORDERS", gotName)
+	})
 
 	registry.SetTablesForDatabase("books_store", []*tableInfo{
 		{database: "books_store", schema: "dbo", tableName: "books"},
