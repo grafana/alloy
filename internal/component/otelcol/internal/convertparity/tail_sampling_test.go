@@ -1,4 +1,4 @@
-package convertoracle_test
+package convertparity_test
 
 import (
 	"testing"
