@@ -122,7 +122,7 @@ You can use the following arguments with the `walk_param` block:
 | ----------------- | ---------- | --------------------------------------------- | ------- | -------- |
 | `max_repetitions` | `int`      | How many objects to request with GET/GETBULK. | `25`    | no       |
 | `retries`         | `int`      | How many times to retry a failed request.     | `3`     | no       |
-| `timeout`         | `duration` | Timeout for each individual SNMP request.     |         | no       |
+| `timeout`         | `duration` | Timeout for each individual SNMP request.     | `5s`    | no       |
 
 ## Exported fields
 
