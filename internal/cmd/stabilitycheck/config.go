@@ -22,7 +22,7 @@ var validStability = map[string]bool{
 // it, so it is rejected as an invalid reason.
 const placeholderReason = "TODO"
 
-// Config is the parsed .stability.yaml file.
+// Config is the parsed stability.yaml file.
 type Config struct {
 	Components []Entry `yaml:"components"`
 	// Features tracks non-GA behavior that is not a component (config blocks,

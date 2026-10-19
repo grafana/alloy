@@ -1,5 +1,5 @@
 // Command stabilitycheck fails CI when a non-GA component is not tracked, or
-// its tracking entry is stale, in .stability.yaml.
+// its tracking entry is stale, in stability.yaml.
 //
 // The component registry is the source of findings. Every experimental or
 // public-preview component must have an entry with a reason and a review
@@ -23,7 +23,7 @@ import (
 )
 
 func main() {
-	configPath := flag.String("config", ".stability.yaml", "path to the stability tracking config")
+	configPath := flag.String("config", "stability.yaml", "path to the stability tracking config")
 	update := flag.Bool("update", false, "add TODO entries for untracked non-GA components, sort the file, then exit")
 	expiresFlag := flag.String("expires", "", "expiry date (YYYY-MM-DD) for entries added by --update; default is 6 months from today")
 	flag.Parse()

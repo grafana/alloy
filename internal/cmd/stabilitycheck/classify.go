@@ -152,7 +152,7 @@ func classify(comps []registeredComponent, cfg *Config, now time.Time) []finding
 // missingEntrySnippet returns a paste-ready YAML block for a component that has
 // no entry. The reason and expires fields are left for a human.
 func missingEntrySnippet(c registeredComponent) string {
-	return fmt.Sprintf("no entry in .stability.yaml — add (keep entries sorted by name):\n"+
+	return fmt.Sprintf("no entry in stability.yaml — add (keep entries sorted by name):\n"+
 		"      - name: %s\n"+
 		"        stability: %s\n"+
 		"        reason: <why this is not yet generally available>\n"+
