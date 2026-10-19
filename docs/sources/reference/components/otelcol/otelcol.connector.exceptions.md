@@ -146,6 +146,8 @@ The following arguments are supported:
 |-----------|--------|---------------------------------------------------------------------|---------|----------|
 | `enabled` | `bool` | Attaches the trace ID and span ID of each exception as an exemplar. | `false` | no       |
 
+`otelcol.connector.exceptions` only records an exemplar when the span or log record carries a trace ID.
+
 ## Exported fields
 
 The following fields are exported and can be referenced by other components:
