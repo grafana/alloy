@@ -83,6 +83,8 @@ You can set the following labels on a target:
 
 Any other labels defined are added to the scraped metrics.
 
+The component sets the `instance` label on its exported targets to the component ID, for example, `prometheus.exporter.snmp.example`.
+
 ## Blocks
 
 You can use the following blocks with `prometheus.exporter.snmp`:
