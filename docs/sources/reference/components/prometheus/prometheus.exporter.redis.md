@@ -7,6 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-10-19
 title: prometheus.exporter.redis
 ---
 
@@ -22,7 +23,7 @@ You can specify multiple `prometheus.exporter.redis` components by giving them d
 
 ```alloy
 prometheus.exporter.redis "<LABEL>" {
-    redis_addr = "<REDIS_ADDRESS>"
+  redis_addr = "<REDIS_ADDRESS>"
 }
 ```
 
@@ -34,24 +35,24 @@ You can use the following arguments with `prometheus.exporter.redis`:
 | ----------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------- | -------- |
 | `redis_addr`                  | `string`       | Address of the Redis instance to connect to, as host and port.                                                          |            | yes      |
 | `check_key_groups`            | `list(string)` | List of Lua regular expressions for grouping keys.                                                                      |            | no       |
-| `check_key_groups_batch_size` | `int`          | Check key or key groups batch size hint for the underlying SCAN.                                                        | `10000`    | no       |
+| `check_key_groups_batch_size` | `int`          | Approximate number of keys to process in each SCAN execution.                                                           | `10000`    | no       |
 | `check_keys`                  | `list(string)` | List of key-patterns to export value and length/size, searched for with SCAN.                                           |            | no       |
 | `check_single_keys`           | `list(string)` | List of single keys to export value and length/size.                                                                    |            | no       |
 | `check_single_streams`        | `list(string)` | List of single streams to export info about streams, groups, and consumers.                                             |            | no       |
 | `check_streams`               | `list(string)` | List of stream-patterns to export info about streams, groups, and consumers to search for with SCAN.                    |            | no       |
-| `config_command`              | `string`       | What to use for the CONFIG command.                                                                                     | `"CONFIG"` | no       |
+| `config_command`              | `string`       | What to use for the CONFIG command. Set it to `-` to skip config metrics extraction.                                    | `"CONFIG"` | no       |
 | `connection_timeout`          | `duration`     | Timeout for the connection to the Redis instance.                                                                       | `"15s"`    | no       |
-| `count_keys`                  | `list(string)` | List of individual keys to export counts for.                                                                           |            | no       |
-| `export_client_list`          | `bool`         | Whether to scrape Client List specific metrics.                                                                         | `false`    | no       |
-| `export_client_port`          | `bool`         | Whether to include the client's port when exporting the client list.                                                    | `false`    | no       |
-| `export_key_values`           | `bool`         | Whether to export key values as labels when using `check_keys` or `check_single_keys`.                                  | `true`     | no       |
-| `incl_system_metrics`         | `bool`         | Whether to include system metrics. For example `redis_total_system_memory_bytes`.                                       | `false`    | no       |
+| `count_keys`                  | `list(string)` | List of key patterns to count, searched for with SCAN.                                                                  |            | no       |
+| `export_client_list`          | `bool`         | Scrape Client List specific metrics.                                                                                    | `false`    | no       |
+| `export_client_port`          | `bool`         | Include the client port when exporting the client list.                                                                 | `false`    | no       |
+| `export_key_values`           | `bool`         | Export key values as labels with `check_keys` or `check_single_keys`.                                                   | `true`     | no       |
+| `incl_system_metrics`         | `bool`         | Include system metrics, for example `redis_total_system_memory_bytes`.                                                  | `false`    | no       |
 | `include_exporter_metrics`    | `bool`         | Report metrics about the exporter itself.                                                                               | `false`    | no       |
-| `is_cluster`                  | `bool`         | Whether the connection is to a Redis cluster.                                                                           | `false`    | no       |
-| `is_tile38`                   | `bool`         | Whether to scrape Tile38-specific metrics.                                                                              | `false`    | no       |
+| `is_cluster`                  | `bool`         | Treat the connection as a Redis cluster.                                                                                | `false`    | no       |
+| `is_tile38`                   | `bool`         | Scrape Tile38-specific metrics.                                                                                         | `false`    | no       |
 | `max_distinct_key_groups`     | `int`          | The maximum number of distinct key groups with the most memory utilization to present as distinct metrics per database. | `100`      | no       |
 | `namespace`                   | `string`       | Namespace for the metrics.                                                                                              | `"redis"`  | no       |
-| `ping_on_connect`             | `bool`         | Whether to ping the Redis instance after connecting.                                                                    | `false`    | no       |
+| `ping_on_connect`             | `bool`         | Ping the Redis instance after connecting.                                                                               | `false`    | no       |
 | `redis_metrics_only`          | `bool`         | Export only Redis metrics and omit Go process and runtime metrics.                                                      | `false`    | no       |
 | `redis_password`              | `secret`       | Password of the Redis instance.                                                                                         |            | no       |
 | `redis_password_file`         | `string`       | Path of a file containing a password.                                                                                   |            | no       |
@@ -59,8 +60,8 @@ You can use the following arguments with `prometheus.exporter.redis`:
 | `redis_user`                  | `string`       | User name for authentication. Requires Redis 6.0 or later with ACL support.                                             |            | no       |
 | `script_path`                 | `string`       | Path to Lua Redis script for collecting extra metrics.                                                                  |            | no       |
 | `script_paths`                | `list(string)` | List of paths to Lua Redis scripts for collecting extra metrics.                                                        |            | no       |
-| `set_client_name`             | `bool`         | Whether to set client name to `redis_exporter`.                                                                         | `true`     | no       |
-| `skip_tls_verification`       | `bool`         | Whether to skip TLS verification.                                                                                       | `false`    | no       |
+| `set_client_name`             | `bool`         | Set the client name to `redis_exporter`.                                                                                | `true`     | no       |
+| `skip_tls_verification`       | `bool`         | Skip TLS verification.                                                                                                  | `false`    | no       |
 | `tls_ca_cert_file`            | `string`       | Full path to the CA certificate file if the server requires TLS client authentication.                                  |            | no       |
 | `tls_client_cert_file`        | `string`       | Full path to the client certificate file if the server requires TLS client authentication.                              |            | no       |
 | `tls_client_key_file`         | `string`       | Full path to the client key file if the server requires TLS client authentication.                                      |            | no       |
@@ -80,13 +81,13 @@ If you don't set `check_key_groups`, the component creates no key groups.
 
 The `check_key_groups_batch_size` argument name reflects key groups for backwards compatibility, but applies to both key and key groups.
 
-The `script_path` argument accepts a comma-separated string of paths, but use `script_paths` when you have multiple Lua scripts.
-Set either `script_path` or `script_paths`, not both.
-If you set both, the component fails with an invalid configuration error.
-
 The component aggregates any leftover key groups beyond `max_distinct_key_groups` into the `overflow` bucket.
 
 Set `is_cluster` to `true` when you connect to a Redis cluster and use `check_keys` or `check_single_keys`.
+
+The `script_path` argument accepts a comma-separated string of paths, but use `script_paths` when you have multiple Lua scripts.
+Set either `script_path` or `script_paths`, not both.
+If you set both, the component fails with an invalid configuration error.
 
 {{< admonition type="note" >}}
 Setting `export_client_port` increases the cardinality of all Redis metrics.
