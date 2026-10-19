@@ -11,6 +11,7 @@ import (
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/livedebugging"
+	"github.com/grafana/alloy/internal/service/lokipipelinev2"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -70,9 +71,11 @@ type Component struct {
 	metrics *metrics
 	cache   *lru.Cache
 
-	receiver    loki.LogsReceiver
-	fanout      *loki.Fanout
-	interceptor *loki.InterceptorConsumer
+	receiver loki.LogsReceiver
+	fanout   *loki.Fanout
+
+	pipelineV2 bool
+	fanoutV2   *loki.FanoutV2
 
 	mut          sync.RWMutex
 	stopped      bool
@@ -94,59 +97,72 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 
+	svc, err := o.GetServiceData(lokipipelinev2.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
 	c := &Component{
 		opts:               o,
 		metrics:            newMetrics(o.Registerer),
 		cache:              cache,
 		maxCacheSize:       args.MaxCacheSize,
+		pipelineV2:         svc.(lokipipelinev2.Data).PipelineV2Enabled(),
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
-		fanout:             loki.NewFanout(args.ForwardTo),
-		receiver:           loki.NewLogsReceiver(loki.WithComponentID(o.ID)),
 	}
 
-	c.interceptor = loki.NewInterceptorConsumer(
-		o.ID,
-		// FIXME(kalleep): Forward entries through consumer interface once we have migrated at pipeline level.
-		// See https://github.com/grafana/alloy/issues/4953
-		loki.NewNopConsumer(),
-		func(ctx context.Context, batch loki.Batch) (loki.Batch, error) {
-			c.mut.RLock()
-			defer c.mut.RUnlock()
+	if c.pipelineV2 {
+		c.fanoutV2 = loki.NewFanoutV2(args.ForwardTo)
+		interceptor := loki.NewInterceptorConsumer(
+			o.ID,
+			c.fanoutV2,
+			func(ctx context.Context, batch loki.Batch) (loki.Batch, error) {
+				c.mut.RLock()
+				defer c.mut.RUnlock()
 
-			if c.stopped {
-				return loki.Batch{}, loki.ErrConsumerStopped
-			}
-
-			c.metrics.entriesProcessed.Add(float64(batch.EntryLen()))
-
-			batch.FilterMapStreams(func(stream loki.Stream) (loki.Stream, bool) {
-				relabeled, ok := c.relabel(stream.Labels)
-
-				var count uint64
-				if ok {
-					count = uint64(len(stream.Entries))
+				if c.stopped {
+					return loki.Batch{}, loki.ErrConsumerStopped
 				}
 
-				c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
-					livedebugging.ComponentID(c.opts.ID),
-					livedebugging.LokiLog,
-					count,
-					func() string {
-						if !ok {
-							return fmt.Sprintf("stream: %s => <dropped>", stream.Labels.String())
-						}
-						return fmt.Sprintf("stream: %s => %s", stream.Labels.String(), relabeled.String())
-					},
-				))
+				c.metrics.entriesProcessed.Add(float64(batch.EntryLen()))
 
-				stream.Labels = relabeled
-				return stream, ok
-			})
+				batch.FilterMapStreams(func(stream loki.Stream) (loki.Stream, bool) {
+					relabeled, ok := c.relabel(stream.Labels)
 
-			c.metrics.entriesOutgoing.Add(float64(batch.EntryLen()))
-			return batch, nil
-		},
-	)
+					var count uint64
+					if ok {
+						count = uint64(len(stream.Entries))
+					}
+
+					c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+						livedebugging.ComponentID(c.opts.ID),
+						livedebugging.LokiLog,
+						count,
+						func() string {
+							if !ok {
+								return fmt.Sprintf("stream: %s => <dropped>", stream.Labels.String())
+							}
+							return fmt.Sprintf("stream: %s => %s", stream.Labels.String(), relabeled.String())
+						},
+					))
+
+					if !ok {
+						c.opts.Logger.Debug("dropping stream after relabeling", "labels", stream.Labels.String())
+					}
+
+					stream.Labels = relabeled
+					return stream, ok
+				})
+
+				c.metrics.entriesOutgoing.Add(float64(batch.EntryLen()))
+				return batch, nil
+			},
+		)
+		c.receiver = loki.NewLogsReceiverV2(interceptor, o.ID)
+	} else {
+		c.fanout = loki.NewFanout(args.ForwardTo)
+		c.receiver = loki.NewLogsReceiver(loki.WithComponentID(o.ID))
+	}
 
 	// Call to Update() to set the relabelling rules once at the start and export rules and receiver.
 	if err := c.Update(args); err != nil {
@@ -163,6 +179,11 @@ func (c *Component) Run(ctx context.Context) error {
 		defer c.mut.Unlock()
 		c.stopped = true
 	}()
+
+	if c.pipelineV2 {
+		<-ctx.Done()
+		return nil
+	}
 
 	loki.ConsumeAndProcess(ctx, c.receiver, c.fanout, func(entry loki.Entry) (loki.Entry, bool) {
 		c.mut.RLock()
@@ -218,7 +239,13 @@ func (c *Component) Update(args component.Arguments) error {
 		}
 	}
 	c.rcs = newRCS
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
+
+	if c.pipelineV2 {
+		c.fanoutV2.UpdateChildren(newArgs.ForwardTo)
+	} else {
+		c.fanout.UpdateChildren(newArgs.ForwardTo)
+	}
+
 	c.opts.OnStateChange(Exports{Receiver: c.receiver, Rules: newArgs.RelabelConfigs})
 
 	return nil
