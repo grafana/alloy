@@ -5,6 +5,7 @@ labels:
   stage: experimental
   products:
     - oss
+review_date: 2026-10-15
 title: otelcol.connector.exceptions
 ---
 
