@@ -1,36 +1,38 @@
-package marker
+package savepoint
 
 import (
+	"log/slog"
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
-
-	"github.com/grafana/alloy/internal/util"
 )
 
-func TestTracker(t *testing.T) {
-	logger := util.TestAlloyLogger(t).Slog()
-	// drive-by test: if metrics don't have the id curried, it panics when emitting them
-	metrics := NewMetrics(nil).CurryWithId("test")
-	t.Run("returns last marked segment from file handler on start", func(t *testing.T) {
+func TestSegmentTracker(t *testing.T) {
+	var (
+		logger  = slog.New(slog.DiscardHandler)
+		metrics = NewMetrics(prometheus.NewRegistry())
+	)
+
+	t.Run("returns last saved segment from file on start", func(t *testing.T) {
 		f, err := NewFile(logger, t.TempDir())
 		require.NoError(t, err)
-		f.MarkSegment(10)
+		f.StoreSegment("endpoint-a", 10)
 
-		st := NewSegmentTracker(f, time.Minute, logger, metrics)
+		st := NewSegmentTracker(f, "endpoint-a", time.Minute, logger, metrics)
 		st.Start()
 		defer st.Stop()
 
-		require.Equal(t, 10, st.LastMarkedSegment())
+		require.Equal(t, 10, st.LastStoredSegment())
 	})
 
-	t.Run("last marked segment is updated when sends complete", func(t *testing.T) {
+	t.Run("last saved segment is updated when sends complete", func(t *testing.T) {
 		f, err := NewFile(logger, t.TempDir())
 		require.NoError(t, err)
-		f.MarkSegment(10)
+		f.StoreSegment("endpoint-a", 10)
 
-		st := NewSegmentTracker(f, time.Minute, logger, metrics)
+		st := NewSegmentTracker(f, "endpoint-a", time.Minute, logger, metrics)
 		st.Start()
 		defer st.Stop()
 
@@ -39,17 +41,17 @@ func TestTracker(t *testing.T) {
 		st.UpdateSentData(11, 5)
 
 		require.Eventually(t, func() bool {
-			return st.LastMarkedSegment() == 11
-		}, 3*time.Second, time.Millisecond*100, "expected last marked segment to catch up")
-		require.Equal(t, 11, f.LastMarkedSegment())
+			return st.LastStoredSegment() == 11
+		}, 3*time.Second, time.Millisecond*100, "expected last saved segment to catch up")
+		require.Equal(t, 11, f.LastStoredSegment("endpoint-a"))
 	})
 
-	t.Run("last marked segment is updated when segment becomes old", func(t *testing.T) {
+	t.Run("last saved segment is updated when segment becomes old", func(t *testing.T) {
 		f, err := NewFile(logger, t.TempDir())
 		require.NoError(t, err)
-		f.MarkSegment(10)
+		f.StoreSegment("endpoint-a", 10)
 
-		st := NewSegmentTracker(f, 2*time.Second, logger, metrics)
+		st := NewSegmentTracker(f, "endpoint-a", 2*time.Second, logger, metrics)
 		st.Start()
 		defer st.Stop()
 
@@ -64,9 +66,31 @@ func TestTracker(t *testing.T) {
 		st.UpdateReceivedData(12, 1)
 
 		require.Eventually(t, func() bool {
-			return st.LastMarkedSegment() == 11
-		}, 3*time.Second, time.Millisecond*100, "expected last marked segment to catch up")
-		require.Equal(t, 11, f.LastMarkedSegment())
+			return st.LastStoredSegment() == 11
+		}, 3*time.Second, time.Millisecond*100, "expected last saved segment to catch up")
+		require.Equal(t, 11, f.LastStoredSegment("endpoint-a"))
+	})
+
+	t.Run("endpoints sharing a file are tracked independently", func(t *testing.T) {
+		f, err := NewFile(logger, t.TempDir())
+		require.NoError(t, err)
+
+		a := NewSegmentTracker(f, "endpoint-a", time.Minute, logger, metrics)
+		a.Start()
+		defer a.Stop()
+		b := NewSegmentTracker(f, "endpoint-b", time.Minute, logger, metrics)
+		b.Start()
+		defer b.Stop()
+
+		a.UpdateReceivedData(11, 1)
+		a.UpdateSentData(11, 1)
+
+		require.Eventually(t, func() bool {
+			return a.LastStoredSegment() == 11
+		}, 3*time.Second, time.Millisecond*100, "expected endpoint-a to catch up")
+
+		require.Equal(t, 11, a.LastStoredSegment())
+		require.Equal(t, noSegment, b.LastStoredSegment())
 	})
 }
 

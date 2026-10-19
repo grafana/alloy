@@ -1,4 +1,4 @@
-package marker
+package savepoint
 
 import (
 	"log/slog"
@@ -10,7 +10,7 @@ import (
 )
 
 type Tracker interface {
-	wal.Marker
+	wal.Savepoint
 
 	// Start loads the last marked segment from disk and begins the async processing of
 	// receive/send dataUpdate updates.
@@ -29,17 +29,18 @@ type Tracker interface {
 }
 
 // SegmentTracker implements Tracker, processing data update events in an asynchronous manner, and tracking the last
-// consumed segment in a file.
+// consumed segment of a single endpoint in the savepoint file.
 type SegmentTracker struct {
-	dataIOUpdate      chan dataUpdate
-	lastMarkedSegment int
-	logger            *slog.Logger
-	file              *File
-	maxSegmentAge     time.Duration
-	metrics           *Metrics
-	quit              chan struct{}
-	runFindTicker     *time.Ticker
-	wg                sync.WaitGroup
+	dataIOUpdate     chan dataUpdate
+	lastSavedSegment int
+	logger           *slog.Logger
+	file             *File
+	key              string
+	maxSegmentAge    time.Duration
+	metrics          *Metrics
+	quit             chan struct{}
+	runFindTicker    *time.Ticker
+	wg               sync.WaitGroup
 }
 
 // dataUpdate is an update event that some amount of data has been read out of the WAL and enqueued, delivered or dropped.
@@ -50,17 +51,17 @@ type dataUpdate struct {
 
 var _ Tracker = (*SegmentTracker)(nil)
 
-// NewSegmentTracker creates a new SegmentTracker.
-func NewSegmentTracker(file *File, maxSegmentAge time.Duration, logger *slog.Logger, metrics *Metrics) *SegmentTracker {
+// NewSegmentTracker creates a new SegmentTracker, storing the progress of key in file.
+func NewSegmentTracker(file *File, key string, maxSegmentAge time.Duration, logger *slog.Logger, metrics *Metrics) *SegmentTracker {
 	return &SegmentTracker{
-		lastMarkedSegment: -1, // Segment ID last marked on disk.
-		file:              file,
+		lastSavedSegment: noSegment, // Segment ID last marked on disk.
+		file:             file,
+		key:              key,
 		//TODO: What is a good size for the channel?
-		dataIOUpdate: make(chan dataUpdate, 100),
-		quit:         make(chan struct{}),
-		logger:       logger,
-		metrics:      metrics,
-
+		dataIOUpdate:  make(chan dataUpdate, 100),
+		quit:          make(chan struct{}),
+		logger:        logger,
+		metrics:       metrics.curryWithId(key),
 		maxSegmentAge: maxSegmentAge,
 		// runFindTicker will force the execution of the find markable segment routine every second
 		runFindTicker: time.NewTicker(time.Second),
@@ -68,16 +69,16 @@ func NewSegmentTracker(file *File, maxSegmentAge time.Duration, logger *slog.Log
 }
 
 func (t *SegmentTracker) Start() {
-	// Load the last marked segment from disk (if it exists).
-	if lastSegment := t.file.LastMarkedSegment(); lastSegment >= 0 {
-		t.lastMarkedSegment = lastSegment
+	// Load the last saved segment from disk (if it exists).
+	if lastSegment := t.file.LastStoredSegment(t.key); lastSegment >= 0 {
+		t.lastSavedSegment = lastSegment
 	}
 
 	t.wg.Go(t.runUpdatePendingData)
 }
 
-func (t *SegmentTracker) LastMarkedSegment() int {
-	return t.file.LastMarkedSegment()
+func (t *SegmentTracker) LastStoredSegment() int {
+	return t.file.LastStoredSegment(t.key)
 }
 
 func (t *SegmentTracker) UpdateReceivedData(segmentId, dataCount int) {
@@ -92,6 +93,12 @@ func (t *SegmentTracker) UpdateSentData(segmentId, dataCount int) {
 		segmentId: segmentId,
 		dataCount: -1 * dataCount,
 	}
+}
+
+func (t *SegmentTracker) Stop() {
+	t.runFindTicker.Stop()
+	close(t.quit)
+	t.wg.Wait()
 }
 
 // countDataItem tracks inside a map the count of in-flight log entries, and the last update received, for a given segment.
@@ -148,20 +155,14 @@ func (t *SegmentTracker) runUpdatePendingData() {
 			continue
 		}
 
-		markableSegment := findMarkableSegment(segmentDataCount, t.maxSegmentAge)
-		t.logger.Debug("found markable segment", "segment", markableSegment)
-		if markableSegment > t.lastMarkedSegment {
-			t.file.MarkSegment(markableSegment)
-			t.lastMarkedSegment = markableSegment
-			t.metrics.lastMarkedSegment.WithLabelValues().Set(float64(markableSegment))
+		segment := findMarkableSegment(segmentDataCount, t.maxSegmentAge)
+		t.logger.Debug("found markable segment", "segment", segment)
+		if segment > t.lastSavedSegment {
+			t.file.StoreSegment(t.key, segment)
+			t.lastSavedSegment = segment
+			t.metrics.lastSavedSegment.WithLabelValues().Set(float64(segment))
 		}
 	}
-}
-
-func (t *SegmentTracker) Stop() {
-	t.runFindTicker.Stop()
-	close(t.quit)
-	t.wg.Wait()
 }
 
 // findMarkableSegment finds, given the summary of data updates received, and a threshold on how much time can pass for
@@ -211,7 +212,7 @@ func findMarkableSegment(segmentDataCount map[int]*countDataItem, tooOldThreshol
 }
 
 // NewNopTracker creates a new no-op Tracker.
-// This is useful when marker tracking
+// This is useful when savepoint tracking
 // is not needed or disabled.
 func NewNopTracker() *NopTracker {
 	return &NopTracker{}
@@ -220,11 +221,11 @@ func NewNopTracker() *NopTracker {
 var _ Tracker = (*NopTracker)(nil)
 
 // NopTracker is a no-op implementation of Tracker. All methods
-// are implemented as empty functions, making it suitable for use when marker
+// are implemented as empty functions, making it suitable for use when savepoint
 // tracking functionality is not required.
 type NopTracker struct{}
 
-func (n *NopTracker) LastMarkedSegment() int { return -1 }
+func (n *NopTracker) LastStoredSegment() int { return noSegment }
 
 func (n *NopTracker) UpdateReceivedData(segmentId int, dataCount int) {}
 

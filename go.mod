@@ -75,7 +75,7 @@ require (
 	github.com/grafana/go-gelf/v2 v2.0.1
 	github.com/grafana/jfr-parser/pprof v0.0.4
 	github.com/grafana/jsonparser v0.0.0-20250909130937-5f438463be34
-	github.com/grafana/kafka_exporter v0.0.0-20240409084445-5e3488ad9f9a
+	github.com/grafana/kafka_exporter v0.0.0-20261016145052-44e4679ca78b
 	github.com/grafana/loki/pkg/push v0.0.0-20251125172520-2f85998f1adf
 	github.com/grafana/loki/v3 v3.0.0-20260915071729-5cf8c23a258d // k324 release
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.12
@@ -121,6 +121,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/oliver006/redis_exporter v1.86.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.162.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/connector/exceptionsconnector v0.162.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.162.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.162.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.162.0

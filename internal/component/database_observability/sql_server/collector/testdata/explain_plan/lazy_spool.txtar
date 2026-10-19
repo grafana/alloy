@@ -1,0 +1,22 @@
+SQL Server showplan XML with a Lazy Spool, which SQL Server emits as a
+<Spool> wrapper containing its input operator.
+
+-- lazy_spool.xml --
+<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan">
+  <BatchSequence>
+    <Batch>
+      <Statements>
+        <StmtSimple>
+          <QueryPlan>
+            <RelOp PhysicalOp="Table Spool" LogicalOp="Lazy Spool" EstimateRows="2000" EstimatedTotalSubtreeCost="0.2">
+              <OutputList />
+              <Spool>
+                <RelOp PhysicalOp="Table Scan" LogicalOp="Table Scan" EstimateRows="2000" EstimatedTotalSubtreeCost="0.1"><OutputList /><TableScan><Object Database="[MyDb]" Schema="[dbo]" Table="[t1]" /></TableScan></RelOp>
+              </Spool>
+            </RelOp>
+          </QueryPlan>
+        </StmtSimple>
+      </Statements>
+    </Batch>
+  </BatchSequence>
+</ShowPlanXML>
