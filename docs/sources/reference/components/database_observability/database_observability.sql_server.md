@@ -41,10 +41,10 @@ You can use the following arguments with `database_observability.sql_server`:
 | `exclude_users`     | `list(string)`       | A list of original SQL Server login names to exclude from query samples. | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
 | `query_timeout`     | `duration`           | Timeout for each SQL statement.                                          | `"10s"` | no       |
 
-The `exclude_current_user` argument excludes Alloy's tagged SQL from query metrics, query details, explain plans, and query samples.
+The `exclude_current_user` argument excludes SQL tagged by Alloy from query metrics, query details, explain plans, and query samples.
 Query Store doesn't identify the login that executed a query, so this exclusion can't remove arbitrary historical queries by login or previously captured Alloy queries without the marker.
 
-For live query samples, `exclude_current_user` also excludes sessions opened with Alloy's login.
+For live query samples, `exclude_current_user` also excludes sessions opened with the SQL Server login configured for Alloy.
 Setting it to `false` disables both marker filtering and automatic current-login exclusion.
 The `exclude_users` list still applies to query samples, and Alloy always excludes the request that collects the samples.
 Schema discovery and health-check results aren't filtered by this argument.
