@@ -531,14 +531,149 @@ func getOrigin(URL string) string {
 	return fmt.Sprintf("%s://%s", parsed.Scheme, parsed.Host)
 }
 
-// urlMatchesOrigins returns true if URL matches at least one of origin prefix. Wildcard '*' and '?' supported
+// urlMatchesOrigins returns true if URL matches at least one origin of the form
+// [scheme://]host[:port][/path]. Each part is matched separately, '*' and '?'
+// are wildcards, and the path matches as a prefix.
 func urlMatchesOrigins(URL string, origins []string) bool {
+	u, ok := parseOriginURL(URL)
+	if !ok {
+		return false
+	}
 	for _, origin := range origins {
-		if origin == "*" || wildcard.Match(origin+"*", URL) {
+		if origin == "*" {
+			return true
+		}
+		if p, ok := parseOriginPattern(origin); ok && p.matches(u) {
 			return true
 		}
 	}
 	return false
+}
+
+type originURL struct {
+	scheme, host, port, path string
+}
+
+func parseOriginURL(raw string) (originURL, bool) {
+	u, err := url.Parse(raw)
+	if err != nil || u.Opaque != "" || (u.Scheme != "http" && u.Scheme != "https") {
+		return originURL{}, false
+	}
+	host := strings.TrimSuffix(strings.ToLower(u.Hostname()), ".")
+	// An IPv6 zone like [::1%.example.com] would match host wildcards, but the zone is ignored when dialing.
+	if strings.Contains(host, "%") {
+		return originURL{}, false
+	}
+	// net/http converts non-ASCII hosts with IDNA before dialing, which turns characters like U+3002 into dots.
+	for i := 0; i < len(host); i++ {
+		if host[i] >= 0x80 {
+			return originURL{}, false
+		}
+	}
+	port := u.Port()
+	if port == "" {
+		port = defaultPort(u.Scheme)
+	}
+	path := u.EscapedPath()
+	if path == "" {
+		path = "/"
+	}
+	return originURL{scheme: u.Scheme, host: host, port: port, path: path}, true
+}
+
+func defaultPort(scheme string) string {
+	if scheme == "https" {
+		return "443"
+	}
+	return "80"
+}
+
+type originPattern struct {
+	scheme, host, port, path string
+}
+
+func parseOriginPattern(origin string) (originPattern, bool) {
+	var p originPattern
+	rest := origin
+	if scheme, after, ok := strings.Cut(rest, "://"); ok {
+		p.scheme, rest = strings.ToLower(scheme), after
+	}
+	authority, path, hasPath := strings.Cut(rest, "/")
+	if hasPath {
+		p.path = "/" + path
+	}
+
+	if strings.HasPrefix(authority, "[") {
+		end := strings.Index(authority, "]")
+		if end < 0 {
+			return originPattern{}, false
+		}
+		p.host, authority = authority[1:end], authority[end+1:]
+		if authority != "" {
+			port, ok := strings.CutPrefix(authority, ":")
+			if !ok {
+				return originPattern{}, false
+			}
+			p.port = port
+		}
+	} else if host, port, ok := strings.Cut(authority, ":"); ok {
+		p.host, p.port = host, port
+	} else {
+		p.host = authority
+	}
+	p.host = strings.TrimSuffix(strings.ToLower(p.host), ".")
+	if p.host == "" {
+		return originPattern{}, false
+	}
+	return p, true
+}
+
+func (p originPattern) matches(u originURL) bool {
+	if p.scheme != "" && !wildcard.Match(p.scheme, u.scheme) {
+		return false
+	}
+	port := p.port
+	if port == "" {
+		port = defaultPort(u.scheme)
+	}
+	if !wildcard.Match(port, u.port) {
+		return false
+	}
+	return hostMatches(p.host, u.host) && p.pathMatches(u.path)
+}
+
+// hostMatches matches label by label, so a wildcard like 10.0.0.* can't match a
+// longer name like 10.0.0.1.example.net. A bare "*" matches any host and a
+// leading "*." matches one or more labels.
+func hostMatches(pattern, host string) bool {
+	if pattern == "*" {
+		return true
+	}
+	hostLabels := strings.Split(host, ".")
+	if rest, ok := strings.CutPrefix(pattern, "*."); ok {
+		patternLabels := strings.Split(rest, ".")
+		if len(hostLabels) <= len(patternLabels) {
+			return false
+		}
+		return labelsMatch(patternLabels, hostLabels[len(hostLabels)-len(patternLabels):])
+	}
+	return labelsMatch(strings.Split(pattern, "."), hostLabels)
+}
+
+func labelsMatch(patterns, labels []string) bool {
+	if len(patterns) != len(labels) {
+		return false
+	}
+	for i := range patterns {
+		if !wildcard.Match(patterns[i], labels[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+func (p originPattern) pathMatches(path string) bool {
+	return wildcard.Match(p.path+"*", path)
 }
 
 func hasHttpPrefix(URL string) bool {
