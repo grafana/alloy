@@ -21,7 +21,7 @@ import (
 func TestTailer(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	runTailerTest(t, func(t *testing.T, send sendFunc, received func() []loki.Entry) {
+	runTailerTest(t, func(t *testing.T, newBatcher func(model.LabelSet) loki.StreamBatcher, received func() []loki.Entry) {
 		l := logging.NewSlogNop()
 		tempDir := t.TempDir()
 		logFile, err := os.CreateTemp(tempDir, "example")
@@ -40,7 +40,7 @@ func TestTailer(t *testing.T) {
 		tailer := newTailer(
 			newMetrics(nil),
 			l,
-			send,
+			newBatcher,
 			positionsFile,
 			func() bool { return true },
 			sourceOptions{
@@ -116,7 +116,7 @@ func TestTailer(t *testing.T) {
 func TestTailerPositionFileEntryDeleted(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	runTailerTest(t, func(t *testing.T, send sendFunc, received func() []loki.Entry) {
+	runTailerTest(t, func(t *testing.T, newBatcher func(model.LabelSet) loki.StreamBatcher, received func() []loki.Entry) {
 		l := logging.NewSlogNop()
 		tempDir := t.TempDir()
 		logFile, err := os.CreateTemp(tempDir, "example")
@@ -135,7 +135,7 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 		tailer := newTailer(
 			newMetrics(nil),
 			l,
-			send,
+			newBatcher,
 			positionsFile,
 			func() bool { return false },
 			sourceOptions{
@@ -186,7 +186,7 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 func TestTailerDeleteFileInstant(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	runTailerTest(t, func(t *testing.T, send sendFunc, _ func() []loki.Entry) {
+	runTailerTest(t, func(t *testing.T, newBatcher func(model.LabelSet) loki.StreamBatcher, _ func() []loki.Entry) {
 		l := logging.NewSlogNop()
 		tempDir := t.TempDir()
 		logFile, err := os.CreateTemp(tempDir, "example")
@@ -205,7 +205,7 @@ func TestTailerDeleteFileInstant(t *testing.T) {
 		tailer := newTailer(
 			newMetrics(nil),
 			l,
-			send,
+			newBatcher,
 			positionsFile,
 			func() bool { return true },
 			sourceOptions{
@@ -243,7 +243,7 @@ func TestTailerCancelWhileSendBlocked(t *testing.T) {
 
 	t.Run("pipeline v1", func(t *testing.T) {
 		recv := loki.NewLogsReceiver()
-		testTailerCancelWhileSendBlocked(t, sendToV1(recv), func() string {
+		testTailerCancelWhileSendBlocked(t, channelBatcher(recv), func() string {
 			entry := <-recv.Chan()
 			return entry.Line
 		})
@@ -251,7 +251,8 @@ func TestTailerCancelWhileSendBlocked(t *testing.T) {
 
 	t.Run("pipeline v2", func(t *testing.T) {
 		consumer := &blockingConsumer{CollectingConsumer: loki.NewCollectingConsumer()}
-		testTailerCancelWhileSendBlocked(t, sendToV2(consumer), func() string {
+		// Batch size 1 so the second line is sent in its own Consume call.
+		testTailerCancelWhileSendBlocked(t, consumerBatcher(consumer, 1), func() string {
 			var entries []loki.Entry
 			require.Eventually(t, func() bool {
 				entries = consumer.Entries()
@@ -262,7 +263,7 @@ func TestTailerCancelWhileSendBlocked(t *testing.T) {
 	})
 }
 
-func testTailerCancelWhileSendBlocked(t *testing.T, send sendFunc, firstLine func() string) {
+func testTailerCancelWhileSendBlocked(t *testing.T, newBatcher func(model.LabelSet) loki.StreamBatcher, firstLine func() string) {
 	l := logging.NewSlogNop()
 	tempDir := t.TempDir()
 
@@ -294,7 +295,7 @@ func testTailerCancelWhileSendBlocked(t *testing.T, send sendFunc, firstLine fun
 	tailer := newTailer(
 		newMetrics(nil),
 		l,
-		send,
+		newBatcher,
 		positionsFile,
 		func() bool { return true },
 		sourceOptions{
@@ -346,7 +347,7 @@ func (c *blockingConsumer) Consume(ctx context.Context, batch loki.Batch) error 
 func TestTailerCorruptedPositions(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	runTailerTest(t, func(t *testing.T, send sendFunc, received func() []loki.Entry) {
+	runTailerTest(t, func(t *testing.T, newBatcher func(model.LabelSet) loki.StreamBatcher, received func() []loki.Entry) {
 		l := logging.NewSlogNop()
 		tempDir := t.TempDir()
 		logFile, err := os.CreateTemp(tempDir, "example")
@@ -371,7 +372,7 @@ func TestTailerCorruptedPositions(t *testing.T) {
 		tailer := newTailer(
 			newMetrics(nil),
 			l,
-			send,
+			newBatcher,
 			positionsFile,
 			func() bool { return true },
 			sourceOptions{
@@ -449,7 +450,7 @@ func TestTailerCorruptedPositions(t *testing.T) {
 func TestTailer_Compressions(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	runTailerTest(t, func(t *testing.T, send sendFunc, received func() []loki.Entry) {
+	runTailerTest(t, func(t *testing.T, newBatcher func(model.LabelSet) loki.StreamBatcher, received func() []loki.Entry) {
 		logger := logging.NewSlogNop()
 		positionsFile, err := positions.New(logger, positions.Config{
 			SyncPeriod:    50 * time.Millisecond,
@@ -467,7 +468,7 @@ func TestTailer_Compressions(t *testing.T) {
 		tailer := newTailer(
 			newMetrics(nil),
 			logger,
-			send,
+			newBatcher,
 			positionsFile,
 			// We return false here to verify that position is kept and we don't re-ingest the file.
 			func() bool { return false },
@@ -505,13 +506,13 @@ func TestTailer_Compressions(t *testing.T) {
 func TestTailer_GigantiqueGunzipFile(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	runTailerTest(t, func(t *testing.T, send sendFunc, received func() []loki.Entry) {
+	runTailerTest(t, func(t *testing.T, newBatcher func(model.LabelSet) loki.StreamBatcher, received func() []loki.Entry) {
 		file := "testdata/long-access.gz"
 
 		tailer := newTailer(
 			newMetrics(prometheus.NewRegistry()),
 			logging.NewSlogNop(),
-			send,
+			newBatcher,
 			positions.NewNop(),
 			func() bool { return false },
 			sourceOptions{
@@ -537,13 +538,13 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 	fileContent, err := os.ReadFile("testdata/onelinelog.log")
 	require.NoError(t, err)
 	t.Run("gunzip file", func(t *testing.T) {
-		runTailerTest(t, func(t *testing.T, send sendFunc, received func() []loki.Entry) {
+		runTailerTest(t, func(t *testing.T, newBatcher func(model.LabelSet) loki.StreamBatcher, received func() []loki.Entry) {
 			file := "testdata/onelinelog.log.gz"
 
 			tailer := newTailer(
 				newMetrics(prometheus.NewRegistry()),
 				logging.NewSlogNop(),
-				send,
+				newBatcher,
 				positions.NewNop(),
 				func() bool { return false },
 				sourceOptions{
@@ -565,13 +566,13 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 	})
 
 	t.Run("bzip2 file", func(t *testing.T) {
-		runTailerTest(t, func(t *testing.T, send sendFunc, received func() []loki.Entry) {
+		runTailerTest(t, func(t *testing.T, newBatcher func(model.LabelSet) loki.StreamBatcher, received func() []loki.Entry) {
 			file := "testdata/onelinelog.log.bz2"
 
 			tailer := newTailer(
 				newMetrics(prometheus.NewRegistry()),
 				logging.NewSlogNop(),
-				send,
+				newBatcher,
 				positions.NewNop(),
 				func() bool { return false },
 				sourceOptions{
@@ -593,13 +594,13 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 	})
 
 	t.Run("tar.gz file", func(t *testing.T) {
-		runTailerTest(t, func(t *testing.T, send sendFunc, received func() []loki.Entry) {
+		runTailerTest(t, func(t *testing.T, newBatcher func(model.LabelSet) loki.StreamBatcher, received func() []loki.Entry) {
 			file := "testdata/onelinelog.tar.gz"
 
 			tailer := newTailer(
 				newMetrics(prometheus.NewRegistry()),
 				logging.NewSlogNop(),
-				send,
+				newBatcher,
 				positions.NewNop(),
 				func() bool { return false },
 				sourceOptions{
@@ -626,17 +627,29 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 	})
 }
 
-func runTailerTest(t *testing.T, run func(t *testing.T, send sendFunc, received func() []loki.Entry)) {
+func runTailerTest(t *testing.T, run func(t *testing.T, newBatcher func(model.LabelSet) loki.StreamBatcher, received func() []loki.Entry)) {
 	t.Helper()
 
 	t.Run("pipeline v1", func(t *testing.T) {
 		handler := loki.NewCollectingHandler()
 		defer handler.Stop()
-		run(t, sendToV1(handler.Receiver()), handler.Received)
+		run(t, channelBatcher(handler.Receiver()), handler.Received)
 	})
 
 	t.Run("pipeline v2", func(t *testing.T) {
 		consumer := loki.NewCollectingConsumer()
-		run(t, sendToV2(consumer), consumer.Entries)
+		run(t, consumerBatcher(consumer, 10), consumer.Entries)
 	})
+}
+
+func channelBatcher(recv loki.LogsReceiver) func(model.LabelSet) loki.StreamBatcher {
+	return func(labels model.LabelSet) loki.StreamBatcher {
+		return loki.NewChannelStreamBatcher(loki.NewFanout([]loki.LogsReceiver{recv}), labels)
+	}
+}
+
+func consumerBatcher(c loki.Consumer, size int) func(model.LabelSet) loki.StreamBatcher {
+	return func(labels model.LabelSet) loki.StreamBatcher {
+		return loki.NewConsumerStreamBatcher(c, labels, size)
+	}
 }

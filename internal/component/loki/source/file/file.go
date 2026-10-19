@@ -201,12 +201,10 @@ type Component struct {
 	// scheduling when file matching is enabled.
 	watcher *time.Ticker
 
-	handler loki.LogsReceiver
 	posFile positions.Positions
 
-	fanout *loki.Fanout
-
 	pipelineV2 bool
+	fanout     *loki.Fanout
 	fanoutV2   *loki.FanoutV2
 
 	stopping atomic.Bool
@@ -243,7 +241,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:       o,
 		metrics:    newMetrics(o.Registerer),
-		handler:    loki.NewLogsReceiver(),
 		pipelineV2: svc.(lokipipelinev2.Data).PipelineV2Enabled(),
 		fanout:     loki.NewFanout(nil),
 		fanoutV2:   loki.NewFanoutV2(nil),
@@ -273,32 +270,20 @@ func (c *Component) Run(ctx context.Context) error {
 		c.posFile.Stop()
 	}()
 
-	var wg sync.WaitGroup
-
-	if !c.pipelineV2 {
-		// Start consume and fanout loop
-		wg.Go(func() { loki.Consume(ctx, c.handler, c.fanout) })
-	}
-
-	wg.Go(func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-c.watcher.C:
-				c.mut.Lock()
-				if !c.args.FileMatch.Enabled {
-					c.mut.Unlock()
-					continue
-				}
-				c.scheduleSources()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-c.watcher.C:
+			c.mut.Lock()
+			if !c.args.FileMatch.Enabled {
 				c.mut.Unlock()
+				continue
 			}
+			c.scheduleSources()
+			c.mut.Unlock()
 		}
-	})
-
-	wg.Wait()
-	return nil
+	}
 }
 
 // Update implements component.Component.
@@ -419,7 +404,7 @@ func (c *Component) newSource(opts sourceOptions) (source.Source[positions.Entry
 	tailer := newTailer(
 		c.metrics,
 		c.opts.Logger,
-		c.newSend(),
+		c.newBatcher,
 		c.posFile,
 		c.IsStopping,
 		opts,
@@ -436,11 +421,13 @@ func (c *Component) newSource(opts sourceOptions) (source.Source[positions.Entry
 	}), nil
 }
 
-func (c *Component) newSend() sendFunc {
+func (c *Component) newBatcher(labels model.LabelSet) loki.StreamBatcher {
 	if c.pipelineV2 {
-		return sendToV2(c.fanoutV2)
+		// FIXME(kalleep): Should we make this configurable?
+		const pipelineV2BatchSize = 100
+		return loki.NewConsumerStreamBatcher(c.fanoutV2, labels, pipelineV2BatchSize)
 	}
-	return sendToV1(c.handler)
+	return loki.NewChannelStreamBatcher(c.fanout, labels)
 }
 
 func (c *Component) IsStopping() bool {
