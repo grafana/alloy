@@ -47,7 +47,7 @@ type AlSquashed struct {
 }
 
 type alArgs struct {
-	AlSquashed `alloy:",squash"`
+	AlSquashed AlSquashed `alloy:",squash"`
 
 	Name      string            `alloy:"name,attr,optional"`
 	Timeout   time.Duration     `alloy:"timeout,attr,optional"`
@@ -87,7 +87,7 @@ func TestDefaultsFrom(t *testing.T) {
 	}))
 	require.NoError(t, err)
 
-	require.Equal(t, "s", args.Shared)
+	require.Equal(t, "s", args.AlSquashed.Shared)
 	require.Equal(t, "n", args.Name)
 	require.Equal(t, time.Second, args.Timeout)
 	require.Equal(t, alloytypes.Secret("secret"), args.Token)
