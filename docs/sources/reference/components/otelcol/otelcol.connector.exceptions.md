@@ -35,6 +35,10 @@ Depending on the signals you set in the `output` block, `otelcol.connector.excep
   Use this to route exception logs to a dedicated backend.
 * **Traces to metrics** and **logs to metrics**: Increments an `exceptions` counter metric for every exception found in spans or log records.
 
+Traces to logs, traces to metrics, and logs to metrics require the `service.name` resource attribute.
+`otelcol.connector.exceptions` skips any resource that doesn't set it.
+Logs to logs forwards exception log records whether or not the resource sets `service.name`.
+
 [exceptions-spans]: https://opentelemetry.io/docs/specs/semconv/exceptions/exceptions-spans/
 [exceptions-logs]: https://opentelemetry.io/docs/specs/semconv/exceptions/exceptions-logs/
 
