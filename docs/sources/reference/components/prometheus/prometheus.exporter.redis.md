@@ -32,8 +32,8 @@ You can use the following arguments with `prometheus.exporter.redis`:
 
 | Name                          | Type           | Description                                                                                                             | Default    | Required |
 | ----------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------- | -------- |
-| `redis_addr`                  | `string`       | Address (host and port) of the Redis instance to connect to.                                                            |            | yes      |
-| `check_key_groups`            | `list(string)` | List of Lua regular expressions (regex) for grouping keys.                                                              |            | no       |
+| `redis_addr`                  | `string`       | Address of the Redis instance to connect to, as host and port.                                                          |            | yes      |
+| `check_key_groups`            | `list(string)` | List of Lua regular expressions for grouping keys.                                                                      |            | no       |
 | `check_key_groups_batch_size` | `int`          | Check key or key groups batch size hint for the underlying SCAN.                                                        | `10000`    | no       |
 | `check_keys`                  | `list(string)` | List of key-patterns to export value and length/size, searched for with SCAN.                                           |            | no       |
 | `check_single_keys`           | `list(string)` | List of single keys to export value and length/size.                                                                    |            | no       |
@@ -56,14 +56,14 @@ You can use the following arguments with `prometheus.exporter.redis`:
 | `redis_password`              | `secret`       | Password of the Redis instance.                                                                                         |            | no       |
 | `redis_password_file`         | `string`       | Path of a file containing a password.                                                                                   |            | no       |
 | `redis_password_map_file`     | `string`       | Path of a JSON file containing a map of Redis URIs to passwords.                                                        |            | no       |
-| `redis_user`                  | `string`       | User name to use for authentication. Redis ACL for Redis 6.0 and newer.                                                 |            | no       |
+| `redis_user`                  | `string`       | User name for authentication. Requires Redis 6.0 or later with ACL support.                                             |            | no       |
 | `script_path`                 | `string`       | Path to Lua Redis script for collecting extra metrics.                                                                  |            | no       |
 | `script_paths`                | `list(string)` | List of paths to Lua Redis scripts for collecting extra metrics.                                                        |            | no       |
 | `set_client_name`             | `bool`         | Whether to set client name to `redis_exporter`.                                                                         | `true`     | no       |
 | `skip_tls_verification`       | `bool`         | Whether to skip TLS verification.                                                                                       | `false`    | no       |
-| `tls_ca_cert_file`            | `string`       | Name of the CA certificate file (including full path) if the server requires TLS client authentication.                 |            | no       |
-| `tls_client_cert_file`        | `string`       | Name of the client certificate file (including full path) if the server requires TLS client authentication.             |            | no       |
-| `tls_client_key_file`         | `string`       | Name of the client key file (including full path) if the server requires TLS client authentication.                     |            | no       |
+| `tls_ca_cert_file`            | `string`       | Full path to the CA certificate file if the server requires TLS client authentication.                                  |            | no       |
+| `tls_client_cert_file`        | `string`       | Full path to the client certificate file if the server requires TLS client authentication.                              |            | no       |
+| `tls_client_key_file`         | `string`       | Full path to the client key file if the server requires TLS client authentication.                                      |            | no       |
 
 You can supply the Redis password with `redis_password`, `redis_password_file`, or `redis_password_map_file`.
 Set only one of `redis_password_file` and `redis_password_map_file`.
