@@ -163,7 +163,10 @@ func (c *WALConsumer) Start() {
 }
 
 func (c *WALConsumer) ConsumeEntry(_ context.Context, entry loki.Entry) error {
-	return c.writer.WriteEntry(entry)
+	if err := c.writer.WriteEntry(entry); err != nil {
+		return fmt.Errorf("%w: %w", ErrWALWrite, err)
+	}
+	return nil
 }
 
 // Stop stops the consumer without draining the WAL.
