@@ -49,9 +49,9 @@ You can use the following arguments with `prometheus.exporter.snmp`:
 | Name                    | Type                 | Description                                                                                                             | Default     | Required |
 | ----------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------- | ----------- | -------- |
 | `concurrency`           | `int`                | SNMP exporter concurrency.                                                                                              | `1`         | no       |
+| `config`                | `string` or `secret` | SNMP configuration as inline string.                                                                                    |             | no       |
 | `config_file`           | `string`             | SNMP configuration file defining custom modules.                                                                        |             | no       |
 | `config_merge_strategy` | `string`             | Defines how `config` or `config_file` contents merge with the embedded SNMP configuration. Can be `replace` or `merge`. | `"replace"` | no       |
-| `config`                | `string` or `secret` | SNMP configuration as inline string.                                                                                    |             | no       |
 | `targets`               | `list(map(string))`  | SNMP targets.                                                                                                           |             | no       |
 
 The `config_file` argument points to a YAML file that defines which `snmp_exporter` modules to use.
