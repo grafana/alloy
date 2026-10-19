@@ -37,6 +37,8 @@ The `format` argument controls how the component encodes metrics when written to
 - `text` - Uses the Prometheus text exposition format. This is the default.
 - `openmetrics` - Uses the OpenMetrics text format.
 
+If you set any other value, the component logs a warning each time it writes metrics and uses the `text` format.
+
 ## Blocks
 
 The `prometheus.echo` component doesn't support any blocks.
@@ -52,8 +54,10 @@ The following fields are exported and can be referenced by other components:
 
 ## Component health
 
-`prometheus.echo` is only reported as unhealthy if given an invalid configuration.
+`prometheus.echo` is only reported as unhealthy if its configuration can't be evaluated, for example because an argument has the wrong type.
 In those cases, exported fields retain their last healthy values.
+
+An unrecognized `format` value doesn't make the component unhealthy. The component uses the `text` format instead.
 
 ## Debug information
 
