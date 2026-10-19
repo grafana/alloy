@@ -4,7 +4,6 @@ package clickhouse
 import (
 	"time"
 
-	"github.com/go-viper/mapstructure/v2"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
@@ -83,14 +82,18 @@ var _ exporter.Arguments = Arguments{}
 
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
+	defaultCfg := clickhouseexporter.NewFactory().CreateDefaultConfig().(*clickhouseexporter.Config)
 	*args = Arguments{
-		Database:        "default",
-		LogsTableName:   "otel_logs",
-		TracesTableName: "otel_traces",
-		CreateSchema:    true,
-		Compress:        "lz4",
-		AsyncInsert:     true,
-		Timeout:         otelcol.DefaultTimeout,
+		Database:         defaultCfg.Database,
+		ConnectionParams: defaultCfg.ConnectionParams,
+		LogsTableName:    defaultCfg.LogsTableName,
+		TracesTableName:  defaultCfg.TracesTableName,
+		TTL:              defaultCfg.TTL,
+		CreateSchema:     defaultCfg.CreateSchema,
+		Compress:         defaultCfg.Compress,
+		AsyncInsert:      defaultCfg.AsyncInsert,
+		JSON:             defaultCfg.JSON,
+		Timeout:          defaultCfg.TimeoutSettings.Timeout,
 	}
 	args.Queue.SetToDefault()
 	args.Retry.SetToDefault()
@@ -113,11 +116,6 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		return nil, err
 	}
 
-	metricsTables, err := args.convertMetricsTables()
-	if err != nil {
-		return nil, err
-	}
-
 	cfg := &clickhouseexporter.Config{
 		TimeoutSettings: otelpexporterhelper.TimeoutConfig{
 			Timeout: args.Timeout,
@@ -129,15 +127,15 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		Password:         configopaque.String(args.Password),
 		Database:         args.Database,
 		ConnectionParams: args.ConnectionParams,
-		LogsTableName:   args.LogsTableName,
-		TracesTableName: args.TracesTableName,
-		TTL:             args.TTL,
+		LogsTableName:    args.LogsTableName,
+		TracesTableName:  args.TracesTableName,
+		TTL:              args.TTL,
 		ClusterName:      args.ClusterName,
 		CreateSchema:     args.CreateSchema,
 		Compress:         args.Compress,
 		AsyncInsert:      args.AsyncInsert,
 		JSON:             args.JSON,
-		MetricsTables:    metricsTables,
+		MetricsTables:    args.convertMetricsTables(),
 	}
 
 	if args.TableEngine != nil {
@@ -157,42 +155,31 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	return cfg, nil
 }
 
-func (args Arguments) convertMetricsTables() (clickhouseexporter.MetricTablesConfig, error) {
-	// Use the upstream factory defaults as the base, then override with user-provided values.
-	fact := clickhouseexporter.NewFactory()
-	defaultCfg := fact.CreateDefaultConfig().(*clickhouseexporter.Config)
-	result := defaultCfg.MetricsTables
-
-	if args.MetricsTables == nil {
-		return result, nil
-	}
+func (args Arguments) convertMetricsTables() clickhouseexporter.MetricTablesConfig {
+	result := clickhouseexporter.NewFactory().CreateDefaultConfig().(*clickhouseexporter.Config).MetricsTables
 
 	mt := args.MetricsTables
-	input := map[string]any{}
+	if mt == nil {
+		return result
+	}
 
 	if mt.Gauge != nil && mt.Gauge.Name != "" {
-		input["gauge"] = map[string]any{"name": mt.Gauge.Name}
+		result.Gauge.Name = mt.Gauge.Name
 	}
 	if mt.Sum != nil && mt.Sum.Name != "" {
-		input["sum"] = map[string]any{"name": mt.Sum.Name}
+		result.Sum.Name = mt.Sum.Name
 	}
 	if mt.Summary != nil && mt.Summary.Name != "" {
-		input["summary"] = map[string]any{"name": mt.Summary.Name}
+		result.Summary.Name = mt.Summary.Name
 	}
 	if mt.Histogram != nil && mt.Histogram.Name != "" {
-		input["histogram"] = map[string]any{"name": mt.Histogram.Name}
+		result.Histogram.Name = mt.Histogram.Name
 	}
 	if mt.ExponentialHistogram != nil && mt.ExponentialHistogram.Name != "" {
-		input["exponential_histogram"] = map[string]any{"name": mt.ExponentialHistogram.Name}
+		result.ExponentialHistogram.Name = mt.ExponentialHistogram.Name
 	}
 
-	if len(input) > 0 {
-		if err := mapstructure.Decode(input, &result); err != nil {
-			return result, err
-		}
-	}
-
-	return result, nil
+	return result
 }
 
 // Extensions implements exporter.Arguments.

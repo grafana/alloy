@@ -15,7 +15,6 @@ otelcol.exporter.clickhouse "default" {
 	username          = "otel"
 	password          = "mysecret"
 	database          = "oteldb"
-	connection_params = {}
 	logs_table_name   = "my_logs"
 	traces_table_name = "my_traces"
 	ttl               = "72h0m0s"
@@ -54,7 +53,7 @@ otelcol.exporter.clickhouse "default" {
 	}
 
 	tls {
-		insecure = true
+		min_version = "1.3"
 	}
 
 	sending_queue {

@@ -2,9 +2,9 @@ package otelcolconvert
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
-	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/clickhouse"
 	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/converter/diag"
@@ -13,7 +13,6 @@ import (
 	clickhouseexporter "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/clickhouseexporter"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
-	"go.opentelemetry.io/collector/config/configtls"
 )
 
 func init() {
@@ -57,6 +56,8 @@ func (clickhouseExporterConverter) ConvertAndAppend(state *State, id componentst
 }
 
 func toClickHouseExporter(cfg *clickhouseexporter.Config) *clickhouse.Arguments {
+	defaultCfg := clickhouseexporter.NewFactory().CreateDefaultConfig().(*clickhouseexporter.Config)
+
 	args := &clickhouse.Arguments{
 		Endpoint:         cfg.Endpoint,
 		Username:         cfg.Username,
@@ -72,7 +73,7 @@ func toClickHouseExporter(cfg *clickhouseexporter.Config) *clickhouse.Arguments 
 		AsyncInsert:      cfg.AsyncInsert,
 		Timeout:          cfg.TimeoutSettings.Timeout,
 		JSON:             cfg.JSON,
-		MetricsTables:    toClickHouseMetricsTables(cfg.MetricsTables),
+		MetricsTables:    toClickHouseMetricsTables(cfg.MetricsTables, defaultCfg.MetricsTables),
 		Queue:            toQueueArguments(cfg.QueueSettings),
 		Retry:            toRetryArguments(cfg.BackOffConfig),
 		DebugMetrics:     common.DefaultValue[clickhouse.Arguments]().DebugMetrics,
@@ -85,35 +86,33 @@ func toClickHouseExporter(cfg *clickhouseexporter.Config) *clickhouse.Arguments 
 		}
 	}
 
-	if tls := toClickHouseTLS(cfg.TLS); tls != nil {
-		args.TLS = tls
+	if !reflect.DeepEqual(cfg.TLS, defaultCfg.TLS) {
+		tls := toTLSClientArguments(cfg.TLS)
+		args.TLS = &tls
 	}
 
 	return args
 }
 
-func toClickHouseMetricsTables(cfg clickhouseexporter.MetricTablesConfig) *clickhouse.MetricTablesArguments {
-	return &clickhouse.MetricTablesArguments{
-		Gauge:                toClickHouseMetricTable(cfg.Gauge.Name),
-		Sum:                  toClickHouseMetricTable(cfg.Sum.Name),
-		Summary:              toClickHouseMetricTable(cfg.Summary.Name),
-		Histogram:            toClickHouseMetricTable(cfg.Histogram.Name),
-		ExponentialHistogram: toClickHouseMetricTable(cfg.ExponentialHistogram.Name),
+// toClickHouseMetricsTables only keeps the table names which differ from the
+// upstream defaults, so that default values aren't written to the output.
+func toClickHouseMetricsTables(cfg, defaults clickhouseexporter.MetricTablesConfig) *clickhouse.MetricTablesArguments {
+	args := &clickhouse.MetricTablesArguments{
+		Gauge:                toClickHouseMetricTable(cfg.Gauge.Name, defaults.Gauge.Name),
+		Sum:                  toClickHouseMetricTable(cfg.Sum.Name, defaults.Sum.Name),
+		Summary:              toClickHouseMetricTable(cfg.Summary.Name, defaults.Summary.Name),
+		Histogram:            toClickHouseMetricTable(cfg.Histogram.Name, defaults.Histogram.Name),
+		ExponentialHistogram: toClickHouseMetricTable(cfg.ExponentialHistogram.Name, defaults.ExponentialHistogram.Name),
 	}
+	if *args == (clickhouse.MetricTablesArguments{}) {
+		return nil
+	}
+	return args
 }
 
-func toClickHouseMetricTable(name string) *clickhouse.MetricTableConfig {
-	if name == "" {
+func toClickHouseMetricTable(name, defaultName string) *clickhouse.MetricTableConfig {
+	if name == "" || name == defaultName {
 		return nil
 	}
 	return &clickhouse.MetricTableConfig{Name: name}
-}
-
-func toClickHouseTLS(cfg configtls.ClientConfig) *otelcol.TLSClientArguments {
-	if cfg.CAFile == "" && cfg.CertFile == "" && cfg.KeyFile == "" &&
-		cfg.ServerName == "" && !cfg.Insecure && !cfg.InsecureSkipVerify {
-		return nil
-	}
-	tls := toTLSClientArguments(cfg)
-	return &tls
 }

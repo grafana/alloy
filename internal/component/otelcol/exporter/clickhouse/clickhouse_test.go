@@ -79,9 +79,27 @@ func TestArguments_Defaults(t *testing.T) {
 	require.Equal(t, "otel_logs", args.LogsTableName)
 	require.Equal(t, "otel_traces", args.TracesTableName)
 	require.Equal(t, true, args.CreateSchema)
-	require.Equal(t, "lz4", args.Compress)
+	require.Equal(t, "", args.Compress)
 	require.Equal(t, true, args.AsyncInsert)
 	require.Equal(t, false, args.JSON)
+
+	// Defaults must match the upstream factory defaults.
+	cfg, err := args.Convert()
+	require.NoError(t, err)
+	actual := cfg.(*clickhouseexporter.Config)
+	expected := clickhouseexporter.NewFactory().CreateDefaultConfig().(*clickhouseexporter.Config)
+
+	require.Equal(t, expected.Database, actual.Database)
+	require.Equal(t, expected.ConnectionParams, actual.ConnectionParams)
+	require.Equal(t, expected.LogsTableName, actual.LogsTableName)
+	require.Equal(t, expected.TracesTableName, actual.TracesTableName)
+	require.Equal(t, expected.TTL, actual.TTL)
+	require.Equal(t, expected.CreateSchema, actual.CreateSchema)
+	require.Equal(t, expected.Compress, actual.Compress)
+	require.Equal(t, expected.AsyncInsert, actual.AsyncInsert)
+	require.Equal(t, expected.JSON, actual.JSON)
+	require.Equal(t, expected.TimeoutSettings, actual.TimeoutSettings)
+	require.Equal(t, expected.MetricsTables, actual.MetricsTables)
 }
 
 func TestArguments_ConvertJSON(t *testing.T) {
