@@ -103,7 +103,7 @@ Dimensions don't apply when logs are both the input and the output signal.
 `otelcol.connector.exceptions` forwards matching log records unchanged, so they keep exactly the attributes they arrived with.
 {{< /admonition >}}
 
-Each converted log record and metric data point always has the following attributes:
+Each converted log record and metric data point has the following attributes:
 
 * `service.name`
 * `span.name`
