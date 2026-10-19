@@ -293,6 +293,7 @@ func (c *ExplainPlans) emit(
 	reason string,
 	plan *database_observability.ExplainPlanNode,
 ) {
+
 	output := &database_observability.ExplainPlanOutput{
 		Metadata: database_observability.ExplainPlanMetadataInfo{
 			QueryIdentifier:        queryHash,
