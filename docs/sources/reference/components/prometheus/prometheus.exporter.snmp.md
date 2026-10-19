@@ -49,11 +49,11 @@ You can use the following arguments with `prometheus.exporter.snmp`:
 
 | Name                    | Type                 | Description                                                                                                             | Default     | Required |
 | ----------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------- | ----------- | -------- |
-| `concurrency`           | `int`                | SNMP exporter concurrency.                                                                                              | `1`         | no       |
+| `concurrency`           | `int`                | Number of modules to scrape in parallel for each target.                                                                | `1`         | no       |
 | `config`                | `string` or `secret` | SNMP configuration as inline string.                                                                                    |             | no       |
-| `config_file`           | `string`             | SNMP configuration file defining custom modules.                                                                        |             | no       |
+| `config_file`           | `string`             | Path to a YAML file that defines SNMP modules and authentications.                                                      |             | no       |
 | `config_merge_strategy` | `string`             | Defines how `config` or `config_file` contents merge with the embedded SNMP configuration. Can be `replace` or `merge`. | `"replace"` | no       |
-| `targets`               | `list(map(string))`  | SNMP targets.                                                                                                           |             | no       |
+| `targets`               | `list(map(string))`  | List of SNMP targets, where each target is a map of labels.                                                             |             | no       |
 
 The `config_file` argument points to a YAML file that defines which `snmp_exporter` modules to use.
 Refer to the [`snmp_exporter` configuration documentation][snmp-exporter-config] for details on how to generate a configuration file.
@@ -82,7 +82,7 @@ You can set the following labels on a target:
 - `address` or `__address__`: The address of the SNMP device. Required.
 - `module`: SNMP modules to use for polling, separated by comma.
 - `auth`: The SNMP authentication profile to use.
-- `walk_params`: The configuration to use for this target.
+- `walk_params`: The `walk_param` profile to use for this target.
 
 The component adds any other labels you define to the scraped metrics.
 
@@ -115,8 +115,8 @@ You can use the following arguments with the `target` block:
 
 | Name           | Type          | Description                                                           | Default | Required |
 | -------------- | ------------- | --------------------------------------------------------------------- | ------- | -------- |
-| `address`      | `string`      | The address of SNMP device.                                           |         | yes      |
-| `auth`         | `string`      | SNMP authentication profile to use.                                   | `""`    | no       |
+| `address`      | `string`      | The address of the SNMP device.                                       |         | yes      |
+| `auth`         | `string`      | The SNMP authentication profile to use.                               | `""`    | no       |
 | `labels`       | `map(string)` | Map of labels to apply to all metrics captured from the target.       | `{}`    | no       |
 | `module`       | `string`      | SNMP modules to use for polling, separated by comma.                  | `""`    | no       |
 | `snmp_context` | `string`      | Override the `context_name` parameter in the SNMP configuration file. | `""`    | no       |
