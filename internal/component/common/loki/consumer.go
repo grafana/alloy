@@ -47,6 +47,21 @@ func (c *CollectingConsumer) Batches() []Batch {
 	return slices.Clone(c.batches)
 }
 
+func (c *CollectingConsumer) Entries() []Entry {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	var entries []Entry
+	for _, b := range c.batches {
+		for _, s := range b.Streams() {
+			for _, e := range s.Entries {
+				entries = append(entries, NewEntryWithCreatedUnixMicro(s.Labels, s.Created(), e))
+			}
+		}
+	}
+	return entries
+}
+
 var _ Consumer = (*NopConsumer)(nil)
 
 func NewNopConsumer() *NopConsumer {
