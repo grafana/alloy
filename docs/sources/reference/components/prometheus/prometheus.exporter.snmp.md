@@ -94,10 +94,10 @@ You can use the following blocks with `prometheus.exporter.snmp`:
 
 {{< docs/alloy-config >}}
 
-| Name                       | Description                                                 | Required |
-| -------------------------- | ----------------------------------------------------------- | -------- |
-| [`target`][target]         | Configures an SNMP target.                                  | no       |
-| [`walk_param`][walk_param] | SNMP connection profiles to override default SNMP settings. | no       |
+| Block                      | Description                                                                | Required |
+| -------------------------- | -------------------------------------------------------------------------- | -------- |
+| [`target`][target]         | Configures an SNMP target.                                                 | no       |
+| [`walk_param`][walk_param] | Configures an SNMP connection profile that overrides the default settings. | no       |
 
 [target]: #target
 [walk_param]: #walk_param
