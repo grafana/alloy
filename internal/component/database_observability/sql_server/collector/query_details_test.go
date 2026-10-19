@@ -427,6 +427,56 @@ func TestQueryDetails_ThrottlesWithinEmitInterval(t *testing.T) {
 	require.Len(t, lokiClient.Received(), 4)
 }
 
+func TestQueryDetails_RetriesWhenSchemaRegistryIsNotReady(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	tableRegistry := NewTableRegistry()
+	c, err := NewQueryDetails(QueryDetailsArguments{
+		DB:              db,
+		CollectInterval: time.Minute,
+		EntryHandler:    lokiClient,
+		Tracker:         trackerFor(testHash),
+		TableRegistry:   tableRegistry,
+		Logger:          util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+
+	key := queryMetricsKey{database: testDatabase, queryHash: testHash}
+	poll := func() {
+		t.Helper()
+		expectQueryText(t, mock, []string{testHash},
+			[]driver.Value{queryHashBytes, "SELECT * FROM foo WHERE id = 1"})
+		require.NoError(t, c.collect(context.Background()))
+	}
+
+	poll()
+	require.Empty(t, lokiClient.Received())
+	require.NotContains(t, c.lastEmittedAt, key)
+
+	tableRegistry.SetTablesForDatabase(testDatabase, []*tableInfo{
+		{database: testDatabase, schema: "dbo", tableName: "foo"},
+	})
+	poll()
+
+	require.NoError(t, mock.ExpectationsWereMet())
+	require.Eventually(t, func() bool {
+		return len(lokiClient.Received()) == 2
+	}, 5*time.Second, 20*time.Millisecond)
+	require.Contains(t, c.lastEmittedAt, key)
+
+	entries := lokiClient.Received()
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, entries[0].Labels)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, entries[1].Labels)
+	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" table="foo" validated="true"`, entries[1].Line)
+}
+
 func TestBuildQueryTextStatement(t *testing.T) {
 	t.Parallel()
 

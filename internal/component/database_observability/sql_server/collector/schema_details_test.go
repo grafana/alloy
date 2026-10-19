@@ -26,6 +26,8 @@ func TestTableRegistryIsValid(t *testing.T) {
 		{database: "books_store", schema: "sales", tableName: "Orders"},
 		{database: "books_store", schema: "archive", tableName: "Orders"},
 	})
+	require.True(t, registry.HasDatabase("books_store"))
+	require.False(t, registry.HasDatabase("missing"))
 
 	tests := []struct {
 		name       string
@@ -100,6 +102,12 @@ func TestTableRegistryIsValid(t *testing.T) {
 	require.False(t, oldTableValid)
 	resolved, newTableValid := registry.IsValid("books_store", "books")
 	require.True(t, newTableValid)
+	require.Equal(t, "books", resolved)
+
+	registry.SetTablesForDatabase("empty_database", nil)
+	require.True(t, registry.HasDatabase("empty_database"))
+	resolved, valid := registry.IsValid("empty_database", "books")
+	require.False(t, valid)
 	require.Equal(t, "books", resolved)
 }
 

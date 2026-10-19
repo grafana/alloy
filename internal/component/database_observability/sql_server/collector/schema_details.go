@@ -84,11 +84,6 @@ func (tr *TableRegistry) SetTablesForDatabase(database string, tablesInfo []*tab
 	tr.mu.Lock()
 	defer tr.mu.Unlock()
 
-	delete(tr.tables, database)
-	if len(tablesInfo) == 0 {
-		return
-	}
-
 	tr.tables[database] = make(map[string]map[string]struct{})
 	for _, info := range tablesInfo {
 		if tr.tables[database][info.schema] == nil {
@@ -96,6 +91,16 @@ func (tr *TableRegistry) SetTablesForDatabase(database string, tablesInfo []*tab
 		}
 		tr.tables[database][info.schema][info.tableName] = struct{}{}
 	}
+}
+
+// HasDatabase reports whether tables have been collected for a database.
+// A database with no tables is still considered collected.
+func (tr *TableRegistry) HasDatabase(database string) bool {
+	tr.mu.RLock()
+	defer tr.mu.RUnlock()
+
+	_, ok := tr.tables[database]
+	return ok
 }
 
 // IsValid resolves a parsed table name against the database's known tables.

@@ -191,6 +191,14 @@ func (c *QueryDetails) collect(ctx context.Context) error {
 			}
 			seen[key] = struct{}{}
 
+			// Schema collection starts concurrently with query details. Wait
+			// until this database has been collected so an empty registry does
+			// not turn real tables into validated=false entries that remain
+			// throttled for the full emit interval.
+			if c.tableRegistry != nil && !c.tableRegistry.HasDatabase(database) {
+				continue
+			}
+
 			if last, ok := c.lastEmittedAt[key]; ok && now.Sub(last) < database_observability.EmitInterval {
 				continue
 			}
