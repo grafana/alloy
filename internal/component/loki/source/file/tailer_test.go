@@ -39,7 +39,7 @@ func TestTailer(t *testing.T) {
 	tailer := newTailer(
 		newMetrics(nil),
 		l,
-		ch1,
+		sendToV1(ch1),
 		positionsFile,
 		func() bool { return true },
 		sourceOptions{
@@ -136,7 +136,7 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 	tailer := newTailer(
 		newMetrics(nil),
 		l,
-		ch1,
+		sendToV1(ch1),
 		positionsFile,
 		func() bool { return false },
 		sourceOptions{
@@ -206,7 +206,7 @@ func TestTailerDeleteFileInstant(t *testing.T) {
 	tailer := newTailer(
 		newMetrics(nil),
 		l,
-		ch1,
+		sendToV1(ch1),
 		positionsFile,
 		func() bool { return true },
 		sourceOptions{
@@ -274,7 +274,7 @@ func TestTailerCancelWhileSendBlocked(t *testing.T) {
 	tailer := newTailer(
 		newMetrics(nil),
 		l,
-		recv,
+		sendToV1(recv),
 		positionsFile,
 		func() bool { return true },
 		sourceOptions{
@@ -338,7 +338,7 @@ func TestTailerCorruptedPositions(t *testing.T) {
 	tailer := newTailer(
 		newMetrics(nil),
 		l,
-		ch1,
+		sendToV1(ch1),
 		positionsFile,
 		func() bool { return true },
 		sourceOptions{
@@ -438,7 +438,7 @@ func TestTailer_Compressions(t *testing.T) {
 	tailer := newTailer(
 		newMetrics(nil),
 		logger,
-		handler.Receiver(),
+		sendToV1(handler.Receiver()),
 		positionsFile,
 		// We return false here to verify that position is kept and we don't re-ingest the file.
 		func() bool { return false },
@@ -482,7 +482,7 @@ func TestTailer_GigantiqueGunzipFile(t *testing.T) {
 	tailer := newTailer(
 		newMetrics(prometheus.NewRegistry()),
 		logging.NewSlogNop(),
-		handler.Receiver(),
+		sendToV1(handler.Receiver()),
 		positions.NewNop(),
 		func() bool { return false },
 		sourceOptions{
@@ -512,7 +512,7 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 		tailer := newTailer(
 			newMetrics(prometheus.NewRegistry()),
 			logging.NewSlogNop(),
-			handler.Receiver(),
+			sendToV1(handler.Receiver()),
 			positions.NewNop(),
 			func() bool { return false },
 			sourceOptions{
@@ -541,7 +541,7 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 		tailer := newTailer(
 			newMetrics(prometheus.NewRegistry()),
 			logging.NewSlogNop(),
-			handler.Receiver(),
+			sendToV1(handler.Receiver()),
 			positions.NewNop(),
 			func() bool { return false },
 			sourceOptions{
@@ -569,7 +569,7 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 		tailer := newTailer(
 			newMetrics(prometheus.NewRegistry()),
 			logging.NewSlogNop(),
-			handler.Receiver(),
+			sendToV1(handler.Receiver()),
 			positions.NewNop(),
 			func() bool { return false },
 			sourceOptions{
