@@ -6,13 +6,16 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
 	alloyutil "github.com/grafana/alloy/internal/util"
@@ -1108,4 +1111,93 @@ func newTestFileService() *testFileService {
 		stats:         make([]string, 0),
 		reads:         make([]string, 0),
 	}
+}
+
+func Test_sourceMapsStoreImpl_DownloadRedirects(t *testing.T) {
+	var otherHits atomic.Int32
+	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		otherHits.Add(1)
+		_, _ = w.Write(loadTestData(t, "foo.js"))
+	}))
+	defer other.Close()
+
+	var loopHits atomic.Int32
+	mux := http.NewServeMux()
+	mux.HandleFunc("/same/foo.js", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/foo.js", http.StatusFound)
+	})
+	mux.HandleFunc("/other/foo.js", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, other.URL+"/foo.js", http.StatusFound)
+	})
+	mux.HandleFunc("/loop/foo.js", func(w http.ResponseWriter, r *http.Request) {
+		loopHits.Add(1)
+		http.Redirect(w, r, "/loop/foo.js", http.StatusFound)
+	})
+	mux.HandleFunc("/foo.js", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(loadTestData(t, "foo.js"))
+	})
+	mux.HandleFunc("/same/foo.js.map", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(loadTestData(t, "foo.js.map"))
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	origins := []string{srv.URL + "/"}
+	newStore := func() *sourceMapsStoreImpl {
+		return newSourceMapsStore(
+			alloyutil.TestAlloyLogger(t).Slog(),
+			SourceMapsArguments{Download: true, DownloadFromOrigins: origins},
+			newSourceMapMetrics(prometheus.NewRegistry()),
+			newDownloadClient(time.Second, origins),
+			newTestFileService(),
+		)
+	}
+
+	t.Run("same origin redirect is followed", func(t *testing.T) {
+		smap, err := newStore().GetSourceMap(srv.URL+"/same/foo.js", "123")
+		require.NoError(t, err)
+		require.NotNil(t, smap)
+	})
+
+	t.Run("redirect to other origin is refused", func(t *testing.T) {
+		smap, err := newStore().GetSourceMap(srv.URL+"/other/foo.js", "123")
+		require.ErrorContains(t, err, "not allowed by download_from_origins")
+		require.Nil(t, smap)
+		require.Zero(t, otherHits.Load())
+	})
+
+	t.Run("redirect chain is capped", func(t *testing.T) {
+		smap, err := newStore().GetSourceMap(srv.URL+"/loop/foo.js", "123")
+		require.ErrorContains(t, err, "stopped after")
+		require.Nil(t, smap)
+		require.Equal(t, int32(maxDownloadRedirects), loopHits.Load())
+	})
+}
+
+func Test_sourceMapsStoreImpl_DownloadRefusesSourceMapURLFromOtherOrigin(t *testing.T) {
+	httpClient := &mockHTTPClient{
+		responses: []struct {
+			*http.Response
+			error
+		}{
+			{&http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(strings.NewReader("console.log(1)\n//# sourceMappingURL=http://other.example.net/foo.js.map\n")),
+			}, nil},
+			{newResponseFromTestData(t, "foo.js.map"), nil},
+		},
+	}
+
+	store := newSourceMapsStore(
+		alloyutil.TestAlloyLogger(t).Slog(),
+		SourceMapsArguments{Download: true, DownloadFromOrigins: []string{"http://app.example.com/"}},
+		newSourceMapMetrics(prometheus.NewRegistry()),
+		httpClient,
+		newTestFileService(),
+	)
+
+	smap, err := store.GetSourceMap("http://app.example.com/foo.js", "123")
+	require.ErrorContains(t, err, "not allowed by download_from_origins")
+	require.Nil(t, smap)
+	require.Equal(t, []string{"http://app.example.com/foo.js"}, httpClient.requests)
 }

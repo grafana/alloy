@@ -114,12 +114,13 @@ func (realTimeSource) Now() time.Time {
 }
 
 type sourceMapsStoreImpl struct {
-	log     *slog.Logger
-	cli     httpClient
-	fs      fileService
-	args    SourceMapsArguments
-	metrics *sourceMapMetrics
-	locs    []*sourcemapFileLocation
+	log         *slog.Logger
+	cli         httpClient
+	downloadCli httpClient // Fetches URLs taken from client telemetry.
+	fs          fileService
+	args        SourceMapsArguments
+	metrics     *sourceMapMetrics
+	locs        []*sourcemapFileLocation
 
 	cacheMut      sync.Mutex
 	cache         map[string]*cachedSourceMap
@@ -144,8 +145,10 @@ func newSourceMapsStore(log *slog.Logger, args SourceMapsArguments, metrics *sou
 	// or to find a way to inject a download timeout without modifying the http
 	// client.
 
+	downloadCli := cli
 	if cli == nil {
 		cli = &http.Client{Timeout: args.DownloadTimeout}
+		downloadCli = newDownloadClient(args.DownloadTimeout, args.DownloadFromOrigins)
 	}
 	if fs == nil {
 		fs = osFileService{}
@@ -165,14 +168,15 @@ func newSourceMapsStore(log *slog.Logger, args SourceMapsArguments, metrics *sou
 	}
 
 	return &sourceMapsStoreImpl{
-		log:        log,
-		cli:        cli,
-		fs:         fs,
-		args:       args,
-		cache:      make(map[string]*cachedSourceMap),
-		metrics:    metrics,
-		locs:       locs,
-		timeSource: realTimeSource{},
+		log:         log,
+		cli:         cli,
+		downloadCli: downloadCli,
+		fs:          fs,
+		args:        args,
+		cache:       make(map[string]*cachedSourceMap),
+		metrics:     metrics,
+		locs:        locs,
+		timeSource:  realTimeSource{},
 	}
 }
 
@@ -404,7 +408,7 @@ func (store *sourceMapsStoreImpl) getSourceMapFromRemote(sourceURL string, relea
 		return nil, "", err
 	}
 
-	content, err = store.downloadFileContents(mapURL)
+	content, err = store.downloadFileContents(store.cli, mapURL)
 	if err != nil {
 		store.log.Debug("failed to download sourcemap file from remote location", "url", mapURL, "err", err)
 		return nil, "", err
@@ -416,7 +420,7 @@ func (store *sourceMapsStoreImpl) getSourceMapFromRemote(sourceURL string, relea
 func (store *sourceMapsStoreImpl) downloadSourceMapContent(sourceURL string) (content []byte, resolvedSourceMapURL string, err error) {
 	store.log.Debug("attempting to download source file", "url", sourceURL)
 
-	result, err := store.downloadFileContents(sourceURL)
+	result, err := store.downloadFileContents(store.downloadCli, sourceURL)
 	if err != nil {
 		store.log.Debug("failed to download source file", "url", sourceURL, "err", err)
 		return nil, "", err
@@ -460,8 +464,13 @@ func (store *sourceMapsStoreImpl) downloadSourceMapContent(sourceURL string) (co
 		store.log.Debug("resolved absolute source map URL", "url", sourceURL, "sourceMapURL", sourceMapURL)
 	}
 
+	if !hasHttpPrefix(resolvedSourceMapURL) || !urlMatchesOrigins(resolvedSourceMapURL, store.args.DownloadFromOrigins) {
+		store.log.Debug("source map url not allowed by download_from_origins", "url", sourceURL, "sourceMapURL", resolvedSourceMapURL)
+		return nil, "", fmt.Errorf("source map url not allowed by download_from_origins: %s", resolvedSourceMapURL)
+	}
+
 	store.log.Debug("attempting to download source map file", "url", resolvedSourceMapURL)
-	result, err = store.downloadFileContents(resolvedSourceMapURL)
+	result, err = store.downloadFileContents(store.downloadCli, resolvedSourceMapURL)
 	if err != nil {
 		store.log.Debug("failed to download source map file", "url", resolvedSourceMapURL, "err", err)
 		return nil, "", err
@@ -470,8 +479,8 @@ func (store *sourceMapsStoreImpl) downloadSourceMapContent(sourceURL string) (co
 	return result, resolvedSourceMapURL, nil
 }
 
-func (store *sourceMapsStoreImpl) downloadFileContents(url string) ([]byte, error) {
-	resp, err := store.cli.Get(url)
+func (store *sourceMapsStoreImpl) downloadFileContents(cli httpClient, url string) ([]byte, error) {
+	resp, err := cli.Get(url)
 	if err != nil {
 		store.metrics.downloads.WithLabelValues(getOrigin(url), "?").Inc()
 		return nil, err
@@ -488,6 +497,26 @@ func (store *sourceMapsStoreImpl) downloadFileContents(url string) ([]byte, erro
 		return nil, err
 	}
 	return body, nil
+}
+
+// Setting CheckRedirect replaces net/http's default limit, so keep its value.
+const maxDownloadRedirects = 10
+
+// newDownloadClient returns a client for URLs taken from client telemetry, which
+// only follows redirects that match origins.
+func newDownloadClient(timeout time.Duration, origins []string) *http.Client {
+	return &http.Client{
+		Timeout: timeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= maxDownloadRedirects {
+				return fmt.Errorf("stopped after %d redirects", maxDownloadRedirects)
+			}
+			if target := req.URL.String(); !hasHttpPrefix(target) || !urlMatchesOrigins(target, origins) {
+				return fmt.Errorf("redirect to %s not allowed by download_from_origins", target)
+			}
+			return nil
+		},
+	}
 }
 
 var reSourceMap = regexp.MustCompile("//[#@]\\s(source(?:Mapping)?URL)=\\s*(?P<url>\\S+)\r?\n?$")
