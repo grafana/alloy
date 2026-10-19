@@ -76,7 +76,7 @@ If you set `redis_password_map_file`, the component ignores `redis_password` onl
 Set `tls_client_cert_file` and `tls_client_key_file` together.
 If you set only one of them, the component fails with an invalid configuration error.
 
-When `check_key_groups` isn't set, no key groups are made.
+If you don't set `check_key_groups`, the component creates no key groups.
 
 The `check_key_groups_batch_size` argument name reflects key groups for backwards compatibility, but applies to both key and key groups.
 
@@ -84,9 +84,9 @@ The `script_path` argument accepts a comma-separated string of paths, but use `s
 Set either `script_path` or `script_paths`, not both.
 If you set both, the component fails with an invalid configuration error.
 
-Any leftover key groups beyond `max_distinct_key_groups` are aggregated in the 'overflow' bucket.
+The component aggregates any leftover key groups beyond `max_distinct_key_groups` into the `overflow` bucket.
 
-The `is_cluster` argument must be set to `true` when connecting to a Redis cluster and using either of the `check_keys` and `check_single_keys` arguments.
+Set `is_cluster` to `true` when you connect to a Redis cluster and use `check_keys` or `check_single_keys`.
 
 {{< admonition type="note" >}}
 Setting `export_client_port` increases the cardinality of all Redis metrics.
