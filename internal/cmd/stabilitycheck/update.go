@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -19,8 +20,8 @@ type updateResult struct {
 }
 
 // runUpdate rewrites path in place: it adds a TODO entry for every non-GA
-// component that has no entry, and sorts both sections by name. Existing entries
-// are never modified. Stale entries are reported, not removed, because removing
+// component that has no entry, sorts both sections by name, and wraps long
+// reasons. Existing entries keep their values. Stale entries are reported, not removed, because removing
 // an entry would discard its human-written reason. It works on a yaml.Node tree
 // so the file header and comments survive.
 func runUpdate(path string, comps []registeredComponent, defaultExpires time.Time, w io.Writer) error {
@@ -66,8 +67,10 @@ func runUpdate(path string, comps []registeredComponent, defaultExpires time.Tim
 	}
 
 	sortSeqByName(compSeq)
+	wrapReasons(compSeq)
 	if featSeq != nil {
 		sortSeqByName(featSeq)
+		wrapReasons(featSeq)
 	}
 
 	var buf bytes.Buffer
@@ -91,7 +94,7 @@ func (r updateResult) report(w io.Writer, path string) {
 	sort.Strings(r.added)
 	sort.Strings(r.stale)
 	_, _ = fmt.Fprintf(w, "stabilitycheck --update: wrote %s\n", path)
-	_, _ = fmt.Fprintf(w, "  added %d component entr(y/ies), sorted all sections\n", len(r.added))
+	_, _ = fmt.Fprintf(w, "  added %d component entr(y/ies), sorted and wrapped all sections\n", len(r.added))
 	for _, n := range r.added {
 		_, _ = fmt.Fprintf(w, "    + %s (reason left as %s)\n", n, placeholderReason)
 	}
@@ -176,4 +179,59 @@ func newEntryNode(name, stability, reason string, expires time.Time) *yaml.Node 
 		str("expires"), {Kind: yaml.ScalarNode, Tag: "!!timestamp", Value: expires.Format("2006-01-02")},
 	}
 	return m
+}
+
+// reasonWidth is the longest reason line. Entry keys are at column 4, so a
+// reason block line starts at column 6 and ends at or before column 80.
+const reasonWidth = 74
+
+// wrapReasons rewrites each reason that has a line longer than reasonWidth as a
+// literal block string. The YAML encoder cannot wrap lines, and a folded block
+// string does not survive a round trip, so the line breaks go into the value.
+// The reason is only read by people, so the extra line breaks are harmless.
+// A reason that already fits is left unchanged, so hand-made line breaks stay.
+func wrapReasons(seq *yaml.Node) {
+	for _, e := range seq.Content {
+		for i := 0; i+1 < len(e.Content); i += 2 {
+			if e.Content[i].Value != "reason" {
+				continue
+			}
+			v := e.Content[i+1]
+			if !hasLongLine(v.Value, reasonWidth) {
+				continue
+			}
+			v.Value = wrapText(v.Value, reasonWidth)
+			v.Style = yaml.LiteralStyle
+		}
+	}
+}
+
+func hasLongLine(s string, width int) bool {
+	for line := range strings.SplitSeq(s, "\n") {
+		if len(line) > width {
+			return true
+		}
+	}
+	return false
+}
+
+// wrapText joins the words of s into lines of at most width bytes. A word
+// longer than width gets a line of its own.
+func wrapText(s string, width int) string {
+	var b strings.Builder
+	lineLen := 0
+	for _, word := range strings.Fields(s) {
+		switch {
+		case lineLen == 0:
+		case lineLen+1+len(word) > width:
+			b.WriteByte('\n')
+			lineLen = 0
+		default:
+			b.WriteByte(' ')
+			lineLen++
+		}
+		b.WriteString(word)
+		lineLen += len(word)
+	}
+	return b.String()
 }

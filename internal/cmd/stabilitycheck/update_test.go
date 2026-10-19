@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -119,6 +120,96 @@ features:
 	after, _ := os.ReadFile(path)
 	if !bytes.Equal(before, after) {
 		t.Errorf("update is not idempotent:\nbefore:\n%s\nafter:\n%s", before, after)
+	}
+}
+
+func TestRunUpdateWrapsLongReasons(t *testing.T) {
+	long := strings.Repeat("This reason is far too long to fit on one line. ", 4)
+	handWrapped := "First line.\nSecond line."
+	initial := `components:
+  - name: a.comp
+    stability: experimental
+    reason: "` + long + `"
+    expires: 2026-10-01
+  - name: b.comp
+    stability: experimental
+    reason: |-
+      ` + strings.ReplaceAll(handWrapped, "\n", "\n      ") + `
+    expires: 2026-10-01
+features:
+  - name: short feature
+    stability: experimental
+    reason: "Short reason."
+    expires: 2026-10-01
+`
+	path := filepath.Join(t.TempDir(), "stability.yaml")
+	if err := os.WriteFile(path, []byte(initial), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	comps := []registeredComponent{
+		{Name: "a.comp", Stability: "experimental"},
+		{Name: "b.comp", Stability: "experimental"},
+	}
+	expires := time.Date(2027, 3, 1, 0, 0, 0, 0, time.UTC)
+	if err := runUpdate(path, comps, expires, &bytes.Buffer{}); err != nil {
+		t.Fatalf("runUpdate: %v", err)
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for line := range strings.SplitSeq(string(data), "\n") {
+		if len(line) > 80 {
+			t.Errorf("line is longer than 80 columns: %q", line)
+		}
+	}
+	if !strings.Contains(string(data), "reason: |-") {
+		t.Errorf("long reason should be a literal block string:\n%s", data)
+	}
+
+	cfg, err := parseConfig(data)
+	if err != nil {
+		t.Fatalf("re-parse: %v", err)
+	}
+	got := byName(cfg.Components)
+	// Wrapping changes only the whitespace between words.
+	if a := got["a.comp"].Reason; strings.Join(strings.Fields(a), " ") != strings.TrimSpace(long) {
+		t.Errorf("a.comp reason words changed: %q", a)
+	}
+	if b := got["b.comp"].Reason; b != handWrapped {
+		t.Errorf("b.comp reason = %q, want hand-made line breaks kept", b)
+	}
+	if f := cfg.Features[0].Reason; f != "Short reason." {
+		t.Errorf("short reason = %q, want it unchanged", f)
+	}
+
+	// Running again changes nothing.
+	if err := runUpdate(path, comps, expires, &bytes.Buffer{}); err != nil {
+		t.Fatalf("runUpdate second run: %v", err)
+	}
+	after, _ := os.ReadFile(path)
+	if !bytes.Equal(data, after) {
+		t.Errorf("update is not idempotent:\nbefore:\n%s\nafter:\n%s", data, after)
+	}
+}
+
+func TestWrapText(t *testing.T) {
+	tests := []struct {
+		in    string
+		width int
+		want  string
+	}{
+		{"", 10, ""},
+		{"one two three", 20, "one two three"},
+		{"one two three", 7, "one two\nthree"},
+		{"  extra   spaces\nand\nbreaks ", 40, "extra spaces and breaks"},
+		{"short averyveryverylongword end", 8, "short\naveryveryverylongword\nend"},
+	}
+	for _, tt := range tests {
+		if got := wrapText(tt.in, tt.width); got != tt.want {
+			t.Errorf("wrapText(%q, %d) = %q, want %q", tt.in, tt.width, got, tt.want)
+		}
 	}
 }
 
