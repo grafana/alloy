@@ -60,12 +60,12 @@ func TestConfigConversion(t *testing.T) {
 			QueueSize:    1000,
 			StorageID:    nil,
 			Sizer:        exporterhelper.RequestSizerTypeRequests,
-			Batch: configoptional.Some(exporterhelper.BatchConfig{
+			Batch: configoptional.Some(batchWithDefaultPartition(exporterhelper.BatchConfig{
 				FlushTimeout: 200000000,
 				Sizer:        exporterhelper.RequestSizerTypeItems,
 				MinSize:      500,
 				MaxSize:      1000,
-			}),
+			})),
 		}),
 		BackOffConfig: configretry.BackOffConfig{
 			Enabled:             true,
@@ -255,4 +255,13 @@ func TestConfigConversion(t *testing.T) {
 			require.Equal(t, tt.expected, cfg)
 		})
 	}
+}
+
+// batchWithDefaultPartition sets the partition settings of batch to the upstream
+// defaults. This is what a batch block without a partition block converts to.
+// PartitionConfig is unexported upstream, so it is copied as a whole.
+func batchWithDefaultPartition(batch exporterhelper.BatchConfig) exporterhelper.BatchConfig {
+	defaults := exporterhelper.NewDefaultQueueConfig().Batch
+	batch.Partition = defaults.GetOrInsertDefault().Partition
+	return batch
 }
