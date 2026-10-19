@@ -78,6 +78,9 @@ func (c *Arguments) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (c *Arguments) Validate() error {
+	if c.APIToken == "" {
+		return fmt.Errorf("api_token must not be empty")
+	}
 	if c.PullRange < 0 {
 		return fmt.Errorf("pull_range must be a positive duration")
 	}
@@ -87,6 +90,9 @@ func (c *Arguments) Validate() error {
 	}
 	if (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 		return fmt.Errorf("api_url must be an absolute http or https URL, got %q", c.APIURL)
+	}
+	if _, err := fieldsForType(c.FieldsType, c.AdditionalFields); err != nil {
+		return err
 	}
 	return nil
 }
@@ -162,7 +168,11 @@ func (c *Component) Update(args component.Arguments) error {
 
 	newArgs := args.(Arguments)
 
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
+	// Deferred so the fanout is updated on every return path, after any
+	// producers have been stopped.
+	// FIXME(kalleep): Once https://github.com/grafana/alloy/issues/4953 is done
+	// this no longer needs to be deferred.
+	defer c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	if c.tailer != nil {
 		c.tailer.stop()
