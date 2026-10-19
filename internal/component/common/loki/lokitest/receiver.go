@@ -1,0 +1,183 @@
+package lokitest
+
+import (
+	"context"
+	"errors"
+	"slices"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
+)
+
+var (
+	_ loki.Consumer     = (*Receiver)(nil)
+	_ loki.LogsReceiver = (*Receiver)(nil)
+)
+
+// Receiver is a receiver for a component to forward to. It collects every
+// entry it receives so tests can assert on them.
+type Receiver struct {
+	recv     loki.LogsReceiver
+	consumer *CollectingConsumer
+	entries  func() []loki.Entry
+
+	// consumed is the number of entries returned by Next so far.
+	consumed int
+
+	// stopFn stops the receiver from accepting entries.
+	stopFn func()
+}
+
+func (r *Receiver) Chan() chan loki.Entry {
+	return r.recv.Chan()
+}
+
+// Consume implements loki.Consumer. It returns an error with Loki pipeline V1.
+func (r *Receiver) Consume(ctx context.Context, batch loki.Batch) error {
+	if r.consumer == nil {
+		return errors.New("lokitest: receiver does not support Loki pipeline V2")
+	}
+	return r.consumer.Consume(ctx, batch)
+}
+
+// Stop makes the receiver stop accepting entries.
+func (r *Receiver) Stop() {
+	r.stopFn()
+}
+
+// Next waits until n entries arrive after the ones previous calls returned.
+func (r *Receiver) Next(t *testing.T, n int) []loki.Entry {
+	t.Helper()
+
+	end := r.consumed + n
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.GreaterOrEqual(c, len(r.entries()), end)
+	}, 5*time.Second, 10*time.Millisecond, "waiting for %d entries", n)
+
+	entries := r.entries()[r.consumed:end]
+	r.consumed = end
+	return entries
+}
+
+// Entries returns every entry received so far.
+func (r *Receiver) Entries() []loki.Entry {
+	return r.entries()
+}
+
+var _ loki.LogsReceiver = (*CollectingReceiver)(nil)
+
+// NewCollectingReceiver returns a CollectingReceiver that is already collecting.
+// It must be stopped to release its goroutine.
+func NewCollectingReceiver() *CollectingReceiver {
+	r := &CollectingReceiver{
+		ch:      make(chan loki.Entry),
+		stopped: make(chan struct{}),
+	}
+
+	r.wg.Go(func() {
+		for {
+			select {
+			case <-r.stopped:
+				return
+			case e := <-r.ch:
+				r.mut.Lock()
+				r.entries = append(r.entries, e)
+				r.mut.Unlock()
+			}
+		}
+	})
+
+	return r
+}
+
+// CollectingReceiver is a loki.LogsReceiver that collects all entries sent to
+// its channel until it is stopped. Once stopped it no longer reads from the
+// channel, so senders block until their context ends.
+type CollectingReceiver struct {
+	ch      chan loki.Entry
+	stopped chan struct{}
+	once    sync.Once
+	wg      sync.WaitGroup
+
+	mut     sync.Mutex
+	entries []loki.Entry
+}
+
+func (r *CollectingReceiver) Chan() chan loki.Entry {
+	return r.ch
+}
+
+// Stop stops reading from the channel and waits for the collecting goroutine to
+// exit. It can be called more than once.
+func (r *CollectingReceiver) Stop() {
+	r.once.Do(func() { close(r.stopped) })
+	r.wg.Wait()
+}
+
+func (r *CollectingReceiver) Entries() []loki.Entry {
+	r.mut.Lock()
+	defer r.mut.Unlock()
+
+	return slices.Clone(r.entries)
+}
+
+var _ loki.Consumer = (*CollectingConsumer)(nil)
+
+func NewCollectingConsumer() *CollectingConsumer {
+	return &CollectingConsumer{}
+}
+
+// CollectingConsumer is a Consumer that will collect all received batches
+// so it can be inspected later.
+type CollectingConsumer struct {
+	mut     sync.Mutex
+	stopped bool
+	batches []loki.Batch
+}
+
+func (c *CollectingConsumer) Consume(_ context.Context, batch loki.Batch) error {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	if c.stopped {
+		return loki.ErrConsumerStopped
+	}
+
+	c.batches = append(c.batches, batch.Clone())
+	return nil
+}
+
+func (c *CollectingConsumer) Batches() []loki.Batch {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	return slices.Clone(c.batches)
+}
+
+func (c *CollectingConsumer) Entries() []loki.Entry {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	var entries []loki.Entry
+	for _, b := range c.batches {
+		for _, s := range b.Streams() {
+			for _, e := range s.Entries {
+				entries = append(entries, loki.NewEntryWithCreatedUnixMicro(s.Labels, s.Created(), e))
+			}
+		}
+	}
+	return entries
+}
+
+// Stop makes Consume return loki.ErrConsumerStopped
+func (c *CollectingConsumer) Stop() {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	c.stopped = true
+}
