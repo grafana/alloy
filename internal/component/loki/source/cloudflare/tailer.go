@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/cloudflare-go"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/concurrency"
 	"github.com/grafana/dskit/multierror"
@@ -152,26 +151,23 @@ func (t *tailer) start() {
 // It will retry on errors.
 func (t *tailer) pull(ctx context.Context, start, end time.Time) error {
 	var (
-		backoff = backoff.New(ctx, t.config.Backoff)
 		errs    = multierror.New()
-		it      cloudflare.LogpullReceivedIterator
-		err     error
+		backoff = backoff.New(ctx, t.config.Backoff)
 	)
 
 	for backoff.Ongoing() {
-		it, err = t.client.LogpullReceived(ctx, start, end)
-		if err != nil && cloudflareTooEarlyError.MatchString(err.Error()) {
-			t.logger.Warn("failed iterating over logs, out of cloudflare range, not retrying", "err", err, "start", start, "end", end, "retries", backoff.NumRetries())
-			return nil
-		} else if err != nil {
-			if it != nil {
-				it.Close()
+		it, err := t.client.LogpullReceived(ctx, start, end)
+		if err != nil {
+			if cloudflareTooEarlyError.MatchString(err.Error()) {
+				t.logger.Warn("failed iterating over logs, out of cloudflare range, not retrying", "err", err, "start", start, "end", end, "retries", backoff.NumRetries())
+				return nil
 			}
 			errs.Add(err)
 			backoff.Wait()
 			continue
 		}
-		if err := func() error {
+
+		consume := func() error {
 			defer it.Close()
 			var lineRead int64
 			for it.Next() {
@@ -195,13 +191,17 @@ func (t *tailer) pull(ctx context.Context, start, end time.Time) error {
 				return it.Err()
 			}
 			return nil
-		}(); err != nil {
+		}
+
+		if err := consume(); err != nil {
 			errs.Add(err)
 			backoff.Wait()
 			continue
 		}
+
 		return nil
 	}
+
 	return errs.Err()
 }
 
