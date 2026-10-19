@@ -57,9 +57,9 @@ otelcol.connector.exceptions "<LABEL>" {
 
 You can use the following argument with `otelcol.connector.exceptions`:
 
-| Name                         | Type   | Description                                       | Default | Required |
-|------------------------------|--------|---------------------------------------------------|---------|----------|
-| `disable_default_dimensions` | `bool` | Emits metric data points with no dimensions.      | `false` | no       |
+| Name                         | Type   | Description                                          | Default | Required |
+|------------------------------|--------|------------------------------------------------------|---------|----------|
+| `disable_default_dimensions` | `bool` | Emits metric data points with no default dimensions. | `false` | no       |
 
 Setting `disable_default_dimensions` to `true` and specifying a [`dimension`](#dimension) block is an error, because a `dimension` block already replaces the default dimensions.
 
