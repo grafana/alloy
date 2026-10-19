@@ -61,7 +61,8 @@ You can use the following argument with `otelcol.connector.exceptions`:
 |------------------------------|--------|------------------------------------------------------|---------|----------|
 | `disable_default_dimensions` | `bool` | Emits metric data points with no default dimensions. | `false` | no       |
 
-Setting `disable_default_dimensions` to `true` and specifying a [`dimension`](#dimension) block is an error, because a `dimension` block already replaces the default dimensions.
+You can't specify a [`dimension`](#dimension) block when `disable_default_dimensions` is `true`.
+A `dimension` block already replaces the default dimensions.
 
 ## Blocks
 
