@@ -47,10 +47,7 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.LuhnFilterConfig != nil:
-		s, err = newLuhnFilterStage(*cfg.LuhnFilterConfig, opts)
-		if err != nil {
-			return nil, err
-		}
+		s = newLuhnFilterStage(*cfg.LuhnFilterConfig, opts)
 	case cfg.MetricsConfig != nil:
 		s, err = newMetricStage(*cfg.MetricsConfig, opts)
 		if err != nil {
@@ -66,10 +63,7 @@ func newStageWithOpts(
 	case cfg.StructuredMetadataDropConfig != nil:
 		s = newStructuredMetadataDropStage(*cfg.StructuredMetadataDropConfig, opts)
 	case cfg.RegexConfig != nil:
-		s, err = newRegexStage(*cfg.RegexConfig, opts)
-		if err != nil {
-			return nil, err
-		}
+		s = newRegexStage(*cfg.RegexConfig, opts)
 	case cfg.TimestampConfig != nil:
 		s, err = newTimestampStage(*cfg.TimestampConfig, opts)
 		if err != nil {

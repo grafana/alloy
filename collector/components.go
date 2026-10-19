@@ -12,6 +12,7 @@ import (
 	"go.opentelemetry.io/collector/receiver"
 	otelconftelemetry "go.opentelemetry.io/collector/service/telemetry/otelconftelemetry"
 	countconnector "github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector"
+	exceptionsconnector "github.com/open-telemetry/opentelemetry-collector-contrib/connector/exceptionsconnector"
 	grafanacloudconnector "github.com/open-telemetry/opentelemetry-collector-contrib/connector/grafanacloudconnector"
 	servicegraphconnector "github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector"
 	signaltometricsconnector "github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector"
@@ -132,7 +133,7 @@ func components() (otelcol.Factories, error) {
 		return otelcol.Factories{}, err
 	}
 	factories.ExtensionModules = makeModulesMap(factories.Extensions, map[component.Type]string{
-		alloyengine.NewFactory().Type(): "github.com/grafana/alloy v1.20.0",
+		alloyengine.NewFactory().Type(): "github.com/grafana/alloy v1.21.0",
 		basicauthextension.NewFactory().Type(): "github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.162.0",
 		bearertokenauthextension.NewFactory().Type(): "github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.162.0",
 		jsonlogencodingextension.NewFactory().Type(): "github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/jsonlogencodingextension v0.162.0",
@@ -289,6 +290,7 @@ func components() (otelcol.Factories, error) {
 
 	factories.Connectors, err = otelcol.MakeFactoryMap[connector.Factory](
 		countconnector.NewFactory(),
+		exceptionsconnector.NewFactory(),
 		grafanacloudconnector.NewFactory(),
 		servicegraphconnector.NewFactory(),
 		signaltometricsconnector.NewFactory(),
@@ -300,6 +302,7 @@ func components() (otelcol.Factories, error) {
 	}
 	factories.ConnectorModules = makeModulesMap(factories.Connectors, map[component.Type]string{
 		countconnector.NewFactory().Type(): "github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.162.0",
+		exceptionsconnector.NewFactory().Type(): "github.com/open-telemetry/opentelemetry-collector-contrib/connector/exceptionsconnector v0.162.0",
 		grafanacloudconnector.NewFactory().Type(): "github.com/open-telemetry/opentelemetry-collector-contrib/connector/grafanacloudconnector v0.162.0",
 		servicegraphconnector.NewFactory().Type(): "github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.162.0",
 		signaltometricsconnector.NewFactory().Type(): "github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.162.0",

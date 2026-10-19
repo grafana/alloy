@@ -40,7 +40,7 @@ type Arguments struct {
 }
 
 type Exports struct {
-	Receiver storage.Appendable `alloy:"receiver,attr"`
+	Receiver storage.AppendableV2 `alloy:"receiver,attr"`
 }
 
 var DefaultArguments = Arguments{
@@ -52,8 +52,9 @@ func (args *Arguments) SetToDefault() {
 }
 
 var (
-	_ component.Component = (*Component)(nil)
-	_ storage.Appendable  = (*Component)(nil)
+	_ component.Component  = (*Component)(nil)
+	_ storage.Appendable   = (*Component)(nil)
+	_ storage.AppendableV2 = (*Component)(nil)
 )
 
 type Component struct {
@@ -101,6 +102,16 @@ func (c *Component) Appender(ctx context.Context) storage.Appender {
 		histograms: make(map[string]seriesHistogram),
 		metadata:   make(map[string]metadata.Metadata),
 	}
+}
+
+// AppenderV2 satisfies the AppendableV2 interface.
+//
+// TODO(v2 migration step 3): prometheus.echo is the proof-of-concept
+// component for a native AppenderV2 implementation (echoAppenderV2). Until
+// then this panics because nothing calls it in production yet; all active
+// append paths still go through Appender (V1). See https://github.com/grafana/alloy/issues/6896
+func (c *Component) AppenderV2(_ context.Context) storage.AppenderV2 {
+	panic("AppenderV2 not yet implemented for prometheus.echo")
 }
 
 type echoAppender struct {
