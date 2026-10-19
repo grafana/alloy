@@ -99,6 +99,8 @@ The `target` block defines an individual SNMP target.
 The `target` block may be specified multiple times to define multiple targets.
 The label of the block is required and is used in the target's `job` label.
 
+You can use the following arguments with the `target` block:
+
 | Name           | Type          | Description                                                           | Default | Required |
 | -------------- | ------------- | --------------------------------------------------------------------- | ------- | -------- |
 | `address`      | `string`      | The address of SNMP device.                                           |         | yes      |
@@ -113,6 +115,8 @@ The label of the block is required and is used in the target's `job` label.
 The `walk_param` block defines an individual SNMP connection profile that can be used to override default SNMP settings.
 The `walk_param` block may be specified multiple times to define multiple SNMP connection profiles.
 The label of the block is required and is the name that the `walk_params` argument of a target refers to.
+
+You can use the following arguments with the `walk_param` block:
 
 | Name              | Type       | Description                                   | Default | Required |
 | ----------------- | ---------- | --------------------------------------------- | ------- | -------- |
