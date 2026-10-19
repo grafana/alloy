@@ -30,6 +30,8 @@ import (
 	"github.com/grafana/alloy/internal/slogadapter"
 )
 
+// Each constant must occupy a distinct bit: connectors combine them with the
+// bitwise OR operator to declare the signal pairs they support.
 const (
 	ConnectorTracesToTraces = 1 << iota
 	ConnectorTracesToMetrics
