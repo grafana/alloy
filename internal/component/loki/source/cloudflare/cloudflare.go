@@ -56,7 +56,7 @@ func (c Arguments) tailerConfig() *tailerConfig {
 		APIURL:           strings.TrimSuffix(c.APIURL, "/"),
 		Labels:           lbls,
 		Workers:          c.Workers,
-		PullRange:        model.Duration(c.PullRange),
+		PullRange:        c.PullRange,
 		FieldsType:       c.FieldsType,
 		AdditionalFields: c.AdditionalFields,
 		Backoff:          defaultBackoff,

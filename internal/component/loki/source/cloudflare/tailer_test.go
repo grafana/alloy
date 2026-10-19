@@ -33,7 +33,7 @@ func TestTailer(t *testing.T) {
 			APIToken:   "foo",
 			ZoneID:     "bar",
 			Labels:     model.LabelSet{"job": "cloudflare"},
-			PullRange:  model.Duration(time.Minute),
+			PullRange:  time.Minute,
 			FieldsType: FieldsTypeDefault,
 			Workers:    3,
 			Backoff:    defaultBackoff,
@@ -52,17 +52,17 @@ func TestTailer(t *testing.T) {
 	require.NoError(t, err)
 
 	// setup response for the first pull batch of 1 minutes.
-	cfClient.On("LogpullReceived", mock.Anything, start, start.Add(time.Duration(cfg.PullRange/3))).Return(&fakeLogIterator{
+	cfClient.On("LogpullReceived", mock.Anything, start, start.Add(cfg.PullRange/3)).Return(&fakeLogIterator{
 		logs: []string{
 			`{"EdgeStartTimestamp":1, "EdgeRequestHost":"foo.com"}`,
 		},
 	}, nil)
-	cfClient.On("LogpullReceived", mock.Anything, start.Add(time.Duration(cfg.PullRange/3)), start.Add(time.Duration(2*cfg.PullRange/3))).Return(&fakeLogIterator{
+	cfClient.On("LogpullReceived", mock.Anything, start.Add(cfg.PullRange/3), start.Add(2*cfg.PullRange/3)).Return(&fakeLogIterator{
 		logs: []string{
 			`{"EdgeStartTimestamp":2, "EdgeRequestHost":"bar.com"}`,
 		},
 	}, nil)
-	cfClient.On("LogpullReceived", mock.Anything, start.Add(time.Duration(2*cfg.PullRange/3)), end).Return(&fakeLogIterator{
+	cfClient.On("LogpullReceived", mock.Anything, start.Add(2*cfg.PullRange/3), end).Return(&fakeLogIterator{
 		logs: []string{
 			`{"EdgeStartTimestamp":3, "EdgeRequestHost":"buzz.com"}`,
 			`{"EdgeRequestHost":"fuzz.com"}`,
@@ -200,7 +200,7 @@ func TestTailer_CloudflareTargetError(t *testing.T) {
 			APIToken:   "foo",
 			ZoneID:     "bar",
 			Labels:     model.LabelSet{"job": "cloudflare"},
-			PullRange:  model.Duration(time.Minute),
+			PullRange:  time.Minute,
 			FieldsType: FieldsTypeDefault,
 			Workers:    3,
 			Backoff:    backoff.Config{MinBackoff: 0, MaxBackoff: 0, MaxRetries: 5},
@@ -251,7 +251,7 @@ func TestTailer_CloudflareTargetError168h(t *testing.T) {
 			APIToken:   "foo",
 			ZoneID:     "bar",
 			Labels:     model.LabelSet{"job": "cloudflare"},
-			PullRange:  model.Duration(time.Minute),
+			PullRange:  time.Minute,
 			FieldsType: FieldsTypeDefault,
 			Workers:    3,
 			Backoff:    backoff.Config{MinBackoff: 0, MaxBackoff: 0, MaxRetries: 5},

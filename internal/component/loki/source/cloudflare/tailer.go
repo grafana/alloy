@@ -44,7 +44,7 @@ type tailerConfig struct {
 	APIURL           string
 	Labels           model.LabelSet
 	Workers          int
-	PullRange        model.Duration
+	PullRange        time.Duration
 	FieldsType       FieldsType
 	AdditionalFields []string
 	Backoff          backoff.Config
@@ -117,7 +117,7 @@ func (t *tailer) start() {
 			if end.After(maxEnd) {
 				end = maxEnd
 			}
-			start := end.Add(-time.Duration(t.config.PullRange))
+			start := end.Add(-t.config.PullRange)
 			requests := splitRequests(start, end, t.config.Workers)
 			// Use background context for workers as we don't want to cancel halfway through.
 			// In case of errors we stop the target, each worker has its own retry logic.
@@ -132,7 +132,7 @@ func (t *tailer) start() {
 
 			// Sets current timestamp metrics, move to the next interval and saves the position.
 			t.metrics.LastEnd.Set(float64(end.UnixNano()) / 1e9)
-			t.to = end.Add(time.Duration(t.config.PullRange))
+			t.to = end.Add(t.config.PullRange)
 			t.positions.Put(positions.CursorKey(t.config.ZoneID), t.config.Labels.String(), t.to.UnixNano())
 
 			// If the next window can be fetched do it, if not sleep for a while.
