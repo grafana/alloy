@@ -5,7 +5,7 @@ module github.com/grafana/alloy/otel_engine
 go 1.27.2
 
 require (
-	github.com/grafana/alloy v1.20.0
+	github.com/grafana/alloy v1.21.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor v0.0.0-00010101000000-000000000000
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.162.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/grafanacloudconnector v0.162.0
@@ -534,7 +534,7 @@ require (
 	github.com/grafana/jfr-parser v0.9.3 // indirect
 	github.com/grafana/jfr-parser/pprof v0.0.4 // indirect
 	github.com/grafana/jsonparser v0.0.0-20250909130937-5f438463be34 // indirect
-	github.com/grafana/kafka_exporter v0.0.0-20240409084445-5e3488ad9f9a // indirect
+	github.com/grafana/kafka_exporter v0.0.0-20261016145052-44e4679ca78b // indirect
 	github.com/grafana/loki/pkg/push v0.0.0-20251125172520-2f85998f1adf // indirect
 	github.com/grafana/loki/v3 v3.0.0-20260915071729-5cf8c23a258d // indirect
 	github.com/grafana/otel-profiling-go v0.6.0 // indirect
