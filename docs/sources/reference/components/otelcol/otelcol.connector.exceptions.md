@@ -132,6 +132,7 @@ If the attribute is missing:
 * If you don't set `default`, `otelcol.connector.exceptions` omits the dimension.
 * If you set `default`, `otelcol.connector.exceptions` adds the dimension with that value.
 
+Each `dimension` block must have a unique `name`.
 You can't use `service.name`, `span.name`, `span.kind`, or `status.code` as a dimension name because they're already added by default.
 
 Converted log records always carry the `exception.type`, `exception.message`, and `exception.stacktrace` attributes when they're present on the span event, regardless of the configured dimensions.
