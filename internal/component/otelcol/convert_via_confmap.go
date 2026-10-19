@@ -52,7 +52,7 @@ func WithConvertRename(path, upstreamName string, convert func(encoded any) (any
 //
 // Scalars are always emitted. Pointer fields (optional blocks) are emitted only
 // when non-nil, since that is the signal that the user wrote the block. Inside
-// repeated blocks, optional blocks left at their default aren't emitted either.
+// repeated blocks, optional blocks left at their zero value aren't emitted either.
 func ConvertViaConfmap(args any, factory interface{ CreateDefaultConfig() component.Config }, opts ...ConvertOption) (component.Config, error) {
 	cfg := &convertConfig{
 		skip:    map[string]bool{},
@@ -83,15 +83,6 @@ func ConvertViaConfmap(args any, factory interface{ CreateDefaultConfig() compon
 		return nil, err
 	}
 	return out, nil
-}
-
-// newDefault returns a zero value of t with SetToDefault applied when t has one.
-func newDefault(t reflect.Type) reflect.Value {
-	p := reflect.New(t)
-	if d, ok := p.Interface().(interface{ SetToDefault() }); ok {
-		d.SetToDefault()
-	}
-	return p.Elem()
 }
 
 // emitStruct writes the fields of v into dst.
@@ -148,10 +139,11 @@ func (c *convertConfig) emitStruct(v reflect.Value, path string, dst map[string]
 		if fv.Kind() == reflect.Pointer || ((fv.Kind() == reflect.Slice || fv.Kind() == reflect.Map) && fv.IsNil()) {
 			continue
 		}
-		// Upstream list elements decode onto zero values, so an unwritten block
-		// adds nothing, and its zero values don't always decode (an empty
-		// ottl.ErrorMode).
-		if c.elemDepth > 0 && optionalBlock && fv.Kind() == reflect.Struct && reflect.DeepEqual(fv.Interface(), newDefault(fv.Type()).Interface()) {
+		// Upstream list elements decode onto zero values, so a zero block adds
+		// nothing, and its zero values don't always decode (an empty
+		// ottl.ErrorMode). Compared to zero, not to SetToDefault, so a block
+		// written with non-zero Alloy defaults still carries them.
+		if c.elemDepth > 0 && optionalBlock && fv.Kind() == reflect.Struct && fv.IsZero() {
 			continue
 		}
 
