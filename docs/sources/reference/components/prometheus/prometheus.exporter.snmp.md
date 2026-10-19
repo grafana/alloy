@@ -16,7 +16,7 @@ The `prometheus.exporter.snmp` component embeds the [`snmp_exporter`][snmp-expor
 The `snmp_exporter` lets you collect SNMP data and expose them as Prometheus metrics.
 
 {{< admonition type="note" >}}
-`prometheus.exporter.snmp` uses the latest configuration introduced in version {{< param "SNMP_VERSION" >}} of the Prometheus `snmp_exporter`.
+`prometheus.exporter.snmp` uses the configuration format introduced in version {{< param "SNMP_VERSION" >}} of the Prometheus `snmp_exporter`.
 {{< /admonition >}}
 
 You can specify multiple `prometheus.exporter.snmp` components by giving them different labels.
@@ -46,15 +46,15 @@ prometheus.exporter.snmp "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.snmp`:
 
-| Name                    | Type                 | Description                                                                                                                  | Default     | Required |
-| ----------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------- | -------- |
-| `concurrency`           | `int`                | SNMP exporter concurrency.                                                                                                   | `1`         | no       |
-| `config_file`           | `string`             | SNMP configuration file defining custom modules.                                                                             |             | no       |
-| `config_merge_strategy` | `string`             | A strategy defining how `config` or `config_file` contents merge with the embedded SNMP config. Can be `replace` or `merge`. | `"replace"` | no       |
-| `config`                | `string` or `secret` | SNMP configuration as inline string.                                                                                         |             | no       |
-| `targets`               | `list(map(string))`  | SNMP targets.                                                                                                                |             | no       |
+| Name                    | Type                 | Description                                                                                                             | Default     | Required |
+| ----------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------- | ----------- | -------- |
+| `concurrency`           | `int`                | SNMP exporter concurrency.                                                                                              | `1`         | no       |
+| `config_file`           | `string`             | SNMP configuration file defining custom modules.                                                                        |             | no       |
+| `config_merge_strategy` | `string`             | Defines how `config` or `config_file` contents merge with the embedded SNMP configuration. Can be `replace` or `merge`. | `"replace"` | no       |
+| `config`                | `string` or `secret` | SNMP configuration as inline string.                                                                                    |             | no       |
+| `targets`               | `list(map(string))`  | SNMP targets.                                                                                                           |             | no       |
 
-The `config_file` argument points to a YAML file defining which snmp_exporter modules to use.
+The `config_file` argument points to a YAML file that defines which `snmp_exporter` modules to use.
 Refer to the [`snmp_exporter` configuration documentation][snmp-exporter-config] for details on how to generate a configuration file.
 
 The `config` argument must be a YAML document as string defining which SNMP modules and authorizations to use.
@@ -77,13 +77,13 @@ If you use both, the component fails with an invalid configuration error.
 
 You can set the following labels on a target:
 
-- `name`: The name of the target (required).
-- `address` or `__address__`: The address of SNMP device (required).
+- `name`: The name of the target. Required.
+- `address` or `__address__`: The address of the SNMP device. Required.
 - `module`: SNMP modules to use for polling, separated by comma.
 - `auth`: The SNMP authentication profile to use.
 - `walk_params`: The configuration to use for this target.
 
-Any other labels defined are added to the scraped metrics.
+The component adds any other labels you define to the scraped metrics.
 
 The component sets the `instance` label on its exported targets to the component ID, for example, `prometheus.exporter.snmp.example`.
 The component also appends the target name to the `job` label of each exported target, for example, `integrations/snmp/network_switch_1`.
@@ -107,8 +107,8 @@ You can use the following blocks with `prometheus.exporter.snmp`:
 ### `target`
 
 The `target` block defines an individual SNMP target.
-The `target` block may be specified multiple times to define multiple targets.
-The label of the block is required and is used in the target's `job` label.
+You can define multiple `target` blocks to configure multiple targets.
+Each `target` block requires a label, which the component uses in the `job` label of the target.
 
 You can use the following arguments with the `target` block:
 
@@ -119,13 +119,13 @@ You can use the following arguments with the `target` block:
 | `labels`       | `map(string)` | Map of labels to apply to all metrics captured from the target.       | `{}`    | no       |
 | `module`       | `string`      | SNMP modules to use for polling, separated by comma.                  | `""`    | no       |
 | `snmp_context` | `string`      | Override the `context_name` parameter in the SNMP configuration file. | `""`    | no       |
-| `walk_params`  | `string`      | Config to use for this target.                                        | `""`    | no       |
+| `walk_params`  | `string`      | The `walk_param` profile to use for this target.                      | `""`    | no       |
 
 ### `walk_param`
 
-The `walk_param` block defines an individual SNMP connection profile that can be used to override default SNMP settings.
-The `walk_param` block may be specified multiple times to define multiple SNMP connection profiles.
-The label of the block is required and is the name that the `walk_params` argument of a target refers to.
+The `walk_param` block defines an individual SNMP connection profile that overrides the default SNMP settings.
+You can define multiple `walk_param` blocks to configure multiple connection profiles.
+Each `walk_param` block requires a label, which is the name that the `walk_params` argument of a target refers to.
 
 You can use the following arguments with the `walk_param` block:
 
