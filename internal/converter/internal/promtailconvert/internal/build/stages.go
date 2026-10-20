@@ -203,9 +203,15 @@ func convertMultiline(cfg any, diags *diag.Diagnostics) (stages.StageConfig, boo
 		maxWaitTime = d
 	}
 
+	expr, err := regexp.Compile(defaultEmpty(pMulti.Expression))
+	if err != nil {
+		addInvalidStageError(diags, cfg, err)
+		return stages.StageConfig{}, false
+	}
+
 	return stages.StageConfig{
 		MultilineConfig: &stages.MultilineConfig{
-			Expression:   defaultEmpty(pMulti.Expression),
+			Expression:   expr,
 			MaxLines:     defaultZero(pMulti.MaxLines),
 			MaxWaitTime:  maxWaitTime,
 			TrimNewlines: true,

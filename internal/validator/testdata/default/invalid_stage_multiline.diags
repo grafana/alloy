@@ -1,0 +1,6 @@
+Error: main.alloy:13:15: error parsing regexp: missing closing ]: `[unclosed`
+
+12 |     stage.multiline {
+13 |         firstline = "[unclosed"
+   |                     ^^^^^^^^^^^
+14 |     }

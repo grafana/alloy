@@ -1,0 +1,17 @@
+invalid stage.multiline
+-- main.alloy --
+loki.process "valid" {
+	forward_to = []
+
+	stage.multiline {
+		firstline = "^START"
+	}
+}
+
+loki.process "invalid_firstline" {
+	forward_to = []
+
+	stage.multiline {
+		firstline = "[unclosed"
+	}
+}
