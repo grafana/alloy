@@ -33,7 +33,7 @@ You can use the following arguments with `prometheus.exporter.redis`:
 
 | Name                          | Type           | Description                                                                                                             | Default    | Required |
 | ----------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------- | -------- |
-| `redis_addr`                  | `string`       | Address of the Redis instance to connect to, as host and port.                                                          |            | yes      |
+| `redis_addr`                  | `string`       | Address of the Redis instance to connect to, with or without a URI scheme.                                              |            | yes      |
 | `check_key_groups`            | `list(string)` | List of Lua regular expressions for grouping keys.                                                                      |            | no       |
 | `check_key_groups_batch_size` | `int`          | Approximate number of keys to process in each SCAN execution.                                                           | `10000`    | no       |
 | `check_keys`                  | `list(string)` | List of key-patterns to export value and length/size, searched for with SCAN.                                           |            | no       |
@@ -65,6 +65,18 @@ You can use the following arguments with `prometheus.exporter.redis`:
 | `tls_ca_cert_file`            | `string`       | Full path to the CA certificate file if the server requires TLS client authentication.                                  |            | no       |
 | `tls_client_cert_file`        | `string`       | Full path to the client certificate file if the server requires TLS client authentication.                              |            | no       |
 | `tls_client_key_file`         | `string`       | Full path to the client key file if the server requires TLS client authentication.                                      |            | no       |
+
+The `redis_addr` argument accepts a host and port, such as `localhost:6379`, or a URI with one of the following schemes:
+
+- `redis://`: Connects without TLS. This is the default when you omit the scheme.
+- `rediss://`: Connects with TLS.
+- `valkey://`: Equivalent to `redis://`.
+- `valkeys://`: Equivalent to `rediss://`.
+
+{{< admonition type="caution" >}}
+The exporter enables TLS only when `redis_addr` starts with `rediss://` or `valkeys://`.
+The `tls_ca_cert_file`, `tls_client_cert_file`, `tls_client_key_file`, and `skip_tls_verification` arguments have no effect on a connection that uses any other scheme.
+{{< /admonition >}}
 
 You can supply the Redis password with `redis_password`, `redis_password_file`, or `redis_password_map_file`.
 Set only one of `redis_password_file` and `redis_password_map_file`.
