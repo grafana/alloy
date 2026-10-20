@@ -81,16 +81,17 @@ func NewTableRegistry() *TableRegistry {
 
 // SetTablesForDatabase atomically replaces all known tables for a database.
 func (tr *TableRegistry) SetTablesForDatabase(database string, tablesInfo []*tableInfo) {
+	schemas := make(map[string]map[string]struct{})
+	for _, info := range tablesInfo {
+		if schemas[info.schema] == nil {
+			schemas[info.schema] = make(map[string]struct{})
+		}
+		schemas[info.schema][info.tableName] = struct{}{}
+	}
+
 	tr.mu.Lock()
 	defer tr.mu.Unlock()
-
-	tr.tables[database] = make(map[string]map[string]struct{})
-	for _, info := range tablesInfo {
-		if tr.tables[database][info.schema] == nil {
-			tr.tables[database][info.schema] = make(map[string]struct{})
-		}
-		tr.tables[database][info.schema][info.tableName] = struct{}{}
-	}
+	tr.tables[database] = schemas
 }
 
 // HasDatabase reports whether tables have been collected for a database.
@@ -119,15 +120,15 @@ func (tr *TableRegistry) PruneDatabases(discovered map[string]struct{}) {
 // Unqualified names are checked across schemas because Query Store does not
 // expose the originating user's default schema.
 func (tr *TableRegistry) IsValid(database, parsedTableName string) (string, bool) {
-	tr.mu.RLock()
-	defer tr.mu.RUnlock()
-
-	schemas, ok := tr.tables[database]
+	schemaName, tableName, qualified, ok := parseSQLServerTableIdentifier(parsedTableName)
 	if !ok {
 		return parsedTableName, false
 	}
 
-	schemaName, tableName, qualified, ok := parseSQLServerTableIdentifier(parsedTableName)
+	tr.mu.RLock()
+	defer tr.mu.RUnlock()
+
+	schemas, ok := tr.tables[database]
 	if !ok {
 		return parsedTableName, false
 	}
