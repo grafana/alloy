@@ -281,10 +281,6 @@ func TestUpdateRestartsTailerOnlyOnConfigChange(t *testing.T) {
 	}
 }
 
-// TestUpdateWithBlockedDownstream checks that a config change does not wait on
-// a downstream that is not reading. During a reload this happens when a
-// downstream component sends to a component that only starts once the reload
-// is done.
 func TestUpdateWithBlockedDownstream(t *testing.T) {
 	getClient = realGetClient
 	t.Cleanup(func() { getClient = realGetClient })
