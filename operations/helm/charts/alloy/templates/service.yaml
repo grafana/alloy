@@ -32,7 +32,7 @@ spec:
   {{- end }}
   ports:
     - name: http-metrics
-      {{- if eq .Values.service.type "NodePort" }}
+      {{- if and (eq .Values.service.type "NodePort") .Values.service.nodePort }}
       nodePort: {{ .Values.service.nodePort }}
       {{- end }}
       port: {{ $values.listenPort }}
@@ -40,7 +40,7 @@ spec:
       protocol: "TCP"
 {{- range $portMap := $values.extraPorts }}
     - name: {{ $portMap.name }}
-      {{- if eq $.Values.service.type "NodePort" }}
+      {{- if and (eq $.Values.service.type "NodePort") $portMap.nodePort }}
       nodePort: {{ $portMap.nodePort }}
       {{- end }}
       port: {{ $portMap.port }}
