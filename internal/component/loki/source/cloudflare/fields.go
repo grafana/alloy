@@ -8,8 +8,7 @@ package cloudflare
 import (
 	"encoding"
 	"fmt"
-
-	"golang.org/x/exp/slices"
+	"slices"
 )
 
 // FieldsType defines the set of fields to fetch alongside logs.
@@ -72,15 +71,15 @@ func fieldsForType(t FieldsType, additionalFields []string) ([]string, error) {
 	var fields []string
 	switch t {
 	case FieldsTypeDefault:
-		fields = append(defaultFields, additionalFields...)
+		fields = slices.Concat(defaultFields, additionalFields)
 	case FieldsTypeMinimal:
-		fields = append(minimalFields, additionalFields...)
+		fields = slices.Concat(minimalFields, additionalFields)
 	case FieldsTypeExtended:
-		fields = append(extendedFields, additionalFields...)
+		fields = slices.Concat(extendedFields, additionalFields)
 	case FieldsTypeAll:
-		fields = append(allFields, additionalFields...)
+		fields = slices.Concat(allFields, additionalFields)
 	case FieldsTypeCustom:
-		fields = append(fields, additionalFields...)
+		fields = slices.Clone(additionalFields)
 	default:
 		return nil, fmt.Errorf("unknown fields type: %s", t)
 	}
