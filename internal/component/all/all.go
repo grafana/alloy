@@ -71,6 +71,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/auth/oauth2"                      // Import otelcol.auth.oauth2
 	_ "github.com/grafana/alloy/internal/component/otelcol/auth/sigv4"                       // Import otelcol.auth.sigv4
 	_ "github.com/grafana/alloy/internal/component/otelcol/connector/count"                  // Import otelcol.connector.count
+	_ "github.com/grafana/alloy/internal/component/otelcol/connector/exceptions"             // Import otelcol.connector.exceptions
 	_ "github.com/grafana/alloy/internal/component/otelcol/connector/host_info"              // Import otelcol.connector.host_info
 	_ "github.com/grafana/alloy/internal/component/otelcol/connector/servicegraph"           // Import otelcol.connector.servicegraph
 	_ "github.com/grafana/alloy/internal/component/otelcol/connector/signaltometrics"        // Import otelcol.connector.signaltometrics
