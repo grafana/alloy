@@ -62,7 +62,7 @@ func newLogpullStub(t *testing.T, lines ...string) *logpullStub {
 		s.mut.Unlock()
 
 		w.Header().Set("Content-Type", "application/x-ndjson")
-		if first {
+		if first && len(lines) > 0 {
 			_, _ = io.WriteString(w, strings.Join(lines, "\n")+"\n")
 		}
 	}))
@@ -183,6 +183,102 @@ func receive(t *testing.T, receiver loki.LogsReceiver, n int) []loki.Entry {
 		}
 	}
 	return received
+}
+
+func TestUpdateRestartsTailerOnlyOnConfigChange(t *testing.T) {
+	getClient = realGetClient
+	t.Cleanup(func() { getClient = realGetClient })
+
+	stub := newLogpullStub(t)
+
+	type testCase struct {
+		name          string
+		update        func(args *Arguments)
+		expectRestart bool
+	}
+
+	tests := []testCase{
+		{
+			name:          "same arguments",
+			update:        func(args *Arguments) {},
+			expectRestart: false,
+		},
+		{
+			name: "forward_to changed",
+			update: func(args *Arguments) {
+				args.ForwardTo = []loki.LogsReceiver{loki.NewLogsReceiver()}
+			},
+			expectRestart: false,
+		},
+		{
+			name: "labels changed",
+			update: func(args *Arguments) {
+				args.Labels = map[string]string{"job": "other"}
+			},
+			expectRestart: true,
+		},
+		{
+			name: "workers changed",
+			update: func(args *Arguments) {
+				args.Workers = 2
+			},
+			expectRestart: true,
+		},
+		{
+			name: "pull_range changed",
+			update: func(args *Arguments) {
+				args.PullRange = 2 * time.Minute
+			},
+			expectRestart: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			args := Arguments{
+				APIToken:   alloytypes.Secret("test-token"),
+				ZoneID:     "test-zone-id",
+				APIURL:     stub.apiURL(),
+				Labels:     map[string]string{"job": "cloudflare"},
+				Workers:    1,
+				PullRange:  time.Minute,
+				FieldsType: FieldsTypeDefault,
+				ForwardTo:  []loki.LogsReceiver{loki.NewLogsReceiver()},
+			}
+
+			ctrl, err := componenttest.NewControllerFromID(nil, "loki.source.cloudflare")
+			require.NoError(t, err)
+
+			ctx, cancel := context.WithCancel(t.Context())
+			runErr := make(chan error, 1)
+			go func() { runErr <- ctrl.Run(ctx, args) }()
+			require.NoError(t, ctrl.WaitRunning(time.Minute))
+
+			cmp, err := ctrl.GetComponent()
+			require.NoError(t, err)
+			c := cmp.(*Component)
+
+			c.mut.RLock()
+			before := c.tailer
+			c.mut.RUnlock()
+
+			tt.update(&args)
+			require.NoError(t, ctrl.Update(args))
+
+			c.mut.RLock()
+			after := c.tailer
+			c.mut.RUnlock()
+
+			if tt.expectRestart {
+				require.NotSame(t, before, after)
+			} else {
+				require.Same(t, before, after)
+			}
+
+			cancel()
+			require.NoError(t, <-runErr)
+		})
+	}
 }
 
 func TestArguments(t *testing.T) {
