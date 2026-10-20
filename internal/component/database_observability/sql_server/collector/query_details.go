@@ -22,23 +22,6 @@ const (
 	QueryDetailsCollector = "query_details"
 )
 
-// selectQueryTextTemplate returns the query text for the tracked
-// query_hashes on the currently connected database.
-//
-// TODO(cristian): consider fetching only the first query_sql_text
-// and also using a cursor.
-const selectQueryTextTemplate = `
-	SELECT
-		q.query_hash,
-		qt.query_sql_text
-	FROM
-		sys.query_store_query q
-	JOIN
-		sys.query_store_query_text qt ON qt.query_text_id = q.query_text_id
-	WHERE
-		q.is_internal_query = 0
-		AND q.query_hash IN (%s)`
-
 // QueryTracker reports which (database, query_hash) pairs are currently tracked
 // by the query_metrics collector.
 type QueryTracker interface {
@@ -46,23 +29,25 @@ type QueryTracker interface {
 }
 
 type QueryDetailsArguments struct {
-	DB              *sql.DB
-	CollectInterval time.Duration
-	QueryTimeout    time.Duration
-	Tracker         QueryTracker
-	EntryHandler    loki.EntryHandler
+	DB                 *sql.DB
+	CollectInterval    time.Duration
+	QueryTimeout       time.Duration
+	Tracker            QueryTracker
+	ExcludeCurrentUser bool
+	EntryHandler       loki.EntryHandler
 
 	Logger *slog.Logger
 }
 
 type QueryDetails struct {
-	dbConnection    *sql.DB
-	collectInterval time.Duration
-	queryTimeout    time.Duration
-	entryHandler    loki.EntryHandler
-	tracker         QueryTracker
-	obfuscator      *sqllexer.Obfuscator
-	normalizer      *sqllexer.Normalizer
+	dbConnection       *sql.DB
+	collectInterval    time.Duration
+	queryTimeout       time.Duration
+	excludeCurrentUser bool
+	entryHandler       loki.EntryHandler
+	tracker            QueryTracker
+	obfuscator         *sqllexer.Obfuscator
+	normalizer         *sqllexer.Normalizer
 
 	// lastEmittedAt records the wall-clock time at which OP_QUERY_ASSOCIATION
 	// was last emitted for a (database, query_hash), used to throttle logging
@@ -81,12 +66,13 @@ type QueryDetails struct {
 
 func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 	return &QueryDetails{
-		dbConnection:    args.DB,
-		collectInterval: args.CollectInterval,
-		queryTimeout:    queryTimeoutOrDefault(args.QueryTimeout),
-		entryHandler:    args.EntryHandler,
-		tracker:         args.Tracker,
-		obfuscator:      sqllexer.NewObfuscator(),
+		dbConnection:       args.DB,
+		collectInterval:    args.CollectInterval,
+		queryTimeout:       queryTimeoutOrDefault(args.QueryTimeout),
+		excludeCurrentUser: args.ExcludeCurrentUser,
+		entryHandler:       args.EntryHandler,
+		tracker:            args.Tracker,
+		obfuscator:         sqllexer.NewObfuscator(),
 		normalizer: sqllexer.NewNormalizer(
 			sqllexer.WithCollectTables(true),
 			sqllexer.WithKeepIdentifierQuotation(true),
@@ -162,7 +148,7 @@ func (c *QueryDetails) collect(ctx context.Context) error {
 		return nil
 	}
 
-	query, args, err := buildQueryTextStatement(hashes)
+	query, args, err := buildQueryTextStatement(hashes, c.excludeCurrentUser)
 	if err != nil {
 		return err
 	}
@@ -223,25 +209,26 @@ func (c *QueryDetails) collect(ctx context.Context) error {
 	return nil
 }
 
-// emit obfuscates and normalizes the query text, then emits the
-// query_association and query_parsed_table_name logs.
+// emit strips comments and obfuscates literals while preserving the query's
+// structure, then emits the query_association and query_parsed_table_name logs.
 func (c *QueryDetails) emit(database, queryHash, queryText string) {
-	normalized, metadata, err := sqllexer.ObfuscateAndNormalize(
-		queryText, c.obfuscator, c.normalizer, sqllexer.WithDBMS(sqllexer.DBMSSQLServer),
-	)
+	commentFree, err := stripSQLServerComments(queryText)
 	if err != nil {
-		c.logger.Warn("failed to normalize query text", "database", database, "query_hash", queryHash, "err", err)
-		normalized = c.obfuscator.Obfuscate(queryText, sqllexer.WithDBMS(sqllexer.DBMSSQLServer))
-		metadata = nil
+		c.logger.Warn("failed to sanitize query text", "database", database, "query_hash", queryHash, "err", err)
+		return
 	}
+	statementText := strings.TrimSpace(stripSQLServerParameterDeclarations(commentFree))
 
+	obfuscated := c.obfuscator.Obfuscate(statementText, sqllexer.WithDBMS(sqllexer.DBMSSQLServer))
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 		logging.LevelInfo,
 		database_observability.OP_QUERY_ASSOCIATION,
-		fmt.Sprintf(`database=%q query_hash=%q querytext=%q`, database, queryHash, normalized),
+		fmt.Sprintf(`database=%q query_hash=%q querytext=%q`, database, queryHash, obfuscated),
 	)
 
-	if metadata == nil {
+	_, metadata, err := c.normalizer.Normalize(statementText, sqllexer.WithDBMS(sqllexer.DBMSSQLServer))
+	if err != nil {
+		c.logger.Warn("failed to extract tables from query text", "database", database, "query_hash", queryHash, "err", err)
 		return
 	}
 
@@ -252,6 +239,214 @@ func (c *QueryDetails) emit(database, queryHash, queryText string) {
 			fmt.Sprintf(`database=%q query_hash=%q table=%q`, database, queryHash, table),
 		)
 	}
+}
+
+func stripSQLServerComments(queryText string) (string, error) {
+	var commentFree strings.Builder
+	commentFree.Grow(len(queryText))
+
+	for i := 0; i < len(queryText); {
+		switch {
+		case queryText[i] == '\'' || queryText[i] == '"' || queryText[i] == '[':
+			closing := queryText[i]
+			if closing == '[' {
+				closing = ']'
+			}
+			start := i
+			i = scanSQLServerQuoted(queryText, i, closing)
+			commentFree.WriteString(queryText[start:i])
+		case i+1 < len(queryText) && queryText[i:i+2] == "--":
+			commentFree.WriteByte(' ')
+			i += 2
+			for i < len(queryText) && queryText[i] != '\n' && queryText[i] != '\r' {
+				i++
+			}
+		case i+1 < len(queryText) && queryText[i:i+2] == "/*":
+			commentFree.WriteByte(' ')
+			i += 2
+			depth := 1
+			for i < len(queryText) && depth > 0 {
+				switch {
+				case i+1 < len(queryText) && queryText[i:i+2] == "/*":
+					depth++
+					i += 2
+				case i+1 < len(queryText) && queryText[i:i+2] == "*/":
+					depth--
+					i += 2
+				default:
+					i++
+				}
+			}
+			if depth > 0 {
+				return "", fmt.Errorf("unterminated block comment")
+			}
+		default:
+			commentFree.WriteByte(queryText[i])
+			i++
+		}
+	}
+
+	return commentFree.String(), nil
+}
+
+func stripSQLServerParameterDeclarations(queryText string) string {
+	start := 0
+	for start < len(queryText) && isSQLServerSpace(queryText[start]) {
+		start++
+	}
+	if start == len(queryText) || queryText[start] != '(' {
+		return queryText
+	}
+
+	depth := 1
+	end := start + 1
+	for end < len(queryText) && depth > 0 {
+		switch queryText[end] {
+		case '\'', '"':
+			end = scanSQLServerQuoted(queryText, end, queryText[end])
+		case '[':
+			end = scanSQLServerQuoted(queryText, end, ']')
+		case '(':
+			depth++
+			end++
+		case ')':
+			depth--
+			end++
+		default:
+			end++
+		}
+	}
+	if depth != 0 || !isSQLServerParameterDeclarationList(queryText[start+1:end-1]) {
+		return queryText
+	}
+
+	bodyStart := end
+	for bodyStart < len(queryText) && isSQLServerSpace(queryText[bodyStart]) {
+		bodyStart++
+	}
+	if bodyStart == len(queryText) {
+		return queryText
+	}
+	return queryText[end:]
+}
+
+func isSQLServerParameterDeclarationList(declarations string) bool {
+	index := 0
+	for {
+		for index < len(declarations) && isSQLServerSpace(declarations[index]) {
+			index++
+		}
+		if index == len(declarations) {
+			return false
+		}
+		if declarations[index] != '@' || index+1 == len(declarations) || declarations[index+1] == '@' {
+			return false
+		}
+		index++
+
+		parameterStart := index
+		for index < len(declarations) && isSQLServerParameterIdentifierPart(declarations[index]) {
+			index++
+		}
+		if index == parameterStart || index == len(declarations) || !isSQLServerSpace(declarations[index]) {
+			return false
+		}
+		for index < len(declarations) && isSQLServerSpace(declarations[index]) {
+			index++
+		}
+		if index == len(declarations) || !isSQLServerTypeStart(declarations[index]) {
+			return false
+		}
+
+		typeStart := index
+		depth := 0
+		for index < len(declarations) {
+			switch declarations[index] {
+			case '\'', '"':
+				index = scanSQLServerQuoted(declarations, index, declarations[index])
+			case '[':
+				index = scanSQLServerQuoted(declarations, index, ']')
+			case '(':
+				depth++
+				index++
+			case ')':
+				if depth == 0 {
+					return false
+				}
+				depth--
+				index++
+			case ',':
+				if depth == 0 {
+					if !validSQLServerParameterType(declarations[typeStart:index]) {
+						return false
+					}
+					index++
+					goto nextDeclaration
+				}
+				index++
+			case '=', '+', '-', '*', '/', '<', '>':
+				if depth == 0 {
+					return false
+				}
+				index++
+			default:
+				index++
+			}
+		}
+
+		return depth == 0 && validSQLServerParameterType(declarations[typeStart:index])
+
+	nextDeclaration:
+	}
+}
+
+func validSQLServerParameterType(parameterType string) bool {
+	parameterType = strings.TrimSpace(parameterType)
+	return parameterType != "" && isSQLServerTypeStart(parameterType[0])
+}
+
+func scanSQLServerQuoted(sqlText string, start int, closing byte) int {
+	index := start + 1
+	for index < len(sqlText) {
+		if sqlText[index] != closing {
+			index++
+			continue
+		}
+		index++
+		if index < len(sqlText) && sqlText[index] == closing {
+			index++
+			continue
+		}
+		break
+	}
+	return index
+}
+
+func isSQLServerSpace(char byte) bool {
+	switch char {
+	case ' ', '\t', '\n', '\r', '\f':
+		return true
+	default:
+		return false
+	}
+}
+
+func isSQLServerParameterIdentifierPart(char byte) bool {
+	return char >= 0x80 ||
+		char >= 'a' && char <= 'z' ||
+		char >= 'A' && char <= 'Z' ||
+		char >= '0' && char <= '9' ||
+		char == '_' ||
+		char == '#' ||
+		char == '$'
+}
+
+func isSQLServerTypeStart(char byte) bool {
+	return char == '[' ||
+		char >= 0x80 ||
+		char >= 'a' && char <= 'z' ||
+		char >= 'A' && char <= 'Z' ||
+		char == '_'
 }
 
 // pruneThrottle drops throttle entries whose (database, query_hash) was not
@@ -266,7 +461,7 @@ func (c *QueryDetails) pruneThrottle(seen map[queryMetricsKey]struct{}) {
 
 // buildQueryTextStatement returns the query text statement plus its named
 // parameters, binding each 16-char hex hash back to its binary(8) form.
-func buildQueryTextStatement(hashes []string) (string, []any, error) {
+func buildQueryTextStatement(hashes []string, excludeCurrentUser bool) (string, []any, error) {
 	placeholders := make([]string, 0, len(hashes))
 	args := make([]any, 0, len(hashes))
 	for i, h := range hashes {
@@ -278,6 +473,8 @@ func buildQueryTextStatement(hashes []string) (string, []any, error) {
 		placeholders = append(placeholders, "@"+name)
 		args = append(args, sql.Named(name, raw))
 	}
+
+	args = append(args, sql.Named("exclude_current_user", excludeCurrentUser), sql.Named("collector_marker", QueryMarker))
 
 	return fmt.Sprintf(selectQueryTextTemplate, strings.Join(placeholders, ", ")), args, nil
 }

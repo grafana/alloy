@@ -203,9 +203,15 @@ func convertMultiline(cfg any, diags *diag.Diagnostics) (stages.StageConfig, boo
 		maxWaitTime = d
 	}
 
+	expr, err := regexp.Compile(defaultEmpty(pMulti.Expression))
+	if err != nil {
+		addInvalidStageError(diags, cfg, err)
+		return stages.StageConfig{}, false
+	}
+
 	return stages.StageConfig{
 		MultilineConfig: &stages.MultilineConfig{
-			Expression:   defaultEmpty(pMulti.Expression),
+			Expression:   expr,
 			MaxLines:     defaultZero(pMulti.MaxLines),
 			MaxWaitTime:  maxWaitTime,
 			TrimNewlines: true,
@@ -587,11 +593,15 @@ func convertLogfmt(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) 
 		addInvalidStageError(diags, cfg, err)
 		return stages.StageConfig{}, false
 	}
-	return stages.StageConfig{
-		LogfmtConfig: &stages.LogfmtConfig{
-			Source:  defaultEmpty(pCfg.Source),
-			Mapping: pCfg.Mapping,
-		}}, true
+	logfmtCfg := &stages.LogfmtConfig{
+		Source:  defaultEmpty(pCfg.Source),
+		Mapping: pCfg.Mapping,
+	}
+	if err := logfmtCfg.Validate(); err != nil {
+		addInvalidStageError(diags, cfg, err)
+		return stages.StageConfig{}, false
+	}
+	return stages.StageConfig{LogfmtConfig: logfmtCfg}, true
 }
 
 func convertJSONStage(iCfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
