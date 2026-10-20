@@ -50,7 +50,7 @@ func NewKafka(opts KafkaOptions) *Kafka {
 
 func (k *Kafka) Name() string { return "kafka" }
 
-func (k *Kafka) Install(_ *harness.TestContext) error {
+func (k *Kafka) Install(_ *harness.TestContext) (err error) {
 	if k.opts.Namespace == "" {
 		return errors.New("kafka namespace is required")
 	}
@@ -59,12 +59,20 @@ func (k *Kafka) Install(_ *harness.TestContext) error {
 		return fmt.Errorf("failed to load kafka image: %w", err)
 	}
 
+	// The harness only registers a dependency after a successful Install, so
+	// remove anything applied (even partially) if a later step fails.
+	k.installed = true
+	defer func() {
+		if err != nil {
+			k.Cleanup()
+		}
+	}()
+
 	if err := util.Step("apply kafka manifest", func() error {
 		return harness.ApplyManifest(k.opts.Namespace, kafkaManifest)
 	}); err != nil {
 		return err
 	}
-	k.installed = true
 
 	if err := util.Step("wait for kafka pod ready", func() error {
 		return harness.WaitForReady(k.opts.Namespace, kafkaSelector)
