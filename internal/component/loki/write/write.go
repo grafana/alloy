@@ -17,6 +17,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/loki/util"
+	"github.com/grafana/alloy/internal/service/lokipipelinev2"
 	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/common/model"
 )
@@ -42,14 +43,17 @@ type Exports struct {
 
 var (
 	_ component.Component = (*Component)(nil)
+	_ loki.Consumer       = (*Component)(nil)
 )
 
 // Component implements the loki.write component.
 type Component struct {
-	opts     component.Options
-	receiver loki.LogsReceiver
+	opts       component.Options
+	pipelineV2 bool
+	receiver   loki.LogsReceiver
 
 	mut            sync.RWMutex
+	stopped        bool
 	externalLabels model.LabelSet
 
 	// wal is opened when it is first enabled and reused across updates.
@@ -64,16 +68,23 @@ type Component struct {
 
 // New creates a new loki.write component.
 func New(o component.Options, args Arguments) (*Component, error) {
-	c := &Component{
-		opts: o,
+	svc, err := o.GetServiceData(lokipipelinev2.ServiceName)
+	if err != nil {
+		return nil, err
 	}
 
-	// Create and immediately export the receiver which remains the same for
-	// the component's lifetime.
-	c.receiver = loki.NewLogsReceiver(loki.WithComponentID(o.ID))
+	c := &Component{
+		opts:       o,
+		pipelineV2: svc.(lokipipelinev2.Data).PipelineV2Enabled(),
+	}
+
+	if c.pipelineV2 {
+		c.receiver = loki.NewLogsReceiverV2(c, o.ID)
+	} else {
+		c.receiver = loki.NewLogsReceiver(loki.WithComponentID(o.ID))
+	}
 	o.OnStateChange(Exports{Receiver: c.receiver})
 
-	// Call to Update() to start readers and set receivers once at the start.
 	if err := c.Update(args); err != nil {
 		return nil, err
 	}
@@ -86,6 +97,7 @@ func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		c.mut.Lock()
 		defer c.mut.Unlock()
+		c.stopped = true
 
 		if d, ok := c.consumer.(client.DrainableConsumer); ok {
 			// stop and drain since component is shutting down.
@@ -98,6 +110,11 @@ func (c *Component) Run(ctx context.Context) error {
 			c.wal.Close()
 		}
 	}()
+
+	if c.pipelineV2 {
+		<-ctx.Done()
+		return nil
+	}
 
 	for {
 		select {
@@ -225,6 +242,70 @@ func (c *Component) newWALConsumer(args Arguments, cfgs []client.Config) (client
 
 	c.wal = wl
 	return consumer, nil
+}
+
+func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
+	var (
+		bo           *backoff.Backoff
+		labelsMerged bool
+	)
+
+	for {
+		c.mut.RLock()
+		if c.stopped {
+			c.mut.RUnlock()
+			return loki.ErrConsumerStopped
+		}
+
+		var (
+			consumer       = c.consumer
+			externalLabels = c.externalLabels
+		)
+		c.mut.RUnlock()
+
+		if len(externalLabels) > 0 && !labelsMerged {
+			labelsMerged = true
+			batch.FilterMapStreams(func(stream loki.Stream) (loki.Stream, bool) {
+				stream.Labels = externalLabels.Merge(stream.Labels)
+				return stream, true
+			})
+		}
+
+		err := consumer.Consume(ctx, batch)
+		if err == nil {
+			return nil
+		}
+
+		if ctx.Err() != nil {
+			return err
+		}
+
+		if !client.IsRetryableErr(err) {
+			return err
+		}
+
+		// A stopped consumer has already been swapped out by the time Update
+		// releases the lock, so there is no need to wait.
+		// This makes delivery at-least-once: a fanout consumer enqueues to its
+		// endpoints in order, so it can be stopped after some of them already
+		// accepted the batch, and the retry hands it to those endpoints again.
+		if errors.Is(err, loki.ErrConsumerStopped) {
+			continue
+		}
+
+		// Retrying without a limit blocks the pipeline instead of dropping the batch,
+		// a full WAL disk can recover on its own once old segments are cleaned up.
+		if bo == nil {
+			// FIXME(kalleep): Handle component stopping while waiting here.
+			bo = backoff.New(ctx, backoff.Config{
+				MinBackoff: 50 * time.Millisecond,
+				MaxBackoff: 30 * time.Second,
+			})
+		}
+
+		c.opts.Logger.Debug("failed to write batch, retrying", "attempt", bo.NumRetries()+1, "err", err)
+		bo.Wait()
+	}
 }
 
 func (c *Component) consumeEntry(ctx context.Context, e loki.Entry) {
