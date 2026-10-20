@@ -34,6 +34,7 @@ import (
 	alloyengine "github.com/grafana/alloy/extension/alloyengine"
 	basicauthextension "github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension"
 	bearertokenauthextension "github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension"
+	azureencodingextension "github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/azureencodingextension"
 	jsonlogencodingextension "github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/jsonlogencodingextension"
 	textencodingextension "github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/textencodingextension"
 	headerssetterextension "github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension"
@@ -117,6 +118,7 @@ func components() (otelcol.Factories, error) {
 		alloyengine.NewFactory(),
 		basicauthextension.NewFactory(),
 		bearertokenauthextension.NewFactory(),
+		azureencodingextension.NewFactory(),
 		jsonlogencodingextension.NewFactory(),
 		textencodingextension.NewFactory(),
 		headerssetterextension.NewFactory(),
@@ -137,6 +139,7 @@ func components() (otelcol.Factories, error) {
 		alloyengine.NewFactory().Type(): "github.com/grafana/alloy v1.21.0",
 		basicauthextension.NewFactory().Type(): "github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.162.0",
 		bearertokenauthextension.NewFactory().Type(): "github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.162.0",
+		azureencodingextension.NewFactory().Type(): "github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/azureencodingextension v0.162.0",
 		jsonlogencodingextension.NewFactory().Type(): "github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/jsonlogencodingextension v0.162.0",
 		textencodingextension.NewFactory().Type(): "github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/textencodingextension v0.162.0",
 		headerssetterextension.NewFactory().Type(): "github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension v0.162.0",

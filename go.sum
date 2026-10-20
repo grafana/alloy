@@ -1921,6 +1921,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokena
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.162.0/go.mod h1:ch1MYCI5AsFgPEaELkgh/1EBDmzk6lNkm1rOFKqAnFg=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.162.0 h1:dwV8XHiPnfsUbsOZzjMtxWCfa4g7DeNvm/UDSnCEdn4=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.162.0/go.mod h1:8uRxMHu6s5as6jHFpsxs6+49hTUatKGH/dtW2b154E8=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/azureencodingextension v0.162.0 h1:SzPX24r/jSNrEhYwk5RBB1ThDEi6UpdYEIZuAsvTfps=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/azureencodingextension v0.162.0/go.mod h1:ZmpeSxxN2Ypd3lI3wme2dmLPzkeL8msrDkSuCW0ZgzA=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/jsonlogencodingextension v0.162.0 h1:0UA/xNrmy8KzHERJmWfZn1MeIWHptQ48G9WAxikwoBc=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/jsonlogencodingextension v0.162.0/go.mod h1:3FEBDYKb48cNGp1dvGSRZ9+IUbuZ7EGOtZ65oa+jDPg=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/otlpencodingextension v0.162.0 h1:r6udwENGKz1bfBJDQ6M+g86rHVmCoBuBcgY7zD28ErQ=
