@@ -116,6 +116,7 @@ The following sections list all included components:
 - [influxdb](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/influxdbreceiver/README.md)
 - [jaeger](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/jaegerreceiver/README.md)
 - [k8sclusterreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/k8sclusterreceiver/README.md)
+- [k8seventsreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/k8seventsreceiver/README.md)
 - [k8sobjectsreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/k8sobjectsreceiver/README.md)
 - [kafka](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/kafkareceiver/README.md)
 - [kubeletstatsreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/kubeletstatsreceiver/README.md)

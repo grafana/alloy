@@ -63,6 +63,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver v0.162.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver v0.162.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8sclusterreceiver v0.162.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8seventsreceiver v0.162.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8sobjectsreceiver v0.162.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver v0.162.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver v0.162.0
