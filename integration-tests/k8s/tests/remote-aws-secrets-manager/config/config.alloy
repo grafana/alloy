@@ -1,0 +1,36 @@
+logging {
+  level = "debug"
+}
+
+remote.aws.secrets_manager "test" {
+  secret_id      = "alloy-integration-test"
+  poll_frequency = "1m"
+
+  client {
+    region   = "us-east-1"
+    endpoint = "http://moto:5000"
+    key      = "test"
+    secret   = "test"
+  }
+}
+
+prometheus.exporter.self "alloy" { }
+
+prometheus.scrape "self" {
+  targets         = prometheus.exporter.self.alloy.targets
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+  scrape_interval = "1s"
+  scrape_timeout  = "500ms"
+}
+
+// The test name label comes from the secret. A series with this label in
+// Mimir proves the fetch, the JSON flattening, and the export all work.
+prometheus.remote_write "mimir" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+  }
+
+  external_labels = {
+    alloy_test_name = convert.nonsensitive(remote.aws.secrets_manager.test.data.test_name),
+  }
+}

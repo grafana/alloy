@@ -105,6 +105,7 @@ Pair them with the `secret` type described in [Types and values][types-values] s
 - [`remote.vault`][remote-vault] loads secrets from HashiCorp Vault.
 - [`remote.kubernetes.secret`][remote-k8s-secret] loads secrets from the cluster.
 - [`remote.s3`][remote-s3] loads configuration or secrets from AWS S3.
+- [`remote.aws.secrets_manager`][remote-aws-secrets-manager] loads secrets from AWS Secrets Manager.
 
 ### Secrets in collected data
 
@@ -140,6 +141,7 @@ Restrict access to observability backends that store log data.
 [sys-env]: ../reference/stdlib/sys/#sys.env
 [remote-k8s-secret]: ../reference/components/remote/remote.kubernetes.secret/
 [remote-s3]: ../reference/components/remote/remote.s3/
+[remote-aws-secrets-manager]: ../reference/components/remote/remote.aws.secrets_manager/
 [types-values]: ../get-started/expressions/types_and_values/
 [components]: ../reference/components/
 [beyla-ebpf]: ../reference/components/beyla/beyla.ebpf/
