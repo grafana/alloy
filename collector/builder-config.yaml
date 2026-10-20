@@ -2,11 +2,11 @@ dist:
   module: github.com/grafana/alloy/otel_engine
   name: alloy
   description: Alloy OTel Collector distribution.
-  version: v1.20.0 # x-release-please-version
+  version: v1.21.0 # x-release-please-version
   output_path: .
 
 extensions:
-  - gomod: github.com/grafana/alloy v1.20.0 # x-release-please-version
+  - gomod: github.com/grafana/alloy v1.21.0 # x-release-please-version
     import: github.com/grafana/alloy/extension/alloyengine
     name: alloyengine
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.162.0
@@ -72,6 +72,7 @@ receivers:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver v0.162.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver v0.162.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8sclusterreceiver v0.162.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8seventsreceiver v0.162.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8sobjectsreceiver v0.162.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver v0.162.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver v0.162.0
@@ -89,6 +90,7 @@ receivers:
 
 connectors:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.162.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/connector/exceptionsconnector v0.162.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/connector/grafanacloudconnector v0.162.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.162.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.162.0
@@ -149,7 +151,7 @@ replaces:
   # Use Grafana fork of smimesign
   - github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3
   # Replace OpenTelemetry eBPF profiler with Grafana fork
-  - go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260724100839-b73e704d1c59
+  - go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20261014150131-01c499662e68
   # Update openshift/client-go to version compatible with structured-merge-diff v6
   - github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235
   # Pin runc to v1.3.6: cadvisor and other deps import runc libcontainer packages

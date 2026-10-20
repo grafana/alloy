@@ -1061,8 +1061,8 @@ func TestSchemaDetailsMultiDatabase_UseFailureContinues(t *testing.T) {
 			AddRow("good_db", "[good_db]"))
 
 	// First USE fails; the second one succeeds and the loop continues.
-	mock.ExpectExec("USE [bad_db]").WillReturnError(fmt.Errorf("cannot open database"))
-	mock.ExpectExec("USE [good_db]").WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec("USE " + QueryMarker + " [bad_db]").WillReturnError(fmt.Errorf("cannot open database"))
+	mock.ExpectExec("USE " + QueryMarker + " [good_db]").WillReturnResult(sqlmock.NewResult(0, 0))
 
 	mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 		WillReturnRows(sqlmock.NewRows([]string{
@@ -1138,7 +1138,7 @@ func TestSchemaDetailsUseFailurePreservesThrottle(t *testing.T) {
 		}))
 
 	// db_b: USE fails. No tables query should follow.
-	mock.ExpectExec("USE [db_b]").WillReturnError(fmt.Errorf("cannot open database"))
+	mock.ExpectExec("USE " + QueryMarker + " [db_b]").WillReturnError(fmt.Errorf("cannot open database"))
 
 	require.NoError(t, c.extractSchema(t.Context()))
 	require.NoError(t, mock.ExpectationsWereMet())
@@ -1239,5 +1239,5 @@ func expectListDatabases(mock sqlmock.Sqlmock, databases ...string) {
 }
 
 func expectUseDatabase(mock sqlmock.Sqlmock, dbName string) {
-	mock.ExpectExec(fmt.Sprintf("USE [%s]", dbName)).WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec(fmt.Sprintf("USE "+QueryMarker+" [%s]", dbName)).WillReturnResult(sqlmock.NewResult(0, 0))
 }
