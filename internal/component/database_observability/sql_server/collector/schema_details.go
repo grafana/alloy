@@ -21,90 +21,6 @@ const (
 	SchemaDetailsCollector = "schema_details"
 )
 
-const (
-	selectDatabasesTemplate = `
-		SELECT name, QUOTENAME(name)
-		FROM sys.databases
-		WHERE state_desc = 'ONLINE'
-			AND HAS_DBACCESS(name) = 1
-			AND name NOT IN %s
-		ORDER BY name`
-
-	selectTablesTemplate = `
-		SELECT
-			table_catalog,
-			table_schema,
-			table_name,
-			table_type
-		FROM information_schema.tables
-		WHERE table_schema NOT IN %s
-		ORDER BY table_schema, table_name`
-
-	// selectColumnsTemplate returns columns information for every table in
-	// the given IN-clause of table names, scoped to a single schema.
-	// Note that column_type is emitted as the bare SQL Server type family name
-	// (e.g. `varchar`, `int`, `decimal`) without precision/length.
-	selectColumnsTemplate = `
-		SELECT
-			OBJECT_NAME(c.object_id) AS table_name,
-			c.name AS column_name,
-			TYPE_NAME(c.user_type_id) AS column_type,
-			c.is_nullable,
-			c.is_identity,
-			dc.definition AS default_value,
-			CASE WHEN pk_ic.column_id IS NOT NULL THEN 1 ELSE 0 END AS is_primary_key
-		FROM sys.columns c
-		INNER JOIN sys.objects o ON c.object_id = o.object_id
-		INNER JOIN sys.schemas s ON o.schema_id = s.schema_id
-		LEFT JOIN sys.default_constraints dc ON c.default_object_id = dc.object_id
-		LEFT JOIN sys.indexes pk ON pk.object_id = c.object_id AND pk.is_primary_key = 1
-		LEFT JOIN sys.index_columns pk_ic ON pk_ic.object_id = c.object_id AND pk_ic.index_id = pk.index_id AND pk_ic.column_id = c.column_id
-		WHERE s.name = @p1 AND OBJECT_NAME(c.object_id) IN %s
-		ORDER BY OBJECT_NAME(c.object_id), c.column_id`
-
-	// selectIndexesTemplate returns index information for every table in
-	// the IN-clause. Note we filter out:
-	// - Heaps (i.type = 0) and unnamed rowstore rows
-	// - INCLUDE columns (ic.is_included_column = 1)
-	selectIndexesTemplate = `
-		SELECT
-			OBJECT_NAME(i.object_id) AS table_name,
-			i.name AS index_name,
-			ic.key_ordinal AS seq_in_index,
-			c.name AS column_name,
-			i.type_desc AS index_type,
-			i.is_unique,
-			c.is_nullable
-		FROM sys.indexes i
-		INNER JOIN sys.objects o ON i.object_id = o.object_id
-		INNER JOIN sys.schemas s ON o.schema_id = s.schema_id
-		INNER JOIN sys.index_columns ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id AND ic.is_included_column = 0
-		INNER JOIN sys.columns c ON ic.object_id = c.object_id AND ic.column_id = c.column_id
-		WHERE s.name = @p1 AND OBJECT_NAME(i.object_id) IN %s
-			AND i.type > 0
-			AND i.name IS NOT NULL
-		ORDER BY OBJECT_NAME(i.object_id), i.name, ic.key_ordinal`
-
-	// selectForeignKeysTemplate returns foreign key information for every table in
-	// the IN-clause. Ordering by constraint_column_id preserves the correlation
-	// between parent and referenced columns in composite foreign keys.
-	selectForeignKeysTemplate = `
-		SELECT
-			OBJECT_NAME(fk.parent_object_id) AS table_name,
-			fk.name AS constraint_name,
-			pcol.name AS column_name,
-			OBJECT_NAME(fk.referenced_object_id) AS referenced_table_name,
-			rcol.name AS referenced_column_name
-		FROM sys.foreign_keys fk
-		INNER JOIN sys.objects o ON fk.parent_object_id = o.object_id
-		INNER JOIN sys.schemas s ON o.schema_id = s.schema_id
-		INNER JOIN sys.foreign_key_columns fkc ON fk.object_id = fkc.constraint_object_id
-		INNER JOIN sys.columns pcol ON fkc.parent_object_id = pcol.object_id AND fkc.parent_column_id = pcol.column_id
-		INNER JOIN sys.columns rcol ON fkc.referenced_object_id = rcol.object_id AND fkc.referenced_column_id = rcol.column_id
-		WHERE s.name = @p1 AND OBJECT_NAME(fk.parent_object_id) IN %s
-		ORDER BY OBJECT_NAME(fk.parent_object_id), fk.name, fkc.constraint_column_id`
-)
-
 type SchemaDetailsArguments struct {
 	DB               *sql.DB
 	CollectInterval  time.Duration
@@ -276,7 +192,7 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 		for _, db := range databases {
 			discovered[db.name] = struct{}{}
 			err := withQueryTimeout(ctx, c.queryTimeout, func(queryCtx context.Context) error {
-				_, err := conn.ExecContext(queryCtx, fmt.Sprintf("USE %s", db.quoted))
+				_, err := conn.ExecContext(queryCtx, fmt.Sprintf(useDatabaseTemplate, db.quoted))
 				return err
 			})
 			if err != nil {

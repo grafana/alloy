@@ -507,7 +507,7 @@ func TestResolveExcludeUsers(t *testing.T) {
 		defer db.Close()
 
 		configured := []string{"app_reader"}
-		mock.ExpectQuery(selectOriginalLogin).
+		mock.ExpectQuery(collector.SelectOriginalLogin).
 			WillReturnRows(sqlmock.NewRows([]string{"original_login"}).AddRow("alloy_monitor"))
 
 		effective, err := resolveExcludeUsers(context.Background(), db, defaultQueryTimeout, configured, true)
@@ -522,7 +522,7 @@ func TestResolveExcludeUsers(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		mock.ExpectQuery(selectOriginalLogin).
+		mock.ExpectQuery(collector.SelectOriginalLogin).
 			WillReturnRows(sqlmock.NewRows([]string{"original_login"}).AddRow("Alloy_Monitor"))
 
 		effective, err := resolveExcludeUsers(context.Background(), db, defaultQueryTimeout, []string{"alloy_monitor"}, true)
@@ -547,7 +547,7 @@ func TestResolveExcludeUsers(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		mock.ExpectQuery(selectOriginalLogin).WillReturnError(errors.New("permission denied"))
+		mock.ExpectQuery(collector.SelectOriginalLogin).WillReturnError(errors.New("permission denied"))
 		_, err = resolveExcludeUsers(context.Background(), db, defaultQueryTimeout, nil, true)
 		require.ErrorContains(t, err, "failed to query original login")
 		require.NoError(t, mock.ExpectationsWereMet())
@@ -559,11 +559,11 @@ func TestConnectAndStartCollectorsFailsWhenCurrentUserCannotBeResolved(t *testin
 	require.NoError(t, err)
 	defer db.Close()
 
-	mock.ExpectPing()
-	mock.ExpectQuery(selectServerInfo).
+	mock.ExpectQuery("SELECT " + collector.QueryMarker + " 1").WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(1))
+	mock.ExpectQuery(collector.SelectServerInfo).
 		WillReturnRows(sqlmock.NewRows([]string{"server_name", "machine_name", "product_version"}).
 			AddRow("server", "machine", "16.0"))
-	mock.ExpectQuery(selectOriginalLogin).WillReturnError(errors.New("permission denied"))
+	mock.ExpectQuery(collector.SelectOriginalLogin).WillReturnError(errors.New("permission denied"))
 
 	var args Arguments
 	args.SetToDefault()
@@ -943,8 +943,8 @@ func clusteringTestMockDB(t *testing.T, serverName string) *sql.DB {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 
-	mock.ExpectPing()
-	mock.ExpectQuery(selectServerInfo).
+	mock.ExpectQuery("SELECT " + collector.QueryMarker + " 1").WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(1))
+	mock.ExpectQuery(collector.SelectServerInfo).
 		WillReturnRows(sqlmock.NewRows([]string{"server_name", "machine_name", "product_version"}).
 			AddRow(serverName, "machine", "16.0"))
 	return db
@@ -1233,4 +1233,43 @@ func TestSqlServer_Clustering_SingleDatabaseStandby(t *testing.T) {
 	h := c.CurrentHealth()
 	assert.Equal(t, cmp.HealthTypeHealthy, h.Health)
 	assert.Contains(t, h.Message, "no databases are currently owned")
+}
+
+func TestTaggedPinger_PingContext(t *testing.T) {
+	for _, failure := range []bool{false, true} {
+		name := "success"
+		if failure {
+			name = "query error"
+		}
+		t.Run(name, func(t *testing.T) {
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual), sqlmock.MonitorPingsOption(true))
+			require.NoError(t, err)
+			defer db.Close()
+			queryErr := errors.New("connection unavailable")
+			// Expect tagged SQL, not a call to the driver's Ping method.
+			expectation := mock.ExpectQuery(collector.PingQuery)
+			if failure {
+				expectation.WillReturnError(queryErr)
+			} else {
+				expectation.WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(1)).RowsWillBeClosed()
+			}
+			err = taggedPinger{db: db}.PingContext(context.Background())
+			if failure {
+				require.ErrorIs(t, err, queryErr)
+			} else {
+				require.NoError(t, err)
+			}
+			require.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
+
+func TestTaggedPinger_PingContextCanceled(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	require.ErrorIs(t, taggedPinger{db: db}.PingContext(ctx), context.Canceled)
+	require.NoError(t, mock.ExpectationsWereMet())
 }

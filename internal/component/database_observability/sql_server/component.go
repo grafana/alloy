@@ -14,11 +14,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/grafana/ckit/shard"
 	_ "github.com/microsoft/go-mssqldb"
 	"github.com/microsoft/go-mssqldb/msdsn"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-
-	"github.com/grafana/ckit/shard"
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
 
@@ -37,20 +36,23 @@ import (
 
 const name = "database_observability.sql_server"
 
-// selectServerInfo returns a stable identifier for the server instance plus
-// its product version, used to derive a server_id label and to expose the
-// engine version on the connection_info metric.
-const selectServerInfo = `
-SELECT
-    CONVERT(NVARCHAR(128), SERVERPROPERTY('ServerName')) AS server_name,
-    CONVERT(NVARCHAR(128), SERVERPROPERTY('MachineName')) AS machine_name,
-    CONVERT(NVARCHAR(128), SERVERPROPERTY('ProductVersion')) AS product_version`
-
 const (
-	selectOriginalLogin    = `SELECT ORIGINAL_LOGIN()`
 	defaultQueryTimeout    = collector.DefaultQueryTimeout
 	databaseConnectTimeout = 10 * time.Second
 )
+
+// taggedPinger wraps a *sql.DB so connectivity checks issue the tagged pingQuery
+// instead of the driver's untagged SELECT 1. It satisfies
+// database_observability.Pinger, so it can drive both the startup connectivity
+// check and the connection_info monitor.
+type taggedPinger struct {
+	db *sql.DB
+}
+
+func (p taggedPinger) PingContext(ctx context.Context) error {
+	var value int
+	return p.db.QueryRowContext(ctx, collector.PingQuery).Scan(&value)
+}
 
 func init() {
 	component.Register(component.Registration{
@@ -729,7 +731,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	}
 
 	connectCtx, cancelConnect := context.WithTimeout(ctx, databaseConnectTimeout)
-	err = dbConnection.PingContext(connectCtx)
+	err = taggedPinger{db: dbConnection}.PingContext(connectCtx)
 	cancelConnect()
 	if err != nil {
 		dbConnection.Close()
@@ -739,7 +741,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 
 	queryCtx, cancelQuery := context.WithTimeout(ctx, c.args.QueryTimeout)
 	var serverName, machineName, engineVersion sql.NullString
-	err = inst.dbConnection.QueryRowContext(queryCtx, selectServerInfo).Scan(&serverName, &machineName, &engineVersion)
+	err = inst.dbConnection.QueryRowContext(queryCtx, collector.SelectServerInfo).Scan(&serverName, &machineName, &engineVersion)
 	cancelQuery()
 	if err != nil {
 		return fmt.Errorf("failed to query server information: %w", err)
@@ -859,13 +861,14 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 	var queryMetricsCollector *collector.QueryMetrics
 	if collectors[collector.QueryMetricsCollector] {
 		qmCollector, err := collector.NewQueryMetrics(collector.QueryMetricsArguments{
-			DB:              inst.dbConnection,
-			Registry:        inst.registry,
-			QueryTimeout:    c.args.QueryTimeout,
-			CollectInterval: c.args.QueryMetricsArguments.CollectInterval,
-			Limit:           c.args.QueryMetricsArguments.StatementsLimit,
-			Lookback:        c.args.QueryMetricsArguments.StatementsLookback,
-			Logger:          c.opts.Logger,
+			DB:                 inst.dbConnection,
+			Registry:           inst.registry,
+			QueryTimeout:       c.args.QueryTimeout,
+			CollectInterval:    c.args.QueryMetricsArguments.CollectInterval,
+			Limit:              c.args.QueryMetricsArguments.StatementsLimit,
+			Lookback:           c.args.QueryMetricsArguments.StatementsLookback,
+			ExcludeCurrentUser: c.args.ExcludeCurrentUser,
+			Logger:             c.opts.Logger,
 		})
 		if err != nil {
 			logStartError(collector.QueryMetricsCollector, "create", err)
@@ -888,6 +891,7 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 			DisableQueryRedaction: c.args.QuerySamplesArguments.DisableQueryRedaction,
 			ExcludeDatabases:      c.args.ExcludeDatabases,
 			ExcludeUsers:          effectiveExcludeUsers,
+			ExcludeCurrentUser:    c.args.ExcludeCurrentUser,
 		}
 		if queryMetricsCollector != nil {
 			qsArgs.Tracker = queryMetricsCollector.Tracker()
@@ -906,11 +910,12 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 
 	if collectors[collector.QueryDetailsCollector] {
 		qdArgs := collector.QueryDetailsArguments{
-			DB:              inst.dbConnection,
-			CollectInterval: c.args.QueryDetailsArguments.CollectInterval,
-			QueryTimeout:    c.args.QueryTimeout,
-			EntryHandler:    entryHandler,
-			Logger:          c.opts.Logger,
+			DB:                 inst.dbConnection,
+			CollectInterval:    c.args.QueryDetailsArguments.CollectInterval,
+			QueryTimeout:       c.args.QueryTimeout,
+			ExcludeCurrentUser: c.args.ExcludeCurrentUser,
+			EntryHandler:       entryHandler,
+			Logger:             c.opts.Logger,
 		}
 
 		// NOTE: this might change in the future, but for now query_details has
@@ -932,11 +937,12 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 
 	if collectors[collector.ExplainPlansCollector] {
 		epArgs := collector.ExplainPlansArguments{
-			DB:              inst.dbConnection,
-			CollectInterval: c.args.ExplainPlansArguments.CollectInterval,
-			QueryTimeout:    c.args.QueryTimeout,
-			EntryHandler:    entryHandler,
-			Logger:          c.opts.Logger,
+			DB:                 inst.dbConnection,
+			CollectInterval:    c.args.ExplainPlansArguments.CollectInterval,
+			QueryTimeout:       c.args.QueryTimeout,
+			ExcludeCurrentUser: c.args.ExcludeCurrentUser,
+			EntryHandler:       entryHandler,
+			Logger:             c.opts.Logger,
 		}
 
 		// explain_plans has the same hard dependency on query_metrics's tracked
@@ -964,7 +970,7 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 		Registry:      inst.registry,
 		EngineVersion: engineVersion,
 		CloudProvider: cloudProviderInfo,
-		DB:            inst.dbConnection,
+		Pinger:        taggedPinger{db: inst.dbConnection},
 	})
 	if err != nil {
 		logStartError(collector.ConnectionInfoName, "create", err)
@@ -1016,7 +1022,7 @@ func resolveExcludeUsers(ctx context.Context, db *sql.DB, queryTimeout time.Dura
 	defer cancel()
 
 	var originalLogin sql.NullString
-	if err := db.QueryRowContext(queryCtx, selectOriginalLogin).Scan(&originalLogin); err != nil {
+	if err := db.QueryRowContext(queryCtx, collector.SelectOriginalLogin).Scan(&originalLogin); err != nil {
 		return nil, fmt.Errorf("failed to query original login: %w", err)
 	}
 	if !originalLogin.Valid || originalLogin.String == "" {
