@@ -92,7 +92,6 @@ func consumersFrom(children []LogsReceiver) []Consumer {
 	consumers := make([]Consumer, 0, len(children))
 	for _, child := range children {
 		if child == nil {
-			consumers = append(consumers, nil)
 			continue
 		}
 
