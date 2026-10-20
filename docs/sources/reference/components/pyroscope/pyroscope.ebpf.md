@@ -120,6 +120,12 @@ Omitted fields take their default values.
 
 Several arguments carry the label "Deprecated (no-op)". These arguments once configured cache sizes and behaviors, but they no longer have any effect. Remove these arguments from your configuration.
 
+The `load_probe` argument is accepted for compatibility but ignored.
+Remove it from your configuration.
+There is no replacement argument for loading a generic eBPF program to attach externally.
+To collect profiles from specific kernel or user-space probes, use `probe_links` as shown in [Collect profiles from probes](#collect-profiles-from-probes).
+You don't need to set `load_probe` to use `probe_links`.
+
 ## Blocks
 
 `pyroscope.ebpf` doesn't support any blocks.
