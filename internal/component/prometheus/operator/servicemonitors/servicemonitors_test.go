@@ -83,7 +83,6 @@ func TestServiceMonitorEndToEnd(t *testing.T) {
 			// Create component arguments
 			var args operator.Arguments
 			args.SetToDefault()
-			args.ForwardTo = []storage.AppendableV2{mockAppendable}
 			args.Namespaces = []string{"monitoring"}
 			args.Scrape = tc.scrapeOptions
 			args.Scrape.HonorMetadata = tc.honorMetadata
@@ -258,7 +257,7 @@ func startServiceMonitorComponent(t *testing.T, args operator.Arguments) (*commo
 	ctx, cancel := context.WithCancel(t.Context())
 
 	appender := testappender.NewCollectingAppender()
-	args.ForwardTo = []storage.Appendable{testappender.ConstantAppendable{Inner: appender}}
+	args.ForwardTo = []storage.AppendableV2{testappender.ConstantAppendable{Inner: appender}}
 
 	// A synchronized log buffer lets the factory detect "informers started".
 	logBuffer := &syncbuffer.Buffer{}
