@@ -10,4 +10,9 @@ The following arguments are supported:
 | --------- | ------ | ----------------------------- | ------- | -------- |
 | `enabled` | `bool` | Deprecated and has no effect. | n/a     | no       |
 
-The `enabled` argument is deprecated and has no effect. Cookies are turned on whenever the `cookies` block is present, regardless of the value of `enabled`.
+{{< admonition type="caution" >}}
+Starting with Alloy v1.22, the `enabled` argument is deprecated.
+It will be removed in a future release.
+
+Cookies are turned on whenever the `cookies` block is present, regardless of the value of `enabled`.
+{{< /admonition >}}
