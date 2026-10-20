@@ -1,4 +1,4 @@
-invalid stage.multiline
+invalid loki stages
 -- main.alloy --
 loki.process "valid" {
 	forward_to = []
@@ -6,10 +6,18 @@ loki.process "valid" {
 	stage.multiline {
 		firstline = "^START"
 	}
+
+	stage.logfmt {
+		regex = "^pod_"
+	}
 }
 
-loki.process "invalid_firstline" {
+loki.process "invalid_regex" {
 	forward_to = []
+
+	stage.logfmt {
+		regex = "[unclosed"
+	}
 
 	stage.multiline {
 		firstline = "[unclosed"
