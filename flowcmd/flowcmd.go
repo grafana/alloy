@@ -9,13 +9,8 @@ import (
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/nodeconf/importsource"
 
-	// Register Prometheus SD components
-	_ "github.com/prometheus/prometheus/discovery/install"
-
-	_ "github.com/grafana/alloy/internal/loki/promtail/discovery/consulagent"
-
-	// Register integrations
-	_ "github.com/grafana/alloy/internal/static/integrations/install"
+	// Enable config conversion from other formats
+	_ "github.com/grafana/alloy/internal/converter/enable"
 
 	// Embed a set of fallback X.509 trusted roots
 	// Allows the app to work correctly even when the OS does not provide a verifier or systems roots pool
