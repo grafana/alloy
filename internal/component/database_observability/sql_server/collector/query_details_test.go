@@ -151,11 +151,18 @@ func TestQueryDetails_ObfuscatesAndTrimsQueryTextWithoutNormalizingStructure(t *
 	lokiClient := loki.NewCollectingHandler()
 	defer lokiClient.Stop()
 
+	tableRegistry := NewTableRegistry()
+	tableRegistry.SetTablesForDatabase(testDatabase, []*tableInfo{
+		{database: testDatabase, schema: "dbo", tableName: "orders"},
+		{database: testDatabase, schema: "dbo", tableName: "customers"},
+	})
+
 	c, err := NewQueryDetails(QueryDetailsArguments{
 		DB:              db,
 		CollectInterval: time.Minute,
 		EntryHandler:    lokiClient,
 		Tracker:         trackerFor(testHash),
+		TableRegistry:   tableRegistry,
 		Logger:          util.TestAlloyLogger(t).Slog(),
 	})
 	require.NoError(t, err)
@@ -178,9 +185,46 @@ func TestQueryDetails_ObfuscatesAndTrimsQueryTextWithoutNormalizingStructure(t *
 	require.NotContains(t, entries[0].Line, "trailing comment")
 
 	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, entries[1].Labels)
-	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" table="dbo.orders"`, entries[1].Line)
+	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" table="dbo.orders" validated="true"`, entries[1].Line)
 	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, entries[2].Labels)
-	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" table="customers"`, entries[2].Line)
+	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" table="customers" validated="true"`, entries[2].Line)
+}
+
+func TestQueryDetailsMarksUpdateAliasAsNotValidated(t *testing.T) {
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	tableRegistry := NewTableRegistry()
+	tableRegistry.SetTablesForDatabase(testDatabase, []*tableInfo{
+		{database: testDatabase, schema: "dbo", tableName: "rentals"},
+	})
+
+	c, err := NewQueryDetails(QueryDetailsArguments{
+		EntryHandler:  lokiClient,
+		TableRegistry: tableRegistry,
+		Logger:        util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+
+	c.emit(testDatabase, testHash, `UPDATE r
+		SET r.status = @p2
+		FROM rentals r
+		INNER JOIN (
+			SELECT TOP (@p1) id
+			FROM rentals
+			WHERE status = @p3
+		) target ON r.id = target.id`)
+
+	require.Eventually(t, func() bool {
+		return len(lokiClient.Received()) == 3
+	}, 5*time.Second, 20*time.Millisecond)
+
+	entries := lokiClient.Received()
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, entries[0].Labels)
+	require.ElementsMatch(t, []string{
+		`level="info" database="books_store" query_hash="0011223344556677" table="rentals" validated="true"`,
+		`level="info" database="books_store" query_hash="0011223344556677" table="r" validated="false"`,
+	}, []string{entries[1].Line, entries[2].Line})
 }
 
 func TestSQLServerQueryTextSanitizationPreservesStructure(t *testing.T) {
@@ -377,6 +421,87 @@ func TestQueryDetails_ThrottlesWithinEmitInterval(t *testing.T) {
 	c.now = func() time.Time { return afterInterval }
 	poll()
 	require.Equal(t, afterInterval, c.lastEmittedAt[key])
+
+	require.NoError(t, mock.ExpectationsWereMet())
+	lokiClient.Stop()
+	require.Len(t, lokiClient.Received(), 4)
+}
+
+func TestQueryDetails_RetriesWhenSchemaRegistryIsNotReady(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	tableRegistry := NewTableRegistry()
+	c, err := NewQueryDetails(QueryDetailsArguments{
+		DB:              db,
+		CollectInterval: time.Minute,
+		EntryHandler:    lokiClient,
+		Tracker:         trackerFor(testHash),
+		TableRegistry:   tableRegistry,
+		Logger:          util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+
+	base := time.Now()
+	c.now = func() time.Time { return base }
+	key := queryMetricsKey{database: testDatabase, queryHash: testHash}
+	poll := func() {
+		t.Helper()
+		expectQueryText(t, mock, []string{testHash},
+			[]driver.Value{queryHashBytes, "SELECT * FROM foo WHERE id = 1"})
+		require.NoError(t, c.collect(context.Background()))
+	}
+
+	// Poll 1: database is not yet in tableRegistry; emit immediately with validated="false"
+	// and mark the query as pending validation.
+	poll()
+	require.Eventually(t, func() bool {
+		return len(lokiClient.Received()) == 2
+	}, 5*time.Second, 20*time.Millisecond)
+	require.Equal(t, base, c.lastEmittedAt[key])
+	require.Contains(t, c.unvalidated, key)
+
+	entries := lokiClient.Received()
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, entries[0].Labels)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, entries[1].Labels)
+	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" table="foo" validated="false"`, entries[1].Line)
+
+	// Poll 2: within EmitInterval and database still absent (e.g. excluded or failing);
+	// throttled so it does not re-emit on every cycle.
+	c.now = func() time.Time { return base.Add(time.Minute) }
+	poll()
+	require.Equal(t, base, c.lastEmittedAt[key])
+	require.Contains(t, c.unvalidated, key)
+
+	// Poll 3: within EmitInterval, schema collection populates the database;
+	// bypasses EmitInterval once to re-emit with validated="true".
+	tableRegistry.SetTablesForDatabase(testDatabase, []*tableInfo{
+		{database: testDatabase, schema: "dbo", tableName: "foo"},
+	})
+	readyAt := base.Add(2 * time.Minute)
+	c.now = func() time.Time { return readyAt }
+	poll()
+	require.Eventually(t, func() bool {
+		return len(lokiClient.Received()) == 4
+	}, 5*time.Second, 20*time.Millisecond)
+	require.Equal(t, readyAt, c.lastEmittedAt[key])
+	require.NotContains(t, c.unvalidated, key)
+
+	entries = lokiClient.Received()
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, entries[2].Labels)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, entries[3].Labels)
+	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" table="foo" validated="true"`, entries[3].Line)
+
+	// Poll 4: within EmitInterval and already validated; throttled normally.
+	c.now = func() time.Time { return base.Add(3 * time.Minute) }
+	poll()
+	require.Equal(t, readyAt, c.lastEmittedAt[key])
 
 	require.NoError(t, mock.ExpectationsWereMet())
 	lokiClient.Stop()
