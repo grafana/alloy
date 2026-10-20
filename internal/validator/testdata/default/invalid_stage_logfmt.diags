@@ -1,0 +1,6 @@
+Error: main.alloy:13:11: error parsing regexp: missing closing ]: `[unclosed`
+
+12 |     stage.logfmt {
+13 |         regex = "[unclosed"
+   |                 ^^^^^^^^^^^
+14 |     }

@@ -1,0 +1,17 @@
+invalid stage.logfmt
+-- main.alloy --
+loki.process "valid" {
+	forward_to = []
+
+	stage.logfmt {
+		regex = "^pod_"
+	}
+}
+
+loki.process "invalid_regex" {
+	forward_to = []
+
+	stage.logfmt {
+		regex = "[unclosed"
+	}
+}
