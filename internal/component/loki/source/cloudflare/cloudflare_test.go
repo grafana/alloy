@@ -281,6 +281,72 @@ func TestUpdateRestartsTailerOnlyOnConfigChange(t *testing.T) {
 	}
 }
 
+// TestUpdateWithBlockedDownstream checks that a config change does not wait on
+// a downstream that is not reading. During a reload this happens when a
+// downstream component sends to a component that only starts once the reload
+// is done.
+func TestUpdateWithBlockedDownstream(t *testing.T) {
+	getClient = realGetClient
+	t.Cleanup(func() { getClient = realGetClient })
+
+	lines := []string{
+		`{"EdgeStartTimestamp":1000000001,"RayID":"test-ray-001"}`,
+		`{"EdgeStartTimestamp":1000000002,"RayID":"test-ray-002"}`,
+		`{"EdgeStartTimestamp":1000000003,"RayID":"test-ray-003"}`,
+	}
+	stub := newLogpullStub(t, lines...)
+
+	ctrl, err := componenttest.NewControllerFromID(nil, "loki.source.cloudflare")
+	require.NoError(t, err)
+
+	receiver := loki.NewLogsReceiver()
+	args := Arguments{
+		APIToken:   alloytypes.Secret("test-token"),
+		ZoneID:     "test-zone-id",
+		APIURL:     stub.apiURL(),
+		Workers:    1,
+		PullRange:  time.Minute,
+		FieldsType: FieldsTypeDefault,
+		ForwardTo:  []loki.LogsReceiver{receiver},
+	}
+
+	ctx, cancel := context.WithCancel(componenttest.TestContext(t))
+	runErr := make(chan error, 1)
+	go func() { runErr <- ctrl.Run(ctx, args) }()
+	require.NoError(t, ctrl.WaitRunning(time.Minute))
+
+	// Read only the first entry. The component then blocks forwarding the
+	// second one, and the tailer blocks handing off the third.
+	require.Equal(t, lines[0], receive(t, receiver, 1)[0].Line)
+
+	args.Workers = 2
+	updated := make(chan error, 1)
+	go func() { updated <- ctrl.Update(args) }()
+
+	select {
+	case err := <-updated:
+		require.NoError(t, err)
+	case <-time.After(10 * time.Second):
+		require.FailNow(t, "Update blocked while the downstream was not reading")
+	}
+
+	// Unblock the downstream so shutdown does not wait for the drain timeout.
+	stopped := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-receiver.Chan():
+			case <-stopped:
+				return
+			}
+		}
+	}()
+
+	cancel()
+	require.NoError(t, <-runErr)
+	close(stopped)
+}
+
 func TestArguments(t *testing.T) {
 	type testCase struct {
 		name      string

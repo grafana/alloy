@@ -117,9 +117,8 @@ func TestTailer_RetryErrorLogpullReceived(t *testing.T) {
 		handler  = loki.NewCollectingHandler()
 		cfClient = newFakeCloudflareClient()
 	)
-	cfClient.On("LogpullReceived", mock.Anything, start, end).Return(&fakeLogIterator{
-		err: ErrorLogpullReceived,
-	}, nil).Times(2) // just retry once
+	cfClient.On("LogpullReceived", mock.Anything, start, end).Return(nil, ErrorLogpullReceived).Once()
+	cfClient.On("LogpullReceived", mock.Anything, start, end).Return(&fakeLogIterator{}, nil).Once()
 	// replace the client
 	getClient = func(apiURL, apiKey, zoneID string, fields []string) (Client, error) {
 		return cfClient, nil

@@ -7,6 +7,7 @@ package cloudflare
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"regexp"
 	"strings"
@@ -125,14 +126,17 @@ func (t *tailer) start(to time.Time) {
 			start := end.Add(-t.config.PullRange)
 			requests := splitRequests(start, end, t.config.Workers)
 
-			// Use background context for workers as we don't want to cancel halfway through.
+			// Stopping cancels the window halfway through. Its position is not saved, so it is pulled again on restart.
 			// In case of errors we stop the target, each worker has its own retry logic.
-			err := concurrency.ForEachJob(context.Background(), len(requests), t.config.Workers, func(ctx context.Context, idx int) error {
+			err := concurrency.ForEachJob(t.ctx, len(requests), t.config.Workers, func(ctx context.Context, idx int) error {
 				request := requests[idx]
 				return t.pull(ctx, request.start, request.end)
 			})
 
 			if err != nil {
+				if errors.Is(err, context.Canceled) {
+					return
+				}
 				t.logger.Error("failed to pull logs", "err", err, "start", start, "end", end)
 				t.err.Store(err)
 				return
@@ -167,6 +171,9 @@ func (t *tailer) pull(ctx context.Context, start, end time.Time) error {
 	for backoff.Ongoing() {
 		it, err := t.client.LogpullReceived(ctx, start, end)
 		if err != nil {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
 			if cloudflareTooEarlyError.MatchString(err.Error()) {
 				t.logger.Warn("failed iterating over logs, out of cloudflare range, not retrying", "err", err, "start", start, "end", end, "retries", backoff.NumRetries())
 				return nil
@@ -187,10 +194,14 @@ func (t *tailer) pull(ctx context.Context, start, end time.Time) error {
 				}
 
 				// TODO(kalleep): pretty sure we don't have to clone here.
-				t.handler.Chan() <- loki.NewEntry(t.config.Labels.Clone(), push.Entry{
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case t.handler.Chan() <- loki.NewEntry(t.config.Labels.Clone(), push.Entry{
 					Timestamp: time.Unix(0, ts),
 					Line:      string(line),
-				})
+				}):
+				}
 
 				lineRead++
 				t.metrics.Entries.Inc()
@@ -203,6 +214,10 @@ func (t *tailer) pull(ctx context.Context, start, end time.Time) error {
 		}
 
 		if err := consume(); err != nil {
+			if errors.Is(err, context.Canceled) {
+				return err
+			}
+
 			errs.Add(err)
 			backoff.Wait()
 			continue
