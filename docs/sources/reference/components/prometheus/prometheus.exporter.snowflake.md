@@ -51,6 +51,8 @@ If you set both, the component uses password authentication and ignores `private
 The `private_key_path` file must contain an RSA private key in PKCS #8 PEM format.
 If the key is encrypted, set `private_key_password`.
 
+The component sets the `instance` label on its exported targets to the value of `account_name`.
+
 ## Blocks
 
 The `prometheus.exporter.snowflake` component doesn't support any blocks. You can configure this component with arguments.
