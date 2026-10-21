@@ -27,10 +27,10 @@ import (
 	"go.opentelemetry.io/otel"
 	"golang.org/x/exp/maps"
 
+	"github.com/grafana/alloy/internal/alloycli/clifeature"
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/boringcrypto"
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/converter"
 	convert_diag "github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/nodeconf/importsource"
@@ -42,6 +42,7 @@ import (
 	httpservice "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
+	"github.com/grafana/alloy/internal/service/lokipipelinev2"
 	otel_service "github.com/grafana/alloy/internal/service/otel"
 	remotecfgservice "github.com/grafana/alloy/internal/service/remotecfg"
 	uiservice "github.com/grafana/alloy/internal/service/ui"
@@ -56,8 +57,9 @@ import (
 	_ "github.com/grafana/alloy/internal/component/all"
 )
 
-func newAlloyRun() *alloyRun {
+func newAlloyRun(converter *clifeature.Converter) *alloyRun {
 	return &alloyRun{
+		converter:             converter,
 		inMemoryAddr:          "alloy.internal:12345",
 		httpListenAddr:        "127.0.0.1:12345",
 		storagePath:           "data-alloy/",
@@ -75,8 +77,8 @@ func newAlloyRun() *alloyRun {
 	}
 }
 
-func RunCommand() *cobra.Command {
-	r := newAlloyRun()
+func runCommand(converter *clifeature.Converter) *cobra.Command {
+	r := newAlloyRun(converter)
 
 	cmd := &cobra.Command{
 		Use:   "run [flags] path",
@@ -138,7 +140,9 @@ type ExtensionModeParams struct {
 //   - Config reload on NOHUP signal is disabled.
 //   - Alloy config contents passed directly, instead of file path cli argument.
 func NewRunAsExtensionCommand(params ExtensionModeParams) *cobra.Command {
-	r := newAlloyRun()
+	// Configs are passed in directly as Alloy configs, so the converter is
+	// never used.
+	r := newAlloyRun(nil)
 
 	cmd := &cobra.Command{
 		SilenceUsage: true,
@@ -230,9 +234,7 @@ func mountRunFlags(r *alloyRun, fset *pflag.FlagSet) {
 		DurationVar(&r.clusterWaitTimeout, "cluster.wait-timeout", 0, "Maximum duration to wait for minimum cluster size before proceeding with available nodes. Zero means wait forever, no timeout")
 
 	// Config flags
-	fset.StringVar(&r.configFormat, "config.format", r.configFormat, fmt.Sprintf("The format of the source file. Supported formats: %s.", supportedFormatsList()))
-	fset.BoolVar(&r.configBypassConversionErrors, "config.bypass-conversion-errors", r.configBypassConversionErrors, "Enable bypassing errors when converting")
-	fset.StringVar(&r.configExtraArgs, "config.extra-args", r.configExtraArgs, "Extra arguments from the original format used by the converter. Multiple arguments can be passed by separating them with a space.")
+	mountConfigFormatFlags(fset, r.converter, &r.configFormat, &r.configBypassConversionErrors, &r.configExtraArgs)
 
 	// Misc flags
 	fset.
@@ -248,10 +250,16 @@ func mountRunFlags(r *alloyRun, fset *pflag.FlagSet) {
 	fset.DurationVar(&r.taskShutdownDeadline, "feature.component-shutdown-deadline", r.taskShutdownDeadline, "Maximum duration to wait for a component to shut down before giving up and logging an error")
 	fset.BoolVar(&r.enableDirectFanout, "feature.prometheus.direct-fanout.enabled", r.enableDirectFanout, "Enable experimental direct fanout for metric forwarding without a global label store")
 
+	fset.BoolVar(&r.enableLokiPipelineV2, "feature.loki.pipeline-v2.enabled", r.enableLokiPipelineV2, "Enable experimental pipeline v2 for passing logs between Loki components")
+	// Hidden until the Loki components are migrated to pipeline v2.
+	_ = fset.MarkHidden("feature.loki.pipeline-v2.enabled")
+
 	addDeprecatedFlags(fset)
 }
 
 type alloyRun struct {
+	converter *clifeature.Converter
+
 	inMemoryAddr                 string
 	httpListenAddr               string
 	storagePath                  string
@@ -284,6 +292,7 @@ type alloyRun struct {
 	enableCommunityComps    bool
 	taskShutdownDeadline    time.Duration
 	enableDirectFanout      bool
+	enableLokiPipelineV2    bool
 	enableGraphQL           bool
 	enableGraphQLPlayground bool
 }
@@ -297,6 +306,10 @@ func (fr *alloyRun) checkExperimentalFlags() error {
 
 	if fr.enableDirectFanout {
 		return fmt.Errorf("'--feature.prometheus.direct-fanout.enabled' %s", errMsg)
+	}
+
+	if fr.enableLokiPipelineV2 {
+		return fmt.Errorf("'--feature.loki.pipeline-v2.enabled' %s", errMsg)
 	}
 
 	if fr.enableGraphQL {
@@ -316,7 +329,7 @@ func (fr *alloyRun) runCommand(cmd *cobra.Command, configPath string) error {
 	}
 
 	loadConfig := func(rt *alloy_runtime.Runtime, httpSvc *httpservice.Service) (map[string][]byte, error) {
-		sources, err := loadSourceFiles(configPath, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
+		sources, err := loadSourceFiles(configPath, fr.converter, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
 		if err != nil {
 			instrumentation.InstrumentConfig(false, [32]byte{}, fr.clusterName)
 			return nil, fmt.Errorf("reading config path %q: %w", configPath, err)
@@ -560,6 +573,7 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 	}
 
 	labelService := labelstore.New(slogger, reg, !fr.enableDirectFanout)
+	lokiService := lokipipelinev2.New(lokipipelinev2.Options{PipelineV2: fr.enableLokiPipelineV2})
 	alloyseed.Init(fr.storagePath, slogger)
 
 	f, err := alloy_runtime.New(alloy_runtime.Options{
@@ -574,6 +588,7 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 			httpService,
 			labelService,
 			liveDebuggingService,
+			lokiService,
 			otelService,
 			remoteCfgService,
 			uiService,
@@ -670,7 +685,7 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 	}
 }
 
-func loadSourceFiles(path string, converterSourceFormat string, converterBypassErrors bool, configExtraArgs string) (map[string][]byte, error) {
+func loadSourceFiles(path string, converter *clifeature.Converter, converterSourceFormat string, converterBypassErrors bool, configExtraArgs string) (map[string][]byte, error) {
 	fi, err := os.Stat(path)
 	if err != nil {
 		return nil, err
@@ -710,13 +725,17 @@ func loadSourceFiles(path string, converterSourceFormat string, converterBypassE
 		return nil, err
 	}
 	if converterSourceFormat != "alloy" {
+		if converter == nil {
+			return nil, errors.New("config conversion is not included in this build of Alloy")
+		}
+
 		var diags convert_diag.Diagnostics
 		ea, err := parseExtraArgs(configExtraArgs)
 		if err != nil {
 			return nil, err
 		}
 
-		bb, diags = converter.Convert(bb, converter.Input(converterSourceFormat), ea)
+		bb, diags = converter.Convert(bb, converterSourceFormat, ea)
 		hasError := hasErrorLevel(diags, convert_diag.SeverityLevelError)
 		hasCritical := hasErrorLevel(diags, convert_diag.SeverityLevelCritical)
 		if hasCritical || (!converterBypassErrors && hasError) {

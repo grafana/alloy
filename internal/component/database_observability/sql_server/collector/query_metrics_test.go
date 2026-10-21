@@ -55,7 +55,7 @@ func TestQueryMetrics_CollectDeltas(t *testing.T) {
 	// First poll: first sighting, series created at zero.
 	mockSelectQueryStoreState(mock, "READ_WRITE")
 	mock.ExpectQuery(selectQueryMetrics).
-		WithArgs(sql.Named("limit", 50), sql.Named("lookback_window", 3600)).
+		WithArgs(sql.Named("limit", 50), sql.Named("lookback_window", 3600), sql.Named("exclude_current_user", false), sql.Named("collector_marker", QueryMarker)).
 		WillReturnRows(mockQueryMetricsRows(10, 2, 5_000_000))
 	require.NoError(t, c.collect(context.Background()))
 	require.Equal(t, 0.0, counterValue(t, c.executionsMetric))
@@ -65,7 +65,7 @@ func TestQueryMetrics_CollectDeltas(t *testing.T) {
 	// Second poll: only the increase is emitted.
 	mockSelectQueryStoreState(mock, "READ_WRITE")
 	mock.ExpectQuery(selectQueryMetrics).
-		WithArgs(sql.Named("limit", 50), sql.Named("lookback_window", 3600)).
+		WithArgs(sql.Named("limit", 50), sql.Named("lookback_window", 3600), sql.Named("exclude_current_user", false), sql.Named("collector_marker", QueryMarker)).
 		WillReturnRows(mockQueryMetricsRows(14, 3, 8_500_000))
 	require.NoError(t, c.collect(context.Background()))
 	require.Equal(t, 4.0, counterValue(t, c.executionsMetric))
@@ -96,7 +96,7 @@ func TestQueryMetrics_CollectAcrossIntervalRollover(t *testing.T) {
 		t.Helper()
 		mockSelectQueryStoreState(mock, "READ_WRITE")
 		mock.ExpectQuery(selectQueryMetrics).
-			WithArgs(sql.Named("limit", 50), sql.Named("lookback_window", 3600)).
+			WithArgs(sql.Named("limit", 50), sql.Named("lookback_window", 3600), sql.Named("exclude_current_user", false), sql.Named("collector_marker", QueryMarker)).
 			WillReturnRows(mockQueryMetricsRows(executions, errorExecutions, durationMicroseconds))
 		require.NoError(t, c.collect(context.Background()))
 	}
@@ -210,7 +210,7 @@ func TestQueryMetrics_StartRegistersAndStopUnregisters(t *testing.T) {
 
 	mockSelectQueryStoreState(mock, "READ_WRITE")
 	mock.ExpectQuery(selectQueryMetrics).
-		WithArgs(sql.Named("limit", 50), sql.Named("lookback_window", 3600)).
+		WithArgs(sql.Named("limit", 50), sql.Named("lookback_window", 3600), sql.Named("exclude_current_user", false), sql.Named("collector_marker", QueryMarker)).
 		WillReturnRows(mockQueryMetricsRows(10, 2, 5_000_000))
 
 	require.NoError(t, c.Start(context.Background()))

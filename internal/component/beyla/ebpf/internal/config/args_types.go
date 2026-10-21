@@ -160,20 +160,24 @@ type RedisDBCacheConfig struct {
 }
 
 type EBPF struct {
-	BatchLength                         int                `alloy:"batch_length,attr,optional"`
-	BatchTimeout                        time.Duration      `alloy:"batch_timeout,attr,optional"`
-	BpfDebug                            bool               `alloy:"bpf_debug,attr,optional"`
-	BpfFsPath                           string             `alloy:"bpf_fs_path,attr,optional"`
-	BufferSizes                         EBPFBufferSizes    `alloy:"buffer_sizes,block,optional"`
-	ContextPropagation                  string             `alloy:"context_propagation,attr,optional"`
-	CouchbaseDbCacheSize                int                `alloy:"couchbase_db_cache_size,attr,optional"`
-	DisableBlackBoxCp                   bool               `alloy:"disable_black_box_cp,attr,optional"`
-	DnsRequestTimeout                   time.Duration      `alloy:"dns_request_timeout,attr,optional"`
-	ForceBpfMapReader                   string             `alloy:"force_bpf_map_reader,attr,optional"`
+	BatchLength          int             `alloy:"batch_length,attr,optional"`
+	BatchTimeout         time.Duration   `alloy:"batch_timeout,attr,optional"`
+	BpfDebug             bool            `alloy:"bpf_debug,attr,optional"`
+	BpfFsPath            string          `alloy:"bpf_fs_path,attr,optional"`
+	BufferSizes          EBPFBufferSizes `alloy:"buffer_sizes,block,optional"`
+	ContextPropagation   string          `alloy:"context_propagation,attr,optional"`
+	CouchbaseDbCacheSize int             `alloy:"couchbase_db_cache_size,attr,optional"`
+	DisableBlackBoxCp    bool            `alloy:"disable_black_box_cp,attr,optional"`
+	DnsRequestTimeout    time.Duration   `alloy:"dns_request_timeout,attr,optional"`
+	ForceBpfMapReader    string          `alloy:"force_bpf_map_reader,attr,optional"`
+	// Pointer preserves an explicit zero, which disables Go HTTP client event deferral.
+	GoHTTPClientBufferTimeout           *time.Duration     `alloy:"go_http_client_buffer_timeout,attr,optional"`
 	HeuristicSQLDetect                  bool               `alloy:"heuristic_sql_detect,attr,optional"`
 	HighRequestVolume                   bool               `alloy:"high_request_volume,attr,optional"`
 	HTTPRequestTimeout                  time.Duration      `alloy:"http_request_timeout,attr,optional"`
 	InstrumentCuda                      int                `alloy:"instrument_cuda,attr,optional"`
+	KafkaConsumerGroupCacheSize         int                `alloy:"kafka_consumer_group_cache_size,attr,optional"`
+	KafkaConsumerGroupTTL               time.Duration      `alloy:"kafka_consumer_group_ttl,attr,optional"`
 	KafkaTopicUuidCacheSize             int                `alloy:"kafka_topic_uuid_cache_size,attr,optional"`
 	LogEnricher                         LogEnricherConfig  `alloy:"log_enricher,block,optional"`
 	MapsConfig                          EBPFMapsConfig     `alloy:"maps_config,block,optional"`
@@ -183,6 +187,7 @@ type EBPF struct {
 	MysqlPreparedStatementsCacheSize    int                `alloy:"mysql_prepared_statements_cache_size,attr,optional"`
 	OverrideBpfloopEnabled              bool               `alloy:"override_bpfloop_enabled,attr,optional"`
 	PayloadExtraction                   PayloadExtraction  `alloy:"payload_extraction,block,optional"`
+	PopulateTraceContext                bool               `alloy:"populate_trace_context,attr,optional"`
 	PostgresPreparedStatementsCacheSize int                `alloy:"postgres_prepared_statements_cache_size,attr,optional"`
 	ProtocolDebug                       bool               `alloy:"protocol_debug_print,attr,optional"`
 	RedisDbCache                        RedisDBCacheConfig `alloy:"redis_db_cache,block,optional"`
@@ -242,6 +247,27 @@ type JVMRuntimeMetrics struct {
 	// kept only so existing configs don't fail to parse, but has no effect.
 	Enabled          bool          `alloy:"enabled,attr,optional"`
 	SamplingInterval time.Duration `alloy:"sampling_interval,attr,optional"`
+}
+
+type DotnetRuntimeMetrics struct {
+	SamplingInterval time.Duration `alloy:"sampling_interval,attr,optional"`
+	Timeout          time.Duration `alloy:"timeout,attr,optional"`
+}
+
+type CloudMetadata struct {
+	ClusterName string `alloy:"cluster_name,attr,optional"`
+	Region      string `alloy:"region,attr,optional"`
+}
+
+type NameResolver struct {
+	Sources     []string        `alloy:"sources,attr,optional"`
+	CacheLen    int             `alloy:"cache_len,attr,optional"`
+	CacheExpiry time.Duration   `alloy:"cache_expiry,attr,optional"`
+	ECS         ECSNameResolver `alloy:"ecs,block,optional"`
+}
+
+type ECSNameResolver struct {
+	RefreshInterval time.Duration `alloy:"refresh_interval,attr,optional"`
 }
 
 type Nodejs struct {

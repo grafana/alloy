@@ -910,7 +910,7 @@ The `lambda` block supports the following blocks:
 
 | Block                                                | Description                                  | Required |
 | ---------------------------------------------------- | -------------------------------------------- | -------- |
-| [resource_attri`butes](#lambda--resource_attributes) | Configures which resource attributes to add. | no       |
+| [`resource_attributes`](#lambda--resource_attributes) | Configures which resource attributes to add. | no       |
 
 #### `lambda` > `resource_attributes`
 

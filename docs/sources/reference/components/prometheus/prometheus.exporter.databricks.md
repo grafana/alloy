@@ -7,21 +7,38 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-10-01
 title: prometheus.exporter.databricks
 ---
 
 # `prometheus.exporter.databricks`
 
-The `prometheus.exporter.databricks` component embeds the [`databricks_exporter`](https://github.com/grafana/databricks-prometheus-exporter) for collecting billing, jobs, pipelines, and SQL warehouse metrics from Databricks System Tables via HTTP for Prometheus consumption.
+The `prometheus.exporter.databricks` component embeds the [`databricks-prometheus-exporter`][databricks-exporter] to collect billing, jobs, pipelines, and SQL warehouse metrics from Databricks System Tables.
+
+You can specify multiple `prometheus.exporter.databricks` components by giving them different labels.
+
+[databricks-exporter]: https://github.com/grafana/databricks-prometheus-exporter
+
+## Prerequisites
+
+Before you configure this component, make sure you have the following:
+
+- **Databricks workspace**: Enable Unity Catalog and System Tables.
+- **Service principal**: Configure OAuth2 M2M authentication.
+- **SQL warehouse**: Query System Tables through an SQL warehouse. A serverless warehouse costs the least.
+
+Refer to the [Databricks documentation][oauth-m2m] for detailed OAuth2 M2M setup instructions.
+
+[oauth-m2m]: https://docs.databricks.com/en/dev-tools/auth/oauth-m2m.html
 
 ## Usage
 
 ```alloy
-prometheus.exporter.databricks "LABEL" {
-    server_hostname     = "<DATABRICKS_SERVER_HOSTNAME>"
-    warehouse_http_path = "<DATABRICKS_WAREHOUSE_HTTP_PATH>"
-    client_id           = "<DATABRICKS_CLIENT_ID>"
-    client_secret       = "<DATABRICKS_CLIENT_SECRET>"
+prometheus.exporter.databricks "<LABEL>" {
+  server_hostname     = "<DATABRICKS_SERVER_HOSTNAME>"
+  warehouse_http_path = "<DATABRICKS_WAREHOUSE_HTTP_PATH>"
+  client_id           = "<DATABRICKS_CLIENT_ID>"
+  client_secret       = "<DATABRICKS_CLIENT_SECRET>"
 }
 ```
 
@@ -42,6 +59,8 @@ You can use the following arguments with `prometheus.exporter.databricks`:
 | `queries_lookback`      | `duration` | How far back to look for SQL warehouse queries.                                     | `"2h"`  | no       |
 | `query_timeout`         | `duration` | Timeout for individual SQL queries.                                                 | `"5m"`  | no       |
 | `sla_threshold_seconds` | `int`      | Duration threshold in seconds for job SLA miss detection.                           | `3600`  | no       |
+
+The component sets the `instance` label on its exported targets to the value of `server_hostname`.
 
 ### Lookback windows
 
@@ -75,15 +94,16 @@ In those cases, exported fields retain their last healthy values.
 
 `prometheus.exporter.databricks` doesn't expose any component-specific debug metrics.
 
-## Prerequisites
+## Performance recommendations
 
-Before using this component, you need:
+- **`scrape_interval`**: Use 10-30 minutes. The exporter queries Databricks System Tables which can be slow. Increase the `scrape_interval` to reduce your SQL Warehouse costs.
+- **`scrape_timeout`**: Must be less than `scrape_interval`. The exporter typically takes 90-120 seconds per scrape depending on data volume.
+- **Lookback vs interval**: The lookback windows should be at least 2x the scrape interval. The defaults, `3h` for jobs and pipelines, and `2h` for queries, work well with 10-30 minute scrape intervals.
 
-1. **Databricks Workspace** with Unity Catalog and System Tables enabled
-1. **Service Principal** with OAuth2 M2M authentication configured
-1. **SQL Warehouse** for querying System Tables and serverless is recommended for cost efficiency
+## High cardinality warning
 
-Refer to the [Databricks documentation](https://docs.databricks.com/en/dev-tools/auth/oauth-m2m.html) for detailed OAuth2 M2M setup instructions.
+The `collect_task_retries` flag adds task-level retry metrics which can significantly increase cardinality for workspaces with many jobs.
+Only enable this feature if you really need it.
 
 ## Example
 
@@ -124,17 +144,6 @@ Replace the following:
 - _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
-
-## Tuning recommendations
-
-- **`scrape_interval`**: Use 10-30 minutes. The exporter queries Databricks System Tables which can be slow. Increase the `scrape_interval` to reduce your SQL Warehouse costs.
-- **`scrape_timeout`**: Must be less than `scrape_interval`. The exporter typically takes 90-120 seconds per scrape depending on data volume.
-- **Lookback vs interval**: The lookback windows should be at least 2x the scrape interval. The defaults, `3h` for jobs and pipelines, and `2h` for queries, work well with 10-30 minute scrape intervals.
-
-## High cardinality warning
-
-The `collect_task_retries` flag adds task-level retry metrics which can significantly increase cardinality for workspaces with many jobs.
-Only enable this feature if you really need it.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

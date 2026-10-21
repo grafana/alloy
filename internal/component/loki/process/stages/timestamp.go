@@ -113,10 +113,7 @@ func timestampFudgeEnabled(cfg TimestampConfig) bool {
 	return cfg.ActionOnFailure == timestampActionOnFailureFudge || cfg.ActionOnDuplicateTimestamp == timestampActionOnDuplicateTimestampFudge
 }
 
-var (
-	_ Stage          = (*timestampStage)(nil)
-	_ entryProcessor = (*timestampStage)(nil)
-)
+var _ entryProcessor = (*timestampStage)(nil)
 
 // newTimestampStage creates a new timestamp extraction pipeline stage.
 func newTimestampStage(config TimestampConfig, opts stageOpts) (*timestampStage, error) {
@@ -163,22 +160,12 @@ type timestampStage struct {
 	lastKnownTimestamps *simplelru.LRU[string, timestampCacheEntry]
 }
 
-// Run implements Stage.
-func (ts *timestampStage) Run(in chan Entry) chan Entry {
-	return RunWith(in, func(e Entry) Entry {
-		return ts.processEntry(e)
-	})
-}
-
 func (ts *timestampStage) process(ctx context.Context, entries []Entry) error {
 	for i := range entries {
 		entries[i] = ts.processEntry(entries[i])
 	}
 	return ts.next(ctx, entries)
 }
-
-// Cleanup implements Stage.
-func (ts *timestampStage) Cleanup() {}
 
 func (ts *timestampStage) processEntry(e Entry) Entry {
 	parsedTs, err := ts.parseTimestampFromSource(e.Extracted)

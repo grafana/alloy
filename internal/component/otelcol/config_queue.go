@@ -2,6 +2,7 @@ package otelcol
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/grafana/alloy/internal/component/otelcol/extension"
@@ -150,11 +151,25 @@ type BatchConfig struct {
 	MinSize      int64         `alloy:"min_size,attr,optional"`
 	MaxSize      int64         `alloy:"max_size,attr,optional"`
 	Sizer        string        `alloy:"sizer,attr,optional"`
+
+	Partition *PartitionConfig `alloy:"partition,block,optional"`
 }
 
 var _ syntax.Defaulter = (*BatchConfig)(nil)
 
 var defaultBatchConfig = otelexporterhelper.NewDefaultQueueConfig().Batch
+
+// defaultPartitionConfig returns the upstream default partition settings.
+// The batch config has the "default" flavor, for which Get() returns nil, so
+// GetOrInsertDefault() is used on a copy.
+func defaultPartitionConfig() PartitionConfig {
+	batch := defaultBatchConfig
+	upstream := batch.GetOrInsertDefault().Partition
+	return PartitionConfig{
+		CacheSize:   upstream.CacheSize,
+		IdleTimeout: upstream.IdleTimeout,
+	}
+}
 
 // SetToDefault implements syntax.Defaulter.
 func (args *BatchConfig) SetToDefault() {
@@ -193,6 +208,53 @@ func (args *BatchConfig) Validate() error {
 		return fmt.Errorf("`max_size` must be greater or equal to `min_size`")
 	}
 
+	return args.Partition.Validate()
+}
+
+// PartitionConfig configures how batches are partitioned by client metadata.
+type PartitionConfig struct {
+	// MetadataKeys are the client metadata keys used to partition the data into
+	// batches. When empty, a single batcher is used.
+	MetadataKeys []string `alloy:"metadata_keys,attr,optional"`
+	// CacheSize is the maximum number of active partition batchers kept in the
+	// cache. It only has an effect when MetadataKeys is set.
+	CacheSize int `alloy:"cache_size,attr,optional"`
+	// IdleTimeout is how long a partition may stay empty before it is removed.
+	// It only has an effect when MetadataKeys is set.
+	IdleTimeout time.Duration `alloy:"idle_timeout,attr,optional"`
+}
+
+var _ syntax.Defaulter = (*PartitionConfig)(nil)
+
+// SetToDefault implements syntax.Defaulter.
+func (args *PartitionConfig) SetToDefault() {
+	// Track upstream, so the defaults don't need to be kept in sync by hand.
+	*args = defaultPartitionConfig()
+}
+
+// Validate returns an error if args is invalid.
+func (args *PartitionConfig) Validate() error {
+	if args == nil {
+		return nil
+	}
+
+	if args.CacheSize <= 0 {
+		return fmt.Errorf("`cache_size` must be positive")
+	}
+
+	if args.IdleTimeout <= 0 {
+		return fmt.Errorf("`idle_timeout` must be positive")
+	}
+
+	seen := make(map[string]struct{}, len(args.MetadataKeys))
+	for _, key := range args.MetadataKeys {
+		lower := strings.ToLower(key)
+		if _, ok := seen[lower]; ok {
+			return fmt.Errorf("duplicate entry in `metadata_keys`: %q (case-insensitive)", lower)
+		}
+		seen[lower] = struct{}{}
+	}
+
 	return nil
 }
 
@@ -206,10 +268,23 @@ func (args *BatchConfig) Convert() (configoptional.Optional[otelexporterhelper.B
 		return configoptional.None[otelexporterhelper.BatchConfig](), err
 	}
 
-	return configoptional.Some(otelexporterhelper.BatchConfig{
+	batch := otelexporterhelper.BatchConfig{
 		FlushTimeout: args.FlushTimeout,
 		MinSize:      args.MinSize,
 		MaxSize:      args.MaxSize,
 		Sizer:        *sizer,
-	}), nil
+	}
+
+	// Start from the upstream defaults, so a zero cache size or idle timeout is
+	// never passed upstream when no partition block is configured.
+	defaults := defaultPartitionConfig()
+	batch.Partition.CacheSize = defaults.CacheSize
+	batch.Partition.IdleTimeout = defaults.IdleTimeout
+	if args.Partition != nil {
+		batch.Partition.MetadataKeys = append([]string(nil), args.Partition.MetadataKeys...)
+		batch.Partition.CacheSize = args.Partition.CacheSize
+		batch.Partition.IdleTimeout = args.Partition.IdleTimeout
+	}
+
+	return configoptional.Some(batch), nil
 }

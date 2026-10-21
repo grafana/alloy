@@ -7,12 +7,17 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-10-01
 title: prometheus.exporter.github
 ---
 
 # `prometheus.exporter.github`
 
-The `prometheus.exporter.github` component embeds the [`github_exporter`](https://github.com/githubexporter/github-exporter) for collecting statistics from GitHub.
+The `prometheus.exporter.github` component embeds the [`github_exporter`][github-exporter] to collect statistics from GitHub.
+
+You can specify multiple `prometheus.exporter.github` components by giving them different labels.
+
+[github-exporter]: https://github.com/githubexporter/github-exporter
 
 ## Usage
 
@@ -27,8 +32,8 @@ You can use the following arguments with `prometheus.exporter.github`:
 
 | Name                          | Type           | Description                                                      | Default                    | Required |
 | ----------------------------- | -------------- | ---------------------------------------------------------------- | -------------------------- | -------- |
-| `api_token_file`              | `string`       | File containing API token to use to authenticate against GitHub. |                            | no       |
 | `api_token`                   | `secret`       | API token to use to authenticate against GitHub.                 |                            | no       |
+| `api_token_file`              | `string`       | File containing API token to use to authenticate against GitHub. |                            | no       |
 | `api_url`                     | `string`       | The full URI of the GitHub API.                                  | `"https://api.github.com"` | no       |
 | `github_app_id`               | `number`       | The GitHub App ID for authentication.                            |                            | no       |
 | `github_app_installation_id`  | `number`       | The GitHub App installation ID for authentication.               |                            | no       |
@@ -38,15 +43,17 @@ You can use the following arguments with `prometheus.exporter.github`:
 | `repositories`                | `list(string)` | GitHub repositories for which to collect metrics.                |                            | no       |
 | `users`                       | `list(string)` | A list of GitHub users for which to collect metrics.             |                            | no       |
 
+The component sets the `instance` label on its exported targets to the host and port from `api_url`.
+
 ### Authentication
 
 GitHub uses an aggressive rate limit for unauthenticated requests based on IP address.
-To allow more API requests, we recommend that you configure either token or GitHub App authentication.
+To allow more API requests, configure either token or GitHub App authentication.
 
-* **Token authentication**: Set `api_token` or `api_token_file` with a personal access token or classic token.
-* **GitHub App authentication**: Set `github_app_id`, `github_app_installation_id`, and `github_app_key_path` to authenticate as a GitHub App.
+- **Token authentication**: Set `api_token` or `api_token_file` with a personal access token or classic token.
+- **GitHub App authentication**: Set `github_app_id`, `github_app_installation_id`, and `github_app_key_path` to authenticate as a GitHub App.
 
-When provided, `api_token_file` takes precedence over `api_token`.
+When you set both, `api_token` takes precedence over `api_token_file`.
 
 You can't use both token authentication and GitHub App authentication simultaneously.
 
@@ -85,7 +92,7 @@ prometheus.exporter.github "example" {
   repositories   = ["grafana/alloy"]
 }
 
-// Configure a prometheus.scrape component to collect github metrics.
+// Configure a prometheus.scrape component to collect GitHub metrics.
 prometheus.scrape "demo" {
   targets    = prometheus.exporter.github.example.targets
   forward_to = [prometheus.remote_write.demo.receiver]
@@ -115,13 +122,13 @@ The following example uses GitHub App authentication to collect metrics:
 
 ```alloy
 prometheus.exporter.github "example" {
-  repositories                 = ["grafana/alloy"]
-  github_app_id                = 123456
-  github_app_installation_id   = 789012
-  github_app_key_path          = "/etc/github-app-key.pem"
+  repositories               = ["grafana/alloy"]
+  github_app_id              = 123456
+  github_app_installation_id = 789012
+  github_app_key_path        = "/etc/github-app-key.pem"
 }
 
-// Configure a prometheus.scrape component to collect github metrics.
+// Configure a prometheus.scrape component to collect GitHub metrics.
 prometheus.scrape "demo" {
   targets    = prometheus.exporter.github.example.targets
   forward_to = [prometheus.remote_write.demo.receiver]

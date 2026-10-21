@@ -22,12 +22,15 @@ func buildLimitsConfigStages(cfg limit.Config) []stages.StageConfig {
 	var result []stages.StageConfig
 
 	if cfg.ReadlineRateEnabled {
+		var limitCfg stages.LimitConfig
+
+		limitCfg.SetToDefault()
+		limitCfg.Rate = cfg.ReadlineRate
+		limitCfg.Burst = cfg.ReadlineBurst
+		limitCfg.Drop = cfg.ReadlineRateDrop
+
 		result = append(result, stages.StageConfig{
-			LimitConfig: &stages.LimitConfig{
-				Rate:  cfg.ReadlineRate,
-				Burst: cfg.ReadlineBurst,
-				Drop:  cfg.ReadlineRateDrop,
-			},
+			LimitConfig: &limitCfg,
 		})
 	}
 

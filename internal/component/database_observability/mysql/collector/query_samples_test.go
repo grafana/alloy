@@ -2268,13 +2268,15 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 	// erroredRow represents a statement that failed with a duplicate-key error,
 	// used to verify that the error message text is only emitted when query
 	// redaction is disabled.
+	const erroredSQLText = "insert into users (email) values ('jdoe@example.com') /* \"quoted\" C:\\tmp\\file\nnext line */"
+	const errorMessageText = "Duplicate entry 'jdoe@example.com' for key 'users.email': \"quoted\"\nC:\\tmp\\file"
 	erroredRow := []driver.Value{
 		"some_schema",
 		"890",
 		"123",
 		"234",
 		"some_digest",
-		"insert into users (email) values ('jdoe@example.com')",
+		erroredSQLText,
 		"70000000",
 		"20000000",
 		"5",
@@ -2283,7 +2285,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 		"1",     // errors
 		"1062",  // mysql_errno
 		"23000", // returned_sqlstate
-		"Duplicate entry 'jdoe@example.com' for key 'users.email'", // message_text
+		errorMessageText,
 		nil,
 		nil,
 		nil,
@@ -2433,7 +2435,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"1\" mysql_errno=\"1062\" returned_sqlstate=\"23000\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" sql_text=\"insert into users (email) values ('jdoe@example.com')\" message_text=\"Duplicate entry 'jdoe@example.com' for key 'users.email'\"", lokiEntries[0].Line)
+		require.Equal(t, `level="info" schema="some_schema" user="some_user" client_host="some_host" thread_id="890" event_id="123" end_event_id="234" digest="some_digest" rows_examined="5" rows_sent="5" rows_affected="0" errors="1" mysql_errno="1062" returned_sqlstate="23000" max_controlled_memory="456b" max_total_memory="457b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms" sql_text="insert into users (email) values ('jdoe@example.com') /* \"quoted\" C:\\tmp\\file\nnext line */" message_text="Duplicate entry 'jdoe@example.com' for key 'users.email': \"quoted\"\nC:\\tmp\\file"`, lokiEntries[0].Line)
 	})
 }
 

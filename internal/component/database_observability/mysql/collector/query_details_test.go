@@ -3,10 +3,12 @@ package collector
 import (
 	"database/sql/driver"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/go-logfmt/logfmt"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -854,4 +856,43 @@ func TestQueryDetails_ResolvesASchemaQualifiedCrossDatabaseReference(t *testing.
 	// The "schema" field stays the connection's active schema ("some_schema"); the resolved
 	// table carries its own schema qualifier ("other_schema"), lowercased to match the registry.
 	require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="other_schema.emailageconsumer" validated="true"`, lokiEntries[1].Line)
+}
+
+func TestQueryDetails_EscapesQuotedIdentifiers(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
+	collector, err := NewQueryDetails(QueryDetailsArguments{
+		DB: db, StatementsLimit: 250, EntryHandler: handler, Logger: util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+	schema := "example\"schema"
+	table := "orders\"archive"
+	query := "SELECT * FROM `" + table + "`"
+	mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, exclusionClause, 250)).WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows([]string{"digest", "digest_text", "schema_name", "query_sample_text"}).
+			AddRow("abc123", query, schema, query))
+	require.NoError(t, collector.tablesFromEventsStatements(t.Context()))
+	require.Eventually(t, func() bool { return len(handler.Received()) == 2 }, time.Second, time.Millisecond)
+	entries := handler.Received()
+	for _, entry := range entries {
+		decoder := logfmt.NewDecoder(strings.NewReader(entry.Line))
+		fields := map[string]string{}
+		for decoder.ScanRecord() {
+			for decoder.ScanKeyval() {
+				fields[string(decoder.Key())] = string(decoder.Value())
+			}
+		}
+		require.NoError(t, decoder.Err())
+		require.Equal(t, schema, fields["schema"])
+		if entry.Labels["op"] == database_observability.OP_QUERY_ASSOCIATION {
+			require.Equal(t, query, fields["digest_text"])
+		} else {
+			require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, entry.Labels)
+			require.Equal(t, table, fields["table"])
+		}
+	}
+	require.NoError(t, mock.ExpectationsWereMet())
 }
