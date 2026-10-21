@@ -30,11 +30,11 @@ prometheus.exporter.squid "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.squid`:
 
-| Name       | Type     | Description                                           | Default | Required |
-| ---------- | -------- | ----------------------------------------------------- | ------- | -------- |
-| `address`  | `string` | The squid address to collect metrics from.            |         | yes      |
-| `password` | `secret` | The password for the user used when querying metrics. |         | no       |
-| `username` | `string` | The username for the user used when querying metrics. |         | no       |
+| Name       | Type     | Description                                | Default | Required |
+| ---------- | -------- | ------------------------------------------ | ------- | -------- |
+| `address`  | `string` | The host and port of the Squid instance.   |         | yes      |
+| `password` | `secret` | The password for `username`.               |         | no       |
+| `username` | `string` | The username to use when querying metrics. |         | no       |
 
 ## Blocks
 
