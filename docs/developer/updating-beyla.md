@@ -45,3 +45,9 @@ options. Two checks guard this:
   in Beyla's published `schema.json` (validated with `gojsonschema`, with
   `additionalProperties` forced to false). A typo'd or misplaced key — which Beyla
   silently ignores — fails.
+
+  It also checks that supported sections emit every upstream property and that
+  Alloy accepts every metric feature in the schema. These checks catch missing
+  options and feature values
+  when the schema changes. Update the types, translation, validation, tests, and
+  component documentation together when adding support.

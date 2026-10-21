@@ -2,9 +2,11 @@ package otelcolconvert
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/kafka"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
@@ -32,9 +34,28 @@ func (kafkaReceiverConverter) ConvertAndAppend(state *State, id componentstatus.
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
+	overrideHook := func(val any) any {
+		switch value := val.(type) {
+		case extension.ExtensionHandler:
+			ext := state.LookupExtension(value.ID)
+			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
+		}
+		return common.GetAlloyTypesOverrideHook()(val)
+	}
 
-	args := toKafkaReceiver(state, id, cfg.(*kafkareceiver.Config))
-	block := common.NewBlockWithOverride([]string{"otelcol", "receiver", "kafka"}, label, args)
+	kafkaCfg := cfg.(*kafkareceiver.Config)
+	for _, enc := range []string{kafkaCfg.Logs.Encoding, kafkaCfg.Metrics.Encoding, kafkaCfg.Traces.Encoding} {
+		if enc == "azure_resource_logs" {
+			diags.Add(
+				diag.SeverityLevelWarn,
+				fmt.Sprintf("%s: the azure_resource_logs encoding is deprecated, consider using otelcol.encoding.azure with encoding_extension instead", StringifyInstanceID(id)),
+			)
+			break
+		}
+	}
+
+	args := toKafkaReceiver(state, id, kafkaCfg)
+	block := common.NewBlockWithOverrideFn([]string{"otelcol", "receiver", "kafka"}, label, args, overrideHook)
 
 	diags.Add(
 		diag.SeverityLevelInfo,
@@ -47,6 +68,7 @@ func (kafkaReceiverConverter) ConvertAndAppend(state *State, id componentstatus.
 
 func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkareceiver.Config) *kafka.Arguments {
 	var (
+		defaults    = kafkareceiver.NewFactory().CreateDefaultConfig().(*kafkareceiver.Config)
 		nextMetrics = state.Next(id, pipeline.SignalMetrics)
 		nextLogs    = state.Next(id, pipeline.SignalLogs)
 		nextTraces  = state.Next(id, pipeline.SignalTraces)
@@ -80,9 +102,9 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 
 		TLS: tlsCfgPtr,
 
-		Logs:    toKafkaTopicEncodingConfig(cfg.Logs),
-		Metrics: toKafkaTopicEncodingConfig(cfg.Metrics),
-		Traces:  toKafkaTopicEncodingConfig(cfg.Traces),
+		Logs:    toKafkaTopicEncodingConfig(state, cfg.Logs, defaults.Logs),
+		Metrics: toKafkaTopicEncodingConfig(state, cfg.Metrics, defaults.Metrics),
+		Traces:  toKafkaTopicEncodingConfig(state, cfg.Traces, defaults.Traces),
 
 		MinFetchSize:             cfg.ConsumerConfig.MinFetchSize,
 		MaxFetchSize:             cfg.ConsumerConfig.MaxFetchSize,
@@ -116,12 +138,27 @@ func toKafkaErrorBackOff(cfg configretry.BackOffConfig) kafka.ErrorBackOffArgume
 	}
 }
 
-func toKafkaTopicEncodingConfig(cfg kafkareceiver.TopicEncodingConfig) kafka.KafkaReceiverTopicEncodingConfig {
-	return kafka.KafkaReceiverTopicEncodingConfig{
+func toKafkaTopicEncodingConfig(state *State, cfg, defaults kafkareceiver.TopicEncodingConfig) kafka.KafkaReceiverTopicEncodingConfig {
+	out := kafka.KafkaReceiverTopicEncodingConfig{
 		Topics:        cfg.Topics,
-		Encoding:      cfg.Encoding,
 		ExcludeTopics: cfg.ExcludeTopics,
 	}
+
+	// Upstream treats an encoding naming a configured extension as that
+	// extension, taking precedence over built-in encodings.
+	var extID component.ID
+	if err := extID.UnmarshalText([]byte(cfg.Encoding)); err == nil {
+		if _, ok := state.TryLookupExtension(extID); ok {
+			out.EncodingExtension = &extension.ExtensionHandler{ID: extID}
+			return out
+		}
+	}
+
+	// Leave the upstream default unset to keep the output minimal.
+	if cfg.Encoding != defaults.Encoding {
+		out.Encoding = &cfg.Encoding
+	}
+	return out
 }
 
 func toKafkaAuthentication(cfg map[string]any) otelcol.KafkaAuthenticationArguments {

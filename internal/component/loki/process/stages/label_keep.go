@@ -25,10 +25,7 @@ func (l *LabelKeepConfig) Validate() error {
 	return nil
 }
 
-var (
-	_ Stage          = (*labelKeepStage)(nil)
-	_ entryProcessor = (*labelKeepStage)(nil)
-)
+var _ entryProcessor = (*labelKeepStage)(nil)
 
 func newLabelKeepStage(config LabelKeepConfig, opts stageOpts) *labelKeepStage {
 	labelMap := make(map[string]struct{})
@@ -47,18 +44,6 @@ type labelKeepStage struct {
 	labels map[string]struct{}
 }
 
-// Run implements Stage.
-func (l *labelKeepStage) Run(in chan Entry) chan Entry {
-	return RunWith(in, func(e Entry) Entry {
-		for label := range e.Labels {
-			if _, ok := l.labels[string(label)]; !ok {
-				delete(e.Labels, label)
-			}
-		}
-		return e
-	})
-}
-
 func (l *labelKeepStage) process(ctx context.Context, entries []Entry) error {
 	for _, e := range entries {
 		for label := range e.Labels {
@@ -69,6 +54,3 @@ func (l *labelKeepStage) process(ctx context.Context, entries []Entry) error {
 	}
 	return l.next(ctx, entries)
 }
-
-// Cleanup implements Stage.
-func (l *labelKeepStage) Cleanup() {}

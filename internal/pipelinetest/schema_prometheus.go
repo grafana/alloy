@@ -22,10 +22,19 @@ type PrometheusAssertionSchema struct {
 // PrometheusMatchSchema describes Prometheus sample fields used by declarative
 // assertions. Match a metric by name through the __name__ label.
 type PrometheusMatchSchema struct {
-	Labels    MapMatchSchema `yaml:"labels,omitempty"`
-	Value     *float64       `yaml:"value,omitempty"`
-	Timestamp string         `yaml:"timestamp,omitempty"`
-	Histogram *bool          `yaml:"histogram,omitempty"`
+	Labels    MapMatchSchema            `yaml:"labels,omitempty"`
+	Value     *float64                  `yaml:"value,omitempty"`
+	Timestamp string                    `yaml:"timestamp,omitempty"`
+	Histogram *bool                     `yaml:"histogram,omitempty"`
+	Metadata  *PrometheusMetadataSchema `yaml:"metadata,omitempty"`
+}
+
+// PrometheusMetadataSchema describes the series metadata a sample must carry.
+// Omitted fields are not checked.
+type PrometheusMetadataSchema struct {
+	Type *string `yaml:"type,omitempty"`
+	Unit *string `yaml:"unit,omitempty"`
+	Help *string `yaml:"help,omitempty"`
 }
 
 func buildPrometheusAssertions(assertions []PrometheusAssertionSchema) ([]harness.Assertion, error) {
@@ -78,7 +87,7 @@ func buildPrometheusContainsAssertion(assertion PrometheusAssertionSchema) (harn
 }
 
 func buildPrometheusMatchers(match PrometheusMatchSchema) ([]harness.SampleMatcher, error) {
-	matchers := make([]harness.SampleMatcher, 0, 4)
+	matchers := make([]harness.SampleMatcher, 0, 5)
 
 	if len(match.Labels.Values) > 0 {
 		partial, err := isPartialMapMatch("labels", match.Labels)
@@ -102,6 +111,10 @@ func buildPrometheusMatchers(match PrometheusMatchSchema) ([]harness.SampleMatch
 
 	if match.Histogram != nil {
 		matchers = append(matchers, harness.PrometheusSampleIsHistogram(*match.Histogram))
+	}
+
+	if match.Metadata != nil {
+		matchers = append(matchers, harness.PrometheusSampleMetadata(match.Metadata.Type, match.Metadata.Unit, match.Metadata.Help))
 	}
 
 	return matchers, nil

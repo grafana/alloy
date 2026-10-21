@@ -46,7 +46,7 @@ func mockExplainPlanRows(rows ...[]driver.Value) *sqlmock.Rows {
 func expectExplainPlans(t *testing.T, mock sqlmock.Sqlmock, hashes []string, rows ...[]driver.Value) {
 	t.Helper()
 
-	query, args, err := buildExplainPlansStatement(hashes)
+	query, args, err := buildExplainPlansStatement(hashes, false)
 	require.NoError(t, err)
 
 	mockSelectQueryStoreState(mock, "READ_WRITE")
@@ -260,6 +260,28 @@ func TestExplainPlans_EmissionGate(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 	lokiClient.Stop()
 	require.Len(t, lokiClient.Received(), 3)
+}
+
+// TestRedactNativeShowPlanXML guards against regressing the unredacted debug
+// log this collector used to emit: the raw Showplan XML from
+// sys.query_store_plan can embed literal predicate values directly in
+// ScalarString attributes (e.g. "[dbo].[Orders].[Total]&gt;(100)"), so the
+// native-plan debug log line must redact those in place before it's ever
+// logged, while preserving everything else in the raw XML.
+func TestRedactNativeShowPlanXML(t *testing.T) {
+	planXML := loadShowPlanFixture(t, "compute_scalar_with_filter")
+	require.Contains(t, string(planXML), `ScalarString="[dbo].[Orders].[Total]&gt;(100)"`,
+		"fixture must still carry the literal this test guards against leaking")
+
+	redacted := redactNativeShowPlanXML(planXML)
+	require.NotContains(t, string(redacted), "100")
+	require.Contains(t, string(redacted), `ScalarString="[dbo].[Orders].[Total]&gt;(?)"`)
+
+	// Structure and non-literal attributes outside the redacted attribute
+	// values must survive untouched - this is a surgical edit, not a
+	// remarshal.
+	require.Contains(t, string(redacted), `PhysicalOp="Table Scan"`)
+	require.Contains(t, string(redacted), `Table="[Orders]"`)
 }
 
 func TestExplainPlans_PrunesStaleKeys(t *testing.T) {

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/otlp"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/testutils"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/config/configcompression"
 	"go.opentelemetry.io/collector/config/configgrpc"
@@ -29,11 +30,7 @@ func TestDefaultArguments(t *testing.T) {
 			Sizer:        exporterhelper.RequestSizerTypeRequests,
 			QueueSize:    1000,
 			NumConsumers: 10,
-			Batch: configoptional.Default(exporterhelper.BatchConfig{
-				FlushTimeout: 200 * time.Millisecond,
-				Sizer:        exporterhelper.RequestSizerTypeItems,
-				MinSize:      8192,
-			}),
+			Batch:        testutils.DefaultExporterBatch(),
 		}),
 		RetryConfig: configretry.BackOffConfig{
 			Enabled:             true,

@@ -406,7 +406,6 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
-				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 		{
@@ -424,7 +423,6 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: false,
-				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 		{
@@ -442,7 +440,6 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
-				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 	}
@@ -455,6 +452,59 @@ func TestDebugMetricsConfig(t *testing.T) {
 			require.NoError(t, err)
 
 			require.Equal(t, tc.expected, args.DebugMetricsConfig())
+		})
+	}
+}
+
+func TestProxyURL(t *testing.T) {
+	const base = `
+		endpoint = "http://localhost:1234"
+		username = "user"
+		password = "pass"
+	`
+
+	t.Run("not set by default", func(t *testing.T) {
+		var args vcenter.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(base+`output {}`), &args))
+
+		cfg, err := args.Convert()
+		require.NoError(t, err)
+		require.Empty(t, cfg.(*vcenterreceiver.Config).ProxyURL)
+	})
+
+	for _, proxyURL := range []string{
+		"http://proxy.hostname.localnet:3128",
+		"https://proxy.hostname.localnet:3128",
+		"socks5://proxy.hostname.localnet:1080",
+		"socks5h://proxy.hostname.localnet:1080",
+	} {
+		t.Run("valid "+proxyURL, func(t *testing.T) {
+			var args vcenter.Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(base+`proxy_url = "`+proxyURL+`"
+				output {}`), &args))
+
+			cfg, err := args.Convert()
+			require.NoError(t, err)
+			require.Equal(t, proxyURL, cfg.(*vcenterreceiver.Config).ProxyURL)
+			// The converted config must also be accepted by upstream.
+			require.NoError(t, cfg.(*vcenterreceiver.Config).Validate())
+		})
+	}
+
+	invalid := map[string]struct {
+		proxyURL string
+		errMsg   string
+	}{
+		"unsupported scheme": {"ftp://proxy.hostname.localnet:21", "proxy_url scheme must be http, https, socks5 or socks5h"},
+		"missing host":       {"socks5://", "proxy_url must include a host"},
+		"unparseable":        {"http://[::1", "unable to parse proxy_url"},
+	}
+	for name, tc := range invalid {
+		t.Run("invalid "+name, func(t *testing.T) {
+			var args vcenter.Arguments
+			err := syntax.Unmarshal([]byte(base+`proxy_url = "`+tc.proxyURL+`"
+				output {}`), &args)
+			require.ErrorContains(t, err, tc.errMsg)
 		})
 	}
 }

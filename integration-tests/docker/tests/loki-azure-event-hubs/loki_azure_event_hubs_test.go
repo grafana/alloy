@@ -28,9 +28,14 @@ const (
 )
 
 func TestLokiAzureEventHubs(t *testing.T) {
-	producer, err := newProducer(t.Context())
+	cfg, err := newConfig()
+	require.NoError(t, err)
+
+	producer, err := newProducer(t.Context(), cfg)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, producer.Close()) }()
+
+	common.CreateKafkaTopics(t, []string{broker}, cfg, 3, topics...)
 
 	var g errgroup.Group
 	for _, tp := range topics {
@@ -57,7 +62,7 @@ func TestLokiAzureEventHubs(t *testing.T) {
 	)
 }
 
-func newProducer(ctx context.Context) (sarama.SyncProducer, error) {
+func newConfig() (*sarama.Config, error) {
 	caBytes, err := os.ReadFile(caPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read CA cert at %q: %w", caPath, err)
@@ -77,6 +82,10 @@ func newProducer(ctx context.Context) (sarama.SyncProducer, error) {
 	cfg.Net.TLS.Enable = true
 	cfg.Net.TLS.Config = &tls.Config{RootCAs: pool}
 
+	return cfg, nil
+}
+
+func newProducer(ctx context.Context, cfg *sarama.Config) (sarama.SyncProducer, error) {
 	bk := backoff.New(ctx, backoff.Config{
 		MinBackoff: 50 * time.Millisecond,
 		MaxBackoff: 5 * time.Second,

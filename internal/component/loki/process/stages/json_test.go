@@ -309,6 +309,23 @@ stage.json {
 				newEntry(map[string]any{"log": nil}, model.LabelSet{}, logFixture, now),
 			},
 		},
+		{
+			name: "null value",
+			config: `
+			stage.json {
+				expressions = { "app" = "", "message" = "" }
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, `{"message":"hello world","app":null}`, now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"app":     nil,
+					"message": "hello world",
+				}, model.LabelSet{}, `{"message":"hello world","app":null}`, now),
+			},
+		},
 	}
 
 	for _, tt := range tests {

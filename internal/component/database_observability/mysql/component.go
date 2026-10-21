@@ -91,6 +91,10 @@ type DatabaseArguments struct {
 	Name           string            `alloy:",label"`
 	DataSourceName alloytypes.Secret `alloy:"data_source_name,attr"`
 	CloudProvider  *CloudProvider    `alloy:"cloud_provider,block,optional"`
+	// Rules holds relabel rules applied to the metrics and the logs of this
+	// database only. They run after the labels the component sets itself, so a
+	// rule can use those as `source_labels`.
+	Rules []*relabel.Config `alloy:"rule,block,optional"`
 }
 
 type CloudProvider struct {
@@ -260,6 +264,9 @@ func (a *Arguments) Validate() error {
 
 	names := make(map[string]struct{}, len(a.Databases))
 	servers := make(map[string]string, len(a.Databases))
+	// instances tracks the instance label each block rewrites to, where a rule
+	// fixes it at load time, so that two blocks can't collapse onto one series.
+	instances := make(map[string]string, len(a.Databases))
 	for _, db := range a.Databases {
 		if !databaseNameRegex.MatchString(db.Name) {
 			return fmt.Errorf("database_instance block label %q must be a valid identifier (letters, digits, and underscores, not starting with a digit)", db.Name)
@@ -280,6 +287,17 @@ func (a *Arguments) Validate() error {
 
 		if err := validateCloudProvider(db.CloudProvider); err != nil {
 			return fmt.Errorf("database_instance %q: %w", db.Name, err)
+		}
+
+		if err := database_observability.ValidateRelabelRules(db.Rules); err != nil {
+			return fmt.Errorf("database_instance %q: %w", db.Name, err)
+		}
+
+		if value, known := database_observability.StaticInstanceLabel(db.Rules); known {
+			if other, ok := instances[value]; ok {
+				return fmt.Errorf("database_instance blocks %q and %q both set the instance label to %q, which would collapse them onto one series", other, db.Name, value)
+			}
+			instances[value] = db.Name
 		}
 	}
 	return nil
@@ -780,13 +798,21 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 		inst.exporterCollector = exporter
 	}
 
+	builtinRules := database_observability.GetRelabelingRules(generatedServerID, cp)
+
 	allTargets := append([]discovery.Target{inst.baseTarget}, inst.cfg.targets...)
 	targets := make([]discovery.Target, 0, len(allTargets))
 	for _, t := range allTargets {
 		builder := discovery.NewTargetBuilderFrom(t)
-		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(generatedServerID, cp)...) {
-			targets = append(targets, builder.Target())
+		if !relabel.ProcessBuilder(builder, builtinRules...) {
+			continue
 		}
+		// The per-database rules run second, so that a rule can use the labels
+		// the component's own rules set, such as server_id, as source_labels.
+		if !database_observability.ApplyRules(builder, inst.cfg.rules) {
+			continue
+		}
+		targets = append(targets, builder.Target())
 	}
 	inst.exportedTargets = targets
 
@@ -840,7 +866,7 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 		c.opts.Logger.Error(errorString)
 		startErrors = append(startErrors, errorString)
 	}
-	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), inst.instanceKey, serverID)
+	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), inst.instanceKey, serverID, inst.cfg.rules)
 
 	collectors := enableOrDisableCollectors(c.args)
 
@@ -992,7 +1018,6 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 			ExcludeSchemas:  c.args.ExcludeSchemas,
 			InitialLookback: time.Now().Add(-c.args.ExplainPlansArguments.InitialLookback),
 			Logger:          c.opts.Logger,
-			DBVersion:       engineVersion,
 			EntryHandler:    entryHandler,
 		})
 		if err != nil {
@@ -1157,12 +1182,15 @@ func formatDSN(dsn string, params ...string) string {
 	return dsn + strings.Join(params, "&")
 }
 
-func addLokiLabels(entryHandler loki.EntryHandler, instanceKey string, serverID string) loki.EntryHandler {
-	entryHandler = loki.AddLabelsMiddleware(model.LabelSet{
+func addLokiLabels(entryHandler loki.EntryHandler, instanceKey string, serverID string, rules []*relabel.Config) loki.EntryHandler {
+	// One middleware adds the labels and applies the per-database rules, in
+	// that order, so the rules can read these labels as source_labels.
+	entryHandler = database_observability.AddLabelsAndRelabelMiddleware(model.LabelSet{
 		"job":       database_observability.JobName,
 		"instance":  model.LabelValue(instanceKey),
 		"server_id": model.LabelValue(serverID),
-	}).Wrap(entryHandler)
+		"engine":    model.LabelValue(collector.EngineName),
+	}, rules).Wrap(entryHandler)
 
 	return entryHandler
 }
