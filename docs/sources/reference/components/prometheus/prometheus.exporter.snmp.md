@@ -26,20 +26,6 @@ You can specify multiple `prometheus.exporter.snmp` components by giving them di
 
 ```alloy
 prometheus.exporter.snmp "<LABEL>" {
-  config_files = ["<SNMP_CONFIG_FILE_PATH>", ...]
-
-  target "<TARGET_NAME>" {
-    address = "<TARGET_ADDRESS>"
-  }
-}
-```
-
-or
-
-```alloy
-prometheus.exporter.snmp "<LABEL>" {
-  config_files = ["<SNMP_CONFIG_FILE_PATH>", ...]
-  targets     = <TARGET_LIST>
 }
 ```
 
