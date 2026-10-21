@@ -79,6 +79,7 @@ func Test_sourceMapsStoreImpl_DownloadSuccess(t *testing.T) {
 			},
 			newSourceMapMetrics(prometheus.NewRegistry()),
 			httpClient,
+			httpClient,
 			newTestFileService(),
 		)
 	)
@@ -131,6 +132,7 @@ func Test_sourceMapsStoreImpl_DownloadError(t *testing.T) {
 			},
 			newSourceMapMetrics(prometheus.NewRegistry()),
 			httpClient,
+			httpClient,
 			newTestFileService(),
 		)
 	)
@@ -162,6 +164,7 @@ func Test_sourceMapsStoreImpl_DownloadHTTPOriginFiltering(t *testing.T) {
 				DownloadFromOrigins: []string{"http://bar.com/"},
 			},
 			newSourceMapMetrics(prometheus.NewRegistry()),
+			httpClient,
 			httpClient,
 			newTestFileService(),
 		)
@@ -238,6 +241,7 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystem(t *testing.T) {
 			},
 		},
 		newSourceMapMetrics(prometheus.NewRegistry()),
+		httpClient,
 		httpClient,
 		fileService,
 	)
@@ -344,6 +348,7 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystemAndDownload(t *testing.T) {
 		},
 		newSourceMapMetrics(prometheus.NewRegistry()),
 		httpClient,
+		httpClient,
 		fileService,
 	)
 
@@ -425,6 +430,7 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystemAndNotDownloadIfDisabled(t *test
 		},
 		newSourceMapMetrics(prometheus.NewRegistry()),
 		httpClient,
+		httpClient,
 		fileService,
 	)
 
@@ -501,6 +507,7 @@ func Test_sourceMapsStoreImpl_ReadFromRemoteLocation(t *testing.T) {
 			},
 		},
 		newSourceMapMetrics(prometheus.NewRegistry()),
+		httpClient,
 		httpClient,
 		fileService,
 	)
@@ -579,6 +586,7 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystemIfBothLocalAndRemoteLocation(t *
 		},
 		newSourceMapMetrics(prometheus.NewRegistry()),
 		httpClient,
+		httpClient,
 		fileService,
 	)
 
@@ -656,6 +664,7 @@ func Test_sourceMapsStoreImpl_ReadFromRemoteLocationIfBothDownloadAndLocationIsS
 		},
 		newSourceMapMetrics(prometheus.NewRegistry()),
 		httpClient,
+		httpClient,
 		fileService,
 	)
 
@@ -722,6 +731,7 @@ func Test_sourceMapsStoreImpl_FilepathSanitized(t *testing.T) {
 				},
 			},
 			newSourceMapMetrics(prometheus.NewRegistry()),
+			httpClient,
 			httpClient,
 			fileService,
 		)
@@ -989,6 +999,7 @@ func Test_sourceMapsStoreImpl_RealWorldPathValidation(t *testing.T) {
 				},
 			},
 			newSourceMapMetrics(prometheus.NewRegistry()),
+			nil,
 			nil,
 			fileService,
 		)
@@ -1285,6 +1296,7 @@ func Test_sourceMapsStoreImpl_DownloadRedirects(t *testing.T) {
 			alloyutil.TestAlloyLogger(t).Slog(),
 			SourceMapsArguments{Download: true, DownloadFromOrigins: origins},
 			newSourceMapMetrics(prometheus.NewRegistry()),
+			nil,
 			newDownloadClient(time.Second, origins),
 			newTestFileService(),
 		)
@@ -1329,6 +1341,7 @@ func Test_sourceMapsStoreImpl_DownloadRefusesSourceMapURLFromOtherOrigin(t *test
 		alloyutil.TestAlloyLogger(t).Slog(),
 		SourceMapsArguments{Download: true, DownloadFromOrigins: []string{"http://app.example.com/"}},
 		newSourceMapMetrics(prometheus.NewRegistry()),
+		httpClient,
 		httpClient,
 		newTestFileService(),
 	)

@@ -139,15 +139,20 @@ type cachedSourceMap struct {
 // newSourceMapStore creates an implementation of sourceMapsStore. The returned
 // implementation is not dynamically updatable; create a new sourceMapsStore
 // implementation if arguments change.
-func newSourceMapsStore(log *slog.Logger, args SourceMapsArguments, metrics *sourceMapMetrics, cli httpClient, fs fileService) *sourceMapsStoreImpl {
+//
+// cli fetches sourcemaps from operator-configured location blocks. downloadCli
+// fetches URLs taken from client telemetry and must only follow redirects that
+// match download_from_origins. A nil client uses the default.
+func newSourceMapsStore(log *slog.Logger, args SourceMapsArguments, metrics *sourceMapMetrics, cli, downloadCli httpClient, fs fileService) *sourceMapsStoreImpl {
 	// TODO(rfratto): it would be nice for this to be dynamically updatable, but
 	// that will require swapping out the http client (when the timeout changes)
 	// or to find a way to inject a download timeout without modifying the http
 	// client.
 
-	downloadCli := cli
 	if cli == nil {
 		cli = &http.Client{Timeout: args.DownloadTimeout}
+	}
+	if downloadCli == nil {
 		downloadCli = newDownloadClient(args.DownloadTimeout, args.DownloadFromOrigins)
 	}
 	if fs == nil {
