@@ -16,28 +16,11 @@ The `prometheus.exporter.snowflake` component embeds the [`snowflake_exporter`](
 
 ## Usage
 
-You can use the `prometheus.exporter.snowflake` component with password or RSA authentication.
-
-### Password Authentication
-
 ```alloy
-prometheus.exporter.snowflake "LABEL" {
-    account_name = "<SNOWFLAKE_ACCOUNT_NAME>"
-    username =     "<USERNAME>"
-    password =     "<PASSWORD>"
-    warehouse =    "<VIRTUAL_WAREHOUSE>"
-}
-```
-
-### RSA Authentication
-
-```alloy
-prometheus.exporter.snowflake "LABEL" {
-    account_name =         "<SNOWFLAKE_ACCOUNT_NAME>"
-    username =             "<USERNAME>"
-    private_key_path =     "<RSA_PRIVATE_KEY_PATH>"
-    private_key_password = "<RSA_PRIVATE_KEY_PASSWORD>"
-    warehouse =            "<VIRTUAL_WAREHOUSE>"
+prometheus.exporter.snowflake "<LABEL>" {
+  account_name = "<SNOWFLAKE_ACCOUNT_NAME>"
+  username     = "<USERNAME>"
+  warehouse    = "<VIRTUAL_WAREHOUSE>"
 }
 ```
 
