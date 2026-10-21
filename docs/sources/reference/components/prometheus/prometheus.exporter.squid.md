@@ -12,7 +12,11 @@ title: prometheus.exporter.squid
 
 # `prometheus.exporter.squid`
 
-The `prometheus.exporter.squid` component embeds the [`squid_exporter`](https://github.com/boynux/squid-exporter) for collecting metrics from a squid instance.
+The `prometheus.exporter.squid` component embeds the [`squid_exporter`][squid-exporter] to collect metrics from a Squid instance.
+
+You can specify multiple `prometheus.exporter.squid` components by giving them different labels.
+
+[squid-exporter]: https://github.com/boynux/squid-exporter
 
 ## Usage
 
