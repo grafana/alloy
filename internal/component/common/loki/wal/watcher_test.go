@@ -321,9 +321,9 @@ var cases = map[string]watcherTest{
 	},
 }
 
-type noMarker struct{}
+type noSavepoint struct{}
 
-func (n noMarker) LastMarkedSegment() int {
+func (n noSavepoint) LastStoredSegment() int {
 	return -1
 }
 
@@ -343,7 +343,7 @@ func TestWatcher(t *testing.T) {
 				ReadEntries: util.NewSyncSlice[loki.Entry](),
 			}
 			// create new watcher, and defer stop
-			watcher := NewWatcher(dir, "test", metrics, writeTo, logger, DefaultWatchConfig, noMarker{})
+			watcher := NewWatcher(dir, "test", metrics, writeTo, logger, DefaultWatchConfig, noSavepoint{})
 			defer watcher.Stop()
 			wl, err := New(logger, reg, dir)
 			require.NoError(t, err)
@@ -379,12 +379,12 @@ func TestWatcher(t *testing.T) {
 	}
 }
 
-type mockMarker struct {
-	LastMarkedSegmentFunc func() int
+type mockSavepoint struct {
+	LastStoredSegmentFunc func() int
 }
 
-func (m mockMarker) LastMarkedSegment() int {
-	return m.LastMarkedSegmentFunc()
+func (m mockSavepoint) LastStoredSegment() int {
+	return m.LastStoredSegmentFunc()
 }
 
 func TestWatcher_Replay(t *testing.T) {
@@ -402,7 +402,7 @@ func TestWatcher_Replay(t *testing.T) {
 		"after 3",
 	}
 
-	t.Run("replay from marked segment if marker is not invalid", func(t *testing.T) {
+	t.Run("replay from stored segment if savepoint is not invalid", func(t *testing.T) {
 		reg := prometheus.NewRegistry()
 		logger := autil.TestAlloyLogger(t).Slog()
 		dir := t.TempDir()
@@ -413,8 +413,8 @@ func TestWatcher_Replay(t *testing.T) {
 			ReadEntries: util.NewSyncSlice[loki.Entry](),
 		}
 		// create new watcher, and defer stop
-		watcher := NewWatcher(dir, "test", metrics, writeTo, logger, DefaultWatchConfig, mockMarker{
-			LastMarkedSegmentFunc: func() int {
+		watcher := NewWatcher(dir, "test", metrics, writeTo, logger, DefaultWatchConfig, mockSavepoint{
+			LastStoredSegmentFunc: func() int {
 				// when starting watcher, read from segment 0
 				return 0
 			},
@@ -481,7 +481,7 @@ func TestWatcher_Replay(t *testing.T) {
 		writeTo.AssertContainsLines(t, segment2Lines...)
 	})
 
-	t.Run("do not replay at all if invalid marker", func(t *testing.T) {
+	t.Run("do not replay at all if invalid savepoint", func(t *testing.T) {
 		reg := prometheus.NewRegistry()
 		logger := autil.TestAlloyLogger(t).Slog()
 		dir := t.TempDir()
@@ -492,8 +492,8 @@ func TestWatcher_Replay(t *testing.T) {
 			ReadEntries: util.NewSyncSlice[loki.Entry](),
 		}
 		// create new watcher, and defer stop
-		watcher := NewWatcher(dir, "test", metrics, writeTo, logger, DefaultWatchConfig, mockMarker{
-			LastMarkedSegmentFunc: func() int {
+		watcher := NewWatcher(dir, "test", metrics, writeTo, logger, DefaultWatchConfig, mockSavepoint{
+			LastStoredSegmentFunc: func() int {
 				// when starting watcher, read from segment 0
 				return -1
 			},
@@ -599,9 +599,9 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 			sleepAfterAppendEntries: time.Second,
 		}
 
-		watcher := NewWatcher(dir, "test", metrics, writeTo, logger, cfg, mockMarker{
-			LastMarkedSegmentFunc: func() int {
-				// Ignore marker to read from last segment, which is none
+		watcher := NewWatcher(dir, "test", metrics, writeTo, logger, cfg, mockSavepoint{
+			LastStoredSegmentFunc: func() int {
+				// Ignore savepoint to read from last segment, which is none
 				return -1
 			},
 		})
