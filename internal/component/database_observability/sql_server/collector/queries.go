@@ -5,7 +5,7 @@ package collector
 // builder output too. This is a review convention, not automatic enforcement.
 
 // AppName identifies collector-owned connections in sys.dm_exec_sessions.program_name.
-const AppName = "grafana:alloy:db-o11y"
+const AppName = "grafana:alloy:database_observability"
 
 // QueryMarker identifies collector-owned statements in Query Store and live requests.
 // Keep it stable across instances and versions so historical queries remain identifiable.

@@ -1029,7 +1029,7 @@ func TestSqlServer_Clustering_DistributesDatabases(t *testing.T) {
 	require.Len(t, instances, 1)
 	assert.Equal(t, "127.0.0.1:1433/db1", instances[0].instanceKey)
 	require.Len(t, connected, 1)
-	assert.Equal(t, "sqlserver://user:pass@127.0.0.1:1433?app+name=grafana%3Aalloy%3Adb-o11y&database=db1", connected[0])
+	assert.Equal(t, "sqlserver://user:pass@127.0.0.1:1433?app+name=grafana%3Aalloy%3Adatabase_observability&database=db1", connected[0])
 
 	// Only the owned database exports its target.
 	exported, ok := gotExports.(Exports)
@@ -1285,19 +1285,19 @@ func TestFormatDSN(t *testing.T) {
 		{
 			name:            "url form without query params",
 			dsn:             "sqlserver://user:pass@products-db:1433",
-			expectedDSN:     "sqlserver://user:pass@products-db:1433?app+name=grafana%3Aalloy%3Adb-o11y",
+			expectedDSN:     "sqlserver://user:pass@products-db:1433?app+name=grafana%3Aalloy%3Adatabase_observability",
 			expectedAppName: collector.AppName,
 		},
 		{
 			name:            "url form with existing query params",
 			dsn:             "sqlserver://user:pass@products-db:1433?database=products&encrypt=true",
-			expectedDSN:     "sqlserver://user:pass@products-db:1433?app+name=grafana%3Aalloy%3Adb-o11y&database=products&encrypt=true",
+			expectedDSN:     "sqlserver://user:pass@products-db:1433?app+name=grafana%3Aalloy%3Adatabase_observability&database=products&encrypt=true",
 			expectedAppName: collector.AppName,
 		},
 		{
 			name:            "url form with empty app name replaces it",
 			dsn:             "sqlserver://user:pass@products-db:1433?App+Name=&database=products",
-			expectedDSN:     "sqlserver://user:pass@products-db:1433?app+name=grafana%3Aalloy%3Adb-o11y&database=products",
+			expectedDSN:     "sqlserver://user:pass@products-db:1433?app+name=grafana%3Aalloy%3Adatabase_observability&database=products",
 			expectedAppName: collector.AppName,
 		},
 		{
@@ -1309,13 +1309,13 @@ func TestFormatDSN(t *testing.T) {
 		{
 			name:            "ado form without app name",
 			dsn:             "server=products-db;port=1433;user id=user;password=pass;database=products",
-			expectedDSN:     "server=products-db;port=1433;user id=user;password=pass;database=products;app name=grafana:alloy:db-o11y",
+			expectedDSN:     "server=products-db;port=1433;user id=user;password=pass;database=products;app name=grafana:alloy:database_observability",
 			expectedAppName: collector.AppName,
 		},
 		{
 			name:            "ado form with trailing semicolon",
 			dsn:             "server=products-db;database=products;",
-			expectedDSN:     "server=products-db;database=products;app name=grafana:alloy:db-o11y",
+			expectedDSN:     "server=products-db;database=products;app name=grafana:alloy:database_observability",
 			expectedAppName: collector.AppName,
 		},
 		{
@@ -1333,7 +1333,7 @@ func TestFormatDSN(t *testing.T) {
 		{
 			name:            "odbc form without app name",
 			dsn:             "odbc:server=products-db;user id=user;password=pass;database=products",
-			expectedDSN:     "odbc:server=products-db;user id=user;password=pass;database=products;app name=grafana:alloy:db-o11y",
+			expectedDSN:     "odbc:server=products-db;user id=user;password=pass;database=products;app name=grafana:alloy:database_observability",
 			expectedAppName: collector.AppName,
 		},
 		{
