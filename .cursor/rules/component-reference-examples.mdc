@@ -1,0 +1,54 @@
+---
+description: >-
+  Component reference docs — prefer examples in task guides (monitor, tutorials,
+  collect); when reference Examples may include inline Alloy and when to link only.
+globs: docs/sources/reference/components/**/*.md
+alwaysApply: false
+---
+
+# Component reference: Examples sections
+
+**Prefer** end-to-end examples in **task-based** docs under `docs/sources/monitor/`, `docs/sources/tutorials/`, and `docs/sources/collect/`. Keep large **Examples** content in **reference** component pages **only when necessary**.
+
+## Default: Examples = links to task docs
+
+When the happy path is documented in a task guide, the reference page’s **Examples** section should usually be a **bullet list** of links to those guides:
+
+- Use the heading **`## Examples`** (plural) at **component** scope (near the end of the page, before **Compatible components** when present).
+- Each bullet is a **markdown link** whose **link text is the target page title** (that doc’s `title` in front matter or its primary heading).
+- Link **only** to pages under **`monitor/`**, **`tutorials/`**, or **`collect/`** — not to other reference components.
+- Use **relative** paths from the component file (for example `../../../monitor/...`, `../../../tutorials/...`, `../../../collect/...`).
+
+Do **not** list other **reference** components (for example `prometheus.scrape`, `loki.write`) in Examples; those belong in **Compatible components** or the task guide.
+
+## Task-doc bullets plus optional `#####` walkthrough
+
+When you need **both** pointers to task guides **and** a **concrete** multi-component or step-by-step example in the same **Examples** block:
+
+1. Put the **bullet list** of task-based doc links first (under **`## Examples`** or **`#### Examples`**).
+2. Add a **`#####`** subheading for each **standalone** walkthrough (name it after the scenario).
+3. Put Alloy blocks and explanatory text under that **`#####`**.
+
+Use this pattern wherever task-doc links should stay short but readers still need a detailed example in the reference. This can happen if the example currently presented in the reference doc would look out of place in the task based doc, or make it too cluttered.
+
+## Per-feature Examples (large multi-feature reference pages)
+
+Some component pages document **many** sub-features (for example individual **`stage.*`** blocks on `loki.process`, or **detector** blocks on `otelcol.processor.resourcedetection`). A single **`## Examples`** section at the **end** can be long and far from the feature text, so it is harder to read and maintain. This is very rare and should be avoided.
+
+For those pages, use the **same** Examples pattern (heading name **`Examples`**, **bullet list** of task-doc links), but place it **next to the feature**:
+
+- Add **`#### Examples`** immediately under the relevant **`###`** feature heading (match heading depth to your outline: one level deeper than that feature section).
+- Reuse the same link rules as in **Default** for the bullets (task-based paths only, link text = target doc title).
+
+**`docs/sources/reference/components/loki/loki.process.md`** typically uses **per-feature** **`#### Examples`** under each relevant **`### stage.*`** section. **`docs/sources/reference/components/otelcol/otelcol.processor.resourcedetection.md`** documents many detectors; it may keep a single **`## Examples`** block at the end **or** adopt the same per-feature pattern next to each detector when that reads better than one long Examples section.
+
+## When inline examples in the reference doc are OK
+
+- **Deprecated behavior** must not be promoted in task-based docs, but you may show **examples only in the reference** doc so users who still rely on the feature have a correct snippet.
+- **Single-component examples**: if the snippet uses **only** the component this page documents (no other `component.type` blocks), an inline example in the reference is fine. If the flow needs **more than one component**, put the pipeline in a **task-based** doc and link to it from Examples.
+- **Richer than the task doc**: if the reference example is **more complex** or **more informative** than the task guide, **do not remove** that detail from the reference until the task doc matches. **Prefer** copying the extra context into the task doc, then replacing the reference **Examples** with links. If the task doc still has **less** information, **ask the user** whether they want you to **try moving or expanding** the task doc so it is at least as complete as the reference (rather than silently leaving duplication or deleting content).
+
+## How to choose task-doc links
+
+- Search `monitor/`, `tutorials/`, and `collect/` for the component name or scenario. Only link to pages that **actually use** or **walk through** that component.
+- If there is no suitable task doc yet, add one when you can; until then, inline reference examples are acceptable per the rules above (especially single-component or deprecated-only cases).
