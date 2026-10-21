@@ -196,7 +196,7 @@ The WAL trades in-memory buffering for disk usage, and different limits bound ea
   Every shard also keeps reusable encoding buffers that start at `batch_size` and grow to the largest batch it has sent.
   Without the WAL, the default `block_on_overflow` value of `true` makes `loki.write` wait for space once the queue is full, which stalls the components feeding it.
   With the WAL, a full queue pauses the WAL watcher instead, and the backlog stays on disk.
-  Setting `block_on_overflow` to `false` instead drops each newly arriving entry while the queue stays full.
+  Setting `block_on_overflow` to `false` instead drops an entry when it doesn't fit in the active batch for its tenant and the queue has no room for that full batch.
   Nothing evicts entries that are already queued.
 
 ## Enable the write-ahead log
