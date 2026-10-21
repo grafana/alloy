@@ -38,7 +38,7 @@ services:
     networks:
       - default
 
-  # The distroless Alloy image has no shell, so its readiness can't be probed from inside the container.
+  # The distroless Alloy image has no bash, nc or similar tools, so its readiness can't be probed from inside the container.
   # This sidecar waits for Alloy's HTTP port instead, so `docker compose up --wait` returns once Alloy is ready.
   alloy-ready:
     image: busybox:1.37@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e

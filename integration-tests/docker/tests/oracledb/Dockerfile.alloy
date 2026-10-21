@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Layers Oracle Instant Client (ZIP) on the distroless Alloy image (Dockerfile.chisel at the repo root).
-# The distroless image has no shell, package manager or ldconfig, so everything is prepared in an Ubuntu
+# The distroless image has no package manager, ldconfig or common tools (only dash), so everything is prepared in an Ubuntu
 # stage and copied over. The only runtime dependencies of the client that the image lacks are libaio and libgcc_s.
 # Matches Oracle's ZIP install flow:
 # https://www.oracle.com/database/technologies/instant-client/linux-x86-64-downloads.html
