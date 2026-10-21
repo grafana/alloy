@@ -372,7 +372,7 @@ The YAML file in this example looks like this:
 [disc]: ../../discovery/discovery.file/
 [target]: #target
 [snmp-exporter]: https://github.com/prometheus/snmp_exporter/tree/{{< param "SNMP_VERSION" >}}
-[snmp-exporter-config]: https://github.com/prometheus/snmp_exporter/tree/{{< param "SNMP_VERSION" >}}?tab=readme-ov-file#configuration
+[snmp-exporter-config]: https://github.com/prometheus/snmp_exporter/tree/{{< param "SNMP_VERSION" >}}?tab=README-ov-file#configuration
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
