@@ -1,0 +1,14 @@
+# Verify nodePort is only rendered for extra ports that set it when service.type is NodePort
+alloy:
+  extraPorts:
+    - name: jaeger-thrift
+      port: 14268
+      targetPort: 14268
+      protocol: TCP
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+      nodePort: 30317
+      protocol: TCP
+service:
+  type: NodePort

@@ -10,6 +10,10 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Bug fixes
+
+- Omit `nodePort` from Service ports when it is not set instead of rendering `nodePort: null`, which caused permanent diffs in GitOps tools such as Argo CD. (@alicanalbayrak)
+
 1.14.0 (2026-10-19)
 ----------
 
