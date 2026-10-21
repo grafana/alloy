@@ -36,6 +36,10 @@ You can use the following arguments with `prometheus.exporter.squid`:
 | `password` | `secret` | The password for `username`.               |         | no       |
 | `username` | `string` | The username to use when querying metrics. |         | no       |
 
+The `address` argument must be a host and port number, such as `localhost:3128`, without a scheme.
+Enclose an IPv6 address in brackets, such as `[::1]:3128`.
+If `address` includes a scheme or doesn't include a port, the component fails with an invalid configuration error.
+
 ## Blocks
 
 The `prometheus.exporter.squid` component doesn't support any blocks. You can configure this component with arguments.
