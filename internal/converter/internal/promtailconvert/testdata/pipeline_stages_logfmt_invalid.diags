@@ -1,0 +1,1 @@
+(Error) invalid pipeline stage config: map[source:foo] - logfmt mapping or regex is required
