@@ -38,7 +38,11 @@ type Converter struct {
 type Set struct {
 	// Tools are exposed under `alloy tools`, sorted by name.
 	Tools []Tool
-	// Converter is nil if no converter is built into Alloy.
+	// Converter is nil if no converter is built into Alloy. Then `alloy convert`
+	// is hidden and always returns an error, and run and validate hide the
+	// --config.format, --config.bypass-conversion-errors and --config.extra-args
+	// flags. The flags are still accepted, but any format other than "alloy"
+	// returns an error.
 	Converter *Converter
 }
 
@@ -57,19 +61,16 @@ func RegisterTool(t Tool) {
 }
 
 // RegisterConverter registers the config converter. It is intended to be
-// called from an init function. It panics if a converter is already
-// registered.
+// called from an init function. If it's called more than once, the last
+// converter registered is used.
 func RegisterConverter(c Converter) {
 	mut.Lock()
 	defer mut.Unlock()
-	if converter != nil {
-		panic("clifeature: a converter is already registered")
-	}
 	converter = &c
 }
 
-// Default returns the features registered with this package.
-func Default() Set {
+// All returns all features registered with this package.
+func All() Set {
 	mut.Lock()
 	defer mut.Unlock()
 	res := slices.Clone(tools)

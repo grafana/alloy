@@ -32,7 +32,7 @@ func validateCommand(converter *clifeature.Converter) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "validate [flags] file",
 		Short:        "Validate a configuration file",
-		Long:         withConverterNote(converter, "Validate a configuration file", noConverterValidateNote),
+		Long:         ``,
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE: func(_ *cobra.Command, args []string) error {

@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/alloycli/clifeature"
-	_ "github.com/grafana/alloy/internal/converter/enable"
+	_ "github.com/grafana/alloy/internal/converter/install"
 )
 
 const testPrometheusConfig = `scrape_configs:
@@ -44,11 +44,6 @@ prometheus.remote_write "default" {
 // name of the root command.
 const testHelpWithoutConverter = `Grafana Alloy
 
-This build of Alloy doesn't include config converters, so it only supports
-Alloy configuration files. The convert command isn't available, and the run
-and validate commands can't convert configs in other formats, such as
-Prometheus or OpenTelemetry Collector configs.
-
 Usage:
   <bin> [global options] <subcommand> [flags]
   <bin> [command]
@@ -72,10 +67,6 @@ Use "<bin> [command] --help" for more information about a command.
 `
 
 const testValidateHelpWithoutConverter = `Validate a configuration file
-
-This build of Alloy doesn't include config converters, so validate only
-accepts Alloy configuration files. It can't convert and validate configs in
-other formats, such as Prometheus or OpenTelemetry Collector configs.
 
 Usage:
   <bin> validate [flags] file
@@ -108,7 +99,7 @@ func TestCommands(t *testing.T) {
 
 	var (
 		noConverter   = clifeature.Set{}
-		withConverter = clifeature.Default()
+		withConverter = clifeature.All()
 	)
 
 	tests := []struct {

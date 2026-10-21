@@ -189,33 +189,6 @@ func hasErrorLevel(ds convert_diag.Diagnostics, sev convert_diag.Severity) bool 
 	return false
 }
 
-const (
-	// noConverterNote is shown in the root command's help if no converter is
-	// built into Alloy.
-	noConverterNote = `This build of Alloy doesn't include config converters, so it only supports
-Alloy configuration files. The convert command isn't available, and the run
-and validate commands can't convert configs in other formats, such as
-Prometheus or OpenTelemetry Collector configs.`
-
-	// noConverterRunNote and noConverterValidateNote are shown in the help of
-	// the run and validate commands if no converter is built into Alloy.
-	noConverterRunNote = `This build of Alloy doesn't include config converters, so run only accepts
-Alloy configuration files. It can't convert and run configs in other formats,
-such as Prometheus or OpenTelemetry Collector configs.`
-	noConverterValidateNote = `This build of Alloy doesn't include config converters, so validate only
-accepts Alloy configuration files. It can't convert and validate configs in
-other formats, such as Prometheus or OpenTelemetry Collector configs.`
-)
-
-// withConverterNote returns long with note appended if no converter is built
-// into Alloy.
-func withConverterNote(converter *clifeature.Converter, long, note string) string {
-	if converter != nil {
-		return long
-	}
-	return strings.TrimRight(long, "\n") + "\n\n" + note
-}
-
 // mountConfigFormatFlags adds the flags used to convert a config file from
 // another format before loading it. The flags are hidden if no converter is
 // built into Alloy.

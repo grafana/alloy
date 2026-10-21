@@ -83,7 +83,7 @@ func runCommand(converter *clifeature.Converter) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run [flags] path",
 		Short: "Run Grafana Alloy with Default Engine",
-		Long: withConverterNote(converter, `The run subcommand runs Grafana Alloy in the foreground until an interrupt
+		Long: `The run subcommand runs Grafana Alloy in the foreground until an interrupt
 is received.
 
 run must be provided an argument pointing at the Alloy configuration
@@ -109,7 +109,7 @@ Additionally, the HTTP server exposes the following debug endpoints:
 If reloading the config dir/file-path fails, Grafana Alloy will continue running in
 its last valid state. Components which failed may be be listed as unhealthy,
 depending on the nature of the reload error.
-`, noConverterRunNote),
+`,
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 

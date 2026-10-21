@@ -1,7 +1,7 @@
-// Package enable registers the config converter with the Alloy CLI. Importing
+// Package install registers the config converter with the Alloy CLI. Importing
 // this package enables `alloy convert` and running Alloy with a non-Alloy
 // --config.format.
-package enable
+package install
 
 import (
 	"github.com/grafana/alloy/internal/alloycli/clifeature"

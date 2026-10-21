@@ -15,7 +15,7 @@ import (
 // Command returns the root command with the features registered with
 // [clifeature].
 func Command() *cobra.Command {
-	return NewCommand(clifeature.Default())
+	return NewCommand(clifeature.All())
 }
 
 // NewCommand returns the root command with the given features.
@@ -23,7 +23,6 @@ func NewCommand(features clifeature.Set) *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:     fmt.Sprintf("%s [global options] <subcommand>", filepath.Base(os.Args[0])),
 		Short:   "Grafana Alloy",
-		Long:    withConverterNote(features.Converter, "Grafana Alloy", noConverterNote),
 		Version: build.Print("alloy"),
 
 		RunE: func(cmd *cobra.Command, args []string) error {
