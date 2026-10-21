@@ -60,7 +60,7 @@ func executeCommandInDir(dir, command string, args []string, taskDescription str
 }
 
 func buildBaseAlloyImage() {
-	executeCommandInDir(repoRootDir, "make", []string{"ALLOY_IMAGE=" + alloyImageName, "alloy-image"}, "Building Alloy")
+	executeCommandInDir(repoRootDir, "make", []string{"ALLOY_IMAGE_DISTROLESS=" + alloyImageName, "alloy-image-distroless"}, "Building Alloy")
 }
 
 // alloyIntegrationImageTag is the image ref for the Alloy container (layered tag when dockerfile is set).
@@ -229,7 +229,7 @@ func createContainerRequest(dirName, testDir string, port int, networkName strin
 	req := testcontainers.ContainerRequest{
 		Image:        alloyImage,
 		ExposedPorts: exposedPorts,
-		WaitingFor:   wait.ForListeningPort(defaultPortStr),
+		WaitingFor:   wait.ForListeningPort(defaultPortStr).SkipInternalCheck(), // distroless image lacks the tools (grep, nc) used by the in-container check
 		Cmd:          cmd,
 		Env:          cfg.Container.Environment,
 		HostConfigModifier: func(hc *container.HostConfig) {
