@@ -1,0 +1,41 @@
+otelcol.receiver.otlp "default" {
+	grpc {
+		endpoint = "localhost:4317"
+	}
+
+	http {
+		endpoint            = "localhost:4318"
+		write_timeout       = "0s"
+		read_header_timeout = "0s"
+	}
+
+	output {
+		traces = [otelcol.connector.exceptions.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+	}
+}
+
+otelcol.connector.exceptions "default" {
+	dimension {
+		name = "exception.type"
+	}
+
+	dimension {
+		name    = "http.method"
+		default = "GET"
+	}
+
+	exemplars {
+		enabled = true
+	}
+
+	output {
+		metrics = [otelcol.exporter.otlp.default.input]
+		logs    = [otelcol.exporter.otlp.default.input]
+	}
+}

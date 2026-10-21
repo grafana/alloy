@@ -376,8 +376,9 @@ func TestMatchStageNestedPipelineError(t *testing.T) {
 		selector = "{app=\"loki\"}"
 		action   = "keep"
 
-		stage.regex {
-			expression = "[unclosed"
+		stage.timestamp {
+			source = "timestamp"
+			format = ""
 		}
 	}
 	`)

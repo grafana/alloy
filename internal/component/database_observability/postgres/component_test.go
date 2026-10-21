@@ -1,9 +1,11 @@
 package postgres
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -24,6 +26,7 @@ import (
 
 	cmp "github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/postgres/collector"
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -675,7 +678,7 @@ func Test_addLokiLabels(t *testing.T) {
 	t.Run("add required labels to loki entries", func(t *testing.T) {
 		handler := loki.NewCollectingHandler()
 		defer handler.Stop()
-		entryHandler := addLokiLabels(handler, "some-instance-key", "some-system-id")
+		entryHandler := addLokiLabels(handler, "some-instance-key", "some-system-id", nil)
 
 		go func() {
 			ts := time.Now().UnixNano()
@@ -699,6 +702,50 @@ func Test_addLokiLabels(t *testing.T) {
 			"engine":    model.LabelValue(collector.EngineName),
 		}, handler.Received()[0].Labels)
 		assert.Equal(t, "some-message", handler.Received()[0].Line)
+	})
+
+	t.Run("per-database rules run after the required labels", func(t *testing.T) {
+		handler := loki.NewCollectingHandler()
+		defer handler.Stop()
+
+		staticRule := relabel.DefaultRelabelConfig
+		staticRule.TargetLabel = "environment"
+		staticRule.Replacement = "production"
+
+		// Derives a label from server_id, which addLokiLabels sets, to prove
+		// the rules see the component's own labels.
+		var shortIDRegex relabel.Regexp
+		require.NoError(t, shortIDRegex.UnmarshalText([]byte("(.{4}).*")))
+
+		derivedRule := relabel.DefaultRelabelConfig
+		derivedRule.SourceLabels = []string{"server_id"}
+		derivedRule.Regex = shortIDRegex
+		derivedRule.TargetLabel = "short_id"
+		derivedRule.Replacement = "$1"
+
+		entryHandler := addLokiLabels(handler, "some-instance-key", "abcdefgh", []*relabel.Config{&staticRule, &derivedRule})
+
+		go func() {
+			entryHandler.Chan() <- loki.Entry{
+				Entry: push.Entry{
+					Timestamp: time.Now(),
+					Line:      "some-message",
+				},
+			}
+		}()
+
+		require.Eventually(t, func() bool {
+			return len(handler.Received()) == 1
+		}, 5*time.Second, 100*time.Millisecond)
+
+		assert.Equal(t, model.LabelSet{
+			"job":         database_observability.JobName,
+			"instance":    model.LabelValue("some-instance-key"),
+			"server_id":   model.LabelValue("abcdefgh"),
+			"engine":      model.LabelValue(collector.EngineName),
+			"environment": model.LabelValue("production"),
+			"short_id":    model.LabelValue("abcd"),
+		}, handler.Received()[0].Labels)
 	})
 }
 
@@ -1362,6 +1409,102 @@ func Test_databaseInstanceBlocks(t *testing.T) {
 		err := syntax.Unmarshal([]byte(cfg), &args)
 		require.ErrorContains(t, err, `unrecognized attribute name "targets"`)
 	})
+
+	t.Run("parse relabel rules", func(t *testing.T) {
+		cfg := `
+			forward_to = []
+			database_instance "orders" {
+				data_source_name = "postgres://user:pass@localhost:5432/orders"
+
+				rule {
+					target_label = "environment"
+					replacement  = "production"
+				}
+				rule {
+					source_labels = ["server_id"]
+					regex         = "(.{8}).*"
+					target_label  = "short_id"
+					replacement   = "$1"
+				}
+			}
+			database_instance "billing" {
+				data_source_name = "postgres://user:pass@localhost:5432/billing"
+			}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.NoError(t, err)
+
+		require.Len(t, args.Databases[0].Rules, 2)
+		assert.Equal(t, "environment", args.Databases[0].Rules[0].TargetLabel)
+		assert.Equal(t, "production", args.Databases[0].Rules[0].Replacement)
+		// The defaults of a relabel rule are applied per block.
+		assert.Equal(t, relabel.Replace, args.Databases[0].Rules[0].Action)
+		assert.Equal(t, "(.*)", args.Databases[0].Rules[0].Regex.String())
+
+		assert.Equal(t, []string{"server_id"}, args.Databases[0].Rules[1].SourceLabels)
+		assert.Equal(t, "(.{8}).*", args.Databases[0].Rules[1].Regex.String())
+
+		assert.Empty(t, args.Databases[1].Rules)
+
+		// The rules reach the per-database config that drives both paths.
+		cfgs := args.databaseConfigs()
+		require.Len(t, cfgs, 2)
+		assert.Len(t, cfgs[0].rules, 2)
+		assert.Empty(t, cfgs[1].rules)
+	})
+
+	t.Run("a rule must not overwrite a reserved label", func(t *testing.T) {
+		cfg := `
+			forward_to = []
+			database_instance "orders" {
+				data_source_name = "postgres://user:pass@localhost:5432/orders"
+
+				rule {
+					target_label = "server_id"
+					replacement  = "mine"
+				}
+			}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.ErrorContains(t, err, `database_instance "orders": rule 1: target_label "server_id" is reserved`)
+	})
+
+	t.Run("a rule must not use a filtering action", func(t *testing.T) {
+		cfg := `
+			forward_to = []
+			database_instance "orders" {
+				data_source_name = "postgres://user:pass@localhost:5432/orders"
+
+				rule {
+					action        = "drop"
+					source_labels = ["op"]
+					regex         = "query_sample"
+				}
+			}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.ErrorContains(t, err, `database_instance "orders": rule 1: action "drop" isn't supported`)
+	})
+
+	t.Run("a labeldrop rule must not remove a reserved label", func(t *testing.T) {
+		cfg := `
+			forward_to = []
+			database_instance "orders" {
+				data_source_name = "postgres://user:pass@localhost:5432/orders"
+
+				rule {
+					action = "labeldrop"
+					regex  = "server_.*"
+				}
+			}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.ErrorContains(t, err, `database_instance "orders": rule 1: labeldrop regex "server_.*" matches reserved label "server_id"`)
+	})
 }
 
 func multiDatabaseTestMockDB(t *testing.T, systemID string) *sql.DB {
@@ -1452,6 +1595,73 @@ func TestPostgres_MultipleDatabases(t *testing.T) {
 	rec := httptest.NewRecorder()
 	c.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/metrics", nil))
 	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
+// TestPostgres_PerDatabaseRules_Targets checks that the rules of a
+// database_instance block are applied to that database's exported target only,
+// and that they run after the component's own relabeling rules.
+func TestPostgres_PerDatabaseRules_Targets(t *testing.T) {
+	envRule := relabel.DefaultRelabelConfig
+	envRule.TargetLabel = "environment"
+	envRule.Replacement = "production"
+
+	var shortIDRegex relabel.Regexp
+	require.NoError(t, shortIDRegex.UnmarshalText([]byte("(.{8}).*")))
+
+	// Derived from server_id, which GetRelabelingRules sets.
+	shortIDRule := relabel.DefaultRelabelConfig
+	shortIDRule.SourceLabels = []string{"server_id"}
+	shortIDRule.Regex = shortIDRegex
+	shortIDRule.TargetLabel = "short_id"
+	shortIDRule.Replacement = "$1"
+
+	stagingRule := relabel.DefaultRelabelConfig
+	stagingRule.TargetLabel = "environment"
+	stagingRule.Replacement = "staging"
+
+	args := multiDatabaseTestArgs()
+	args.Databases[0].Rules = []*relabel.Config{&envRule, &shortIDRule}
+	args.Databases[1].Rules = []*relabel.Config{&stagingRule}
+	require.NoError(t, args.Validate())
+
+	var gotExports cmp.Exports
+	opts := cmp.Options{
+		ID:             "test.postgres",
+		Logger:         logging.NewSlogNop(),
+		GetServiceData: testGetServiceData,
+		OnStateChange:  func(e cmp.Exports) { gotExports = e },
+	}
+
+	dbA := multiDatabaseTestMockDB(t, "system-a")
+	dbB := multiDatabaseTestMockDB(t, "system-b")
+
+	_, err := new(opts, args, func(_ string, dsn string) (*sql.DB, error) {
+		if strings.Contains(dsn, "/db1") {
+			return dbA, nil
+		}
+		return dbB, nil
+	})
+	require.NoError(t, err)
+
+	exported, ok := gotExports.(Exports)
+	require.True(t, ok)
+	require.Len(t, exported.Targets, 2)
+
+	envA, _ := exported.Targets[0].Get("environment")
+	assert.Equal(t, "production", envA)
+
+	// short_id is derived from server_id, so it can only be set if the
+	// per-database rules ran after the component's own.
+	serverIDA, _ := exported.Targets[0].Get("server_id")
+	require.Len(t, serverIDA, 64, "server_id should be a sha256 hex digest")
+	shortIDA, _ := exported.Targets[0].Get("short_id")
+	assert.Equal(t, serverIDA[:8], shortIDA)
+
+	// The second database has its own rules, and not those of the first.
+	envB, _ := exported.Targets[1].Get("environment")
+	assert.Equal(t, "staging", envB)
+	_, hasShortIDB := exported.Targets[1].Get("short_id")
+	assert.False(t, hasShortIDB, "short_id should only be set on the database whose rule sets it")
 }
 
 func TestPostgres_MultipleDatabases_PartialFailure(t *testing.T) {
@@ -1952,7 +2162,7 @@ func TestPostgres_Clustering_NonOwnedReceiverDiscards(t *testing.T) {
 }
 
 func Test_resolveExporterArgs(t *testing.T) {
-	t.Run("no block at all defaults to stat_statements only", func(t *testing.T) {
+	t.Run("no block at all defaults to stat_statements only with default stat_statements limit", func(t *testing.T) {
 		cfg := `
 			data_source_name = "postgresql://user:pass@localhost:5432/db"
 			forward_to = []
@@ -1961,6 +2171,8 @@ func Test_resolveExporterArgs(t *testing.T) {
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
 		assert.Equal(t, []string{"stat_statements"}, exporterArgs.EnabledCollectors)
+		require.NotNil(t, exporterArgs.StatStatementFlags)
+		assert.Equal(t, uint(100), exporterArgs.StatStatementFlags.Limit)
 	})
 
 	t.Run("block present with sub-block settings but enabled_collectors untouched", func(t *testing.T) {
@@ -2037,5 +2249,120 @@ func Test_resolveExporterArgs(t *testing.T) {
 		var args Arguments
 		err := syntax.Unmarshal([]byte(cfg), &args)
 		require.ErrorContains(t, err, "enabled_collectors cannot be set when disable_default_metrics is true")
+	})
+}
+
+func Test_query_details_stat_statements_different_limits_warning(t *testing.T) {
+	t.Run("logs warning when query_details enabled, stat_statements enabled, and limits differ", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, fmt.Errorf("connection skipped for limit warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		defer c.stopPumps()
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 200},
+			PrometheusExporter:    &PrometheusExporterArguments{StatStatementFlags: &exporter_postgres.StatStatementFlags{Limit: 50}},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.Contains(t, logs.String(), "query_details and prometheus_exporter stat_statements limits differ")
+		assert.Contains(t, logs.String(), "query_details_limit=200")
+		assert.Contains(t, logs.String(), "stat_statements_limit=50")
+	})
+
+	t.Run("does not log warning when query_details is disabled", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, fmt.Errorf("connection skipped for limit warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		defer c.stopPumps()
+		args := Arguments{
+			DataSourceName:     alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			DisableCollectors:  []string{collector.QueryDetailsCollector},
+			PrometheusExporter: &PrometheusExporterArguments{StatStatementFlags: &exporter_postgres.StatStatementFlags{Limit: 50}},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "query_details and prometheus_exporter stat_statements limits differ")
+	})
+
+	t.Run("does not log warning when embedded postgres exporter not used", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, fmt.Errorf("connection skipped for limit warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		defer c.stopPumps()
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			Targets:               []discovery.Target{discovery.NewTargetFromMap(map[string]string{"job": "external"})},
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 200},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "query_details and prometheus_exporter stat_statements limits differ")
+	})
+
+	t.Run("does not log warning when stat_statements is disabled", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, fmt.Errorf("connection skipped for limit warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		defer c.stopPumps()
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 200},
+			PrometheusExporter:    &PrometheusExporterArguments{DisableDefaultMetrics: true, CustomQueriesConfigPath: "/etc/custom-queries.yml"},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "query_details and prometheus_exporter stat_statements limits differ")
+	})
+
+	t.Run("does not log warning when enabled_collectors excludes stat_statements", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, fmt.Errorf("connection skipped for limit warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		defer c.stopPumps()
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 200},
+			PrometheusExporter: &PrometheusExporterArguments{
+				EnabledCollectors:  []string{"wal"},
+				StatStatementFlags: &exporter_postgres.StatStatementFlags{Limit: 50},
+			},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "query_details and prometheus_exporter stat_statements limits differ")
+	})
+
+	t.Run("does not log warning when limits match", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, fmt.Errorf("connection skipped for limit warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		defer c.stopPumps()
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 100},
+			// PrometheusExporter falls to default 100
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "query_details and prometheus_exporter stat_statements limits differ")
 	})
 }

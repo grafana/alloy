@@ -141,7 +141,7 @@ The component injects the following labels into the scraped profiles so that you
 [example_dynamic_targets]: #default-endpoints-of-dynamic-targets
 [example_static_and_dynamic_targets]: #default-endpoints-of-static-and-dynamic-targets
 
-#### `scrape_interval`
+### `scrape_interval`
 
 The `scrape_interval` typically refers to the frequency with which {{< param "PRODUCT_NAME" >}} collects performance profiles from the monitored targets.
 It represents the time interval between consecutive scrapes or data collection events.
@@ -172,6 +172,15 @@ For example, consider this situation:
 * Any scrape HTTP requests where you set the [delta argument][] to `true` fail, because they attempt to run for 59 seconds.
 
 [delta argument]: #delta-argument
+
+### `scrape_timeout`
+
+The `scrape_timeout` is the time limit for a single scrape request.
+
+A request that includes a `seconds` parameter runs for that many seconds before it returns.
+{{< param "PRODUCT_NAME" >}} adds a `seconds` parameter to delta profile requests, such as the default CPU profile.
+To allow for the profile duration, {{< param "PRODUCT_NAME" >}} adds `scrape_interval` minus 1 second to `scrape_timeout` for these requests.
+For example, with the default `scrape_interval` of `"15s"` and `scrape_timeout` of `"10s"`, delta profile requests time out after 24 seconds.
 
 ## Blocks
 
@@ -302,7 +311,8 @@ You can use the following arguments with the `profile.custom` block:
 | `path`    | `string`  | The path to the profile type on the target. |         | yes      |
 
 When the `delta` argument is `true`, a `seconds` query parameter is automatically added to requests.
-The `seconds` used is equal to `scrape_interval - 1`.
+The `seconds` used is equal to `scrape_interval` minus 1, unless you set `delta_profiling_duration`, in which case `seconds` takes that value.
+For more information, refer to the [delta argument][] section.
 
 ### `profile.fgprof`
 
@@ -428,9 +438,10 @@ When the `delta` argument is `true`:
 
 * The [pprof][] HTTP query runs for a certain amount of time.
 * A `seconds` parameter is automatically added to the HTTP request.
+* The `scrape_interval` must be at least `"2s"`, because the `seconds` parameter must be at least 1.
 * The default value for the `seconds` query parameter is `scrape_interval - 1`.
   If you set `delta_profiling_duration`, then `seconds` takes the same value as `delta_profiling_duration`.
-  However, the `delta_profiling_duration` can't be larger than `scrape_interval`.
+  However, the `delta_profiling_duration` must be, at most, `scrape_interval` minus 1 second.
   For example, if you set `scrape_interval` to `"15s"`, then `seconds` defaults to `14s`
   If you set `delta_profiling_duration` to `16s`, then you must set `scrape_interval` to at least `17s`.
   If the HTTP endpoint is `/debug/pprof/profile`, then the HTTP query becomes `/debug/pprof/profile?seconds=14`
