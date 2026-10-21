@@ -191,6 +191,7 @@ If you omit the port, only the default port for the scheme matches.
 To match other ports, add the port, for example `:8443` or `:*`.
 The host must match the whole host name, ignoring case.
 The path matches as a prefix of the URL path.
+Write the path the way it appears in the URL, with special characters percent-encoded, for example `/my%20app/`.
 `*` matches any characters and `?` matches a single character.
 In the host, `*` and `?` don't match `.`.
 For example, `http://10.0.0.*/` matches `http://10.0.0.1/app.js` but not `http://10.0.0.1.example.net/app.js`, and `https://*example.com/` matches `https://myexample.com/app.js` but not `https://cdn.example.com/app.js`.
