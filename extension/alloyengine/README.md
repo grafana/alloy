@@ -121,6 +121,8 @@ extensions:
 
 Replace `<ALLOY_VERSION>` with the version you chose.
 
+The `github.com/grafana/alloy/extension/alloyengine` package includes every native Alloy component and the config converter.
+
 ### Include replace directives from Alloy
 
 The `alloyengine` extension needs a set of replace directives to work correctly. Go ignores the replace directives of the modules it depends on, so you must carry them in your own builder config. The build fails without them.
