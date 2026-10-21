@@ -70,8 +70,8 @@ For example,
 - `remote.http.LABEL.content`
 - `remote.s3.LABEL.content`
 
-Set either `config` or `config_files`, not both.
-If you set both, the component fails with an invalid configuration error.
+Set either `config` or a configuration file argument, `config_files` or the deprecated `config_file`, not both.
+If you set `config` together with `config_files` or `config_file`, the component fails with an invalid configuration error.
 
 Set `config_merge_strategy` to `merge` to add additional configuration to the embedded SNMP configuration.
 For example, if you need to add a few custom `auth` settings without regenerating the whole configuration.
