@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -972,6 +973,21 @@ func Test_urlMatchesOrigins_URLParts(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_newSourceMapsStore_WarnsOnInvalidOrigins(t *testing.T) {
+	var buf bytes.Buffer
+	newSourceMapsStore(
+		slog.New(slog.NewTextHandler(&buf, nil)),
+		SourceMapsArguments{Download: true, DownloadFromOrigins: []string{"https://app.example.com/", "http://"}},
+		newSourceMapMetrics(prometheus.NewRegistry()),
+		nil,
+		nil,
+		newTestFileService(),
+	)
+	require.Contains(t, buf.String(), "level=WARN")
+	require.Contains(t, buf.String(), "origin=http://")
+	require.NotContains(t, buf.String(), "app.example.com")
 }
 
 func TestOsFileService_RejectsInvalidPaths(t *testing.T) {

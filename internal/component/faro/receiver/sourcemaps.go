@@ -151,6 +151,9 @@ func newSourceMapsStore(log *slog.Logger, args SourceMapsArguments, metrics *sou
 	// client.
 
 	origins := parseOriginPatterns(args.DownloadFromOrigins)
+	for _, origin := range origins.invalid {
+		log.Warn("ignoring invalid download_from_origins entry", "origin", origin)
+	}
 	if cli == nil {
 		cli = &http.Client{Timeout: args.DownloadTimeout}
 	}
@@ -543,6 +546,7 @@ func getOrigin(URL string) string {
 type originPatterns struct {
 	any      bool
 	patterns []originPattern
+	invalid  []string
 }
 
 func parseOriginPatterns(origins []string) originPatterns {
@@ -552,6 +556,8 @@ func parseOriginPatterns(origins []string) originPatterns {
 			ps.any = true
 		} else if p, ok := parseOriginPattern(origin); ok {
 			ps.patterns = append(ps.patterns, p)
+		} else {
+			ps.invalid = append(ps.invalid, origin)
 		}
 	}
 	return ps
