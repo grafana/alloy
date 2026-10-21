@@ -52,7 +52,7 @@ type Env struct {
 // The returned stop function stops the component and waits for it to exit.
 // It is called during test cleanup if the test did not call it.
 func (env Env) Run(
-	t *testing.T,
+	t testing.TB,
 	name string,
 	args component.Arguments,
 	mods ...func(component.Options) component.Options,
@@ -91,9 +91,34 @@ func (env Env) opts(o component.Options) component.Options {
 	return o
 }
 
+// Send sends entries to recv in env.
+func (env Env) Send(t *testing.T, recv loki.LogsReceiver, entries ...loki.Entry) {
+	t.Helper()
+
+	if !env.pipelineV2 {
+		for _, e := range entries {
+			select {
+			case recv.Chan() <- e:
+			case <-time.After(5 * time.Second):
+				require.FailNow(t, "timed out sending entry")
+			}
+		}
+		return
+	}
+
+	c, ok := recv.(loki.Consumer)
+	require.True(t, ok, "receiver does not support Loki pipeline V2")
+
+	batch := loki.NewBatch()
+	for _, e := range entries {
+		batch.AddEntry(e.Labels, e.Created(), e.Entry)
+	}
+	require.NoError(t, c.Consume(t.Context(), batch))
+}
+
 // NewReceiver returns a Receiver for a component running in env to forward to.
 // It is stopped when the test ends.
-func (env Env) NewReceiver(t *testing.T) *Receiver {
+func (env Env) NewReceiver(t testing.TB) *Receiver {
 	var r *Receiver
 	if env.pipelineV2 {
 		consumer := NewCollectingConsumer()
