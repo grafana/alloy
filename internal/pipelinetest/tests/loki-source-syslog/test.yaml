@@ -1,0 +1,258 @@
+config: |
+  loki.relabel "syslog" {
+    forward_to = []
+
+    rule {
+      source_labels = ["__syslog_message_severity"]
+      target_label  = "severity"
+    }
+  }
+
+  loki.source.syslog "default" {
+    listener {
+      address                = "127.0.0.1:51893"
+      use_incoming_timestamp = true
+      labels                 = { protocol = "tcp", format = "rfc5424" }
+    }
+
+    listener {
+      address                = "127.0.0.1:51898"
+      protocol               = "udp"
+      use_incoming_timestamp = true
+      labels                 = { protocol = "udp", format = "rfc5424" }
+    }
+
+    listener {
+      address       = "127.0.0.1:51894"
+      syslog_format = "rfc3164"
+      labels        = { protocol = "tcp", format = "rfc3164" }
+    }
+
+    listener {
+      address       = "127.0.0.1:51899"
+      protocol      = "udp"
+      syslog_format = "rfc3164"
+      labels        = { protocol = "udp", format = "rfc3164" }
+    }
+
+    relabel_rules = loki.relabel.syslog.rules
+    forward_to    = [pipelinetest.loki.receiver]
+  }
+
+inputs:
+  # Each TCP input opens one connection and writes data as is. The listeners
+  # use newline framing, so each line is one message.
+  tcp:
+    - address: 127.0.0.1:51893
+      data: |
+        <135>1 2026-01-01T00:00:00Z alloy-test app - - - rfc5424 debug
+        <134>1 2026-01-01T00:00:01Z alloy-test app - - - rfc5424 informational
+        <133>1 2026-01-01T00:00:02Z alloy-test app - - - rfc5424 notice
+        <132>1 2026-01-01T00:00:03Z alloy-test app - - - rfc5424 warning
+        <131>1 2026-01-01T00:00:04Z alloy-test app - - - rfc5424 error
+    - address: 127.0.0.1:51894
+      data: |
+        <135>Jan  1 00:00:00 alloy-test rfc3164 debug
+        <134>Jan  1 00:00:01 alloy-test rfc3164 informational
+        <133>Jan  1 00:00:02 alloy-test rfc3164 notice
+        <132>Jan  1 00:00:03 alloy-test rfc3164 warning
+        <131>Jan  1 00:00:04 alloy-test rfc3164 error
+
+  # Each datagram is sent as its own packet.
+  udp:
+    - address: 127.0.0.1:51898
+      datagrams:
+        - "<135>1 2026-01-01T00:00:00Z alloy-test app - - - rfc5424 debug"
+        - "<134>1 2026-01-01T00:00:01Z alloy-test app - - - rfc5424 informational"
+        - "<133>1 2026-01-01T00:00:02Z alloy-test app - - - rfc5424 notice"
+        - "<132>1 2026-01-01T00:00:03Z alloy-test app - - - rfc5424 warning"
+        - "<131>1 2026-01-01T00:00:04Z alloy-test app - - - rfc5424 error"
+    - address: 127.0.0.1:51899
+      datagrams:
+        - "<135>Jan  1 00:00:00 alloy-test rfc3164 debug"
+        - "<134>Jan  1 00:00:01 alloy-test rfc3164 informational"
+        - "<133>Jan  1 00:00:02 alloy-test rfc3164 notice"
+        - "<132>Jan  1 00:00:03 alloy-test rfc3164 warning"
+        - "<131>Jan  1 00:00:04 alloy-test rfc3164 error"
+
+assert:
+  loki:
+    # 4 listeners x 5 severities.
+    - type: count
+      count: 20
+
+    # RFC 5424 entries keep the message's own timestamp. Exact label matches
+    # prove the listener labels and the relabeled severity are the only labels.
+    - type: contains
+      match:
+        line: rfc5424 debug
+        timestamp: "2026-01-01T00:00:00Z"
+        labels:
+          values:
+            protocol: tcp
+            format: rfc5424
+            severity: debug
+    - type: contains
+      match:
+        line: rfc5424 informational
+        timestamp: "2026-01-01T00:00:01Z"
+        labels:
+          values:
+            protocol: tcp
+            format: rfc5424
+            severity: informational
+    - type: contains
+      match:
+        line: rfc5424 notice
+        timestamp: "2026-01-01T00:00:02Z"
+        labels:
+          values:
+            protocol: tcp
+            format: rfc5424
+            severity: notice
+    - type: contains
+      match:
+        line: rfc5424 warning
+        timestamp: "2026-01-01T00:00:03Z"
+        labels:
+          values:
+            protocol: tcp
+            format: rfc5424
+            severity: warning
+    - type: contains
+      match:
+        line: rfc5424 error
+        timestamp: "2026-01-01T00:00:04Z"
+        labels:
+          values:
+            protocol: tcp
+            format: rfc5424
+            severity: error
+    - type: contains
+      match:
+        line: rfc5424 debug
+        timestamp: "2026-01-01T00:00:00Z"
+        labels:
+          values:
+            protocol: udp
+            format: rfc5424
+            severity: debug
+    - type: contains
+      match:
+        line: rfc5424 informational
+        timestamp: "2026-01-01T00:00:01Z"
+        labels:
+          values:
+            protocol: udp
+            format: rfc5424
+            severity: informational
+    - type: contains
+      match:
+        line: rfc5424 notice
+        timestamp: "2026-01-01T00:00:02Z"
+        labels:
+          values:
+            protocol: udp
+            format: rfc5424
+            severity: notice
+    - type: contains
+      match:
+        line: rfc5424 warning
+        timestamp: "2026-01-01T00:00:03Z"
+        labels:
+          values:
+            protocol: udp
+            format: rfc5424
+            severity: warning
+    - type: contains
+      match:
+        line: rfc5424 error
+        timestamp: "2026-01-01T00:00:04Z"
+        labels:
+          values:
+            protocol: udp
+            format: rfc5424
+            severity: error
+
+    # RFC 3164 timestamps have no year, so only the line and labels are
+    # checked for these listeners.
+    - type: contains
+      match:
+        line: rfc3164 debug
+        labels:
+          values:
+            protocol: tcp
+            format: rfc3164
+            severity: debug
+    - type: contains
+      match:
+        line: rfc3164 informational
+        labels:
+          values:
+            protocol: tcp
+            format: rfc3164
+            severity: informational
+    - type: contains
+      match:
+        line: rfc3164 notice
+        labels:
+          values:
+            protocol: tcp
+            format: rfc3164
+            severity: notice
+    - type: contains
+      match:
+        line: rfc3164 warning
+        labels:
+          values:
+            protocol: tcp
+            format: rfc3164
+            severity: warning
+    - type: contains
+      match:
+        line: rfc3164 error
+        labels:
+          values:
+            protocol: tcp
+            format: rfc3164
+            severity: error
+    - type: contains
+      match:
+        line: rfc3164 debug
+        labels:
+          values:
+            protocol: udp
+            format: rfc3164
+            severity: debug
+    - type: contains
+      match:
+        line: rfc3164 informational
+        labels:
+          values:
+            protocol: udp
+            format: rfc3164
+            severity: informational
+    - type: contains
+      match:
+        line: rfc3164 notice
+        labels:
+          values:
+            protocol: udp
+            format: rfc3164
+            severity: notice
+    - type: contains
+      match:
+        line: rfc3164 warning
+        labels:
+          values:
+            protocol: udp
+            format: rfc3164
+            severity: warning
+    - type: contains
+      match:
+        line: rfc3164 error
+        labels:
+          values:
+            protocol: udp
+            format: rfc3164
+            severity: error

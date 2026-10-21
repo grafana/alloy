@@ -64,6 +64,8 @@ func (c *ConfigSchema) UnmarshalYAML(value *yaml.Node) error {
 type InputSchema struct {
 	Loki []LokiInputSchema `yaml:"loki"`
 	HTTP []HTTPInputSchema `yaml:"http"`
+	TCP  []TCPInputSchema  `yaml:"tcp"`
+	UDP  []UDPInputSchema  `yaml:"udp"`
 }
 
 // AssertionSchema groups declarative assertions by signal type.
@@ -80,12 +82,19 @@ type MapMatchSchema struct {
 	Values map[string]string `yaml:"values,omitempty"`
 }
 
-// produceInputs sends all configured test inputs into the running pipeline.
+// produceInputs sends all configured test inputs into the running pipeline,
+// in this order: Loki entries, HTTP requests, TCP data, then UDP datagrams.
 func produceInputs(ctx context.Context, alloy *harness.Alloy, inputs InputSchema) error {
 	if err := produceLokiInputs(ctx, alloy, inputs.Loki); err != nil {
 		return err
 	}
-	return produceHTTPInputs(ctx, inputs.HTTP)
+	if err := produceHTTPInputs(ctx, inputs.HTTP); err != nil {
+		return err
+	}
+	if err := produceTCPInputs(ctx, inputs.TCP); err != nil {
+		return err
+	}
+	return produceUDPInputs(ctx, inputs.UDP)
 }
 
 func buildAssertions(assertions AssertionSchema) ([]harness.Assertion, error) {
