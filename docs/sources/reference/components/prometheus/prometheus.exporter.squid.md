@@ -22,7 +22,7 @@ You can specify multiple `prometheus.exporter.squid` components by giving them d
 
 ```alloy
 prometheus.exporter.squid "<LABEL>" {
-    address = "<SQUID_ADDRESS>"
+  address = "<SQUID_ADDRESS>"
 }
 ```
 
