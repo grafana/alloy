@@ -37,8 +37,8 @@ You can use the following arguments with `prometheus.exporter.snowflake`:
 | `account_name`           | `string` | The account to collect metrics from.                                                       |                  | yes      |
 | `username`               | `string` | The username to use when querying metrics.                                                 |                  | yes      |
 | `warehouse`              | `string` | The warehouse to use when querying metrics.                                                |                  | yes      |
-| `enable_tracing`         | `bool`   | Whether to have the Snowflake database driver provide trace logging.                       | `false`          | no       |
-| `exclude_deleted_tables` | `bool`   | Whether to exclude deleted tables when querying table storage metrics.                     | `false`          | no       |
+| `enable_tracing`         | `bool`   | Enables trace logging in the Snowflake database driver.                                    | `false`          | no       |
+| `exclude_deleted_tables` | `bool`   | Excludes deleted tables from table storage metrics and skips deleted table metrics.        | `false`          | no       |
 | `password`               | `secret` | The password for `username`. Required for password authentication.                         |                  | no       |
 | `private_key_password`   | `secret` | The password that decrypts the key in `private_key_path`. Required for encrypted keys.     |                  | no       |
 | `private_key_path`       | `string` | The path to the RSA private key file for `username`. Required for key-pair authentication. |                  | no       |
