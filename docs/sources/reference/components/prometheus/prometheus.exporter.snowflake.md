@@ -44,8 +44,12 @@ You can use the following arguments with `prometheus.exporter.snowflake`:
 | `private_key_path`         | `string` | The path to the user's RSA private key file (required for RSA key-pair authentication).           |                  | no       |
 | `role`                     | `string` | The role to use when querying metrics.                                                            | `"ACCOUNTADMIN"` | no       |
 
-One of `password` or `private_key_path` must be specified to authenticate.
-Users with an encrypted private key will also need to provide a `private_key_password`.
+Set `password` or `private_key_path` to authenticate.
+If you set neither, the component fails with an invalid configuration error.
+If you set both, the component uses password authentication and ignores `private_key_path` and `private_key_password`.
+
+The `private_key_path` file must contain an RSA private key in PKCS #8 PEM format.
+If the key is encrypted, set `private_key_password`.
 
 ## Blocks
 
