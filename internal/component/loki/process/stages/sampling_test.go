@@ -40,30 +40,18 @@ func TestSamplingStage(t *testing.T) {
 		assert.LessOrEqual(t, n, 70)
 	}
 
-	t.Run("Stage", func(t *testing.T) {
-		p, err := NewPipeline(logging.NewSlogNop(), cfg, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
-		require.NoError(t, err)
-		defer p.Cleanup()
-		defer p.Stop()
+	var collected []Entry
+	next := func(_ context.Context, entries []Entry) error {
+		collected = append(collected, entries...)
+		return nil
+	}
 
-		out := processEntries(p, newEntries()...)
-		assertSampleSize(t, len(out))
-	})
+	p, err := newPipeline(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfg, next)
+	require.NoError(t, err)
+	defer p.stop()
 
-	t.Run("New Stage", func(t *testing.T) {
-		var collected []Entry
-		next := func(_ context.Context, entries []Entry) error {
-			collected = append(collected, entries...)
-			return nil
-		}
-
-		p, err := newPipeline(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfg, next)
-		require.NoError(t, err)
-		defer p.stop()
-
-		require.NoError(t, p.process(context.Background(), newEntries()))
-		assertSampleSize(t, len(collected))
-	})
+	require.NoError(t, p.process(context.Background(), newEntries()))
+	assertSampleSize(t, len(collected))
 }
 
 func TestValidateSamplingConfig(t *testing.T) {

@@ -11,6 +11,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/discovery"
 	http_service "github.com/grafana/alloy/internal/service/http"
@@ -27,6 +28,10 @@ type databaseConfig struct {
 	// targets holds the external exporter targets of the top-level single-DSN
 	// form. It's always empty for `database_instance` blocks.
 	targets []discovery.Target
+	// rules holds the relabel rules applied to this instance's metrics and
+	// logs. It's always empty in the top-level single-DSN form, which monitors
+	// a single instance and so can be relabeled downstream instead.
+	rules []*relabel.Config
 }
 
 // databaseConfigs returns one databaseConfig per monitored instance. When no
@@ -47,6 +52,7 @@ func (a Arguments) databaseConfigs() []databaseConfig {
 			name:          db.Name,
 			dsn:           db.DataSourceName,
 			cloudProvider: db.CloudProvider,
+			rules:         db.Rules,
 		})
 	}
 	return cfgs

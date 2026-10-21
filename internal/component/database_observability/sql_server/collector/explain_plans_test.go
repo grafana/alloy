@@ -46,7 +46,7 @@ func mockExplainPlanRows(rows ...[]driver.Value) *sqlmock.Rows {
 func expectExplainPlans(t *testing.T, mock sqlmock.Sqlmock, hashes []string, rows ...[]driver.Value) {
 	t.Helper()
 
-	query, args, err := buildExplainPlansStatement(hashes)
+	query, args, err := buildExplainPlansStatement(hashes, false)
 	require.NoError(t, err)
 
 	mockSelectQueryStoreState(mock, "READ_WRITE")

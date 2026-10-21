@@ -111,7 +111,7 @@ func newQuerySamplesForTest(t *testing.T, db *sql.DB, handler loki.EntryHandler,
 
 func expectQuerySamples(t *testing.T, mock sqlmock.Sqlmock, hashes, users []string, rows *sqlmock.Rows) {
 	t.Helper()
-	query, args, err := buildQuerySamplesStatement(hashes, users)
+	query, args, err := buildQuerySamplesStatement(hashes, users, false)
 	require.NoError(t, err)
 	mockSelectQueryStoreState(mock, "READ_WRITE")
 	mock.ExpectQuery(query).
@@ -123,8 +123,7 @@ func expectQuerySamples(t *testing.T, mock sqlmock.Sqlmock, hashes, users []stri
 func TestBuildQuerySamplesStatement(t *testing.T) {
 	query, args, err := buildQuerySamplesStatement(
 		[]string{"ffeeddccbbaa9988", testHash, testHash},
-		[]string{"admin", "monitor"},
-	)
+		[]string{"admin", "monitor"}, false)
 	require.NoError(t, err)
 	require.Contains(t, query, `r.query_hash IN (@h0, @h1)`)
 	require.Contains(t, query, `s.original_login_name NOT IN (@u0, @u1)`)
@@ -133,18 +132,20 @@ func TestBuildQuerySamplesStatement(t *testing.T) {
 		sql.Named("h1", []byte{0xff, 0xee, 0xdd, 0xcc, 0xbb, 0xaa, 0x99, 0x88}),
 		sql.Named("u0", "admin"),
 		sql.Named("u1", "monitor"),
+		sql.Named("exclude_current_user", false),
+		sql.Named("collector_marker", QueryMarker),
 	}, namedArgs(args))
 
-	query, args, err = buildQuerySamplesStatement([]string{testHash}, nil)
+	query, args, err = buildQuerySamplesStatement([]string{testHash}, nil, false)
 	require.NoError(t, err)
 	require.NotContains(t, query, "original_login_name NOT IN")
-	require.Len(t, args, 1)
+	require.Len(t, args, 3)
 
-	_, _, err = buildQuerySamplesStatement(nil, nil)
+	_, _, err = buildQuerySamplesStatement(nil, nil, false)
 	require.ErrorContains(t, err, "without query hashes")
-	_, _, err = buildQuerySamplesStatement([]string{"not-hex"}, nil)
+	_, _, err = buildQuerySamplesStatement([]string{"not-hex"}, nil, false)
 	require.ErrorContains(t, err, "failed to decode")
-	_, _, err = buildQuerySamplesStatement([]string{"0011"}, nil)
+	_, _, err = buildQuerySamplesStatement([]string{"0011"}, nil, false)
 	require.ErrorContains(t, err, "expected 8 bytes")
 }
 
@@ -611,7 +612,7 @@ func TestQuerySamples_QueryAndRowErrorsPreserveState(t *testing.T) {
 		QueryHash:    testHash,
 	}}, map[string]struct{}{testHash: {}})
 
-	query, args, err := buildQuerySamplesStatement([]string{testHash}, nil)
+	query, args, err := buildQuerySamplesStatement([]string{testHash}, nil, false)
 	require.NoError(t, err)
 	mockSelectQueryStoreState(mock, "READ_WRITE")
 	mock.ExpectQuery(query).WithArgs(namedArgs(args)...).WillReturnError(errors.New("permission denied"))

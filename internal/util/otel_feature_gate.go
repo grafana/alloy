@@ -4,9 +4,6 @@ import (
 	"fmt"
 
 	"go.opentelemetry.io/collector/featuregate"
-
-	// Registers the "k8sattr.fieldExtractConfigRegex.disallow" feature gate.
-	_ "github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor"
 )
 
 type gateDetails struct {

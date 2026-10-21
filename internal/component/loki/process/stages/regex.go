@@ -3,12 +3,13 @@ package stages
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"reflect"
-	"regexp"
 
 	"github.com/prometheus/common/model"
+
+	"github.com/grafana/alloy/internal/component/common/regexp"
+	"github.com/grafana/alloy/syntax"
 )
 
 var (
@@ -20,61 +21,41 @@ var (
 // RegexConfig configures a processing stage uses regular expressions to
 // extract values from log lines into the shared values map.
 type RegexConfig struct {
-	Expression       string  `alloy:"expression,attr"`
-	Source           *string `alloy:"source,attr,optional"`
-	LabelsFromGroups bool    `alloy:"labels_from_groups,attr,optional"`
+	Expression       *regexp.Regexp `alloy:"expression,attr"`
+	Source           *string        `alloy:"source,attr,optional"`
+	LabelsFromGroups bool           `alloy:"labels_from_groups,attr,optional"`
 }
 
-// validateRegexConfig validates the config and return a regex
-func validateRegexConfig(c RegexConfig) (*regexp.Regexp, error) {
-	if c.Expression == "" {
-		return nil, errExpressionRequired
+var _ syntax.Validator = (*RegexConfig)(nil)
+
+func (rc *RegexConfig) Validate() error {
+	if rc.Expression.IsEmpty() {
+		return errExpressionRequired
 	}
 
-	if c.Source != nil && *c.Source == "" {
-		return nil, errEmptyRegexStageSource
+	if rc.Source != nil && *rc.Source == "" {
+		return errEmptyRegexStageSource
 	}
 
-	expr, err := regexp.Compile(c.Expression)
-	if err != nil {
-		return nil, fmt.Errorf("%v: %w", errCouldNotCompileRegex, err)
-	}
-
-	return expr, nil
+	return nil
 }
 
-var (
-	_ Stage          = (*regexStage)(nil)
-	_ entryProcessor = (*regexStage)(nil)
-)
+var _ entryProcessor = (*regexStage)(nil)
 
 // newRegexStage creates a regexStage
-func newRegexStage(config RegexConfig, opts stageOpts) (*regexStage, error) {
-	expression, err := validateRegexConfig(config)
-	if err != nil {
-		return nil, err
-	}
+func newRegexStage(config RegexConfig, opts stageOpts) *regexStage {
 	return &regexStage{
-		next:       opts.next,
-		config:     &config,
-		expression: expression,
-		logger:     opts.slogger.With("stage", "regex"),
-	}, nil
+		next:   opts.next,
+		config: &config,
+		logger: opts.slogger.With("stage", "regex"),
+	}
 }
 
 // regexStage sets extracted data using regular expressions
 type regexStage struct {
-	next       nextFn
-	config     *RegexConfig
-	expression *regexp.Regexp
-	logger     *slog.Logger
-}
-
-// Run implements Stage.
-func (r *regexStage) Run(in chan Entry) chan Entry {
-	return RunWith(in, func(e Entry) Entry {
-		return r.processEntry(e)
-	})
+	next   nextFn
+	config *RegexConfig
+	logger *slog.Logger
 }
 
 func (r *regexStage) process(ctx context.Context, entries []Entry) error {
@@ -83,9 +64,6 @@ func (r *regexStage) process(ctx context.Context, entries []Entry) error {
 	}
 	return r.next(ctx, entries)
 }
-
-// Cleanup implements Stage.
-func (r *regexStage) Cleanup() {}
 
 func (r *regexStage) processEntry(e Entry) Entry {
 	// If a source key is provided, the regex stage should process it
@@ -112,15 +90,15 @@ func (r *regexStage) processEntry(e Entry) Entry {
 		input = value
 	}
 
-	match := r.expression.FindStringSubmatch(input)
+	match := r.config.Expression.FindStringSubmatch(input)
 	if match == nil {
 		if debugEnabled(r.logger) {
-			r.logger.Debug("regex did not match", "input", input, "regex", r.expression)
+			r.logger.Debug("regex did not match", "input", input, "regex", r.config.Expression)
 		}
 		return e
 	}
 
-	for i, name := range r.expression.SubexpNames() {
+	for i, name := range r.config.Expression.SubexpNames() {
 		if i != 0 && name != "" {
 			e.Extracted[name] = match[i]
 			if r.config.LabelsFromGroups {

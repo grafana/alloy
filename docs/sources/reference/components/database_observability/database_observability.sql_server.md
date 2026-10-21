@@ -35,11 +35,19 @@ You can use the following arguments with `database_observability.sql_server`:
 | `targets`           | `list(map(string))`  | List of external targets to scrape.                                      |         | no       |
 | `disable_collectors`| `list(string)`       | A list of collectors to disable from the default set.                    |         | no       |
 | `enable_collectors` | `list(string)`       | A list of collectors to enable on top of the default set.                |         | no       |
-| `exclude_current_user` | `bool`            | Exclude query samples from sessions opened with the login that Alloy uses. | `true` | no       |
+| `exclude_current_user` | `bool`            | Exclude tagged Alloy queries and query samples from sessions opened with the login that Alloy uses. | `true` | no       |
 | `exclude_schemas`   | `list(string)`       | A list of schemas to exclude from monitoring, on top of the always-excluded system schemas `sys` and `information_schema`. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
 | `exclude_databases` | `list(string)`       | A list of databases to exclude from monitoring, on top of the always-excluded system databases `master`, `model`, `msdb`, and `tempdb`. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
 | `exclude_users`     | `list(string)`       | A list of original SQL Server login names to exclude from query samples. | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
 | `query_timeout`     | `duration`           | Timeout for each SQL statement.                                          | `"10s"` | no       |
+
+The `exclude_current_user` argument excludes SQL tagged by Alloy from query metrics, query details, explain plans, and query samples.
+Query Store doesn't identify the login that executed a query, so this exclusion can't remove arbitrary historical queries by login or previously captured Alloy queries without the marker.
+
+For live query samples, `exclude_current_user` also excludes sessions opened with the SQL Server login configured for Alloy.
+Setting it to `false` disables both marker filtering and automatic current-login exclusion.
+The `exclude_users` list still applies to query samples, and Alloy always excludes the request that collects the samples.
+Schema discovery and health-check results aren't filtered by this argument.
 
 The `query_timeout` applies separately to each SQL statement.
 The timeout includes waiting for an available connection and reading the statement results.
@@ -69,8 +77,10 @@ You can use the following blocks with `database_observability.sql_server`:
 | `cloud_provider` > [`gcp`][gcp]      | Provide GCP database host information.            | no       |
 | [`database_instance`][database_instance] | Define one SQL Server instance to monitor. Repeat the block to monitor several instances. | no |
 | `database_instance` > [`cloud_provider`][cloud_provider] | Provide Cloud Provider information for one instance. | no |
+| `database_instance` > [`rule`][rule] | Relabel the metrics and logs of one instance. | no |
 | [`clustering`][clustering]           | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no |
 | [`explain_plans`][explain_plans]     | Configure the query execution plan collector.     | no       |
+| [`health_check`][health_check]       | Configure the health check collector.             | no       |
 | [`query_details`][query_details]     | Configure the Query Store query text collector.   | no       |
 | [`query_metrics`][query_metrics]     | Configure the Query Store metrics collector.      | no       |
 | [`query_samples`][query_samples]     | Configure the query samples collector.            | no       |
@@ -81,8 +91,10 @@ You can use the following blocks with `database_observability.sql_server`:
 [azure]: #azure
 [gcp]: #gcp
 [database_instance]: #database_instance
+[rule]: #rule
 [clustering]: #clustering
 [explain_plans]: #explain_plans
+[health_check]: #health_check
 [query_details]: #query_details
 [query_metrics]: #query_metrics
 [query_samples]: #query_samples
@@ -141,7 +153,7 @@ Each `database_instance` block must also point to a distinct server: two blocks 
 |--------------------|----------|-------------------------------------------------------------------|---------|----------|
 | `data_source_name` | `secret` | [Data Source Name][] for the SQL Server instance to connect to. |         | yes      |
 
-Each `database_instance` block can also contain a [`cloud_provider`][cloud_provider] block that applies to that instance only.
+Each `database_instance` block can also contain a [`cloud_provider`][cloud_provider] block that applies to that instance only, and [`rule`][rule] blocks that relabel the metrics and logs of that instance only.
 
 When you define `database_instance` blocks, don't set the top-level `data_source_name`, `targets`, and `cloud_provider` arguments.
 They're mutually exclusive with `database_instance` blocks.
@@ -165,13 +177,32 @@ database_observability.sql_server "pool" {
         arn = "orders-rds-db-arn"
       }
     }
+
+    rule {
+      target_label = "environment"
+      replacement  = "production"
+    }
   }
 
   database_instance "billing" {
     data_source_name = sys.env("BILLING_DSN")
+
+    rule {
+      target_label = "environment"
+      replacement  = "staging"
+    }
   }
 }
 ```
+
+In this example, the metrics and logs of the `orders` instance carry `environment="production"`, and those of the `billing` instance carry `environment="staging"`.
+
+### `rule`
+
+The `rule` block relabels the metrics and the logs of the `database_instance` block that contains it.
+Use it to tell the data of each monitored instance apart, for example by environment, team, or tier.
+
+{{< docs/shared lookup="reference/components/rule-block-database-observability.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `clustering`
 
@@ -208,6 +239,16 @@ The collector checks for a changed plan every `collect_interval`.
 It forwards a log entry only when the plan's shape has changed since the last entry.
 It also forwards a log entry when 30 minutes have passed since the last entry.
 This keeps log volume low and ensures a fresh entry at least every 30 minutes.
+
+### `health_check`
+
+| Name               | Type       | Description                          | Default | Required |
+|--------------------|------------|---------------------------------------|---------|----------|
+| `collect_interval` | `duration` | How frequently to run health checks. | `"1h"`  | no       |
+
+The `health_check` collector periodically verifies that the login has the required grants (`VIEW DEFINITION`, plus `VIEW DATABASE STATE` or its SQL Server 2022+ equivalent `VIEW DATABASE PERFORMANCE STATE`) and that [Query Store][query_store] is enabled and populated, on every database the login can access on the instance. Each check emits a log entry with `op="health_status"` and a `check` field identifying it: `AlloyVersion`, `RequiredGrantsPresent`, `QueryStoreEnabled`, or `QueryStoreHasRows`.
+
+`RequiredGrantsPresent` and `QueryStoreEnabled` pass only when true on every database the login can access; when they fail, the log entry's value lists the non-compliant databases. `QueryStoreHasRows` passes as soon as any accessible database has Query Store data, since it's expected for a low-traffic database to have none.
 
 ### `query_details`
 
