@@ -138,8 +138,8 @@ You can use the following arguments with `prometheus.exporter.cadvisor`:
 | `docker_tls_cert`              | `string`       | Path to client certificate for TLS connection to docker.                                                            | `"cert.pem"`                        | no       |
 | `docker_tls_key`               | `string`       | Path to private key for TLS connection to docker.                                                                   | `"key.pem"`                         | no       |
 | `enabled_metrics`              | `list(string)` | List of metrics to enable. If set, this list overrides `disabled_metrics`.                                          | `[]`                                | no       |
-| `housekeeping_interval`        | `duration`     | Interval between container housekeepings.                                                                           | `"1s"`                              | no       |
 | `env_metadata_allowlist`       | `list(string)` | Allowlist of environment variable keys, matched by prefix, to collect for containers.                               | `[]`                                | no       |
+| `housekeeping_interval`        | `duration`     | Interval between container housekeepings.                                                                           | `"1s"`                              | no       |
 | `max_housekeeping_interval`    | `duration`     | Largest interval to allow between container housekeepings when `allow_dynamic_housekeeping` is `true`.              | `"60s"`                             | no       |
 | `perf_events_config`           | `string`       | Path to a JSON file containing the configuration of performance events to measure.                                  | `""`                                | no       |
 | `raw_cgroup_prefix_allowlist`  | `list(string)` | List of `cgroup` path prefixes to collect, even when you set `docker_only`.                                         | `[]`                                | no       |
@@ -155,6 +155,8 @@ Increasing it reduces CPU usage on hosts with many containers.
 Keep it at or below the scrape interval of the component that scrapes this exporter.
 Container metrics carry the timestamp of when they were collected, so a longer interval means fewer distinct samples.
 With `allow_dynamic_housekeeping` set to `true`, the interval doubles, up to `max_housekeeping_interval`, for containers whose stats don't change between collections, and resets to `housekeeping_interval` as soon as they do.
+With `allow_dynamic_housekeeping` set to `false`, the interval stays at `housekeeping_interval` and `max_housekeeping_interval` has no effect.
+`max_housekeeping_interval` must be greater than or equal to `housekeeping_interval` in both cases.
 
 If a container uses the `overlayfs` storage driver, set the `containerd_host` attribute correctly to retrieve its metrics.
 

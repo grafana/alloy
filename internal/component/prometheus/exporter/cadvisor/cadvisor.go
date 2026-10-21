@@ -26,9 +26,14 @@ func init() {
 func createExporter(opts component.Options, args component.Arguments) (integrations.Integration, string, error) {
 	common.WarningIfUsedInCluster(opts)
 	a := args.(Arguments)
+	if !a.AllowDynamicHousekeeping && a.MaxHousekeepingInterval != defaultMaxHousekeepingInterval {
+		opts.Logger.Warn("max_housekeeping_interval has no effect when allow_dynamic_housekeeping is false")
+	}
 	defaultInstanceKey := common.HostNameInstanceKey() // if cannot resolve instance key, use the host name for cadvisor
 	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), defaultInstanceKey)
 }
+
+const defaultMaxHousekeepingInterval = 60 * time.Second
 
 // Arguments configures the prometheus.exporter.cadvisor component.
 type Arguments struct {
@@ -79,7 +84,7 @@ func (a *Arguments) SetToDefault() {
 		DisableRootCgroupStats: false,
 
 		HousekeepingInterval:     1 * time.Second,
-		MaxHousekeepingInterval:  60 * time.Second,
+		MaxHousekeepingInterval:  defaultMaxHousekeepingInterval,
 		AllowDynamicHousekeeping: true,
 	}
 }
