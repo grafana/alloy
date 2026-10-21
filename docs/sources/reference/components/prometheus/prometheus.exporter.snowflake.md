@@ -7,12 +7,13 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-10-21
 title: prometheus.exporter.snowflake
 ---
 
 # `prometheus.exporter.snowflake`
 
-The `prometheus.exporter.snowflake` component embeds the [`snowflake_exporter`][snowflake-exporter] to collect warehouse, database, table, and replication metrics from a Snowflake account.
+The `prometheus.exporter.snowflake` component embeds the [`snowflake_exporter`][snowflake-exporter] to collect storage, credit usage, login, warehouse load, automatic clustering, and replication metrics from a Snowflake account.
 
 You can specify multiple `prometheus.exporter.snowflake` components by giving them different labels.
 
@@ -23,7 +24,7 @@ You can specify multiple `prometheus.exporter.snowflake` components by giving th
 ```alloy
 prometheus.exporter.snowflake "<LABEL>" {
   account_name = "<SNOWFLAKE_ACCOUNT_NAME>"
-  username     = "<USERNAME>"
+  username     = "<SNOWFLAKE_USERNAME>"
   warehouse    = "<VIRTUAL_WAREHOUSE>"
 }
 ```
@@ -38,7 +39,7 @@ You can use the following arguments with `prometheus.exporter.snowflake`:
 | `username`               | `string` | The username to use when querying metrics.                                                 |                  | yes      |
 | `warehouse`              | `string` | The warehouse to use when querying metrics.                                                |                  | yes      |
 | `enable_tracing`         | `bool`   | Enables trace logging in the Snowflake database driver.                                    | `false`          | no       |
-| `exclude_deleted_tables` | `bool`   | Excludes deleted tables from table storage metrics and skips deleted table metrics.        | `false`          | no       |
+| `exclude_deleted_tables` | `bool`   | Excludes deleted tables from table storage metrics and disables the deleted table count.   | `false`          | no       |
 | `password`               | `secret` | The password for `username`. Required for password authentication.                         |                  | no       |
 | `private_key_password`   | `secret` | The password that decrypts the key in `private_key_path`. Required for encrypted keys.     |                  | no       |
 | `private_key_path`       | `string` | The path to the RSA private key file for `username`. Required for key-pair authentication. |                  | no       |
@@ -49,7 +50,9 @@ If you set neither, the component fails with an invalid configuration error.
 If you set both, the component uses password authentication and ignores `private_key_path` and `private_key_password`.
 
 The `private_key_path` file must contain an RSA private key in PKCS #8 PEM format.
-If the key is encrypted, set `private_key_password`.
+For an encrypted key, set `private_key_password`.
+
+The role in `role` must be able to read the views in the `SNOWFLAKE.ACCOUNT_USAGE` schema.
 
 The component sets the `instance` label on its exported targets to the value of `account_name`.
 
