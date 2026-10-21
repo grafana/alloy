@@ -62,7 +62,7 @@ You can use the following arguments with `prometheus.exporter.redis`:
 | `script_paths`                | `list(string)` | List of paths to Lua Redis scripts for collecting extra metrics.                                                        |            | no       |
 | `set_client_name`             | `bool`         | Set the client name to `redis_exporter`.                                                                                | `true`     | no       |
 | `skip_tls_verification`       | `bool`         | Skip TLS verification.                                                                                                  | `false`    | no       |
-| `tls_ca_cert_file`            | `string`       | Full path to the CA certificate file if the server requires TLS client authentication.                                  |            | no       |
+| `tls_ca_cert_file`            | `string`       | Full path to the CA certificate file that the component uses to verify the Redis server certificate.                    |            | no       |
 | `tls_client_cert_file`        | `string`       | Full path to the client certificate file if the server requires TLS client authentication.                              |            | no       |
 | `tls_client_key_file`         | `string`       | Full path to the client key file if the server requires TLS client authentication.                                      |            | no       |
 
@@ -88,6 +88,8 @@ If you set `redis_password_map_file`, the component ignores `redis_password` onl
 
 Set `tls_client_cert_file` and `tls_client_key_file` together.
 If you set only one of them, the component fails with an invalid configuration error.
+
+If you don't set `tls_ca_cert_file`, the component verifies the Redis server certificate against the system CA certificates.
 
 If you don't set `check_key_groups`, the component creates no key groups.
 
