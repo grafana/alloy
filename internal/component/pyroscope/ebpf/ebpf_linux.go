@@ -211,19 +211,6 @@ func (c *Component) Run(ctx context.Context) error {
 		}
 	}()
 
-	if c.args.LoadProbe {
-		c.logger.Warn("load_probe is no longer supported by the profiler and is ignored")
-	}
-	probes, err := c.args.probes(ctx)
-	if err != nil {
-		return err
-	}
-	for _, p := range probes {
-		if err := ctlr.EnableProbe(ctx, p); err != nil {
-			return fmt.Errorf("failed to enable probe: %w", err)
-		}
-	}
-
 	var g run.Group
 
 	g.Add(func() error {
@@ -426,8 +413,11 @@ func (args *Arguments) Convert() (*controller.Config, error) {
 	interpreters.Dotnet.Disabled = !args.DotNetEnabled
 	interpreters.Go.Disabled = !args.GoEnabled
 	cfg.Interpreters = interpreters
+	cfg.OffCPUThreshold = args.OffCPUThreshold
 	cfg.BPFFSRoot = args.BPFFSRoot
 	cfg.OBIProcessCtx = args.OBIProcessContextEnabled
+	cfg.LoadProbe = args.LoadProbe
+	cfg.ProbeLinks = args.probeLinks()
 	cfg.VerboseMode = args.VerboseMode
 	cfg.NoKernelVersionCheck = args.NoKernelVersionCheck
 	return cfg, nil
