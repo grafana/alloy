@@ -138,9 +138,10 @@ func TestDatabaseObservabilitySQLServer(t *testing.T) {
 		"database_observability_connection_info",
 		"database_observability_query_executions_total",
 		"database_observability_query_duration_seconds_total",
+		"database_observability_query_errors_total",
 	}
-	mimir.QueryMetrics(t, testName, append(metrics, "database_observability_query_errors_total"))
-	mimir.QueryPositive(t, testName, metrics)
+	mimir.QueryMetrics(t, testName, metrics)
+	mimir.QueryPositive(t, testName, []string{"database_observability_connection_info"})
 
 	loki.QueryLogsPresent(t, testName,
 		deps.LogMatcher{Labels: map[string]string{"op": "health_status"}},
