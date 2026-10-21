@@ -9,7 +9,7 @@ weight: 800
 
 # {{% param "FULL_OTEL_ENGINE" %}} scenarios
 
-{{< docs/shared lookup="stability/experimental_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 These scenarios run upstream OpenTelemetry Collector YAML directly with the {{< param "OTEL_ENGINE" >}}, instead of converting it to {{< param "PRODUCT_NAME" >}} configuration syntax.
 Each one pairs an OpenTelemetry YAML configuration with a minimal {{< param "PRODUCT_NAME" >}} configuration that enables the user interface.
