@@ -4,7 +4,7 @@
 # default when running `docker buildx build` or when DOCKER_BUILDKIT=1 is set
 # in environment variables.
 
-FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.36@sha256:415f7914a39d836d88e63e2da5807afa8d2f6db4540cf362c04a9dfa151ee23d AS ui-build
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.37@sha256:716ebb596222e7d046384e7bcc908ad8db8e1eaf5efb89bef3183d8c9fdf6c54 AS ui-build
 ARG BUILDPLATFORM
 COPY ./internal/web/ui /ui
 WORKDIR /ui
@@ -12,7 +12,7 @@ RUN --mount=type=cache,target=/root/.npm,sharing=locked \
     npm ci --no-audit --no-fund                         \
     && npm run build
 
-FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.36@sha256:415f7914a39d836d88e63e2da5807afa8d2f6db4540cf362c04a9dfa151ee23d AS build
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.37@sha256:716ebb596222e7d046384e7bcc908ad8db8e1eaf5efb89bef3183d8c9fdf6c54 AS build
 
 ARG BUILDPLATFORM
 ARG TARGETPLATFORM
