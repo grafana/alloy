@@ -40,6 +40,10 @@ The `address` argument must be a host and port number, such as `localhost:3128`,
 Enclose an IPv6 address in brackets, such as `[::1]:3128`.
 If `address` includes a scheme or doesn't include a port, the component fails with an invalid configuration error.
 
+The component reads metrics over HTTP from the Squid cache manager at the `/squid-internal-mgr/` path on `address`.
+Set `username` and `password` together to send HTTP basic authentication credentials.
+If you set only one of them, the component doesn't send credentials.
+
 ## Blocks
 
 The `prometheus.exporter.squid` component doesn't support any blocks. You can configure this component with arguments.
