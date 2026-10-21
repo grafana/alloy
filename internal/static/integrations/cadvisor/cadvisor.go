@@ -174,10 +174,10 @@ func New(l *slog.Logger, c *Config) (integrations.Integration, error) {
 	// A Config built without DefaultConfig has zero housekeeping values; keep the
 	// cadvisor defaults for those rather than turning dynamic housekeeping off.
 	housekeepingConfig := manager.HousekeepingConfigFlags
-	if c.HousekeepingInterval > 0 {
+	if c.HousekeepingInterval != 0 {
 		housekeepingConfig.BaseInterval = &c.HousekeepingInterval
 	}
-	if c.MaxHousekeepingInterval > 0 {
+	if c.MaxHousekeepingInterval != 0 {
 		housekeepingConfig.Interval = &c.MaxHousekeepingInterval
 		housekeepingConfig.AllowDynamic = &c.AllowDynamicHousekeeping
 	}
