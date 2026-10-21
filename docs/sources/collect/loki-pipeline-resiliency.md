@@ -341,7 +341,7 @@ To monitor the pipeline for dropped log entries, complete the following steps:
    This query lists every active drop path that increments the counter:
 
    ```promql
-   sum by (<INSTANCE_LABEL>, component_id, reason) (rate(loki_write_dropped_entries_total[5m])) > 0
+   sum by (<INSTANCE_LABEL>, component_path, component_id, reason) (rate(loki_write_dropped_entries_total[5m])) > 0
    ```
 
    For entries that reach a batch, {{< param "PRODUCT_NAME" >}} also records propagation latency, measured from entry creation until `loki.write` sends or drops the batch.
@@ -349,7 +349,7 @@ To monitor the pipeline for dropped log entries, complete the following steps:
    This query reports the 99th percentile in seconds:
 
    ```promql
-   histogram_quantile(0.99, sum by (le, <INSTANCE_LABEL>, component_id) (rate(loki_write_entry_propagation_latency_seconds_bucket[5m])))
+   histogram_quantile(0.99, sum by (le, <INSTANCE_LABEL>, component_path, component_id) (rate(loki_write_entry_propagation_latency_seconds_bucket[5m])))
    ```
 
    This latency isn't the WAL backlog, and it isn't what the Loki age limits measure.
