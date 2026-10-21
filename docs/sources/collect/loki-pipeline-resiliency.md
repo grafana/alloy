@@ -55,7 +55,8 @@ When `loki.write` can't reach its configured endpoint, it retries each batch wit
 Each wait is a random duration between the current backoff value and double that value.
 The backoff value starts at `min_backoff_period` and doubles after each wait, up to `max_backoff_period`.
 
-With the defaults of `"500ms"`, `"5m"`, and `10`, `loki.write` sends a batch initially and retries it up to 10 times. The waits add up to at least about 8.5 minutes, before accounting for request time. Each request can also take up to `remote_timeout`, which defaults to `"10s"`.
+With the defaults of `"500ms"`, `"5m"`, and `10`, `loki.write` sends a batch initially and retries it up to 10 times.
+The waits add up to at least about 8.5 minutes, before accounting for request time. Each request can also take up to `remote_timeout`, which defaults to `"10s"`.
 
 ### Effect on upstream components
 
@@ -104,12 +105,12 @@ The exporter counts entries it converted rather than entries `loki.write` accept
 
 Four configurations trade off differently between ingestion stalls, durability, and exposure to the ingestion-age limits Loki applies:
 
-| Configuration                          | Ingestion stalls? | Data survives {{< param "PRODUCT_NAME" >}} restart? | Subject to age limits on reconnect? |
-| -------------------------------------- | ----------------- | --------------------------------------------------- | ----------------------------------- |
+| Configuration                          | Ingestion stalls? | Data survives {{< param "PRODUCT_NAME" >}} restart? | Subject to age limits on reconnect?                        |
+| -------------------------------------- | ----------------- | --------------------------------------------------- | ---------------------------------------------------------- |
 | Default backoff, no WAL                | Yes               | No                                                  | Yes, if the endpoint recovers before retries are exhausted |
-| `max_backoff_retries = 0`, no WAL      | Yes, indefinitely | No                                                  | Yes                                 |
-| WAL enabled, default backoff           | No                | Only until retries run out                          | Yes                                 |
-| WAL enabled, `max_backoff_retries = 0` | No                | Yes, within `max_segment_age`                       | Yes                                 |
+| `max_backoff_retries = 0`, no WAL      | Yes, indefinitely | No                                                  | Yes                                                        |
+| WAL enabled, default backoff           | No                | Only until retries run out                          | Yes                                                        |
+| WAL enabled, `max_backoff_retries = 0` | No                | Yes, within `max_segment_age`                       | Yes                                                        |
 
 The WAL alone doesn't guarantee durability.
 When an endpoint exhausts `max_backoff_retries`, `loki.write` drops the batch and marks that data consumed in the WAL, so the WAL never replays it.
@@ -391,12 +392,12 @@ To monitor the pipeline for dropped log entries, complete the following steps:
 1. Search the {{< param "PRODUCT_NAME" >}} logs for the following messages.
    Three of these drop paths never increment a `loki_write_*` counter, so a metric alone won't reveal them.
 
-   | Message                                                     | Meaning                                                                                                       |
-   | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-   | `dropping entry, write did not succeed before shutdown`     | {{< param "PRODUCT_NAME" >}} shut down before `loki.write` accepted the entry. No drop counter increments.   |
-   | `error encoding batch`                                      | `loki.write` couldn't encode a batch and discarded it. No drop counter increments.                            |
-   | `failed to convert log to loki entry`                       | `otelcol.exporter.loki` skipped an OpenTelemetry record it couldn't translate.                                |
-   | `final error sending batch, no retries left, dropping data` | A batch reached the end of its retry schedule. This path also increments the drop counters.                   |
+   | Message                                                     | Meaning                                                                                                    |
+   | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+   | `dropping entry, write did not succeed before shutdown`     | {{< param "PRODUCT_NAME" >}} shut down before `loki.write` accepted the entry. No drop counter increments. |
+   | `error encoding batch`                                      | `loki.write` couldn't encode a batch and discarded it. No drop counter increments.                         |
+   | `failed to convert log to loki entry`                       | `otelcol.exporter.loki` skipped an OpenTelemetry record it couldn't translate.                             |
+   | `final error sending batch, no retries left, dropping data` | A batch reached the end of its retry schedule. This path also increments the drop counters.                |
 
    When an OpenTelemetry pipeline feeds `loki.write`, also track `otelcol_exporter_loki_entries_failed`, which counts skipped records.
    Compare `otelcol_exporter_loki_entries_processed` against the `loki.write` counters rather than reading it as a delivery count.
