@@ -44,6 +44,8 @@ The component reads metrics over HTTP from the Squid cache manager at the `/squi
 Set `username` and `password` together to send HTTP basic authentication credentials.
 If you set only one of them, the component doesn't send credentials.
 
+The component sets the `instance` label on its exported targets to the value of `address`.
+
 ## Blocks
 
 The `prometheus.exporter.squid` component doesn't support any blocks. You can configure this component with arguments.
