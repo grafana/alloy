@@ -80,10 +80,10 @@ The following example uses a [`prometheus.scrape`][scrape] component to collect 
 
 ```alloy
 prometheus.exporter.snowflake "example" {
-  account_name = "XXXXXXX-YYYYYYY"
-  username     = "grafana"
-  password     = "snowflake"
-  warehouse    = "examples"
+  account_name = "<SNOWFLAKE_ACCOUNT_NAME>"
+  username     = "<SNOWFLAKE_USERNAME>"
+  password     = "<SNOWFLAKE_PASSWORD>"
+  warehouse    = "<VIRTUAL_WAREHOUSE>"
 }
 
 // Configure a prometheus.scrape component to collect snowflake metrics.
@@ -106,6 +106,10 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
+- _`<SNOWFLAKE_ACCOUNT_NAME>`_: The Snowflake account to collect metrics from.
+- _`<SNOWFLAKE_USERNAME>`_: The username to use when querying metrics.
+- _`<SNOWFLAKE_PASSWORD>`_: The password for _`<SNOWFLAKE_USERNAME>`_.
+- _`<VIRTUAL_WAREHOUSE>`_: The Snowflake warehouse to use when querying metrics.
 - _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
 - _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
 - _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
