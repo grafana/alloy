@@ -198,6 +198,10 @@ To match subdomains, start the host with `*.`.
 For example, `https://*.example.com/` matches `https://cdn.example.com/app.js` and `https://eu.cdn.example.com/app.js`, but not `https://example.com/app.js` or `https://example.net/cdn.example.com/app.js`.
 To match any host, use `*` as the whole host, for example `https://*:8443/`.
 
+The receiver ignores any origin that it can't parse and logs a warning that names the origin.
+An origin can't be parsed if it has no host, for example `""`, `https://`, or `/static/`, or if its IPv6 address is missing the closing `]` or has anything other than a port after the `]`.
+If every origin is ignored, the receiver doesn't download any sourcemaps.
+
 The following example downloads sourcemaps only for scripts served from `https://app.example.com/`:
 
 ```alloy
