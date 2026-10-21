@@ -14,6 +14,8 @@ title: prometheus.exporter.snowflake
 
 The `prometheus.exporter.snowflake` component embeds the [`snowflake_exporter`][snowflake-exporter] to collect warehouse, database, table, and replication metrics from a Snowflake account.
 
+You can specify multiple `prometheus.exporter.snowflake` components by giving them different labels.
+
 [snowflake-exporter]: https://github.com/grafana/snowflake-prometheus-exporter
 
 ## Usage
