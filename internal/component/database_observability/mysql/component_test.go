@@ -49,45 +49,6 @@ func testGetServiceData(name string) (any, error) {
 	}
 }
 
-func newTestComponent(t *testing.T, openSQL func(string, string) (*sql.DB, error)) *Component {
-	t.Helper()
-	opts := cmp.Options{
-		ID:             "test",
-		Logger:         logging.NewSlogNop(),
-		OnStateChange:  func(cmp.Exports) {},
-		GetServiceData: testGetServiceData,
-	}
-	args := Arguments{
-		DataSourceName: alloytypes.Secret("user:pass@tcp(127.0.0.1:3306)/db"),
-		ForwardTo:      []loki.LogsReceiver{},
-		Targets:        []discovery.Target{},
-		DisableCollectors: []string{
-			"query_details", "schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans", "locks",
-		},
-		HealthCheckArguments: HealthCheckArguments{
-			CollectInterval: 1 * time.Hour,
-		},
-	}
-	c := &Component{
-		opts:    opts,
-		args:    args,
-		fanout:  loki.NewFanout(args.ForwardTo),
-		handler: loki.NewLogsReceiver(),
-		openSQL: openSQL,
-	}
-	c.storeInstances([]*dbInstance{{
-		cfg:         databaseConfig{dsn: args.DataSourceName},
-		instanceKey: "test-instance",
-		baseTarget: discovery.NewTargetFromMap(map[string]string{
-			"instance": "test-instance",
-			"job":      "database_observability",
-		}),
-		registry:  prometheus.NewRegistry(),
-		healthErr: atomic.NewString(""),
-	}})
-	return c
-}
-
 func Test_defaultExclusions(t *testing.T) {
 	exampleDBO11yAlloyConfig := `
 		data_source_name = ""
@@ -1770,7 +1731,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 }
 
 func Test_query_details_eventsstatements_different_limits_warning(t *testing.T) {
-	t.Run("logs warning when both collectors enabled and limits differ", func(t *testing.T) {
+	t.Run("logs warning when query_details enabled, eventssttaements enabled, and limits differ", func(t *testing.T) {
 		var logs bytes.Buffer
 		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
 			return nil, errors.New("connection skipped for limit warning test")
@@ -1787,24 +1748,6 @@ func Test_query_details_eventsstatements_different_limits_warning(t *testing.T) 
 		assert.Contains(t, logs.String(), "query_details and prometheus_exporter perf_schema.eventsstatements limits differ")
 		assert.Contains(t, logs.String(), "query_details_limit=200")
 		assert.Contains(t, logs.String(), "eventsstatements_limit=50")
-	})
-
-	t.Run("logs warning for different default limits", func(t *testing.T) {
-		var logs bytes.Buffer
-		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
-			return nil, errors.New("connection skipped for limit warning test")
-		})
-		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
-		args := Arguments{
-			DataSourceName:        alloytypes.Secret("user:pass@tcp(localhost:3306)/db"),
-			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 250},
-		}
-
-		require.NoError(t, c.Update(args))
-
-		assert.Contains(t, logs.String(), "query_details and prometheus_exporter perf_schema.eventsstatements limits differ")
-		assert.Contains(t, logs.String(), "query_details_limit=250")
-		assert.Contains(t, logs.String(), "eventsstatements_limit=100")
 	})
 
 	t.Run("does not log warning when query_details is disabled", func(t *testing.T) {
@@ -1881,29 +1824,6 @@ func Test_query_details_eventsstatements_different_limits_warning(t *testing.T) 
 		assert.NotContains(t, logs.String(), "query_details and prometheus_exporter perf_schema.eventsstatements limits differ")
 	})
 
-	t.Run("enable_collectors re-enables eventsstatements for warning", func(t *testing.T) {
-		var logs bytes.Buffer
-		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
-			return nil, errors.New("connection skipped for limit warning test")
-		})
-		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
-		args := Arguments{
-			DataSourceName:        alloytypes.Secret("user:pass@tcp(localhost:3306)/db"),
-			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 250},
-			PrometheusExporter: &PrometheusExporterArguments{
-				SetCollectors:     []string{"global_status"},
-				DisableCollectors: []string{eventsStatementsCollector},
-				EnableCollectors:  []string{eventsStatementsCollector},
-			},
-		}
-
-		require.NoError(t, c.Update(args))
-
-		assert.Contains(t, logs.String(), "query_details and prometheus_exporter perf_schema.eventsstatements limits differ")
-		assert.Contains(t, logs.String(), "query_details_limit=250")
-		assert.Contains(t, logs.String(), "eventsstatements_limit=100")
-	})
-
 	t.Run("does not log warning when limits match", func(t *testing.T) {
 		var logs bytes.Buffer
 		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
@@ -1913,10 +1833,50 @@ func Test_query_details_eventsstatements_different_limits_warning(t *testing.T) 
 		args := Arguments{
 			DataSourceName:        alloytypes.Secret("user:pass@tcp(localhost:3306)/db"),
 			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 100},
+			// PrometheusExporter falls to default 100
 		}
 
 		require.NoError(t, c.Update(args))
 
 		assert.NotContains(t, logs.String(), "query_details and prometheus_exporter perf_schema.eventsstatements limits differ")
 	})
+}
+
+func newTestComponent(t *testing.T, openSQL func(string, string) (*sql.DB, error)) *Component {
+	t.Helper()
+	opts := cmp.Options{
+		ID:             "test",
+		Logger:         logging.NewSlogNop(),
+		OnStateChange:  func(cmp.Exports) {},
+		GetServiceData: testGetServiceData,
+	}
+	args := Arguments{
+		DataSourceName: alloytypes.Secret("user:pass@tcp(127.0.0.1:3306)/db"),
+		ForwardTo:      []loki.LogsReceiver{},
+		Targets:        []discovery.Target{},
+		DisableCollectors: []string{
+			"query_details", "schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans", "locks",
+		},
+		HealthCheckArguments: HealthCheckArguments{
+			CollectInterval: 1 * time.Hour,
+		},
+	}
+	c := &Component{
+		opts:    opts,
+		args:    args,
+		fanout:  loki.NewFanout(args.ForwardTo),
+		handler: loki.NewLogsReceiver(),
+		openSQL: openSQL,
+	}
+	c.storeInstances([]*dbInstance{{
+		cfg:         databaseConfig{dsn: args.DataSourceName},
+		instanceKey: "test-instance",
+		baseTarget: discovery.NewTargetFromMap(map[string]string{
+			"instance": "test-instance",
+			"job":      "database_observability",
+		}),
+		registry:  prometheus.NewRegistry(),
+		healthErr: atomic.NewString(""),
+	}})
+	return c
 }

@@ -191,7 +191,7 @@ func defaultArguments() Arguments {
 
 		QueryDetailsArguments: QueryDetailsArguments{
 			CollectInterval: 1 * time.Minute,
-			StatementsLimit: 250,
+			StatementsLimit: 100,
 		},
 
 		SchemaDetailsArguments: SchemaDetailsArguments{
