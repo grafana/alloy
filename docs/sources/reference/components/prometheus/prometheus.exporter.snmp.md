@@ -87,6 +87,7 @@ You can set the following labels on a target:
 - `module`: SNMP modules to use for polling, separated by comma.
 - `auth`: The SNMP authentication profile to use.
 - `walk_params`: The `walk_param` profile to use for this target.
+- `snmp_context`: Override the `context_name` parameter in the SNMP configuration file.
 
 The component adds any other labels you define to the scraped metrics.
 
@@ -375,7 +376,7 @@ The YAML file in this example looks like this:
 [disc]: ../../discovery/discovery.file/
 [target]: #target
 [snmp-exporter]: https://github.com/prometheus/snmp_exporter/tree/{{< param "SNMP_VERSION" >}}
-[snmp-exporter-config]: https://github.com/prometheus/snmp_exporter/tree/{{< param "SNMP_VERSION" >}}?tab=README-ov-file#configuration
+[snmp-exporter-config]: https://github.com/prometheus/snmp_exporter/tree/{{< param "SNMP_VERSION" >}}?tab=readme-ov-file#configuration
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
