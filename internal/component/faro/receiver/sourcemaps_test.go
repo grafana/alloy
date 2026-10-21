@@ -801,7 +801,7 @@ func Test_urlMatchesOrigins(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			actual := urlMatchesOrigins(tc.url, tc.origins)
+			actual := parseOriginPatterns(tc.origins).matches(tc.url)
 
 			if tc.shouldMatch {
 				require.True(t, actual, "expected %v to be matched from origin set %v", tc.url, tc.origins)
@@ -940,10 +940,10 @@ func Test_urlMatchesOrigins_URLParts(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.origin, func(t *testing.T) {
 			for _, u := range tc.match {
-				require.True(t, urlMatchesOrigins(u, []string{tc.origin}), "expected %s to match", u)
+				require.True(t, parseOriginPatterns([]string{tc.origin}).matches(u), "expected %s to match", u)
 			}
 			for _, u := range tc.noMatch {
-				require.False(t, urlMatchesOrigins(u, []string{tc.origin}), "expected %s not to match", u)
+				require.False(t, parseOriginPatterns([]string{tc.origin}).matches(u), "expected %s not to match", u)
 			}
 		})
 	}
@@ -1297,7 +1297,7 @@ func Test_sourceMapsStoreImpl_DownloadRedirects(t *testing.T) {
 			SourceMapsArguments{Download: true, DownloadFromOrigins: origins},
 			newSourceMapMetrics(prometheus.NewRegistry()),
 			nil,
-			newDownloadClient(time.Second, origins),
+			newDownloadClient(time.Second, parseOriginPatterns(origins)),
 			newTestFileService(),
 		)
 	}

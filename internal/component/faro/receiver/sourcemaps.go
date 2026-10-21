@@ -119,6 +119,7 @@ type sourceMapsStoreImpl struct {
 	downloadCli httpClient // Fetches URLs taken from client telemetry.
 	fs          fileService
 	args        SourceMapsArguments
+	origins     originPatterns
 	metrics     *sourceMapMetrics
 	locs        []*sourcemapFileLocation
 
@@ -149,11 +150,12 @@ func newSourceMapsStore(log *slog.Logger, args SourceMapsArguments, metrics *sou
 	// or to find a way to inject a download timeout without modifying the http
 	// client.
 
+	origins := parseOriginPatterns(args.DownloadFromOrigins)
 	if cli == nil {
 		cli = &http.Client{Timeout: args.DownloadTimeout}
 	}
 	if downloadCli == nil {
-		downloadCli = newDownloadClient(args.DownloadTimeout, args.DownloadFromOrigins)
+		downloadCli = newDownloadClient(args.DownloadTimeout, origins)
 	}
 	if fs == nil {
 		fs = osFileService{}
@@ -178,6 +180,7 @@ func newSourceMapsStore(log *slog.Logger, args SourceMapsArguments, metrics *sou
 		downloadCli: downloadCli,
 		fs:          fs,
 		args:        args,
+		origins:     origins,
 		cache:       make(map[string]*cachedSourceMap),
 		metrics:     metrics,
 		locs:        locs,
@@ -344,7 +347,7 @@ func (store *sourceMapsStoreImpl) getSourceMapContent(sourceURL string, release 
 	}
 
 	// Attempt to download the sourcemap if enabled.
-	if store.args.Download && hasHttpPrefix(sourceURL) && urlMatchesOrigins(sourceURL, store.args.DownloadFromOrigins) {
+	if store.args.Download && hasHttpPrefix(sourceURL) && store.origins.matches(sourceURL) {
 		return store.downloadSourceMapContent(sourceURL)
 	}
 	return nil, "", nil
@@ -469,7 +472,7 @@ func (store *sourceMapsStoreImpl) downloadSourceMapContent(sourceURL string) (co
 		store.log.Debug("resolved absolute source map URL", "url", sourceURL, "sourceMapURL", sourceMapURL)
 	}
 
-	if !hasHttpPrefix(resolvedSourceMapURL) || !urlMatchesOrigins(resolvedSourceMapURL, store.args.DownloadFromOrigins) {
+	if !hasHttpPrefix(resolvedSourceMapURL) || !store.origins.matches(resolvedSourceMapURL) {
 		store.log.Debug("source map url not allowed by download_from_origins", "url", sourceURL, "sourceMapURL", resolvedSourceMapURL)
 		return nil, "", fmt.Errorf("source map url not allowed by download_from_origins: %s", resolvedSourceMapURL)
 	}
@@ -509,14 +512,14 @@ const maxDownloadRedirects = 10
 
 // newDownloadClient returns a client for URLs taken from client telemetry, which
 // only follows redirects that match origins.
-func newDownloadClient(timeout time.Duration, origins []string) *http.Client {
+func newDownloadClient(timeout time.Duration, origins originPatterns) *http.Client {
 	return &http.Client{
 		Timeout: timeout,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if len(via) >= maxDownloadRedirects {
 				return fmt.Errorf("stopped after %d redirects", maxDownloadRedirects)
 			}
-			if target := req.URL.String(); !hasHttpPrefix(target) || !urlMatchesOrigins(target, origins) {
+			if target := req.URL.String(); !hasHttpPrefix(target) || !origins.matches(target) {
 				return fmt.Errorf("redirect to %s not allowed by download_from_origins", target)
 			}
 			return nil
@@ -536,19 +539,37 @@ func getOrigin(URL string) string {
 	return fmt.Sprintf("%s://%s", parsed.Scheme, parsed.Host)
 }
 
-// urlMatchesOrigins returns true if URL matches at least one origin of the form
+// originPatterns is a parsed download_from_origins list.
+type originPatterns struct {
+	any      bool
+	patterns []originPattern
+}
+
+func parseOriginPatterns(origins []string) originPatterns {
+	var ps originPatterns
+	for _, origin := range origins {
+		if origin == "*" {
+			ps.any = true
+		} else if p, ok := parseOriginPattern(origin); ok {
+			ps.patterns = append(ps.patterns, p)
+		}
+	}
+	return ps
+}
+
+// matches returns true if URL matches at least one origin of the form
 // [scheme://]host[:port][/path]. Each part is matched separately, '*' and '?'
 // are wildcards, and the path matches as a prefix.
-func urlMatchesOrigins(URL string, origins []string) bool {
+func (ps originPatterns) matches(URL string) bool {
 	u, ok := parseOriginURL(URL)
 	if !ok {
 		return false
 	}
-	for _, origin := range origins {
-		if origin == "*" {
-			return true
-		}
-		if p, ok := parseOriginPattern(origin); ok && p.matches(u) {
+	if ps.any {
+		return true
+	}
+	for _, p := range ps.patterns {
+		if p.matches(u) {
 			return true
 		}
 	}
