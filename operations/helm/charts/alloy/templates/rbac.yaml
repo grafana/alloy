@@ -1,6 +1,13 @@
 {{- if .Values.rbac.create }}
+  {{- /* Build the effective list of namespaces for namespace-scoped RBAC */ -}}
+  {{- $namespaces := list }}
   {{- if .Values.rbac.namespaces }}
-    {{- range $namespace := .Values.rbac.namespaces }}
+    {{- $namespaces = .Values.rbac.namespaces }}
+  {{- else if .Values.rbac.namespaced }}
+    {{- $namespaces = list (include "alloy.namespace" .) }}
+  {{- end }}
+  {{- if $namespaces }}
+    {{- range $namespace := $namespaces }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
