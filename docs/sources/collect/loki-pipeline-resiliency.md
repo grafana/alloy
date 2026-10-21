@@ -51,12 +51,11 @@ When `loki.write` can't reach its configured endpoint, it retries each batch wit
 
 ### Retry schedule
 
-`max_backoff_retries` sets the total number of send attempts, including the initial request.
+`max_backoff_retries` sets the number of retries after the initial request.
 Each wait is a random duration between the current backoff value and double that value.
 The backoff value starts at `min_backoff_period` and doubles after each wait, up to `max_backoff_period`.
 
-With the defaults of `"500ms"`, `"5m"`, and `10`, `loki.write` sends a batch up to 10 times, and the waits add up to between about 4 and 8.5 minutes.
-Each request can also take up to `remote_timeout`, which defaults to `"10s"`.
+With the defaults of `"500ms"`, `"5m"`, and `10`, `loki.write` sends a batch initially and retries it up to 10 times. The waits add up to at least about 8.5 minutes, before accounting for request time. Each request can also take up to `remote_timeout`, which defaults to `"10s"`.
 
 ### Effect on upstream components
 
@@ -107,7 +106,7 @@ Four configurations trade off differently between ingestion stalls, durability, 
 
 | Configuration                          | Ingestion stalls? | Data survives {{< param "PRODUCT_NAME" >}} restart? | Subject to age limits on reconnect? |
 | -------------------------------------- | ----------------- | --------------------------------------------------- | ----------------------------------- |
-| Default backoff, no WAL                | Yes               | No                                                  | N/A, data already dropped           |
+| Default backoff, no WAL                | Yes               | No                                                  | Yes, if the endpoint recovers before retries are exhausted |
 | `max_backoff_retries = 0`, no WAL      | Yes, indefinitely | No                                                  | Yes                                 |
 | WAL enabled, default backoff           | No                | Only until retries run out                          | Yes                                 |
 | WAL enabled, `max_backoff_retries = 0` | No                | Yes, within `max_segment_age`                       | Yes                                 |
