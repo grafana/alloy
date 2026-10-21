@@ -814,12 +814,27 @@ func Test_urlMatchesOrigins(t *testing.T) {
 
 func Test_urlMatchesOrigins_URLParts(t *testing.T) {
 	tt := []struct {
+		name    string
 		origin  string
 		match   []string
 		noMatch []string
 	}{
 		// Host
 		{
+			name:   "exact host",
+			origin: "https://app.example.com/",
+			match: []string{
+				"https://APP.Example.COM/foo.js",
+				"https://app.example.com:443/foo.js",
+			},
+			noMatch: []string{
+				"http://app.example.com/foo.js",
+				"https://app.example.com:8443/foo.js",
+				"https://app.example.com.example.net/foo.js",
+			},
+		},
+		{
+			name:   "origin without trailing slash doesn't match a longer host or userinfo",
 			origin: "https://app.example.com",
 			match:  []string{"https://app.example.com/static/foo.js"},
 			noMatch: []string{
@@ -830,17 +845,12 @@ func Test_urlMatchesOrigins_URLParts(t *testing.T) {
 			},
 		},
 		{
-			origin:  "https://app.example.com/",
-			match:   []string{"https://APP.Example.COM/foo.js"},
-			noMatch: []string{"http://app.example.com/foo.js"},
-		},
-		{
-			origin:  "https://allowed.com/",
-			noMatch: []string{"https://allowed.com.example.net/foo.js"},
-		},
-		{
+			name:   "subdomain wildcard",
 			origin: "https://*.example.com/",
-			match:  []string{"https://cdn.example.com/foo.js", "https://a.cdn.example.com/foo.js"},
+			match: []string{
+				"https://cdn.example.com/foo.js",
+				"https://a.cdn.example.com/foo.js",
+			},
 			noMatch: []string{
 				"https://example.com/foo.js",
 				"https://example.net/x.example.com/foo.js",
@@ -848,102 +858,117 @@ func Test_urlMatchesOrigins_URLParts(t *testing.T) {
 			},
 		},
 		{
+			name:    "subdomain wildcard without scheme doesn't match the query",
 			origin:  "*.example.com/",
 			noMatch: []string{"https://example.net/?d=x.example.com/foo.js"},
 		},
 		{
+			name:    "backslash in host",
 			origin:  "https://*.app.example.com/",
 			noMatch: []string{"https://other.example.net\\.app.example.com/foo.js"},
 		},
 		{
+			name:    "wildcard inside a part of the host",
 			origin:  "https://app-*.example.com/",
 			match:   []string{"https://app-eu.example.com/foo.js"},
 			noMatch: []string{"https://app-eu.cdn.example.com/foo.js"},
 		},
 		{
+			name:    "leading wildcard without a dot doesn't match subdomains",
 			origin:  "https://*example.com/",
 			noMatch: []string{"https://a.cdn.example.com/foo.js"},
 		},
 		{
+			name:    "single character wildcard",
 			origin:  "https://app?.example.com/",
 			match:   []string{"https://app1.example.com/foo.js"},
 			noMatch: []string{"https://app12.example.com/foo.js"},
 		},
 		{
+			name:    "wildcard in an IP address",
 			origin:  "http://10.0.0.*/",
 			match:   []string{"http://10.0.0.1/foo.js"},
 			noMatch: []string{"http://10.0.0.1.example.net/foo.js"},
 		},
 		{
+			name:   "IPv6 host",
 			origin: "http://[2001:db8::1]:8080/",
 			match:  []string{"http://[2001:db8::1]:8080/foo.js"},
 		},
 		{
 			// The zone is ignored when dialing, so it must not satisfy a host wildcard.
+			name:    "IPv6 zone",
 			origin:  "http://*.example.com:*/",
 			noMatch: []string{"http://[::ffff:127.0.0.1%25.example.com]:8080/foo.js"},
 		},
 		{
 			// IDNA turns these into dots when dialing, so they must not hide a label from a host wildcard.
+			name:   "non-ASCII dots",
 			origin: "http://192.168.*.*/",
 			noMatch: []string{
-				"http://192.168.0\u3002example.net/foo.js",
-				"http://192.168.0\uff0eexample.net/foo.js",
-				"http://192.168.0\uff61example.net/foo.js",
+				"http://192.168.0。example.net/foo.js",
+				"http://192.168.0．example.net/foo.js",
+				"http://192.168.0｡example.net/foo.js",
 			},
 		},
 
 		// Port
 		{
-			origin:  "https://app.example.com/",
-			match:   []string{"https://app.example.com:443/foo.js"},
-			noMatch: []string{"https://app.example.com:8443/foo.js"},
-		},
-		{
+			name:    "explicit default port",
 			origin:  "https://app.example.com:443/",
 			noMatch: []string{"https://app.example.com:8443/foo.js"},
 		},
 		{
+			name:   "explicit port",
 			origin: "http://app.example.com:8080/",
 			match:  []string{"http://app.example.com:8080/foo.js"},
 		},
 		{
+			name:   "port wildcard",
 			origin: "http://localhost:*/",
 			match:  []string{"http://localhost:3000/foo.js"},
 		},
 		{
+			name:   "any host on a port",
 			origin: "http://*:8080/",
 			match:  []string{"http://cdn.example.com:8080/foo.js"},
 		},
 
 		// Path
 		{
+			name:   "path prefix",
 			origin: "https://app.example.com/maps",
-			match:  []string{"https://app.example.com/maps/foo.js", "https://app.example.com/maps-other/foo.js"},
+			match: []string{
+				"https://app.example.com/maps/foo.js",
+				"https://app.example.com/maps-other/foo.js",
+			},
 		},
 		{
+			name:   "path prefix with trailing slash",
 			origin: "https://app.example.com/maps/",
 			match:  []string{"https://app.example.com/maps/foo.js"},
 		},
 		{
+			name:   "path wildcard",
 			origin: "https://app.example.com/*/static/",
 			match:  []string{"https://app.example.com/v2/static/foo.js"},
 		},
 
 		// Scheme
 		{
+			name:    "non-http scheme",
 			origin:  "file:///",
 			noMatch: []string{"file:///etc/passwd"},
 		},
 	}
 
 	for _, tc := range tt {
-		t.Run(tc.origin, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			for _, u := range tc.match {
-				require.True(t, parseOriginPatterns([]string{tc.origin}).matches(u), "expected %s to match", u)
+				require.True(t, parseOriginPatterns([]string{tc.origin}).matches(u), "expected %s to match %s", u, tc.origin)
 			}
 			for _, u := range tc.noMatch {
-				require.False(t, parseOriginPatterns([]string{tc.origin}).matches(u), "expected %s not to match", u)
+				require.False(t, parseOriginPatterns([]string{tc.origin}).matches(u), "expected %s not to match %s", u, tc.origin)
 			}
 		})
 	}
