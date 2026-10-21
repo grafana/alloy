@@ -109,7 +109,7 @@ type Config struct {
 	MaxHousekeepingInterval time.Duration `yaml:"max_housekeeping_interval,omitempty"`
 
 	// AllowDynamicHousekeeping allows the housekeeping interval to grow for containers whose stats aren't changing (Default: true)
-	AllowDynamicHousekeeping bool `yaml:"allow_dynamic_housekeeping,omitempty"`
+	AllowDynamicHousekeeping bool `yaml:"allow_dynamic_housekeeping"`
 
 	// Hold on to the logger passed to config.NewIntegration, to be passed to klog, as yet another unsafe global that needs to be set.
 	logger *slog.Logger //nolint:unused,structcheck // logger is only used on linux
