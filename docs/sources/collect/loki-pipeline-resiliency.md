@@ -355,7 +355,7 @@ To monitor the pipeline for dropped log entries, complete the following steps:
    This latency isn't the WAL backlog, and it isn't what the Loki age limits measure.
    Use the WAL timestamp gauges for backlog expressed in log time.
 
-1. If you enable the WAL, alert before the backlog reaches the out-of-order window that Loki applies.
+1. If you enable the WAL, alert before the backlog reaches the shortest age limit that applies to it.
    You don't have to estimate the outage and drain durations to know whether you're approaching that limit.
    Compare the two WAL timestamp gauges instead, because the gap between them tracks how far the watcher trails the writer.
 
@@ -377,8 +377,9 @@ To monitor the pipeline for dropped log entries, complete the following steps:
    ```
 
    Both gauges stall together when no logs arrive, so an idle pipeline reports a gap of zero rather than triggering the alert.
-   Set the threshold below your own window, which is half of the cluster `max_chunk_age` expressed in seconds.
-   Refer to [Practical limits, even with the WAL][practical-limits] for how Loki sets that window.
+   Set the threshold below the shortest of three limits, expressed in seconds: half of the cluster `max_chunk_age`, the `reject_old_samples_max_age` for the tenant, and `max_segment_age`.
+   Leave enough margin for the backlog to drain after the endpoint recovers.
+   Refer to [Practical limits, even with the WAL][practical-limits] for how Loki sets its two limits.
 
    The read gauge advances when the watcher queues an entry, not when Loki accepts it.
    The gap therefore measures the WAL backlog and stops at the endpoint queue.
@@ -387,7 +388,6 @@ To monitor the pipeline for dropped log entries, complete the following steps:
    Pair this alert with `loki_write_batch_retries_total` and the drop counters so a stuck endpoint still triggers an alert.
 
    When cleanup deletes a segment that an endpoint hasn't sent yet, {{< param "PRODUCT_NAME" >}} loses those entries, and no drop counter increments.
-   Keep the alert threshold below `max_segment_age` as well as below the Loki window.
 
 1. Search the {{< param "PRODUCT_NAME" >}} logs for the following messages.
    Three of these drop paths never increment a `loki_write_*` counter, so a metric alone won't reveal them.
