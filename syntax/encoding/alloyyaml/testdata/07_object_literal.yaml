@@ -1,0 +1,4 @@
+- labels:
+    app: myapp
+    env: prod
+    team: platform
