@@ -192,8 +192,11 @@ To match other ports, add the port, for example `:8443` or `:*`.
 The host must match the whole host name, ignoring case.
 The path matches as a prefix of the URL path.
 `*` matches any characters and `?` matches a single character.
-In the host, wildcards match within a single label, except that a leading `*.` matches one or more labels and a host of `*` matches any host.
-For example, `http://10.0.0.*/` matches `http://10.0.0.1/app.js` but not `http://10.0.0.1.example.net/app.js`, and `https://*.example.com/` matches `https://cdn.example.com/app.js` and `https://eu.cdn.example.com/app.js`, but not `https://example.com/app.js` or `https://example.net/cdn.example.com/app.js`.
+In the host, `*` and `?` don't match `.`.
+For example, `http://10.0.0.*/` matches `http://10.0.0.1/app.js` but not `http://10.0.0.1.example.net/app.js`, and `https://*example.com/` matches `https://myexample.com/app.js` but not `https://cdn.example.com/app.js`.
+To match subdomains, start the host with `*.`.
+For example, `https://*.example.com/` matches `https://cdn.example.com/app.js` and `https://eu.cdn.example.com/app.js`, but not `https://example.com/app.js` or `https://example.net/cdn.example.com/app.js`.
+To match any host, use `*` as the whole host, for example `https://*:8443/`.
 
 The following example downloads sourcemaps only for scripts served from `https://app.example.com/`:
 
