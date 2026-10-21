@@ -54,7 +54,7 @@ You can use the following arguments with `prometheus.exporter.snowflake`:
 | `exclude_deleted_tables`   | `bool`   | Whether to exclude deleted tables when querying table storage metrics.                            | `false`          | no       |
 | `password`                 | `secret` | The password for the user used when querying metrics (required for password authentication).      |                  | no       |
 | `private_key_password`     | `secret` | The password for the user's RSA private key (required for encrypted RSA key-pair authentication). |                  | no       |
-| `private_key_path`         | `secret` | The path to the user's RSA private key file (required for RSA key-pair authentication).           |                  | no       |
+| `private_key_path`         | `string` | The path to the user's RSA private key file (required for RSA key-pair authentication).           |                  | no       |
 | `role`                     | `string` | The role to use when querying metrics.                                                            | `"ACCOUNTADMIN"` | no       |
 
 One of `password` or `private_key_path` must be specified to authenticate.
