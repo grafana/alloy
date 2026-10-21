@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/ckit/peer"
 	"github.com/grafana/ckit/shard"
 	"github.com/grafana/loki/pkg/push"
+	"github.com/microsoft/go-mssqldb/msdsn"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1028,7 +1029,7 @@ func TestSqlServer_Clustering_DistributesDatabases(t *testing.T) {
 	require.Len(t, instances, 1)
 	assert.Equal(t, "127.0.0.1:1433/db1", instances[0].instanceKey)
 	require.Len(t, connected, 1)
-	assert.Contains(t, connected[0], "database=db1")
+	assert.Equal(t, "sqlserver://user:pass@127.0.0.1:1433?app+name=grafana%3Aalloy%3Adb-o11y&database=db1", connected[0])
 
 	// Only the owned database exports its target.
 	exported, ok := gotExports.(Exports)
@@ -1272,4 +1273,91 @@ func TestTaggedPinger_PingContextCanceled(t *testing.T) {
 	cancel()
 	require.ErrorIs(t, taggedPinger{db: db}.PingContext(ctx), context.Canceled)
 	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestFormatDSN(t *testing.T) {
+	tests := []struct {
+		name            string
+		dsn             string
+		expectedDSN     string
+		expectedAppName string
+	}{
+		{
+			name:            "url form without query params",
+			dsn:             "sqlserver://user:pass@products-db:1433",
+			expectedDSN:     "sqlserver://user:pass@products-db:1433?app+name=grafana%3Aalloy%3Adb-o11y",
+			expectedAppName: collector.AppName,
+		},
+		{
+			name:            "url form with existing query params",
+			dsn:             "sqlserver://user:pass@products-db:1433?database=products&encrypt=true",
+			expectedDSN:     "sqlserver://user:pass@products-db:1433?app+name=grafana%3Aalloy%3Adb-o11y&database=products&encrypt=true",
+			expectedAppName: collector.AppName,
+		},
+		{
+			name:            "url form with empty app name replaces it",
+			dsn:             "sqlserver://user:pass@products-db:1433?App+Name=&database=products",
+			expectedDSN:     "sqlserver://user:pass@products-db:1433?app+name=grafana%3Aalloy%3Adb-o11y&database=products",
+			expectedAppName: collector.AppName,
+		},
+		{
+			name:            "url form preserves custom app name",
+			dsn:             "sqlserver://user:pass@products-db:1433?app+name=custom-app&database=products",
+			expectedDSN:     "sqlserver://user:pass@products-db:1433?app+name=custom-app&database=products",
+			expectedAppName: "custom-app",
+		},
+		{
+			name:            "ado form without app name",
+			dsn:             "server=products-db;port=1433;user id=user;password=pass;database=products",
+			expectedDSN:     "server=products-db;port=1433;user id=user;password=pass;database=products;app name=grafana:alloy:db-o11y",
+			expectedAppName: collector.AppName,
+		},
+		{
+			name:            "ado form with trailing semicolon",
+			dsn:             "server=products-db;database=products;",
+			expectedDSN:     "server=products-db;database=products;app name=grafana:alloy:db-o11y",
+			expectedAppName: collector.AppName,
+		},
+		{
+			name:            "ado form preserves custom application name synonym",
+			dsn:             "server=products-db;database=products;application name=custom-ado",
+			expectedDSN:     "server=products-db;database=products;application name=custom-ado",
+			expectedAppName: "custom-ado",
+		},
+		{
+			name:            "ado form preserves custom app synonym",
+			dsn:             "server=products-db;database=products;app=custom-short",
+			expectedDSN:     "server=products-db;database=products;app=custom-short",
+			expectedAppName: "custom-short",
+		},
+		{
+			name:            "odbc form without app name",
+			dsn:             "odbc:server=products-db;user id=user;password=pass;database=products",
+			expectedDSN:     "odbc:server=products-db;user id=user;password=pass;database=products;app name=grafana:alloy:db-o11y",
+			expectedAppName: collector.AppName,
+		},
+		{
+			name:            "odbc form preserves custom app name",
+			dsn:             "odbc:server=products-db;database=products;app name=custom-odbc",
+			expectedDSN:     "odbc:server=products-db;database=products;app name=custom-odbc",
+			expectedAppName: "custom-odbc",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := formatDSN(tt.dsn)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedDSN, got)
+
+			cfg, err := msdsn.Parse(got)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedAppName, cfg.AppName)
+		})
+	}
+
+	t.Run("invalid dsn returns error", func(t *testing.T) {
+		_, err := formatDSN("sqlserver://user:pass@products-db:not-a-port")
+		require.Error(t, err)
+	})
 }

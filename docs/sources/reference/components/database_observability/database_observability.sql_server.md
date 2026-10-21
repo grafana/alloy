@@ -35,17 +35,19 @@ You can use the following arguments with `database_observability.sql_server`:
 | `targets`           | `list(map(string))`  | List of external targets to scrape.                                      |         | no       |
 | `disable_collectors`| `list(string)`       | A list of collectors to disable from the default set.                    |         | no       |
 | `enable_collectors` | `list(string)`       | A list of collectors to enable on top of the default set.                |         | no       |
-| `exclude_current_user` | `bool`            | Exclude tagged Alloy queries and query samples from sessions opened with the login that Alloy uses. | `true` | no       |
+| `exclude_current_user` | `bool`            | Exclude tagged Alloy queries and query samples from sessions matching Alloy's application name or opened with the login that Alloy uses. | `true` | no       |
 | `exclude_schemas`   | `list(string)`       | A list of schemas to exclude from monitoring, on top of the always-excluded system schemas `sys` and `information_schema`. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
 | `exclude_databases` | `list(string)`       | A list of databases to exclude from monitoring, on top of the always-excluded system databases `master`, `model`, `msdb`, and `tempdb`. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
 | `exclude_users`     | `list(string)`       | A list of original SQL Server login names to exclude from query samples. | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
 | `query_timeout`     | `duration`           | Timeout for each SQL statement.                                          | `"10s"` | no       |
 
-The `exclude_current_user` argument excludes SQL tagged by Alloy from query metrics, query details, explain plans, and query samples.
-Query Store doesn't identify the login that executed a query, so this exclusion can't remove arbitrary historical queries by login or previously captured Alloy queries without the marker.
+When `data_source_name` doesn't specify an application name (`app name`), Alloy sets it to `grafana:alloy:db-o11y` on its SQL Server connections.
 
-For live query samples, `exclude_current_user` also excludes sessions opened with the SQL Server login configured for Alloy.
-Setting it to `false` disables both marker filtering and automatic current-login exclusion.
+The `exclude_current_user` argument excludes SQL tagged by Alloy from query metrics, query details, explain plans, and query samples.
+Query Store doesn't identify the login or application name that executed a query, so this exclusion can't remove arbitrary historical queries by login or previously captured Alloy queries without the marker.
+
+For live query samples, `exclude_current_user` also excludes sessions whose `program_name` is `grafana:alloy:db-o11y` or that were opened with the SQL Server login configured for Alloy.
+Setting it to `false` disables marker, application-name, and automatic current-login exclusion.
 The `exclude_users` list still applies to query samples, and Alloy always excludes the request that collects the samples.
 Schema discovery and health-check results aren't filtered by this argument.
 

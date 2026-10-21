@@ -133,13 +133,14 @@ func TestBuildQuerySamplesStatement(t *testing.T) {
 		sql.Named("u0", "admin"),
 		sql.Named("u1", "monitor"),
 		sql.Named("exclude_current_user", false),
+		sql.Named("collector_app_name", AppName),
 		sql.Named("collector_marker", QueryMarker),
 	}, namedArgs(args))
 
 	query, args, err = buildQuerySamplesStatement([]string{testHash}, nil, false)
 	require.NoError(t, err)
 	require.NotContains(t, query, "original_login_name NOT IN")
-	require.Len(t, args, 3)
+	require.Len(t, args, 4)
 
 	_, _, err = buildQuerySamplesStatement(nil, nil, false)
 	require.ErrorContains(t, err, "without query hashes")
