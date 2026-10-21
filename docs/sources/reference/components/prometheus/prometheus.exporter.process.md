@@ -82,7 +82,7 @@ You can use the following arguments with the `matcher` block:
 
 | Name      | Type           | Description                                                                                      | Default          | Required |
 | --------- | -------------- | ------------------------------------------------------------------------------------------------ | ---------------- | -------- |
-| `cmdline` | `list(string)` | A list of regular expressions to match against the elements of `argv` joined by spaces.          |                  | no       |
+| `cmdline` | `list(string)` | A list of regular expressions, each matched against the corresponding element of `argv`.         |                  | no       |
 | `comm`    | `list(string)` | A list of strings that match the base executable name for a process, truncated to 15 characters. |                  | no       |
 | `exe`     | `list(string)` | A list of strings that match `argv[0]` for a process.                                            |                  | no       |
 | `name`    | `string`       | The name to use for the process group in metrics.                                                | `"{{.ExeBase}}"` | no       |
@@ -97,8 +97,9 @@ Otherwise, the name must be an exact match.
 For example, `"postgres"` may match any PostgreSQL binary, but `/usr/local/bin/postgres` only matches a PostgreSQL process with that exact path.
 If any of the strings match, the component tracks the process.
 
-The component applies each regular expression in `cmdline` to the full command line of the process, which it builds by joining the elements of `argv` with spaces.
-Every regular expression must match before the component tracks the process.
+The component matches each regular expression in `cmdline` against the corresponding element of `argv`, starting at `argv[1]`.
+The first regular expression matches `argv[1]`, the second matches `argv[2]`, and so on.
+Every regular expression must match its corresponding element before the component tracks the process.
 The component adds named regular expression captures, for example `(?P<version>[0-9]+)`, to the `.Matches` map for use in `name`.
 
 The `name` argument can use the following template variables. By default it uses the base path of the executable:
