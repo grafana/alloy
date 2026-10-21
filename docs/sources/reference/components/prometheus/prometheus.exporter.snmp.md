@@ -134,11 +134,15 @@ Each `walk_param` block requires a label, which is the name that the `walk_param
 
 You can use the following arguments with the `walk_param` block:
 
-| Name              | Type       | Description                                   | Default | Required |
-| ----------------- | ---------- | --------------------------------------------- | ------- | -------- |
-| `max_repetitions` | `int`      | How many objects to request with GET/GETBULK. | `25`    | no       |
-| `retries`         | `int`      | How many times to retry a failed request.     | `3`     | no       |
-| `timeout`         | `duration` | Timeout for each individual SNMP request.     | `5s`    | no       |
+| Name                         | Type       | Description                                                                                                                       | Default | Required |
+| ---------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `max_repetitions`            | `int`      | How many objects to request with GET/GETBULK.                                                                                     | `25`    | no       |
+| `retries`                    | `int`      | How many times to retry a failed request.                                                                                         | `3`     | no       |
+| `timeout`                    | `duration` | Timeout for each individual SNMP request.                                                                                         | `5s`    | no       |
+| `use_unconnected_udp_socket` | `bool`     | Use an unconnected UDP socket, so the exporter accepts responses from a different IP address than the one it sent the request to. | `false` | no       |
+
+If you set `use_unconnected_udp_socket` to `true` in any `walk_param` block that a module uses, the component uses an unconnected UDP socket for scrapes that use that module.
+Enable it for devices that reply from a different source IP address than the one you poll, such as devices with multiple network interfaces.
 
 ## Exported fields
 
