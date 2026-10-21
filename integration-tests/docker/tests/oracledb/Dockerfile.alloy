@@ -1,23 +1,19 @@
 # syntax=docker/dockerfile:1
-# Layers Oracle Instant Client (ZIP) on the standard Alloy image from the repo root Dockerfile.
-# Matches Oracle’s ZIP install flow: unzip under /opt/oracle, libaio, ld.so.conf.d + ldconfig:
+# Layers Oracle Instant Client (ZIP) on the distroless Alloy image (Dockerfile.chisel at the repo root).
+# The distroless image has no package manager, ldconfig or common tools (only dash), so everything is prepared in an Ubuntu
+# stage and copied over. The only runtime dependencies of the client that the image lacks are libaio and libgcc_s.
+# Matches Oracle's ZIP install flow:
 # https://www.oracle.com/database/technologies/instant-client/linux-x86-64-downloads.html
 #
 # Layered on alloy-integration-tests. Built via tests/oracledb/test.yaml (alloy_container.dockerfile).
-#   make ALLOY_IMAGE=alloy-integration-tests alloy-image
+#   make ALLOY_IMAGE_DISTROLESS=alloy-integration-tests alloy-image-distroless
 #   docker build --platform=linux/amd64 -f integration-tests/docker/tests/oracledb/Dockerfile.alloy -t alloy-integration-tests-oracledb:latest .
 
-FROM --platform=linux/amd64 alloy-integration-tests:latest
-
-USER root
+FROM --platform=linux/amd64 ubuntu:noble@sha256:68ee22004a9109b44973313b02ff7b1de250f1de0f5ecb628d73f579aaff33ac AS oracle-client
 
 RUN apt-get update \
 	&& apt-get install -y --no-install-recommends ca-certificates wget unzip libaio1t64 \
-	&& rm -rf /var/lib/apt/lists/* \
-	&& LIBDIR="/usr/lib/$(uname -m)-linux-gnu" \
-	&& if [ -f "${LIBDIR}/libaio.so.1t64" ] && [ ! -e "${LIBDIR}/libaio.so.1" ]; then \
-		ln -sf libaio.so.1t64 "${LIBDIR}/libaio.so.1"; \
-	fi
+	&& rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/oracle
 
@@ -30,8 +26,17 @@ RUN wget -q --progress=dot:giga --no-check-certificate \
 		"${ORACLE_IC_ZIP_URL}" \
 	&& unzip -q /tmp/instantclient-basic.zip -d /opt/oracle \
 	&& rm -f /tmp/instantclient-basic.zip \
-	&& INST_DIR="$(ls -d /opt/oracle/instantclient_* | head -1)" \
-	&& mkdir -p "${INST_DIR}/network/admin" \
-	&& printf '%s\n' "${INST_DIR}" > /etc/ld.so.conf.d/oracle-instantclient.conf \
-	&& ldconfig \
+	&& ln -s "$(ls -d /opt/oracle/instantclient_* | head -1)" /opt/oracle/instantclient \
+	&& mkdir -p /opt/oracle/instantclient/network/admin \
 	&& chmod -R a+rX /opt/oracle
+
+FROM --platform=linux/amd64 alloy-integration-tests:latest
+
+# Instant Client links against libaio.so.1 (Ubuntu noble ships it as libaio.so.1t64) and dlopen()s libgcc_s.so.1;
+# without the latter it segfaults on the first connection.
+COPY --from=oracle-client /usr/lib/x86_64-linux-gnu/libgcc_s.so.1 /usr/lib/x86_64-linux-gnu/libgcc_s.so.1
+COPY --from=oracle-client /usr/lib/x86_64-linux-gnu/libaio.so.1t64 /usr/lib/x86_64-linux-gnu/libaio.so.1
+COPY --from=oracle-client /opt/oracle /opt/oracle
+
+# There is no ldconfig in the distroless image, so point the dynamic loader at the client directly.
+ENV LD_LIBRARY_PATH=/opt/oracle/instantclient

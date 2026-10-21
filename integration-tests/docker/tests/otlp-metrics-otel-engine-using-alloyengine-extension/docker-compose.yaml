@@ -5,14 +5,25 @@ services:
     volumes:
       - ./config.yaml:/etc/alloy/config.yaml:ro
       - ./alloy-config.alloy:/etc/alloy/alloy-config.alloy:ro
-    healthcheck:
-      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/13133"]
-      interval: 2s
-      timeout: 5s
-      retries: 10
     networks:
       - default
       - alloy-integration-tests_integration-tests
+
+  # The distroless Alloy image has no bash, nc or similar tools, so its readiness can't be probed from inside the container.
+  # This sidecar waits for the OTLP receiver port instead, so otel-gen starts sending only once Alloy is ready.
+  alloy-ready:
+    image: busybox:1.37@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e
+    command: ["tail", "-f", "/dev/null"]
+    depends_on:
+      alloy:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "nc", "-z", "alloy", "4318"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    networks:
+      - default
 
   otel-gen:
     build:
@@ -22,7 +33,7 @@ services:
       # Send to the Alloy OTLP receiver (defined in alloy-config.alloy)
       - OTEL_EXPORTER_ENDPOINT=alloy:4318
     depends_on:
-      alloy:
+      alloy-ready:
         condition: service_healthy
     networks:
       - default
