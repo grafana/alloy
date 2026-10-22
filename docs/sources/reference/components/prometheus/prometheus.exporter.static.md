@@ -32,6 +32,10 @@ You can use the following argument with `prometheus.exporter.static`:
 | ------ | -------- | ------------------------------------- | ------- | -------- |
 | `text` | `string` | Text in Prometheus exposition format. |         | yes      |
 
+The `text` argument must use the Prometheus text exposition format.
+Metric names must match the legacy Prometheus format, `[a-zA-Z_:][a-zA-Z0-9_:]*`.
+If the component can't parse `text`, it fails with an invalid configuration error.
+
 ## Exported fields
 
 {{< docs/shared lookup="reference/components/exporter-component-exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
