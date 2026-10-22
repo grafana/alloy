@@ -44,6 +44,9 @@ func TestFileRotation(t *testing.T) {
 	strategies := []struct {
 		name   string
 		rotate rotateFunc
+		// maxLost is how many lines may be lost. Duplicated, mislabeled or
+		// unexpected lines fail the test regardless.
+		maxLost int
 	}{
 		{
 			// Move the file aside and start a new one at the same path.
@@ -57,16 +60,13 @@ func TestFileRotation(t *testing.T) {
 		{
 			// Delete the file and recreate it after a short gap, as a log
 			// rotator would.
-			//
-			// Lines written just before the delete are sometimes lost: the
-			// component can stop tailing the file before reading them, although
-			// the tail package's "deleted while reading" test expects them to be
-			// read. Until that is investigated, wait until the component has read
-			// every line before deleting, so this test covers recreation rather
-			// than that race.
 			name: "delete",
+			// FIXME: lines written just before the delete are sometimes lost,
+			// one or two per run: the component can stop tailing the file before
+			// reading them, although the tail package's "deleted while reading"
+			// test expects them to be read. Set this back to 0 once fixed.
+			maxLost: 5,
 			rotate: func(t *testing.T, w *rotationWriter) (*os.File, string) {
-				w.waitForWritten(t)
 				require.NoError(t, w.file.Close())
 				require.NoError(t, os.Remove(w.path))
 				time.Sleep(time.Duration(5+rand.IntN(46)) * time.Millisecond)
@@ -107,12 +107,12 @@ func TestFileRotation(t *testing.T) {
 
 	for _, s := range strategies {
 		t.Run(s.name, func(t *testing.T) {
-			runRotationTest(t, s.rotate)
+			runRotationTest(t, s.rotate, s.maxLost)
 		})
 	}
 }
 
-func runRotationTest(t *testing.T, rotate rotateFunc) {
+func runRotationTest(t *testing.T, rotate rotateFunc, maxLost int) {
 	dir := t.TempDir()
 	ctx, cancel := context.WithCancel(componenttest.TestContext(t))
 	defer cancel()
@@ -165,20 +165,33 @@ func runRotationTest(t *testing.T, rotate rotateFunc) {
 	}
 	require.Len(t, want, rotationWriters*rotationLinesPerFile*rotationGenerations)
 
-	// Wait for every line, then give duplicates a moment to show up.
+	// Wait for every line that must arrive, then give late lines and
+	// duplicates a moment to show up.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		assert.GreaterOrEqual(c, received.total(), len(want))
+		assert.GreaterOrEqual(c, received.total(), len(want)-maxLost)
 	}, 30*time.Second, 50*time.Millisecond)
 	time.Sleep(500 * time.Millisecond)
 
 	got := received.snapshot()
+	var lost []string
 	for line, path := range want {
-		paths := got[line]
+		paths, ok := got[line]
+		if !ok {
+			lost = append(lost, line)
+			continue
+		}
 		if assert.Len(t, paths, 1, "line %q should arrive exactly once", line) {
 			assert.Equal(t, path, paths[0], "line %q should be labeled with the file it was written to", line)
 		}
 	}
-	assert.Len(t, got, len(want), "no lines beyond the ones written should arrive")
+	assert.LessOrEqual(t, len(lost), maxLost, "lost lines: %v", lost)
+	if len(lost) > 0 {
+		t.Logf("lost %d of %d lines, within the allowed %d: %v", len(lost), len(want), maxLost, lost)
+	}
+	for line := range got {
+		_, ok := want[line]
+		assert.True(t, ok, "line %q was not written by any writer", line)
+	}
 
 	cancel()
 	require.NoError(t, <-runErr)
