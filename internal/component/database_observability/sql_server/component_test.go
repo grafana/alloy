@@ -562,8 +562,8 @@ func TestConnectAndStartCollectorsFailsWhenCurrentUserCannotBeResolved(t *testin
 
 	mock.ExpectQuery("SELECT " + collector.QueryMarker + " 1").WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(1))
 	mock.ExpectQuery(collector.SelectServerInfo).
-		WillReturnRows(sqlmock.NewRows([]string{"server_name", "machine_name", "product_version"}).
-			AddRow("server", "machine", "16.0"))
+		WillReturnRows(sqlmock.NewRows([]string{"server_name", "machine_name", "product_version", "engine_edition"}).
+			AddRow("server", "machine", "16.0", 3))
 	mock.ExpectQuery(collector.SelectOriginalLogin).WillReturnError(errors.New("permission denied"))
 
 	var args Arguments
@@ -946,8 +946,8 @@ func clusteringTestMockDB(t *testing.T, serverName string) *sql.DB {
 
 	mock.ExpectQuery("SELECT " + collector.QueryMarker + " 1").WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(1))
 	mock.ExpectQuery(collector.SelectServerInfo).
-		WillReturnRows(sqlmock.NewRows([]string{"server_name", "machine_name", "product_version"}).
-			AddRow(serverName, "machine", "16.0"))
+		WillReturnRows(sqlmock.NewRows([]string{"server_name", "machine_name", "product_version", "engine_edition"}).
+			AddRow(serverName, "machine", "16.0", 3))
 	return db
 }
 
