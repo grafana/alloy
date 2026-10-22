@@ -38,6 +38,10 @@ If the component can't parse `text`, it fails with an invalid configuration erro
 
 The component sets the `instance` label on its exported targets to the component ID, for example, `prometheus.exporter.static.demo`.
 
+## Blocks
+
+The `prometheus.exporter.static` component doesn't support any blocks. You can configure this component with arguments.
+
 ## Exported fields
 
 {{< docs/shared lookup="reference/components/exporter-component-exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
