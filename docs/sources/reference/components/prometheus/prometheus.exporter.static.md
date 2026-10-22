@@ -20,6 +20,7 @@ You can specify multiple `prometheus.exporter.static` components by giving them 
 
 ```alloy
 prometheus.exporter.static "<LABEL>" {
+  text = "<METRICS_TEXT>"
 }
 ```
 
@@ -29,7 +30,7 @@ You can use the following argument with `prometheus.exporter.static`:
 
 | Name   | Type     | Description                           | Default | Required |
 | ------ | -------- | ------------------------------------- | ------- | -------- |
-| `text` | `string` | Text in Prometheus exposition format. | `""`    | no       |
+| `text` | `string` | Text in Prometheus exposition format. |         | yes      |
 
 ## Exported fields
 
