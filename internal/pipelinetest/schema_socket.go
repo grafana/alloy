@@ -5,7 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"time"
+
+	"github.com/grafana/alloy/internal/pipelinetest/harness"
 )
 
 const (
@@ -13,8 +16,8 @@ const (
 	// test instead of hanging it.
 	socketInputTimeout = 5 * time.Second
 
-	// socketInputWaitTimeout is how long to retry connecting to a TCP
-	// listener. Components can start their listeners shortly after the config
+	// socketInputWaitTimeout is how long to wait for a component to start
+	// listening. Components can start their listeners shortly after the config
 	// finishes loading.
 	socketInputWaitTimeout = 10 * time.Second
 	socketInputWaitBackoff = 50 * time.Millisecond
@@ -32,15 +35,19 @@ type TCPInputSchema struct {
 }
 
 // UDPInputSchema describes datagrams sent to a component's own UDP listener.
-// Each entry of Datagrams is sent as one packet.
+// Each entry of Datagrams is sent once, as its own packet.
 //
-// Datagrams are sent as soon as the config has loaded, with no wait for the
-// listener: UDP has no handshake that shows whether anything is listening, and
-// a packet sent too early is silently lost. This works for components that
-// bind their listeners while they are built, as loki.source.syslog and
-// loki.source.gelf do.
+// UDP has no handshake, so a datagram sent before the component listens is
+// silently lost, and some components bind their listeners after the config
+// finishes loading. WaitFor names the component that listens on Address, and
+// the datagrams are sent once it reports the listener as bound. It is
+// required, and only component types the harness knows how to wait for are
+// accepted, for example
+//
+//	wait_for: loki.source.syslog.default
 type UDPInputSchema struct {
 	Address   string   `yaml:"address"`
+	WaitFor   string   `yaml:"wait_for"`
 	Datagrams []string `yaml:"datagrams"`
 }
 
@@ -59,6 +66,13 @@ func validateSocketInputs(tcp []TCPInputSchema, udp []UDPInputSchema) error {
 		}
 		if len(input.Datagrams) == 0 {
 			return fmt.Errorf("udp input %d: at least one datagram is required", i)
+		}
+		if input.WaitFor == "" {
+			return fmt.Errorf("udp input %d: wait_for is required: name the component that listens on %s", i, input.Address)
+		}
+		if !harness.SupportsListener(input.WaitFor) {
+			return fmt.Errorf("udp input %d: wait_for does not support %s; supported component types: %s",
+				i, input.WaitFor, strings.Join(harness.ListenerComponentTypes(), ", "))
 		}
 	}
 	return nil
@@ -102,8 +116,11 @@ func sendTCPInput(ctx context.Context, input TCPInputSchema) error {
 	}
 }
 
-func produceUDPInputs(ctx context.Context, inputs []UDPInputSchema) error {
+func produceUDPInputs(ctx context.Context, alloy *harness.Alloy, inputs []UDPInputSchema) error {
 	for i, input := range inputs {
+		if err := alloy.WaitForListener(ctx, input.WaitFor, input.Address, socketInputWaitTimeout); err != nil {
+			return fmt.Errorf("udp input %d: %w", i, err)
+		}
 		if err := sendUDPInput(ctx, input); err != nil {
 			return fmt.Errorf("udp input %d: %w", i, err)
 		}

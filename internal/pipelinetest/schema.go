@@ -94,7 +94,7 @@ func produceInputs(ctx context.Context, alloy *harness.Alloy, inputs InputSchema
 	if err := produceTCPInputs(ctx, inputs.TCP); err != nil {
 		return err
 	}
-	return produceUDPInputs(ctx, inputs.UDP)
+	return produceUDPInputs(ctx, alloy, inputs.UDP)
 }
 
 func buildAssertions(assertions AssertionSchema) ([]harness.Assertion, error) {

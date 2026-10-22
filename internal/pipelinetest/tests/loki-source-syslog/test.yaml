@@ -58,9 +58,11 @@ inputs:
         <132>Jan  1 00:00:03 alloy-test rfc3164 warning
         <131>Jan  1 00:00:04 alloy-test rfc3164 error
 
-  # Each datagram is sent as its own packet.
+  # Each datagram is sent as its own packet, once the syslog component
+  # reports the listener as bound.
   udp:
     - address: 127.0.0.1:51898
+      wait_for: loki.source.syslog.default
       datagrams:
         - "<135>1 2026-01-01T00:00:00Z alloy-test app - - - rfc5424 debug"
         - "<134>1 2026-01-01T00:00:01Z alloy-test app - - - rfc5424 informational"
@@ -68,6 +70,7 @@ inputs:
         - "<132>1 2026-01-01T00:00:03Z alloy-test app - - - rfc5424 warning"
         - "<131>1 2026-01-01T00:00:04Z alloy-test app - - - rfc5424 error"
     - address: 127.0.0.1:51899
+      wait_for: loki.source.syslog.default
       datagrams:
         - "<135>Jan  1 00:00:00 alloy-test rfc3164 debug"
         - "<134>Jan  1 00:00:01 alloy-test rfc3164 informational"

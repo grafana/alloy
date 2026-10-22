@@ -19,12 +19,18 @@ func TestValidateSocketInputs(t *testing.T) {
 		{
 			name: "valid",
 			tcp:  []TCPInputSchema{{Address: "127.0.0.1:1514", Data: "x"}},
-			udp:  []UDPInputSchema{{Address: "127.0.0.1:1514", Datagrams: []string{"x"}}},
+			udp:  []UDPInputSchema{{Address: "127.0.0.1:1514", WaitFor: "loki.source.syslog.default", Datagrams: []string{"x"}}},
 		},
 		{name: "tcp without port", tcp: []TCPInputSchema{{Address: "127.0.0.1", Data: "x"}}, wantErr: "tcp input 0: address must be host:port"},
 		{name: "tcp without data", tcp: []TCPInputSchema{{Address: "127.0.0.1:1514"}}, wantErr: "tcp input 0: data is required"},
-		{name: "udp without port", udp: []UDPInputSchema{{Address: "localhost", Datagrams: []string{"x"}}}, wantErr: "udp input 0: address must be host:port"},
-		{name: "udp without datagrams", udp: []UDPInputSchema{{Address: "127.0.0.1:1514"}}, wantErr: "udp input 0: at least one datagram is required"},
+		{name: "udp without port", udp: []UDPInputSchema{{Address: "localhost", WaitFor: "loki.source.syslog.default", Datagrams: []string{"x"}}}, wantErr: "udp input 0: address must be host:port"},
+		{name: "udp without datagrams", udp: []UDPInputSchema{{Address: "127.0.0.1:1514", WaitFor: "loki.source.syslog.default"}}, wantErr: "udp input 0: at least one datagram is required"},
+		{name: "udp without wait_for", udp: []UDPInputSchema{{Address: "127.0.0.1:1514", Datagrams: []string{"x"}}}, wantErr: "udp input 0: wait_for is required"},
+		{
+			name:    "udp with unsupported wait_for",
+			udp:     []UDPInputSchema{{Address: "127.0.0.1:1514", WaitFor: "loki.source.api.default", Datagrams: []string{"x"}}},
+			wantErr: "udp input 0: wait_for does not support loki.source.api.default; supported component types: loki.source.gelf, loki.source.syslog",
+		},
 	}
 
 	for _, tc := range tests {
@@ -77,21 +83,26 @@ func TestProduceTCPInputs(t *testing.T) {
 	require.Equal(t, data, <-got)
 }
 
-// TestProduceUDPInputs checks that each datagram arrives as its own packet.
-func TestProduceUDPInputs(t *testing.T) {
+// TestSendUDPInput checks that each datagram arrives once, as its own packet.
+// Waiting for the listener is the harness's job and is covered by the
+// loki-source-syslog pipeline test.
+func TestSendUDPInput(t *testing.T) {
 	c, err := net.ListenPacket("udp", "127.0.0.1:0")
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = c.Close() })
 
-	require.NoError(t, produceUDPInputs(t.Context(), []UDPInputSchema{{Address: c.LocalAddr().String(), Datagrams: []string{"first", "second"}}}))
+	require.NoError(t, sendUDPInput(t.Context(), UDPInputSchema{Address: c.LocalAddr().String(), Datagrams: []string{"first", "second", "third"}}))
 
 	var packets []string
 	buf := make([]byte, 1024)
-	for range 2 {
-		require.NoError(t, c.SetReadDeadline(time.Now().Add(5*time.Second)))
+	for {
+		// Read until quiet, so a duplicate would show up.
+		require.NoError(t, c.SetReadDeadline(time.Now().Add(500*time.Millisecond)))
 		n, _, err := c.ReadFrom(buf)
-		require.NoError(t, err)
+		if err != nil {
+			break
+		}
 		packets = append(packets, string(buf[:n]))
 	}
-	require.Equal(t, []string{"first", "second"}, packets)
+	require.Equal(t, []string{"first", "second", "third"}, packets)
 }
