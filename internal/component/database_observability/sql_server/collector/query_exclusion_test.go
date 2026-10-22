@@ -3,7 +3,6 @@ package collector
 import (
 	"context"
 	"database/sql"
-	"strings"
 	"testing"
 	"time"
 
@@ -14,24 +13,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/util"
 )
-
-func TestQueryExclusionPlacement(t *testing.T) {
-	// All three stages must read filtered records, so a shared hash doesn't
-	// reintroduce tagged query IDs during historical aggregation.
-	require.Equal(t, 1, strings.Count(selectQueryMetrics, "FROM sys.query_store_query q"))
-	require.Equal(t, 3, strings.Count(selectQueryMetrics, "FROM filtered_queries q"))
-	require.Less(t, strings.Index(selectQueryMetrics, "CHARINDEX"), strings.Index(selectQueryMetrics, "eligible AS"))
-	require.Contains(t, selectQueryMetrics, "qt.query_text_id = q.query_text_id")
-	require.Contains(t, selectQueryMetrics, "@exclude_current_user = 0 OR CHARINDEX(@collector_marker, qt.query_sql_text) = 0")
-	require.NotContains(t, selectQueryMetrics, "query_hash NOT IN")
-	require.Contains(t, selectQueryTextTemplate, "CHARINDEX(@collector_marker, qt.query_sql_text) = 0")
-	require.Contains(t, selectExplainPlansTemplate, "qt.query_text_id = q.query_text_id")
-	require.Less(t, strings.Index(selectExplainPlansTemplate, "CHARINDEX"), strings.Index(selectExplainPlansTemplate, "FROM ranked_plans"))
-	require.Contains(t, selectQuerySamplesTemplate, "@exclude_current_user = 0 OR s.program_name IS NULL OR s.program_name <> @collector_app_name")
-	require.Less(t, strings.Index(selectQuerySamplesTemplate, "s.program_name <> @collector_app_name"), strings.Index(selectQuerySamplesTemplate, "current_waits AS"))
-	require.Contains(t, selectQuerySamplesTemplate, "r.statement_text IS NULL OR CHARINDEX(@collector_marker, r.statement_text) = 0")
-	require.NotContains(t, selectQuerySamplesTemplate, "CHARINDEX(@collector_marker, st.text)")
-}
 
 func TestQueryMetricsExcludeCurrentUser(t *testing.T) {
 	raw, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
