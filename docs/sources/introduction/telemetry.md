@@ -84,6 +84,27 @@ Pipelines can branch to multiple outputs or share components across paths.
 The {{< param "PRODUCT_NAME" >}} UI visualizes these connections.
 Use [Debug](../troubleshoot/debug/) to inspect component pipelines in a running instance.
 
+## How pipelines behave during failures
+
+Failure behavior varies by component.
+Some outputs buffer and retry, some apply backpressure, and some can drop data when limits are reached.
+
+Metrics pipelines can buffer locally during temporary backend outages.
+Logs, traces, and profiles use different buffering and retry behavior.
+
+Health status and delivery status are different. A component can be unhealthy and still forward data. A component can also be healthy while forwarding stale inputs.
+Fan-out behavior also varies. A slow destination can delay the same path.
+
+During shutdown, {{< param "PRODUCT_NAME" >}} stops components in dependency order and gives them time to exit cleanly.
+The default component shutdown deadline is 10 minutes. Configure it with [`--feature.component-shutdown-deadline`](../reference/cli/run/).
+
+For exact runtime behavior and limits, refer to [Runtime behavior](../troubleshoot/runtime-behavior/) and the [component reference](../reference/components/).
+
+{{< admonition type="note" >}}
+UI health indicators don't always reflect dropped data or delivery delay.
+Use component metrics and troubleshooting tools to confirm runtime behavior.
+{{< /admonition >}}
+
 ## Next steps
 
 - Start with [Get started](../get-started/) for configuration syntax and component basics.
