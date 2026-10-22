@@ -133,8 +133,8 @@ func TestBuildQuerySamplesStatement(t *testing.T) {
 		sql.Named("u0", "admin"),
 		sql.Named("u1", "monitor"),
 		sql.Named("exclude_current_user", false),
-		sql.Named("collector_app_name", AppName),
-		sql.Named("collector_marker", QueryMarker),
+		sql.Named("collector_app_name", "grafana:alloy:database_observability"),
+		sql.Named("collector_marker", "/* grafana:alloy:database_observability */"),
 	}, namedArgs(args))
 
 	query, args, err = buildQuerySamplesStatement([]string{testHash}, nil, false)
