@@ -46,8 +46,8 @@ When `data_source_name` doesn't specify an application name (`app name`), Alloy 
 The `exclude_current_user` argument excludes SQL tagged by Alloy from query metrics, query details, explain plans, and query samples.
 Query Store doesn't identify the login or application name that executed a query, so this exclusion can't remove arbitrary historical queries by login or previously captured Alloy queries without the marker.
 
-For live query samples, `exclude_current_user` also excludes sessions whose `program_name` is `grafana:alloy:database_observability` or that were opened with the SQL Server login configured for Alloy.
-Setting it to `false` disables marker, application-name, and automatic current-login exclusion.
+For live query samples, `exclude_current_user` also excludes sessions whose `sys.dm_exec_sessions.program_name` is `grafana:alloy:database_observability` or that were opened with the SQL Server login configured for Alloy.
+Setting it to `false` disables marker, application name, and automatic current-login exclusion.
 The `exclude_users` list still applies to query samples, and Alloy always excludes the request that collects the samples.
 Schema discovery and health-check results aren't filtered by this argument.
 
