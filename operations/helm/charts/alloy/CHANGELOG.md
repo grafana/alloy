@@ -6,51 +6,58 @@
 
 - Add `image.distroless` option to use the distroless variant of the Alloy image. Has no effect when `image.digest` is set. (@x1unix)
 
-1.14.4 (2026-10-28)
-----------
+  1.14.4 (2026-10-28)
+
+---
 
 ### Enhancements
 
 - Update to Grafana Alloy v1.21.3 (@ptodev)
 
-1.14.3 (2026-10-22)
-----------
+  1.14.3 (2026-10-22)
+
+---
 
 ### Enhancements
 
 - Update to Grafana Alloy v1.21.2 (@jharvey10)
 
-1.14.2 (2026-10-22)
-----------
+  1.14.2 (2026-10-22)
+
+---
 
 ### Enhancements
 
 - Update the `prometheus-config-reloader` image from v0.94.0 to v0.94.2, which rebuilds it with an updated Go toolchain and base image. (@kgeckhart)
 
-1.14.1 (2026-10-21)
-----------
+  1.14.1 (2026-10-21)
+
+---
 
 ### Enhancements
 
 - Update to Grafana Alloy v1.21.1 (@kgeckhart)
 
-1.14.0 (2026-10-19)
-----------
+  1.14.0 (2026-10-19)
+
+---
 
 ### Enhancements
 
 - Update to Grafana Alloy v1.21.0 (@thampiotr)
 - Add `alloy.resizePolicy` and `configReloader.resizePolicy` to configure in-place resource resize behavior for each container. (@younsl)
 
-1.13.1 (2026-09-28)
-----------
+  1.13.1 (2026-09-28)
+
+---
 
 ### Enhancements
 
 - Update to Grafana Alloy v1.20.1 (@kgeckhart)
 
-1.13.0 (2026-09-25)
-----------
+  1.13.0 (2026-09-25)
+
+---
 
 ### Enhancements
 
@@ -59,22 +66,25 @@
 - Allow setting `trafficDistribution` in the service spec. (@agermel)
 - Update to Grafana Alloy v1.20.0 (@ptodev)
 
-1.12.1 (2026-08-26)
-----------
+  1.12.1 (2026-08-26)
+
+---
 
 ### Enhancements
 
 - Update to Grafana Alloy v1.19.2 (@dehaansa)
 
-1.12.0 (2026-08-24)
-----------
+  1.12.0 (2026-08-24)
+
+---
 
 ### Enhancements
 
 - Update to Grafana Alloy v1.19.0 (@dehaansa)
 
-1.11.1 (2026-08-06)
-----------
+  1.11.1 (2026-08-06)
+
+---
 
 ### Enhancements
 
@@ -82,8 +92,9 @@
 
 - Update to Grafana Alloy v1.18.1 (@blewis12)
 
-1.11.0 (2026-07-20)
-----------
+  1.11.0 (2026-07-20)
+
+---
 
 ### Enhancements
 
@@ -91,15 +102,17 @@
 
 - Update to Grafana Alloy v1.18.0 (@blewis12)
 
-1.10.1 (2026-06-29)
-----------
+  1.10.1 (2026-06-29)
+
+---
 
 ### Enhancements
 
 - Update to Grafana Alloy v1.17.1 (@x1unix)
 
-1.10.0 (2026-06-12)
-----------
+  1.10.0 (2026-06-12)
+
+---
 
 ### Enhancements
 
@@ -107,8 +120,9 @@
 
 - Update to Grafana Alloy v1.17.0 (@kgeckhart)
 
-1.9.0 (2026-06-08)
-----------
+  1.9.0 (2026-06-08)
+
+---
 
 ### Enhancements
 
@@ -120,22 +134,25 @@
 
 - Fix `templates/configmap.yaml` ignoring `alloy.configMap.key`. The pod template honors the value via the `alloy.config-map.key` helper, but the ConfigMap template hardcoded the data key as `config.alloy`, producing a key/expected-path mismatch that crash-looped Alloy when the value was set. (#6312)
 
-1.8.2 (2026-05-25)
-----------
+  1.8.2 (2026-05-25)
+
+---
 
 ### Enhancements
 
 - Update config-reloader default version to v0.91.0 (@kalleep)
 
-1.8.1 (2026-05-05)
-----------
+  1.8.1 (2026-05-05)
+
+---
 
 ### Enhancements
 
 - Update to Grafana Alloy v1.16.1 (@x1unix)
 
-1.8.0 (2026-04-23)
-----------
+  1.8.0 (2026-04-23)
+
+---
 
 ### Enhancements
 
@@ -143,9 +160,9 @@
 
 - Update to Grafana Alloy v1.16.0 (@jharvey10)
 
+  1.7.0 (2026-04-01)
 
-1.7.0 (2026-04-01)
-----------
+---
 
 ### Bug fixes
 
@@ -157,51 +174,57 @@
 
 - Update to Grafana Alloy v1.15.0. (@blewis12)
 
-1.6.2 (2026-03-05)
-----------
+  1.6.2 (2026-03-05)
+
+---
 
 ### Enhancements
 
 - Update to Grafana Alloy v1.14.0. (@blewis12)
 
-1.6.1 (2026-03-02)
-----------
+  1.6.1 (2026-03-02)
+
+---
 
 ### Enhancements
 
 - Update to Grafana Alloy v1.13.2. (@prateekpandey14)
 
+  1.6.0 (2026-02-05)
 
-1.6.0 (2026-02-05)
-----------
+---
 
 ### Enhancements
 
 - Update to Grafana Alloy v1.13.0. (@ptodev)
 
-1.5.3 (2026-01-28)
-----------
+  1.5.3 (2026-01-28)
+
+---
 
 ### Enhancements
 
 - Remove `nodes/proxy` RBAC rule and replace with `nodes/pods`. (@petewall)
 
-1.5.2 (2026-01-12)
-----------
+  1.5.2 (2026-01-12)
+
+---
 
 ### Enhancements
 
 - Update to Grafana Alloy v1.12.2. (@dehaansa)
 
-1.5.1 (2025-12-16)
-----------
+  1.5.1 (2025-12-16)
+
+---
 
 ### Enhancements
 
 - Update to Grafana Alloy v1.12.1. (@jharvey10)
 
-1.5.0 (2025-12-01)
-----------
+  1.5.0 (2025-12-01)
+
+---
 
 ### Enhancements
 
@@ -214,8 +237,9 @@
 - Correct `extraEnv` indentation in container template (@orkhan-huseyn)
 - Remove invalid creationTimestamp in podlogs.monitoring.grafana.com CRD (@vehagn)
 
-1.4.0 (2025-10-27)
-----------
+  1.4.0 (2025-10-27)
+
+---
 
 ### Enhancements
 
@@ -225,13 +249,15 @@
 
 - Allow for customizing the specific RBAC rules being created. (@petewall & @kun98-liu)
 
-1.3.1 (2025-10-10)
-----------
+  1.3.1 (2025-10-10)
+
+---
 
 - Update to Grafana Alloy v1.11.2. (@kalleep)
 
-1.3.0 (2025-09-30)
-----------
+  1.3.0 (2025-09-30)
+
+---
 
 ### Bug fixes
 
@@ -241,8 +267,9 @@
 
 - Remove readiness probe using curl when http server port is disabled. (@kalleep)
 
-1.2.1 (2025-08-07)
-----------
+  1.2.1 (2025-08-07)
+
+---
 
 ### Enhancements
 
@@ -254,21 +281,25 @@
 
 - Add support to provide extraLabels to alloy.controler (@evkuzin)
 
-1.2.0 (2025-07-16)
-----------
+  1.2.0 (2025-07-16)
+
+---
 
 ### Enhancements
 
 - Update to Grafana Alloy v1.10.0. (@ptodev)
 
-1.1.2 (2025-06-26)
-----------
+  1.1.2 (2025-06-26)
+
+---
+
 - Add NetworkPolicy support. (@TheRealNoob)
 
 - Update to Grafana Alloy v1.9.2. (@ptodev)
 
-1.1.1 (2025-06-05)
-----------
+  1.1.1 (2025-06-05)
+
+---
 
 ### Bug fixes
 
@@ -276,8 +307,9 @@
 
 - Update to Grafana Alloy v1.9.1. (@thampiotr)
 
-1.1.0 (2025-06-02)
-----------
+  1.1.0 (2025-06-02)
+
+---
 
 ### Bug fixes
 
@@ -289,22 +321,25 @@
 
 - Update to Grafana Alloy v1.9.0. (@wildum)
 
-1.0.3 (2025-05-05)
-----------
+  1.0.3 (2025-05-05)
+
+---
 
 ### Enhancements
 
 - Update to Grafana Alloy v1.8.3. (@kalleep)
 
-1.0.2 (2025-04-23)
-----------
+  1.0.2 (2025-04-23)
+
+---
 
 ### Enhancements
 
 - Update to Grafana Alloy v1.8.2. (@kalleep)
 
-1.0.1 (2025-04-10)
-----------
+  1.0.1 (2025-04-10)
+
+---
 
 ### Enhancements
 
@@ -314,8 +349,9 @@
 - Add Vertical Pod Autoscaler support (@QuentinBisson)
 - Add support for configuring minReadySeconds in Helm chart. (@PabloPie)
 
-1.0.0 (2025-04-09)
-----------
+  1.0.0 (2025-04-09)
+
+---
 
 ### Enhancements
 
@@ -323,8 +359,10 @@
 
 - Update to Grafana Alloy v1.8.0. (@thampiotr)
 
-0.12.6 (2025-04-03)
-----------
+  0.12.6 (2025-04-03)
+
+---
+
 ### Breaking changes
 
 - configReloader.customArgs are likely to break as the prometheus maintained config reloader does not have the same arguments as the previous image (@dehaansa)
@@ -339,27 +377,33 @@
 
 - Fix typo in values.yaml documentation (@petewall)
 
-0.12.5 (2025-03-13)
-----------
+  0.12.5 (2025-03-13)
+
+---
+
 ### Enhancements
 
 - Update to Grafana Alloy v1.7.4. (@dehaansa)
 
-0.12.4 (2025-03-13)
-----------
+  0.12.4 (2025-03-13)
+
+---
+
 ### Enhancements
 
 - Update to Grafana Alloy v1.7.3. (@dehaansa)
 
-0.12.3 (2025-03-10)
-----------
+  0.12.3 (2025-03-10)
+
+---
 
 ### Enhancements
 
 - Add support for adding livenessProbe to agent container (@slimes28)
 
-0.12.2 (2025-03-10)
-----------
+  0.12.2 (2025-03-10)
+
+---
 
 ### Bug Fixes
 
@@ -370,88 +414,100 @@
 - Add a new `automountServiceAccountToken` configuration value for `serviceAccount`. (@ptodev)
 - Update to Grafana Alloy v1.7.2. (@thampiotr)
 
-0.12.1 (2025-02-26)
-----------
+  0.12.1 (2025-02-26)
+
+---
 
 ### Enhancements
 
 - Update to Grafana Alloy v1.7.1. (@thampiotr)
 
-0.12.0 (2025-02-24)
-----------
+  0.12.0 (2025-02-24)
+
+---
 
 ### Enhancements
 
 - Update to Grafana Alloy v1.7.0. (@thampiotr)
 
-0.11.0 (2025-01-23)
-----------
+  0.11.0 (2025-01-23)
+
+---
 
 ### Enhancements
 
 - Update jimmidyson/configmap-reload to 0.14.0. (@petewall)
 - Add the ability to deploy extra manifest files. (@dbluxo)
 
-0.10.1 (2024-12-03)
-----------
+  0.10.1 (2024-12-03)
+
+---
 
 ### Enhancements
 
 - Update to Grafana Alloy v1.5.1. (@ptodev)
 
-0.10.0 (2024-11-13)
-----------
+  0.10.0 (2024-11-13)
+
+---
 
 ### Enhancements
 
 - Add support for adding hostAliases to the Helm chart. (@duncan485)
 - Update to Grafana Alloy v1.5.0. (@thampiotr)
 
-0.9.2 (2024-10-18)
-------------------
+  0.9.2 (2024-10-18)
+
+---
 
 ### Enhancements
 
 - Update to Grafana Alloy v1.4.3. (@ptodev)
 
-0.9.1 (2024-10-04)
-------------------
+  0.9.1 (2024-10-04)
+
+---
 
 ### Enhancements
 
 - Update to Grafana Alloy v1.4.2. (@ptodev)
 
-0.9.0 (2024-10-02)
-------------------
+  0.9.0 (2024-10-02)
+
+---
 
 ### Enhancements
 
 - Add lifecyle hook to the Helm chart. (@etiennep)
 - Add terminationGracePeriodSeconds setting to the Helm chart. (@etiennep)
 
-0.8.1 (2024-09-26)
-------------------
+  0.8.1 (2024-09-26)
+
+---
 
 ### Enhancements
 
 - Update to Grafana Alloy v1.4.1. (@ptodev)
 
-0.8.0 (2024-09-25)
-------------------
+  0.8.0 (2024-09-25)
+
+---
 
 ### Enhancements
 
 - Update to Grafana Alloy v1.4.0. (@ptodev)
 
-0.7.0 (2024-08-26)
-------------------
+  0.7.0 (2024-08-26)
+
+---
 
 ### Enhancements
 
 - Add PodDisruptionBudget to the Helm chart. (@itspouya)
 
-0.6.1 (2024-08-23)
-----------
+  0.6.1 (2024-08-23)
+
+---
 
 ### Enhancements
 
@@ -462,8 +518,9 @@
 
 - Update helm chart to use v1.3.1.
 
-0.6.0 (2024-08-05)
-------------------
+  0.6.0 (2024-08-05)
+
+---
 
 ### Other changes
 
@@ -471,64 +528,73 @@
 
 - Set `publishNotReadyAddresses` to `true` in the service spec for clustering to fix a bug where peers could not join on startup. (@wildum)
 
-0.5.1 (2023-07-11)
-------------------
+  0.5.1 (2023-07-11)
+
+---
 
 ### Other changes
 
 - Update helm chart to use v1.2.1.
 
-0.5.0 (2024-07-08)
-------------------
+  0.5.0 (2024-07-08)
+
+---
 
 ### Enhancements
 
 - Only utilize spec.internalTrafficPolicy in the Service if deploying to Kubernetes 1.26 or later. (@petewall)
 
-0.4.0 (2024-06-26)
-------------------
+  0.4.0 (2024-06-26)
+
+---
 
 ### Enhancements
 
 - Update to Grafana Alloy v1.2.0. (@ptodev)
 
-0.3.2 (2024-05-30)
-------------------
+  0.3.2 (2024-05-30)
+
+---
 
 ### Bugfixes
 
 - Update to Grafana Alloy v1.1.1. (@rfratto)
 
-0.3.1 (2024-05-22)
-------------------
+  0.3.1 (2024-05-22)
+
+---
 
 ### Bugfixes
 
 - Fix clustering on instances running within Istio mesh by allowing to change the name of the clustering port
 
-0.3.0 (2024-05-14)
-------------------
+  0.3.0 (2024-05-14)
+
+---
 
 ### Enhancements
 
 - Update to Grafana Alloy v1.1.0. (@rfratto)
 
-0.2.0 (2024-05-08)
-------------------
+  0.2.0 (2024-05-08)
+
+---
 
 ### Other changes
 
 - Support all [Kubernetes recommended labels](https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/) (@nlamirault)
 
-0.1.1 (2024-04-11)
-------------------
+  0.1.1 (2024-04-11)
+
+---
 
 ### Other changes
 
 - Add missing Alloy icon to Chart.yaml. (@rfratto)
 
-0.1.0 (2024-04-09)
-------------------
+  0.1.0 (2024-04-09)
+
+---
 
 ### Features
 
