@@ -27,6 +27,8 @@ func TestQueryExclusionPlacement(t *testing.T) {
 	require.Contains(t, selectQueryTextTemplate, "CHARINDEX(@collector_marker, qt.query_sql_text) = 0")
 	require.Contains(t, selectExplainPlansTemplate, "qt.query_text_id = q.query_text_id")
 	require.Less(t, strings.Index(selectExplainPlansTemplate, "CHARINDEX"), strings.Index(selectExplainPlansTemplate, "FROM ranked_plans"))
+	require.Contains(t, selectQuerySamplesTemplate, "@exclude_current_user = 0 OR s.program_name IS NULL OR s.program_name <> @collector_app_name")
+	require.Less(t, strings.Index(selectQuerySamplesTemplate, "s.program_name <> @collector_app_name"), strings.Index(selectQuerySamplesTemplate, "current_waits AS"))
 	require.Contains(t, selectQuerySamplesTemplate, "r.statement_text IS NULL OR CHARINDEX(@collector_marker, r.statement_text) = 0")
 	require.NotContains(t, selectQuerySamplesTemplate, "CHARINDEX(@collector_marker, st.text)")
 }
