@@ -107,7 +107,13 @@ func (t *tailer) Run(ctx context.Context) {
 	defer handler.Stop()
 
 	for bo.Ongoing() {
+		start := time.Now()
 		err := t.tail(ctx, handler)
+		if time.Since(start) >= maxTailerLifetime {
+			// A quiet stream that stayed open until its lifetime expired is healthy,
+			// even though no log line reset the backoff.
+			bo.Reset()
+		}
 		if err == nil {
 			// Check if we should stop tailing this container
 			// Fetch pod info once and use different logic for job pods vs regular pods
@@ -139,7 +145,7 @@ func (t *tailer) Run(ctx context.Context) {
 		}
 
 		if err != nil {
-			t.target.Report(time.Now().UTC(), err)
+			t.target.reportError(time.Now().UTC(), err)
 			t.log.Warn("tailer stopped; will retry", "err", err)
 		}
 		bo.Wait()
@@ -270,6 +276,9 @@ func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, han
 	ch := handler.Chan()
 	reader := bufio.NewReader(stream)
 	lastReadTime := sinceTime
+	// A re-tail replays the lines at sinceTime that were already forwarded.
+	// Other lines can share that timestamp, so only skip as many as were sent.
+	replayed := t.target.entriesAt(sinceTime)
 	for {
 		line, err := reader.ReadString('\n')
 
@@ -283,6 +292,10 @@ func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, han
 			// (SinceTime has second precision). Do not compare against the previous
 			// line: stdout and stderr are stamped independently by the runtime.
 			if entryTimestamp.Before(sinceTime) {
+				continue
+			}
+			if replayed > 0 && entryTimestamp.Equal(sinceTime) {
+				replayed--
 				continue
 			}
 
@@ -302,7 +315,7 @@ func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, han
 					lastReadTime = entryTimestamp
 				}
 				t.opts.Positions.Put(positionsEnt.Path, positionsEnt.Labels, lastReadTime.UnixMicro())
-				t.target.Report(lastReadTime, nil)
+				t.target.reportEntry(entryTimestamp)
 			}
 		}
 

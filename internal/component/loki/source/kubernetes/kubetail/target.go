@@ -51,9 +51,10 @@ type Target struct {
 	uid            string // UID from pod
 	hash           uint64 // Hash of public labels and id
 
-	mut       sync.RWMutex
-	lastError error
-	lastEntry time.Time
+	mut            sync.RWMutex
+	lastError      error
+	lastEntry      time.Time
+	lastEntryCount int // Number of forwarded lines with timestamp lastEntry
 }
 
 // NewTarget creates a new Target which can be passed to a tailer.
@@ -132,13 +133,41 @@ func (t *Target) Hash() uint64 { return t.hash }
 // UID returns the UID for this target, based on the pod's UID.
 func (t *Target) UID() string { return t.uid }
 
-// Report reports information about the target.
-func (t *Target) Report(time time.Time, err error) {
+// reportEntry records that a log line with timestamp ts was forwarded.
+func (t *Target) reportEntry(ts time.Time) {
+	t.mut.Lock()
+	defer t.mut.Unlock()
+
+	t.lastError = nil
+	switch {
+	case ts.After(t.lastEntry):
+		t.lastEntry = ts
+		t.lastEntryCount = 1
+	case ts.Equal(t.lastEntry):
+		t.lastEntryCount++
+	}
+}
+
+// reportError records an error from tailing the target at time ts.
+func (t *Target) reportError(ts time.Time, err error) {
 	t.mut.Lock()
 	defer t.mut.Unlock()
 
 	t.lastError = err
-	t.lastEntry = time
+	t.lastEntry = ts
+	t.lastEntryCount = 0
+}
+
+// entriesAt returns the number of forwarded log lines with timestamp ts, if ts
+// is the timestamp of the newest one.
+func (t *Target) entriesAt(ts time.Time) int {
+	t.mut.RLock()
+	defer t.mut.RUnlock()
+
+	if !ts.Equal(t.lastEntry) {
+		return 0
+	}
+	return t.lastEntryCount
 }
 
 // LastError returns the most recent error if the target is unhealthy.
