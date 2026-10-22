@@ -36,6 +36,8 @@ The `text` argument must use the Prometheus text exposition format.
 Metric names must match the legacy Prometheus format, `[a-zA-Z_:][a-zA-Z0-9_:]*`.
 If the component can't parse `text`, it fails with an invalid configuration error.
 
+The component sets the `instance` label on its exported targets to the component ID, for example, `prometheus.exporter.static.demo`.
+
 ## Exported fields
 
 {{< docs/shared lookup="reference/components/exporter-component-exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
