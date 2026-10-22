@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.21.2](https://github.com/grafana/alloy/compare/v1.21.1...v1.21.2) (2026-10-22)
+
+
+### Bug Fixes 🐛
+
+* Migrate config from type string to type secret [backport] ([#7499](https://github.com/grafana/alloy/issues/7499)) ([6848963](https://github.com/grafana/alloy/commit/684896311bde2d3cbcb464c8df8990cddc772f72))
+
 ## [1.21.1](https://github.com/grafana/alloy/compare/v1.21.0...v1.21.1) (2026-10-21)
 
 
