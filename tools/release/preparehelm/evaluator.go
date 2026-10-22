@@ -6,13 +6,15 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 
+	"golang.org/x/mod/semver"
 	"gopkg.in/yaml.v3"
 )
 
-var stableAlloyTag = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+$`)
+func isStableAlloyTag(tag string) bool {
+	return semver.IsValid(tag) && strings.Count(tag, ".") == 2 && semver.Prerelease(tag) == "" && semver.Build(tag) == ""
+}
 
 type chart struct {
 	Name        string `yaml:"name"`
@@ -32,17 +34,17 @@ type Result struct {
 }
 
 type evaluator struct {
-	chartPath               string
-	repoRoot                string
-	getAlloyRelease         func(ctx context.Context, tag string) (draft, prerelease bool, err error)
-	helmChartTagExists      func(ctx context.Context, tag string) (bool, error)
-	helmChartsReleaseExists func(ctx context.Context, tag string) (bool, error)
-	readChart               func(path string) (chart, error)
-	headSHA                 func() (string, error)
+	chartPath        string
+	repoRoot         string
+	getAlloyRelease  func(ctx context.Context, tag string) (draft, prerelease bool, err error)
+	helmChartTagSHA  func(ctx context.Context, tag string) (string, error)
+	helmChartIndexed func(ctx context.Context, name, version string) (bool, error)
+	readChart        func(path string) (chart, error)
+	headSHA          func() (string, error)
 }
 
 func (e evaluator) evaluate(ctx context.Context, tag string) (Result, error) {
-	if !stableAlloyTag.MatchString(tag) {
+	if !isStableAlloyTag(tag) {
 		fmt.Printf("Release tag %s is not a stable Alloy version; skipping Helm release.\n", tag)
 		return Result{}, nil
 	}
@@ -69,29 +71,30 @@ func (e evaluator) evaluate(ctx context.Context, tag string) (Result, error) {
 		return Result{}, fmt.Errorf("chart appVersion %s does not match Alloy release %s", ch.AppVersion, tag)
 	}
 
-	sourceTag := "helm-chart/" + ch.Version
-	exists, err := e.helmChartTagExists(ctx, sourceTag)
-	if err != nil {
-		return Result{}, err
-	}
-	if !exists {
-		return Result{}, fmt.Errorf("release-please did not create the expected %s source tag", sourceTag)
-	}
-
-	packageName := ch.Name + "-" + ch.Version
-	exists, err = e.helmChartsReleaseExists(ctx, packageName)
-	if err != nil {
-		return Result{}, err
-	}
-	if exists {
-		fmt.Printf("Chart release %s already exists; skipping Helm release.\n", packageName)
-		return Result{}, nil
-	}
-
 	sha, err := e.headSHA()
 	if err != nil {
 		return Result{}, err
 	}
+
+	sourceTag := "helm-chart/" + ch.Version
+	sourceSHA, err := e.helmChartTagSHA(ctx, sourceTag)
+	if err != nil {
+		return Result{}, err
+	}
+	if sourceSHA != sha {
+		return Result{}, fmt.Errorf("source tag %s points to %s, not Alloy release commit %s", sourceTag, sourceSHA, sha)
+	}
+
+	indexed, err := e.helmChartIndexed(ctx, ch.Name, ch.Version)
+	if err != nil {
+		return Result{}, err
+	}
+	if indexed {
+		fmt.Printf("Chart %s %s is already indexed; skipping Helm release.\n", ch.Name, ch.Version)
+		return Result{}, nil
+	}
+
+	packageName := ch.Name + "-" + ch.Version
 
 	fmt.Printf("Releasing %s %s for %s.\n", chartPath, ch.Version, tag)
 	return Result{

@@ -13,7 +13,7 @@ import (
 func TestEvaluateSkipsNonStableTags(t *testing.T) {
 	t.Parallel()
 
-	for _, tag := range []string{"v1.19.2-rc.0", "v1.19", "not-a-tag", "v1.19.2+build"} {
+	for _, tag := range []string{"v1.19.2-rc.0", "v1.19", "v01.19.2", "not-a-tag", "v1.19.2+build"} {
 		t.Run(tag, func(t *testing.T) {
 			t.Parallel()
 
@@ -50,29 +50,49 @@ func TestEvaluateErrorsWhenAppVersionDoesNotMatch(t *testing.T) {
 	require.ErrorContains(t, err, "appVersion v1.19.1 does not match Alloy release v1.19.2")
 }
 
-func TestEvaluateErrorsWhenHelmChartTagIsMissing(t *testing.T) {
+func TestEvaluateErrorsWhenHelmChartTagPointsToDifferentCommit(t *testing.T) {
 	t.Parallel()
 
 	e := readyEvaluator(t)
-	e.helmChartTagExists = func(context.Context, string) (bool, error) {
-		return false, nil
+	e.helmChartTagSHA = func(context.Context, string) (string, error) {
+		return "def456", nil
 	}
 
 	_, err := e.evaluate(context.Background(), "v1.19.2")
-	require.ErrorContains(t, err, "helm-chart/1.12.1")
+	require.ErrorContains(t, err, "source tag helm-chart/1.12.1 points to def456, not Alloy release commit abc123")
 }
 
-func TestEvaluateSkipsWhenHelmChartsReleaseExists(t *testing.T) {
+func TestEvaluateSkipsWhenHelmChartIsIndexed(t *testing.T) {
 	t.Parallel()
 
 	e := readyEvaluator(t)
-	e.helmChartsReleaseExists = func(context.Context, string) (bool, error) {
+	e.helmChartIndexed = func(context.Context, string, string) (bool, error) {
 		return true, nil
 	}
 
 	result, err := e.evaluate(context.Background(), "v1.19.2")
 	require.NoError(t, err)
 	require.False(t, result.Changed)
+}
+
+func TestChartVersionIndexed(t *testing.T) {
+	t.Parallel()
+
+	indexed, err := chartVersionIndexed([]byte(`
+entries:
+  alloy:
+    - version: 1.12.1
+`), "alloy", "1.12.1")
+	require.NoError(t, err)
+	require.True(t, indexed)
+
+	indexed, err = chartVersionIndexed([]byte(`
+entries:
+  alloy:
+    - version: 1.12.1
+`), "alloy", "1.12.2")
+	require.NoError(t, err)
+	require.False(t, indexed)
 }
 
 func TestEvaluatePreparesANewChartRelease(t *testing.T) {
@@ -122,12 +142,13 @@ func readyEvaluator(t *testing.T) evaluator {
 		getAlloyRelease: func(context.Context, string) (bool, bool, error) {
 			return false, false, nil
 		},
-		helmChartTagExists: func(_ context.Context, tag string) (bool, error) {
+		helmChartTagSHA: func(_ context.Context, tag string) (string, error) {
 			require.Equal(t, "helm-chart/1.12.1", tag)
-			return true, nil
+			return "abc123", nil
 		},
-		helmChartsReleaseExists: func(_ context.Context, tag string) (bool, error) {
-			require.Equal(t, "alloy-1.12.1", tag)
+		helmChartIndexed: func(_ context.Context, name, version string) (bool, error) {
+			require.Equal(t, "alloy", name)
+			require.Equal(t, "1.12.1", version)
 			return false, nil
 		},
 		readChart: func(string) (chart, error) {

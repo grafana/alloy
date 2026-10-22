@@ -7,7 +7,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/google/go-github/v57/github"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
 	"github.com/grafana/alloy/tools/release/internal/gha"
 	gh "github.com/grafana/alloy/tools/release/internal/github"
@@ -32,8 +34,8 @@ func Command() *cobra.Command {
 		Use:   "prepare-helm",
 		Short: "Decide whether to publish the Alloy Helm chart and emit GitHub Actions outputs",
 		Long: "Checks that the Alloy tag is a published stable release, Chart.yaml appVersion " +
-			"matches, the helm-chart/<version> source tag exists, and grafana/helm-charts does " +
-			"not already have alloy-<version>. Writes GITHUB_OUTPUT for the Helm release workflow.",
+			"matches, helm-chart/<version> points to the Alloy release commit, and the chart is " +
+			"not already indexed in grafana/helm-charts. Writes GITHUB_OUTPUT for the Helm release workflow.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return run(cmd.Context(), flags)
 		},
@@ -74,9 +76,9 @@ func run(ctx context.Context, flags flags) error {
 			}
 			return release.GetDraft(), release.GetPrerelease(), nil
 		},
-		helmChartTagExists:      alloyClient.HasTag,
-		helmChartsReleaseExists: helmClient.HasRelease,
-		readChart:               readChart,
+		helmChartTagSHA:  alloyClient.GetRefSHA,
+		helmChartIndexed: helmChartIndexed(helmClient),
+		readChart:        readChart,
 		headSHA: func() (string, error) {
 			return headSHA(flags.repoRoot)
 		},
@@ -88,6 +90,42 @@ func run(ctx context.Context, flags flags) error {
 	}
 
 	return writeOutputs(result)
+}
+
+type helmIndex struct {
+	Entries map[string][]helmIndexEntry `yaml:"entries"`
+}
+
+type helmIndexEntry struct {
+	Version string `yaml:"version"`
+}
+
+func helmChartIndexed(client *gh.Client) func(context.Context, string, string) (bool, error) {
+	return func(ctx context.Context, name, version string) (bool, error) {
+		content, _, _, err := client.API().Repositories.GetContents(ctx, client.Owner(), client.Repo(), "index.yaml", &github.RepositoryContentGetOptions{Ref: "gh-pages"})
+		if err != nil {
+			return false, fmt.Errorf("getting Helm chart index: %w", err)
+		}
+
+		data, err := content.GetContent()
+		if err != nil {
+			return false, fmt.Errorf("reading Helm chart index: %w", err)
+		}
+		return chartVersionIndexed([]byte(data), name, version)
+	}
+}
+
+func chartVersionIndexed(data []byte, name, version string) (bool, error) {
+	var index helmIndex
+	if err := yaml.Unmarshal(data, &index); err != nil {
+		return false, fmt.Errorf("parsing Helm chart index: %w", err)
+	}
+	for _, entry := range index.Entries[name] {
+		if entry.Version == version {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func splitRepo(slug string) (owner, repo string, err error) {
