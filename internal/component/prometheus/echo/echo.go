@@ -105,13 +105,10 @@ func (c *Component) Appender(ctx context.Context) storage.Appender {
 }
 
 // AppenderV2 satisfies the AppendableV2 interface.
-//
-// TODO(v2 migration step 3): prometheus.echo is the proof-of-concept
-// component for a native AppenderV2 implementation (echoAppenderV2). Until
-// then this panics because nothing calls it in production yet; all active
-// append paths still go through Appender (V1). See https://github.com/grafana/alloy/issues/6896
-func (c *Component) AppenderV2(_ context.Context) storage.AppenderV2 {
-	panic("AppenderV2 not yet implemented for prometheus.echo")
+func (c *Component) AppenderV2(ctx context.Context) storage.AppenderV2 {
+	return &echoAppenderV2{
+		buf: c.Appender(ctx).(*echoAppender),
+	}
 }
 
 type echoAppender struct {
@@ -140,6 +137,10 @@ type seriesExemplar struct {
 type seriesHistogram struct {
 	Labels    labels.Labels
 	Histogram histogram.Histogram
+	// FloatHistogram is set instead of Histogram for float histograms. Only
+	// the V2 appender records float histograms.
+	// TODO: Remove this comment when the v1 appender is removed.
+	FloatHistogram *histogram.FloatHistogram
 }
 
 func (a *echoAppender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error) {
@@ -279,6 +280,78 @@ func (a *echoAppender) Rollback() error {
 func (a *echoAppender) SetOptions(opts *storage.AppendOptions) {
 }
 
+// echoAppenderV2 is the AppenderV2 implementation of prometheus.echo. It
+// shares its buffers and encoding with echoAppender, so that a batch prints
+// the same output regardless of which appender received it.
+type echoAppenderV2 struct {
+	buf *echoAppender
+}
+
+var _ storage.AppenderV2 = (*echoAppenderV2)(nil)
+
+func (a *echoAppenderV2) Append(ref storage.SeriesRef, l labels.Labels, st, t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, opts storage.AppendV2Options) (storage.SeriesRef, error) {
+	a.buf.mut.Lock()
+	defer a.buf.mut.Unlock()
+
+	// The start timestamp (st) is ignored, to match the V1 appender. Its
+	// AppendSTZeroSample records a zero sample at t rather than st, which the
+	// sample itself then overwrites, so st never reaches the output.
+	//
+	// TODO: Once the V1 appender is deleted, print st as the created timestamp
+	// of counters and histograms (e.g. _created lines in the openmetrics
+	// format). Until then, the V2 output is kept identical to the V1 output.
+	key := l.String()
+	switch {
+	case h != nil:
+		a.buf.histograms[key] = seriesHistogram{
+			Labels:    l.Copy(),
+			Histogram: *h,
+		}
+	case fh != nil:
+		a.buf.histograms[key] = seriesHistogram{
+			Labels:         l.Copy(),
+			FloatHistogram: fh.Copy(),
+		}
+	default:
+		a.buf.samples[key] = sample{
+			Labels:         l.Copy(),
+			Timestamp:      t,
+			Value:          v,
+			PrintTimestamp: t > 0,
+		}
+	}
+
+	// Only the last exemplar of a series is kept, to match the V1 appender,
+	// where each AppendExemplar call overwrites the previous one.
+	//
+	// TODO: Once the V1 appender is deleted, keep all exemplars of a series.
+	// The builder can only attach one exemplar per counter, so it needs to
+	// change too. Until then, the V2 output is kept identical to the V1 output.
+	if len(opts.Exemplars) > 0 {
+		a.buf.exemplars[key] = seriesExemplar{
+			Labels:   l.Copy(),
+			Exemplar: opts.Exemplars[len(opts.Exemplars)-1],
+		}
+	}
+
+	if !opts.Metadata.IsEmpty() {
+		if metricName := l.Get(model.MetricNameLabel); metricName != "" {
+			a.buf.metadata[metricName] = opts.Metadata
+		}
+	}
+
+	// Zero indicates echo does not care about SeriesRefs
+	return 0, nil
+}
+
+func (a *echoAppenderV2) Commit() error {
+	return a.buf.Commit()
+}
+
+func (a *echoAppenderV2) Rollback() error {
+	return a.buf.Rollback()
+}
+
 func (a *echoAppender) clearStorage() {
 	for k := range a.samples {
 		delete(a.samples, k)
@@ -397,9 +470,16 @@ func (b *builder) buildHistograms() {
 			}
 		})
 
-		metric.Histogram = &dto.Histogram{
-			SampleCount: ptr.To(hist.Histogram.Count),
-			SampleSum:   ptr.To(hist.Histogram.Sum),
+		if fh := hist.FloatHistogram; fh != nil {
+			metric.Histogram = &dto.Histogram{
+				SampleCountFloat: ptr.To(fh.Count),
+				SampleSum:        ptr.To(fh.Sum),
+			}
+		} else {
+			metric.Histogram = &dto.Histogram{
+				SampleCount: ptr.To(hist.Histogram.Count),
+				SampleSum:   ptr.To(hist.Histogram.Sum),
+			}
 		}
 
 		family.Metric = append(family.Metric, metric)
