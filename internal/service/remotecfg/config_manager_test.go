@@ -4,6 +4,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -12,6 +14,39 @@ import (
 	"github.com/grafana/alloy/syntax/diag"
 	"github.com/grafana/alloy/syntax/token"
 )
+
+func TestFetchLoadRemoteConfig_NotModifiedAfterFetchError(t *testing.T) {
+	m := registerMetrics(prometheus.NewRegistry())
+	cm := newConfigManager(m, util.TestAlloyLogger(t).Slog(), t.TempDir(), "")
+	t.Cleanup(cm.cleanup)
+
+	cm.setLastLoadedCfgHash("good")
+	cm.setLastReceivedCfgHash("good")
+	m.lastLoadSuccess.Set(1)
+
+	// A transient fetch failure clears the success metric.
+	fetchErr := errors.New("temporary network failure")
+	err := cm.fetchLoadRemoteConfig(func() (*collectorv1.GetConfigResponse, error) {
+		return nil, fetchErr
+	})
+	require.ErrorIs(t, err, fetchErr)
+	require.Equal(t, float64(0), testutil.ToFloat64(m.lastLoadSuccess))
+	require.Equal(t, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_FAILED, cm.getRemoteConfigStatus().Status)
+
+	// Unchanged responses should recover only a previously loaded remote config.
+	for range 2 {
+		err = cm.fetchLoadRemoteConfig(func() (*collectorv1.GetConfigResponse, error) {
+			return nil, errNotModified
+		})
+		require.NoError(t, err)
+		assert.Equal(t, float64(1), testutil.ToFloat64(m.lastLoadSuccess))
+		assert.Equal(t, float64(1), testutil.ToFloat64(m.lastFetchNotModified))
+
+		status := cm.getRemoteConfigStatus()
+		assert.Equal(t, collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED, status.Status)
+		assert.Empty(t, status.ErrorMessage)
+	}
+}
 
 // Tests for helper functions in config_manager.go
 
