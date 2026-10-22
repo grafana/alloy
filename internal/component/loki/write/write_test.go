@@ -7,6 +7,7 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -535,13 +536,16 @@ func waitForLine(t *testing.T, received chan lokiutil.RemoteWriteRequest, want s
 	}
 }
 
-func TestConsumeEntryRetriesFailedWALWrite(t *testing.T) {
-	runWithConsume(t, func(t *testing.T, consume consumeFunc) {
+func TestRetriesFailedWALWrite(t *testing.T) {
+	runWithPipelines(t, func(t *testing.T, pipelineV2 bool) {
 		synctest.Test(t, func(t *testing.T) {
-			c, wl := newFakeWALComponent(t, 2)
+			c, wl, stop := newFakeWALComponent(t, pipelineV2, 2)
 
-			ts := time.Now()
-			require.NoError(t, consume(t.Context(), c, loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: ts, Line: "after retry"})))
+			require.NoError(t, sendEntry(t.Context(), c, loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "after retry"})))
+
+			// Pipeline V1 retries after the send returns.
+			time.Sleep(time.Second)
+			stop()
 
 			require.Equal(t, int64(3), wl.calls.Load())
 			require.Len(t, wl.entries, 1)
@@ -549,58 +553,53 @@ func TestConsumeEntryRetriesFailedWALWrite(t *testing.T) {
 	})
 }
 
-func TestConsumeEntryCanceledWhileWaitingForRetry(t *testing.T) {
-	runWithConsume(t, func(t *testing.T, consume consumeFunc) {
+func TestStoppedWhileWaitingForWALRetry(t *testing.T) {
+	runWithPipelines(t, func(t *testing.T, pipelineV2 bool) {
 		synctest.Test(t, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(t.Context())
+			c, wl, stop := newFakeWALComponent(t, pipelineV2, math.MaxInt64)
 
-			c, wl := newFakeWALComponent(t, math.MaxInt64)
-
-			done := make(chan struct{})
+			sent := make(chan struct{})
 			go func() {
-				defer close(done)
-				_ = consume(ctx, c, loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "never written"}))
+				defer close(sent)
+				_ = sendEntry(t.Context(), c, loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "never written"}))
 			}()
 
-			// Blocks until consume is waiting for the backoff.
-			synctest.Wait()
-			require.Equal(t, int64(1), wl.calls.Load())
+			// Lets the backoff grow to its max delay.
+			time.Sleep(time.Minute)
 
-			cancel()
-			<-done
+			start := time.Now()
+			stop()
+			<-sent
 
-			// Wait returns once ctx is canceled and the entry gets one last attempt.
-			require.Equal(t, int64(2), wl.calls.Load())
+			require.Less(t, time.Since(start), time.Second)
 			require.Len(t, wl.entries, 0)
 		})
 	})
 }
 
-// consumeFunc hands e to c through the consume path of a Loki pipeline.
-type consumeFunc func(ctx context.Context, c *Component, e loki.Entry) error
-
-// runWithConsume runs fn as a subtest for each Loki pipeline, with the consume path
-// of that pipeline. The pipeline V1 path drops failed entries, so it never returns an error.
-func runWithConsume(t *testing.T, fn func(t *testing.T, consume consumeFunc)) {
-	t.Run("pipeline v1", func(t *testing.T) {
-		fn(t, func(ctx context.Context, c *Component, e loki.Entry) error {
-			c.consumeEntry(ctx, e)
-			return nil
-		})
-	})
-
-	t.Run("pipeline v2", func(t *testing.T) {
-		fn(t, func(ctx context.Context, c *Component, e loki.Entry) error {
-			batch := loki.NewBatch()
-			batch.AddEntry(e.Labels, e.Created(), e.Entry)
-			return c.Consume(ctx, batch)
-		})
-	})
+// runWithPipelines runs fn as a subtest for each Loki pipeline.
+func runWithPipelines(t *testing.T, fn func(t *testing.T, pipelineV2 bool)) {
+	t.Run("pipeline v1", func(t *testing.T) { fn(t, false) })
+	t.Run("pipeline v2", func(t *testing.T) { fn(t, true) })
 }
 
-// newFakeWALComponent returns a component with a started WAL consumer where the
-// first failures WAL writes fail.
-func newFakeWALComponent(t *testing.T, failures int64) (*Component, *fakeWAL) {
+// sendEntry sends e to the receiver of c.
+func sendEntry(ctx context.Context, c *Component, e loki.Entry) error {
+	if consumer, ok := c.receiver.(loki.Consumer); ok {
+		batch := loki.NewBatch()
+		batch.AddEntry(e.Labels, e.Created(), e.Entry)
+		return consumer.Consume(ctx, batch)
+	}
+
+	select {
+	case c.receiver.Chan() <- e:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func newFakeWALComponent(t *testing.T, pipelineV2 bool, failures int64) (*Component, *fakeWAL, func()) {
 	t.Helper()
 
 	wl := &fakeWAL{dir: t.TempDir(), failures: failures}
@@ -610,25 +609,50 @@ func newFakeWALComponent(t *testing.T, failures int64) (*Component, *fakeWAL) {
 		endpoint {
 			url = "http://localhost:1"
 		}
+
+		wal {
+			enabled       = true
+			drain_timeout = "1ms"
+		}
 	`), &args))
-	args.WAL.Enabled = true
 
 	c := &Component{
 		opts: component.Options{
 			Logger:     logging.NewSlogNop(),
 			Registerer: prometheus.NewRegistry(),
 		},
-		wal: wl,
+		pipelineV2: pipelineV2,
+		wal:        wl,
+	}
+
+	if pipelineV2 {
+		c.receiver = loki.NewLogsReceiverV2(c, "loki.write.test")
+	} else {
+		c.receiver = loki.NewLogsReceiver()
 	}
 
 	consumer, err := c.newWALConsumer(args, args.convertEndpointConfigs())
 	require.NoError(t, err)
 	c.consumer = consumer
-
 	consumer.Start()
-	t.Cleanup(consumer.Stop)
 
-	return c, wl
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_ = c.Run(ctx)
+	}()
+
+	var once sync.Once
+	stop := func() {
+		once.Do(func() {
+			cancel()
+			<-done
+		})
+	}
+	t.Cleanup(stop)
+
+	return c, wl, stop
 }
 
 // fakeWAL fails the first failures writes and keeps the entries of the rest.
