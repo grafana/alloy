@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"iter"
+	"math"
 	"net"
 	"os"
 	"slices"
@@ -21,6 +22,7 @@ import (
 	"github.com/grafana/loki/pkg/push"
 	"github.com/grafana/regexp"
 	"github.com/leodido/go-syslog/v4"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	promconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -917,6 +919,45 @@ func TestSyslogTarget_RawMessageEmptyDropped(t *testing.T) {
 	require.NoError(t, tgt.Stop())
 
 	require.Empty(t, handler.Received(), "raw log with nil Message should be dropped")
+}
+
+func TestSyslogTarget_RawOctetCountingExceedsMaxLength(t *testing.T) {
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
+
+	metrics := NewMetrics(nil)
+	tgt, err := NewSyslogTarget(TargetParams{
+		Metrics: metrics,
+		Logger:  logging.NewSlogNop(),
+		Handler: handler,
+		Relabel: []*relabel.Config{},
+		Config: &scrapeconfig.SyslogTargetConfig{
+			ListenAddress:  "127.0.0.1:0",
+			ListenProtocol: ProtocolUDP,
+			SyslogFormat:   scrapeconfig.SyslogFormatRaw,
+		},
+	})
+	require.NoError(t, err)
+	require.Eventually(t, tgt.Ready, time.Second, 10*time.Millisecond)
+
+	c, err := net.Dial(ProtocolUDP, tgt.ListenAddress().String())
+	require.NoError(t, err)
+
+	// An octet count far above max_message_length must be rejected, not allocated,
+	// and the target must keep reading the datagrams that follow.
+	_, err = fmt.Fprintf(c, "%d x", math.MaxInt)
+	require.NoError(t, err)
+	_, err = c.Write([]byte("<13>after oversized frame"))
+	require.NoError(t, err)
+	require.NoError(t, c.Close())
+
+	require.Eventually(t, func() bool {
+		return len(handler.Received()) == 1
+	}, time.Second, 10*time.Millisecond)
+	require.NoError(t, tgt.Stop())
+
+	require.Equal(t, "after oversized frame", handler.Received()[0].Line)
+	require.Equal(t, 1.0, testutil.ToFloat64(metrics.syslogParsingErrors))
 }
 
 func TestSyslogTarget_RFC3164MessageEmptyDropped(t *testing.T) {
