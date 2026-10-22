@@ -133,7 +133,7 @@ func (e *eventProcessor) syncMimir(ctx context.Context) error {
 	}
 
 	for ns := range rulesByNamespace {
-		if !isManagedMimirNamespace(e.namespacePrefix, ns) {
+		if !isManagedMimirNamespace(e.namespacePrefix, e.namespaceSeparator, ns) {
 			delete(rulesByNamespace, ns)
 		}
 	}
@@ -385,15 +385,25 @@ func mimirNamespaceForRuleCRD(prefix, separator string, pr *promv1.PrometheusRul
 	return prefix + separator + pr.Namespace + separator + pr.Name + separator + string(pr.UID)
 }
 
+// legacyMimirNamespaceSeparator is the separator used before
+// mimir_namespace_separator was configurable.
+const legacyMimirNamespaceSeparator = "/"
+
 // isManagedMimirNamespace returns true if the namespace is managed by Alloy.
 // Unmanaged namespaces are left as is by the operator.
-// The check is separator-agnostic so that rules created with a previous separator
-// are still recognised and garbage-collected when the separator changes.
-func isManagedMimirNamespace(prefix, namespace string) bool {
+// The prefix must be followed by the configured separator or by the legacy "/"
+// separator, so that rules created before the separator changed are still
+// recognised and garbage-collected, while namespaces of a different prefix that
+// merely starts with this one (e.g. "team" and "team-b") are left alone.
+func isManagedMimirNamespace(prefix, separator, namespace string) bool {
 	prefixPart := regexp.QuoteMeta(prefix)
+	separatorPart := regexp.QuoteMeta(separator)
+	if separator != legacyMimirNamespaceSeparator {
+		separatorPart = fmt.Sprintf(`(?:%s|%s)`, separatorPart, regexp.QuoteMeta(legacyMimirNamespaceSeparator))
+	}
 	uuidPart := `[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}`
 	managedNamespaceRegex := regexp.MustCompile(
-		fmt.Sprintf(`^%s.+%s$`, prefixPart, uuidPart),
+		fmt.Sprintf(`^%s%s.+%s$`, prefixPart, separatorPart, uuidPart),
 	)
 	return managedNamespaceRegex.MatchString(namespace)
 }
