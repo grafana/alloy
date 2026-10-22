@@ -2,6 +2,7 @@ package collector
 
 import (
 	"testing"
+	"time"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/prometheus/client_golang/prometheus"
@@ -22,12 +23,12 @@ func TestTableStatsAndIndexStatsShareRegistry(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	logger := util.TestAlloyLogger(t).Slog()
 
-	tableStats, err := NewTableStats(TableStatsArguments{DB: db, Registry: registry, Logger: logger})
+	tableStats, err := NewTableStats(TableStatsArguments{DB: db, Registry: registry, CollectInterval: time.Hour, Logger: logger})
 	require.NoError(t, err)
 	require.NoError(t, tableStats.Start(t.Context()))
 	defer tableStats.Stop()
 
-	indexStats, err := NewIndexStats(IndexStatsArguments{DB: db, Registry: registry, Logger: logger})
+	indexStats, err := NewIndexStats(IndexStatsArguments{DB: db, Registry: registry, CollectInterval: time.Hour, Logger: logger})
 	require.NoError(t, err)
 	require.NoError(t, indexStats.Start(t.Context()))
 	defer indexStats.Stop()
