@@ -61,10 +61,11 @@ func TestFileRotation(t *testing.T) {
 			// Delete the file and recreate it after a short gap, as a log
 			// rotator would.
 			name: "delete",
-			// FIXME: lines written just before the delete are sometimes lost,
-			// one or two per run: the component can stop tailing the file before
-			// reading them, although the tail package's "deleted while reading"
-			// test expects them to be read. Set this back to 0 once fixed.
+			// FIXME(https://github.com/grafana/alloy/issues/7372): lines written
+			// just before the delete are sometimes lost, one or two per run,
+			// because the component stops tailing the file when its target
+			// disappears, before reading the rest. Set this back to 0 once
+			// fixed.
 			maxLost: 5,
 			rotate: func(t *testing.T, w *rotationWriter) (*os.File, string) {
 				require.NoError(t, w.file.Close())
