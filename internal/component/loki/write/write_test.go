@@ -625,6 +625,8 @@ func newFakeWALComponent(t *testing.T, pipelineV2 bool, failures int64) (*Compon
 		wal:        wl,
 	}
 
+	c.stopCtx, c.stop = context.WithCancel(context.Background())
+
 	if pipelineV2 {
 		c.receiver = loki.NewLogsReceiverV2(c, "loki.write.test")
 	} else {
@@ -636,17 +638,17 @@ func newFakeWALComponent(t *testing.T, pipelineV2 bool, failures int64) (*Compon
 	c.consumer = consumer
 	consumer.Start()
 
-	ctx, cancel := context.WithCancel(t.Context())
+	runCtx, cancelRun := context.WithCancel(t.Context())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		_ = c.Run(ctx)
+		_ = c.Run(runCtx)
 	}()
 
 	var once sync.Once
 	stop := func() {
 		once.Do(func() {
-			cancel()
+			cancelRun()
 			<-done
 		})
 	}

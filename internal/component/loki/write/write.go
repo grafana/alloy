@@ -10,6 +10,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/grafana/dskit/backoff"
+	"github.com/prometheus/common/model"
+
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -18,8 +21,6 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/alloy/internal/service/lokipipelinev2"
-	"github.com/grafana/dskit/backoff"
-	"github.com/prometheus/common/model"
 )
 
 func init() {
@@ -52,8 +53,12 @@ type Component struct {
 	pipelineV2 bool
 	receiver   loki.LogsReceiver
 
+	// stopCtx is canceled when the component stops, which also cancels in-flight Consume calls.
+	stopCtx context.Context
+	stop    context.CancelFunc
+
 	mut            sync.RWMutex
-	stopped        bool
+	args           Arguments
 	externalLabels model.LabelSet
 
 	// wal is opened when it is first enabled and reused across updates.
@@ -62,8 +67,6 @@ type Component struct {
 	// consumer is set by the first successful Update and afterwards only replaced by
 	// another successfully built consumer, never cleared.
 	consumer client.Consumer
-	// args are the arguments of the last successful Update.
-	args Arguments
 }
 
 // New creates a new loki.write component.
@@ -78,6 +81,8 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		pipelineV2: svc.(lokipipelinev2.Data).PipelineV2Enabled(),
 	}
 
+	c.stopCtx, c.stop = context.WithCancel(context.Background())
+
 	if c.pipelineV2 {
 		c.receiver = loki.NewLogsReceiverV2(c, o.ID)
 	} else {
@@ -86,6 +91,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	o.OnStateChange(Exports{Receiver: c.receiver})
 
 	if err := c.Update(args); err != nil {
+		c.stop()
 		return nil, err
 	}
 
@@ -95,9 +101,10 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
+		c.stop()
+
 		c.mut.Lock()
 		defer c.mut.Unlock()
-		c.stopped = true
 
 		if d, ok := c.consumer.(client.DrainableConsumer); ok {
 			// stop and drain since component is shutting down.
@@ -245,18 +252,22 @@ func (c *Component) newWALConsumer(args Arguments, cfgs []client.Config) (client
 }
 
 func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
+	// Cancel writes and retries when either the caller cancels ctx or the component stops.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	defer context.AfterFunc(c.stopCtx, cancel)()
+
 	var (
 		bo           *backoff.Backoff
 		labelsMerged bool
 	)
 
 	for {
-		c.mut.RLock()
-		if c.stopped {
-			c.mut.RUnlock()
-			return loki.ErrConsumerStopped
+		if c.stopCtx.Err() != nil {
+			return fmt.Errorf("%s: %w", c.opts.ID, loki.ErrConsumerStopped)
 		}
 
+		c.mut.RLock()
 		var (
 			consumer       = c.consumer
 			externalLabels = c.externalLabels
@@ -276,7 +287,11 @@ func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
 			return nil
 		}
 
-		if ctx.Err() != nil {
+		if c.stopCtx.Err() != nil {
+			return fmt.Errorf("%s: %w", c.opts.ID, loki.ErrConsumerStopped)
+		}
+
+		if err := ctx.Err(); err != nil {
 			return err
 		}
 
@@ -296,7 +311,6 @@ func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
 		// Retrying without a limit blocks the pipeline instead of dropping the batch,
 		// a full WAL disk can recover on its own once old segments are cleaned up.
 		if bo == nil {
-			// FIXME(kalleep): Handle component stopping while waiting here.
 			bo = backoff.New(ctx, backoff.Config{
 				MinBackoff: 50 * time.Millisecond,
 				MaxBackoff: 30 * time.Second,
