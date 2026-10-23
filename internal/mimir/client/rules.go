@@ -18,6 +18,7 @@ type RemoteWriteConfig struct {
 func (r *MimirClient) CreateRuleGroup(ctx context.Context, namespace string, rg MimirRuleGroup) error {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
+	// With the default indent of 4, block scalars inside the rules list get a wrong indentation indicator.
 	enc.SetIndent(2)
 	if err := enc.Encode(&rg); err != nil {
 		return err
