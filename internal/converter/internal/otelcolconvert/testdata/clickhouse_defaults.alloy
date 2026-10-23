@@ -1,0 +1,15 @@
+otelcol.receiver.otlp "default" {
+	grpc {
+		endpoint = "localhost:4317"
+	}
+
+	output {
+		metrics = [otelcol.exporter.clickhouse.default.input]
+		logs    = [otelcol.exporter.clickhouse.default.input]
+		traces  = [otelcol.exporter.clickhouse.default.input]
+	}
+}
+
+otelcol.exporter.clickhouse "default" {
+	endpoint = "tcp://127.0.0.1:9000"
+}
