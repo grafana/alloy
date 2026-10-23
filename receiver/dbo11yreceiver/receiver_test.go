@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -17,6 +18,7 @@ import (
 	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/configopaque"
+	"go.opentelemetry.io/collector/confmap/confmaptest"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -458,4 +460,20 @@ func TestConfigValidate(t *testing.T) {
 	cfg = testConfig(dsnA)
 	require.NoError(t, cfg.Validate())
 	require.Equal(t, 15*time.Second, createDefaultConfig().ScrapeInterval)
+}
+
+func TestE2EConfig(t *testing.T) {
+	cm, err := confmaptest.LoadConf(filepath.Join("testdata", "e2e-config.yaml"))
+	require.NoError(t, err)
+
+	sub, err := cm.Sub("receivers::dbo11y")
+	require.NoError(t, err)
+	cfg := NewFactory().CreateDefaultConfig().(*Config)
+	require.NoError(t, sub.Unmarshal(cfg))
+	require.NoError(t, cfg.Validate())
+	require.Equal(t, 20*time.Second, cfg.QueryDetails.CollectInterval)
+
+	for _, p := range []string{"metrics", "logs"} {
+		require.Equal(t, []any{"dbo11y"}, cm.Get("service::pipelines::"+p+"::receivers"), p)
+	}
 }

@@ -1,0 +1,42 @@
+# End-to-end config for the dbo11y receiver against a local Postgres. Run with
+#   DBO11Y_E2E_OUT=<dir> alloy otel --disable-reporting --config receiver/dbo11yreceiver/testdata/e2e-config.yaml
+# Collection intervals are cut to 20s so a short run sees several rounds.
+receivers:
+  dbo11y:
+    databases:
+      - data_source_name: postgres://postgres@127.0.0.1:55432/postgres?sslmode=disable
+    query_details:
+      collect_interval: 20s
+    schema_details:
+      collect_interval: 20s
+    explain_plans:
+      collect_interval: 20s
+    health_check:
+      collect_interval: 20s
+
+exporters:
+  file/metrics:
+    path: ${env:DBO11Y_E2E_OUT}/metrics.json
+    format: json
+  file/logs:
+    path: ${env:DBO11Y_E2E_OUT}/logs.json
+    format: json
+
+service:
+  telemetry:
+    logs:
+      level: info
+      output_paths:
+        - ${env:DBO11Y_E2E_OUT}/collector.log
+      error_output_paths:
+        - ${env:DBO11Y_E2E_OUT}/collector.log
+    metrics:
+      level: none
+  pipelines:
+    # Same receiver ID on both pipelines: one connection and one server_id per database.
+    metrics:
+      receivers: [dbo11y]
+      exporters: [file/metrics]
+    logs:
+      receivers: [dbo11y]
+      exporters: [file/logs]
