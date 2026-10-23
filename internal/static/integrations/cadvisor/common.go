@@ -34,6 +34,11 @@ var DefaultConfig = Config{
 	DockerOnly: false,
 
 	DisableRootCgroupStats: false,
+
+	// Housekeeping defaults, matching the cadvisor flag defaults
+	HousekeepingInterval:     1 * time.Second,
+	MaxHousekeepingInterval:  60 * time.Second,
+	AllowDynamicHousekeeping: true,
 }
 
 // Config controls cadvisor
@@ -95,6 +100,16 @@ type Config struct {
 
 	// DisableRootCgroupStats informs the exporter not collecting stats from the root cgroup.
 	DisableRootCgroupStats bool `yaml:"disable_root_cgroup_stats,omitempty"`
+
+	// Housekeeping config options
+	// HousekeepingInterval interval between container housekeepings (Default: 1s)
+	HousekeepingInterval time.Duration `yaml:"housekeeping_interval,omitempty"`
+
+	// MaxHousekeepingInterval largest interval to allow between container housekeepings (Default: 60s)
+	MaxHousekeepingInterval time.Duration `yaml:"max_housekeeping_interval,omitempty"`
+
+	// AllowDynamicHousekeeping allows the housekeeping interval to grow for containers whose stats aren't changing (Default: true)
+	AllowDynamicHousekeeping bool `yaml:"allow_dynamic_housekeeping"`
 
 	// Hold on to the logger passed to config.NewIntegration, to be passed to klog, as yet another unsafe global that needs to be set.
 	logger *slog.Logger //nolint:unused,structcheck // logger is only used on linux

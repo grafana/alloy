@@ -1,6 +1,7 @@
 package cadvisor
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/grafana/alloy/internal/component"
@@ -25,9 +26,14 @@ func init() {
 func createExporter(opts component.Options, args component.Arguments) (integrations.Integration, string, error) {
 	common.WarningIfUsedInCluster(opts)
 	a := args.(Arguments)
+	if !a.AllowDynamicHousekeeping && a.MaxHousekeepingInterval != defaultMaxHousekeepingInterval {
+		opts.Logger.Warn("max_housekeeping_interval has no effect when allow_dynamic_housekeeping is false")
+	}
 	defaultInstanceKey := common.HostNameInstanceKey() // if cannot resolve instance key, use the host name for cadvisor
 	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), defaultInstanceKey)
 }
+
+const defaultMaxHousekeepingInterval = 60 * time.Second
 
 // Arguments configures the prometheus.exporter.cadvisor component.
 type Arguments struct {
@@ -49,6 +55,9 @@ type Arguments struct {
 	DockerTLSCA                string        `alloy:"docker_tls_ca,attr,optional"`
 	DockerOnly                 bool          `alloy:"docker_only,attr,optional"`
 	DisableRootCgroupStats     bool          `alloy:"disable_root_cgroup_stats,attr,optional"`
+	HousekeepingInterval       time.Duration `alloy:"housekeeping_interval,attr,optional"`
+	MaxHousekeepingInterval    time.Duration `alloy:"max_housekeeping_interval,attr,optional"`
+	AllowDynamicHousekeeping   bool          `alloy:"allow_dynamic_housekeeping,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -73,7 +82,22 @@ func (a *Arguments) SetToDefault() {
 
 		DockerOnly:             false,
 		DisableRootCgroupStats: false,
+
+		HousekeepingInterval:     1 * time.Second,
+		MaxHousekeepingInterval:  defaultMaxHousekeepingInterval,
+		AllowDynamicHousekeeping: true,
 	}
+}
+
+// Validate implements syntax.Validator.
+func (a *Arguments) Validate() error {
+	if a.HousekeepingInterval <= 0 {
+		return fmt.Errorf("housekeeping_interval must be greater than 0")
+	}
+	if a.MaxHousekeepingInterval < a.HousekeepingInterval {
+		return fmt.Errorf("max_housekeeping_interval (%s) must be greater than or equal to housekeeping_interval (%s)", a.MaxHousekeepingInterval, a.HousekeepingInterval)
+	}
+	return nil
 }
 
 // Convert returns the upstream-compatible configuration struct.
@@ -107,6 +131,9 @@ func (a *Arguments) Convert() *cadvisor.Config {
 		DockerTLSCA:                a.DockerTLSCA,
 		DockerOnly:                 a.DockerOnly,
 		DisableRootCgroupStats:     a.DisableRootCgroupStats,
+		HousekeepingInterval:       a.HousekeepingInterval,
+		MaxHousekeepingInterval:    a.MaxHousekeepingInterval,
+		AllowDynamicHousekeeping:   a.AllowDynamicHousekeeping,
 	}
 
 	return cfg
