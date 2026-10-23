@@ -129,6 +129,12 @@ func (re Regexp) String() string {
 	return str[5 : len(str)-2]
 }
 
+// Equals compares the source expressions instead of the compiled regexp internals.
+func (re Regexp) Equals(other any) bool {
+	otherRegexp, ok := other.(*Regexp)
+	return ok && otherRegexp != nil && re.String() == otherRegexp.String()
+}
+
 // Config describes a relabelling step to be applied on a target.
 type Config struct {
 	SourceLabels []string `alloy:"source_labels,attr,optional"`
