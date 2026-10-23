@@ -107,43 +107,36 @@ func (t *tailer) Run(ctx context.Context) {
 	defer handler.Stop()
 
 	for bo.Ongoing() {
-		err := t.tail(ctx, handler)
-		if err == nil {
-			// Check if we should stop tailing this container
-			// Fetch pod info once and use different logic for job pods vs regular pods
-			podInfo, podCheckErr := t.getPodInfo(ctx)
-			if podCheckErr != nil {
-				t.log.Warn("could not get pod info; will retry tailing", "err", podCheckErr)
-			} else {
-				isJob := isJobPod(podInfo)
-				if isJob {
-					// For job pods, use special grace period logic to ensure all logs are captured
-					finished, err := t.shouldStopTailingJobContainer(podInfo)
-					if finished {
-						t.log.Info("should stop tailing job container, stopping tailer")
-						return
-					} else if err != nil {
-						t.log.Warn("could not determine if should stop tailing job container; will retry tailing", "err", err)
-					}
-				} else {
-					// For regular pods, use standard termination logic
-					terminated, err := t.shouldStopTailingContainer(podInfo)
-					if terminated {
-						t.log.Info("container terminated, stopping tailer")
-						return
-					} else if err != nil {
-						t.log.Warn("could not determine if container terminated; will retry tailing", "err", err)
-					}
-				}
-			}
+		if err := t.tail(ctx, handler); err != nil {
+			t.target.reportError(err)
+			t.log.Warn("tailer stopped; will retry", "err", err)
+			bo.Wait()
+			continue
 		}
 
+		stop, err := t.shouldStop(ctx)
 		if err != nil {
-			t.target.Report(time.Now().UTC(), err)
-			t.log.Warn("tailer stopped; will retry", "err", err)
+			t.log.Warn("could not determine if tailer should stop; will retry tailing", "err", err)
+		}
+		if stop {
+			t.log.Info("container finished, stopping tailer")
+			return
 		}
 		bo.Wait()
 	}
+}
+
+// shouldStop reports whether no more logs will appear for the pod.
+func (t *tailer) shouldStop(ctx context.Context) (bool, error) {
+	podInfo, err := t.getPodInfo(ctx)
+	if err != nil {
+		return false, fmt.Errorf("get pod info: %w", err)
+	}
+	// Job pods use grace period logic to ensure all logs are captured.
+	if isJobPod(podInfo) {
+		return t.shouldStopTailingJobContainer(podInfo)
+	}
+	return t.shouldStopTailingContainer(podInfo)
 }
 
 func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
@@ -270,6 +263,9 @@ func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, han
 	ch := handler.Chan()
 	reader := bufio.NewReader(stream)
 	lastReadTime := sinceTime
+	// A re-tail replays the lines at sinceTime that were already forwarded.
+	// Other lines can share that timestamp, so only skip as many as were sent.
+	replayed := t.target.entriesAt(sinceTime)
 	for {
 		line, err := reader.ReadString('\n')
 
@@ -283,6 +279,10 @@ func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, han
 			// (SinceTime has second precision). Do not compare against the previous
 			// line: stdout and stderr are stamped independently by the runtime.
 			if entryTimestamp.Before(sinceTime) {
+				continue
+			}
+			if replayed > 0 && entryTimestamp.Equal(sinceTime) {
+				replayed--
 				continue
 			}
 
@@ -302,7 +302,7 @@ func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, han
 					lastReadTime = entryTimestamp
 				}
 				t.opts.Positions.Put(positionsEnt.Path, positionsEnt.Labels, lastReadTime.UnixMicro())
-				t.target.Report(lastReadTime, nil)
+				t.target.reportEntry(entryTimestamp)
 			}
 		}
 
