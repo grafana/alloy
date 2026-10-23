@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"path"
 
-	pgcollector "github.com/prometheus-community/postgres_exporter/collector"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
 
@@ -14,7 +12,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/database_observability"
-	"github.com/grafana/alloy/internal/component/database_observability/postgres/collector"
+	"github.com/grafana/alloy/internal/component/database_observability/postgres/dbinstance"
 	"github.com/grafana/alloy/internal/component/discovery"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/syntax/alloytypes"
@@ -61,66 +59,70 @@ func (a Arguments) databaseConfigs() []databaseConfig {
 	return cfgs
 }
 
-// dbInstance holds the per-database state of the component: the identity,
-// connection, collectors, and metrics registry of a single monitored
-// Postgres server.
-type dbInstance struct {
-	cfg                databaseConfig
-	instanceKey        string
-	baseTarget         discovery.Target
-	registry           *prometheus.Registry
-	collectors         []Collector
-	dbConnection       *sql.DB
-	healthErr          *atomic.String
-	exporterCollectors []prometheus.Collector
-	// exporterRuntime is the embedded postgres_exporter, nil when targets point at an external one.
-	exporterRuntime *pgcollector.Runtime
+// instanceConfig maps the component arguments for one database onto dbinstance.
+func instanceConfig(args Arguments, cfg databaseConfig) dbinstance.Config {
+	ic := dbinstance.Config{
+		Name:               cfg.name,
+		DSN:                string(cfg.dsn),
+		CloudProvider:      cfg.cloudProvider,
+		Rules:              cfg.rules,
+		ExcludeDatabases:   args.ExcludeDatabases,
+		ExcludeUsers:       args.ExcludeUsers,
+		ExcludeCurrentUser: args.ExcludeCurrentUser,
+		Collectors:         enableOrDisableCollectors(args),
+		QuerySamples:       args.QuerySampleArguments,
+		QueryDetails:       args.QueryDetailsArguments,
+		SchemaDetails:      args.SchemaDetailsArguments,
+		ExplainPlans:       args.ExplainPlansArguments,
+		HealthCheck:        args.HealthCheckArguments,
+		Logs:               args.Logs,
+	}
+	if len(cfg.targets) == 0 {
+		exporter := exporterConfig(resolveExporterArgs(args.PrometheusExporter), string(cfg.dsn), args.ExcludeDatabases)
+		ic.Exporter = &exporter
+	}
+	return ic
+}
 
-	// logsReceiver is the instance's internal logs receiver. The component's
-	// receiver pump forwards entries from the database's exported receiver
-	// into it, and the instance's logs collector drains it while running.
-	logsReceiver loki.LogsReceiver
+// dbInstance is the component's view of one monitored database: the
+// dbinstance.Instance plus what only the Alloy component needs (scrape
+// targets and the health error from the last connect).
+type dbInstance struct {
+	*dbinstance.Instance
+	cfg        databaseConfig
+	baseTarget discovery.Target
+	healthErr  *atomic.String
 
 	// exportedTargets holds the relabeled targets of this instance. It is set
-	// once a connection is established and server info is known (before
-	// collectors start), since the relabeling rules need the server_id. An
-	// instance whose collectors failed to start still exports its targets.
+	// once a connection is established and server info is known, since the
+	// relabeling rules need the server_id. An instance whose collectors
+	// failed to start still exports its targets.
 	exportedTargets []discovery.Target
 }
 
-func newDBInstance(opts component.Options, cfg databaseConfig) (*dbInstance, error) {
-	key, err := instanceKey(string(cfg.dsn))
+func (c *Component) newDBInstance(args Arguments, cfg databaseConfig) (*dbInstance, error) {
+	inst, err := dbinstance.New(instanceConfig(args, cfg), dbinstance.Deps{
+		Logger:     c.opts.Logger,
+		Registerer: c.opts.Registerer,
+		Entries:    loki.NewEntryHandler(c.handler.Chan(), func() {}),
+		// Late-bound so a replaced openSQL applies to existing instances.
+		OpenDB: func(driver, dsn string) (*sql.DB, error) { return c.openSQL(driver, dsn) },
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	baseTarget, err := getBaseTarget(opts, key, cfg.name)
+	baseTarget, err := getBaseTarget(c.opts, inst.InstanceKey(), cfg.name)
 	if err != nil {
 		return nil, err
 	}
 
 	return &dbInstance{
-		cfg:          cfg,
-		instanceKey:  key,
-		baseTarget:   baseTarget,
-		registry:     prometheus.NewRegistry(),
-		healthErr:    atomic.NewString(""),
-		logsReceiver: loki.NewLogsReceiver(),
+		Instance:   inst,
+		cfg:        cfg,
+		baseTarget: baseTarget,
+		healthErr:  atomic.NewString(""),
 	}, nil
-}
-
-// cleanupExporterCollectors unregisters the embedded exporter's collectors and
-// closes its runtime: the postgres_exporter keeps one connection open per
-// discovered database until then. Callers must hold the component mut.
-func (inst *dbInstance) cleanupExporterCollectors() {
-	for _, col := range inst.exporterCollectors {
-		inst.registry.Unregister(col)
-	}
-	inst.exporterCollectors = nil
-	if inst.exporterRuntime != nil {
-		_ = inst.exporterRuntime.Close()
-		inst.exporterRuntime = nil
-	}
 }
 
 // metricsPath returns the HTTP path of a database's metrics endpoint,
@@ -149,28 +151,4 @@ func getBaseTarget(opts component.Options, instanceKey, name string) (discovery.
 		"instance":             instanceKey,
 		"job":                  database_observability.JobName,
 	}), nil
-}
-
-// instanceKey returns network(hostname:port)/dbname of the Postgres server.
-// This is the same key as used by the postgres static integration.
-func instanceKey(dsn string) (string, error) {
-	s, err := collector.ParseURL(dsn)
-	if err != nil {
-		return "", fmt.Errorf("cannot parse DSN: %w", err)
-	}
-
-	// Assign default values to s.
-	//
-	// PostgreSQL hostspecs can contain multiple host pairs. We'll assign a host
-	// and port by default, but otherwise just use the hostname.
-	if _, ok := s["host"]; !ok {
-		s["host"] = "localhost"
-		s["port"] = "5432"
-	}
-
-	hostport := s["host"]
-	if p, ok := s["port"]; ok {
-		hostport += fmt.Sprintf(":%s", p)
-	}
-	return fmt.Sprintf("postgresql://%s/%s", hostport, s["dbname"]), nil
 }

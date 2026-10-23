@@ -17,17 +17,13 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/grafana/ckit/peer"
 	"github.com/grafana/ckit/shard"
-	"github.com/grafana/loki/pkg/push"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/atomic"
 
 	cmp "github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/relabel"
-	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/postgres/collector"
 	"github.com/grafana/alloy/internal/component/discovery"
 	exporter_postgres "github.com/grafana/alloy/internal/component/prometheus/exporter/postgres"
@@ -76,19 +72,35 @@ func newTestComponent(t *testing.T, openSQL func(string, string) (*sql.DB, error
 		openSQL:       openSQL,
 		logsReceivers: map[string]*receiverPump{},
 	}
-	c.storeInstances([]*dbInstance{{
-		cfg:         databaseConfig{dsn: args.DataSourceName},
-		instanceKey: "test-instance",
-		baseTarget: discovery.NewTargetFromMap(map[string]string{
-			"instance": "test-instance",
-			"job":      "database_observability",
-		}),
-		registry:     prometheus.NewRegistry(),
-		healthErr:    atomic.NewString(""),
-		logsReceiver: loki.NewLogsReceiver(),
-	}})
+	rebuildTestInstance(t, c)
 	return c
 }
+
+// rebuildTestInstance replaces the test component's instance with one built
+// from its current args, so that tests can tweak c.args before connecting.
+func rebuildTestInstance(t *testing.T, c *Component) {
+	t.Helper()
+	inst, err := c.newDBInstance(c.args, databaseConfig{dsn: c.args.DataSourceName, targets: c.args.Targets})
+	require.NoError(t, err)
+	c.storeInstances([]*dbInstance{inst})
+}
+
+// connectTestInstance rebuilds the test component's instance from c.args and connects it.
+func connectTestInstance(t *testing.T, c *Component) error {
+	t.Helper()
+	rebuildTestInstance(t, c)
+	return c.connectAndStartCollectors(context.Background(), c.loadInstances()[0])
+}
+
+// selectServerInfo is the server-info query dbinstance runs on connect.
+const selectServerInfo = `
+SELECT
+	(pg_control_system()).system_identifier,
+	inet_server_addr(),
+	inet_server_port(),
+	setting as version
+FROM pg_settings
+WHERE name = 'server_version';`
 
 func Test_defaultExclusions(t *testing.T) {
 	exampleDBO11yAlloyConfig := `
@@ -118,7 +130,7 @@ func Test_defaultExclusions(t *testing.T) {
 	}, args.ExcludeUsers)
 
 	assert.True(t, args.ExcludeCurrentUser, "exclude_current_user should default to true")
-	assert.Nil(t, args.QuerySampleArguments.ExcludeCurrentUser, "query_samples.exclude_current_user should default to unset")
+	assert.Nil(t, args.QuerySampleArguments.ExcludeCurrentUser, "query_samples.exclude_current_user should default to unset") //nolint:staticcheck // tests the deprecated setting
 }
 
 func Test_enableOrDisableCollectors(t *testing.T) {
@@ -399,7 +411,7 @@ func TestQuerySamples_ExcludeCurrentUser_ConfigParsing(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		assert.Nil(t, args.QuerySampleArguments.ExcludeCurrentUser, "should default to nil (unset)")
+		assert.Nil(t, args.QuerySampleArguments.ExcludeCurrentUser, "should default to nil (unset)") //nolint:staticcheck // tests the deprecated setting
 	})
 
 	t.Run("explicitly true", func(t *testing.T) {
@@ -413,8 +425,8 @@ func TestQuerySamples_ExcludeCurrentUser_ConfigParsing(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		require.NotNil(t, args.QuerySampleArguments.ExcludeCurrentUser)
-		assert.True(t, *args.QuerySampleArguments.ExcludeCurrentUser)
+		require.NotNil(t, args.QuerySampleArguments.ExcludeCurrentUser) //nolint:staticcheck // tests the deprecated setting
+		assert.True(t, *args.QuerySampleArguments.ExcludeCurrentUser)   //nolint:staticcheck // tests the deprecated setting
 	})
 
 	t.Run("explicitly false", func(t *testing.T) {
@@ -428,8 +440,8 @@ func TestQuerySamples_ExcludeCurrentUser_ConfigParsing(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		require.NotNil(t, args.QuerySampleArguments.ExcludeCurrentUser)
-		assert.False(t, *args.QuerySampleArguments.ExcludeCurrentUser)
+		require.NotNil(t, args.QuerySampleArguments.ExcludeCurrentUser) //nolint:staticcheck // tests the deprecated setting
+		assert.False(t, *args.QuerySampleArguments.ExcludeCurrentUser)  //nolint:staticcheck // tests the deprecated setting
 	})
 }
 
@@ -450,7 +462,7 @@ func TestPostgres_ExcludeCurrentUser_Runtime(t *testing.T) {
 		c.args.ExcludeCurrentUser = true
 		c.args.ExcludeUsers = []string{"rdsadmin"}
 
-		require.NoError(t, c.connectAndStartCollectors(context.Background(), c.loadInstances()[0]))
+		require.NoError(t, connectTestInstance(t, c))
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -467,7 +479,7 @@ func TestPostgres_ExcludeCurrentUser_Runtime(t *testing.T) {
 		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) { return db, nil })
 		c.args.ExcludeCurrentUser = false
 
-		require.NoError(t, c.connectAndStartCollectors(context.Background(), c.loadInstances()[0]))
+		require.NoError(t, connectTestInstance(t, c))
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -485,7 +497,7 @@ func TestPostgres_ExcludeCurrentUser_Runtime(t *testing.T) {
 		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) { return db, nil })
 		c.args.ExcludeCurrentUser = true
 
-		err = c.connectAndStartCollectors(context.Background(), c.loadInstances()[0])
+		err = connectTestInstance(t, c)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to query current_user")
 	})
@@ -547,14 +559,14 @@ func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
 		defer db.Close()
 		c.args.ExcludeCurrentUser = true
 		c.args.ExcludeUsers = []string{"rdsadmin"}
-		c.args.QuerySampleArguments.ExcludeCurrentUser = nil
+		c.args.QuerySampleArguments.ExcludeCurrentUser = nil //nolint:staticcheck // tests the deprecated setting
 
 		expectPrelude(mock, true)
 		// effectiveExcludeUsers = ['rdsadmin', 'alloy_monitor'], no current_user clause.
 		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexNoCurrentUser, `'rdsadmin', 'alloy_monitor'`)).
 			WillReturnRows(emptyActivityRows())
 
-		require.NoError(t, c.connectAndStartCollectors(context.Background(), c.loadInstances()[0]))
+		require.NoError(t, connectTestInstance(t, c))
 		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
 	})
 
@@ -563,14 +575,14 @@ func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
 		defer db.Close()
 		c.args.ExcludeCurrentUser = true
 		c.args.ExcludeUsers = []string{"rdsadmin"}
-		c.args.QuerySampleArguments.ExcludeCurrentUser = ptrBool(true)
+		c.args.QuerySampleArguments.ExcludeCurrentUser = ptrBool(true) //nolint:staticcheck // tests the deprecated setting
 
 		expectPrelude(mock, true)
 		// SQL contains the current_user clause, and uses raw c.args.ExcludeUsers
 		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexWithCurrentUser, `'rdsadmin'`)).
 			WillReturnRows(emptyActivityRows())
 
-		require.NoError(t, c.connectAndStartCollectors(context.Background(), c.loadInstances()[0]))
+		require.NoError(t, connectTestInstance(t, c))
 		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
 	})
 
@@ -579,14 +591,14 @@ func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
 		defer db.Close()
 		c.args.ExcludeCurrentUser = true
 		c.args.ExcludeUsers = []string{"rdsadmin"}
-		c.args.QuerySampleArguments.ExcludeCurrentUser = ptrBool(false)
+		c.args.QuerySampleArguments.ExcludeCurrentUser = ptrBool(false) //nolint:staticcheck // tests the deprecated setting
 
 		expectPrelude(mock, true)
 		// No current_user clause, uses raw c.args.ExcludeUsers (no alloy_monitor appended).
 		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexNoCurrentUser, `'rdsadmin'`)).
 			WillReturnRows(emptyActivityRows())
 
-		require.NoError(t, c.connectAndStartCollectors(context.Background(), c.loadInstances()[0]))
+		require.NoError(t, connectTestInstance(t, c))
 		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
 	})
 
@@ -595,7 +607,7 @@ func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
 		defer db.Close()
 		c.args.ExcludeCurrentUser = false
 		c.args.ExcludeUsers = []string{"rdsadmin"}
-		c.args.QuerySampleArguments.ExcludeCurrentUser = ptrBool(true)
+		c.args.QuerySampleArguments.ExcludeCurrentUser = ptrBool(true) //nolint:staticcheck // tests the deprecated setting
 
 		// Top-level is false, so SELECT current_user is NOT issued.
 		expectPrelude(mock, false)
@@ -603,7 +615,7 @@ func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
 		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexWithCurrentUser, `'rdsadmin'`)).
 			WillReturnRows(emptyActivityRows())
 
-		require.NoError(t, c.connectAndStartCollectors(context.Background(), c.loadInstances()[0]))
+		require.NoError(t, connectTestInstance(t, c))
 		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
 	})
 
@@ -612,7 +624,7 @@ func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
 		defer db.Close()
 		c.args.ExcludeCurrentUser = false
 		c.args.ExcludeUsers = []string{"rdsadmin"}
-		c.args.QuerySampleArguments.ExcludeCurrentUser = nil
+		c.args.QuerySampleArguments.ExcludeCurrentUser = nil //nolint:staticcheck // tests the deprecated setting
 
 		// Top-level is false, so SELECT current_user is NOT issued.
 		expectPrelude(mock, false)
@@ -620,7 +632,7 @@ func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
 		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexNoCurrentUser, `'rdsadmin'`)).
 			WillReturnRows(emptyActivityRows())
 
-		require.NoError(t, c.connectAndStartCollectors(context.Background(), c.loadInstances()[0]))
+		require.NoError(t, connectTestInstance(t, c))
 		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
 	})
 
@@ -629,7 +641,7 @@ func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
 		defer db.Close()
 		c.args.ExcludeCurrentUser = false
 		c.args.ExcludeUsers = []string{"rdsadmin"}
-		c.args.QuerySampleArguments.ExcludeCurrentUser = ptrBool(false)
+		c.args.QuerySampleArguments.ExcludeCurrentUser = ptrBool(false) //nolint:staticcheck // tests the deprecated setting
 
 		// Top-level is false, so SELECT current_user is NOT issued.
 		expectPrelude(mock, false)
@@ -638,7 +650,7 @@ func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
 		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexNoCurrentUser, `'rdsadmin'`)).
 			WillReturnRows(emptyActivityRows())
 
-		require.NoError(t, c.connectAndStartCollectors(context.Background(), c.loadInstances()[0]))
+		require.NoError(t, connectTestInstance(t, c))
 		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
 	})
 }
@@ -671,81 +683,6 @@ func TestCollectionIntervals(t *testing.T) {
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
 		assert.Equal(t, 5*time.Second, args.QuerySampleArguments.CollectInterval, "collect_interval for query_samples should be set to 5 seconds")
-	})
-}
-
-func Test_addLokiLabels(t *testing.T) {
-	t.Run("add required labels to loki entries", func(t *testing.T) {
-		handler := loki.NewCollectingHandler()
-		defer handler.Stop()
-		entryHandler := addLokiLabels(handler, "some-instance-key", "some-system-id", nil)
-
-		go func() {
-			ts := time.Now().UnixNano()
-			entryHandler.Chan() <- loki.Entry{
-				Entry: push.Entry{
-					Timestamp: time.Unix(0, ts),
-					Line:      "some-message",
-				},
-			}
-		}()
-
-		require.Eventually(t, func() bool {
-			return len(handler.Received()) == 1
-		}, 5*time.Second, 100*time.Millisecond)
-
-		require.Len(t, handler.Received(), 1)
-		assert.Equal(t, model.LabelSet{
-			"job":       database_observability.JobName,
-			"instance":  model.LabelValue("some-instance-key"),
-			"server_id": model.LabelValue("some-system-id"),
-			"engine":    model.LabelValue(collector.EngineName),
-		}, handler.Received()[0].Labels)
-		assert.Equal(t, "some-message", handler.Received()[0].Line)
-	})
-
-	t.Run("per-database rules run after the required labels", func(t *testing.T) {
-		handler := loki.NewCollectingHandler()
-		defer handler.Stop()
-
-		staticRule := relabel.DefaultRelabelConfig
-		staticRule.TargetLabel = "environment"
-		staticRule.Replacement = "production"
-
-		// Derives a label from server_id, which addLokiLabels sets, to prove
-		// the rules see the component's own labels.
-		var shortIDRegex relabel.Regexp
-		require.NoError(t, shortIDRegex.UnmarshalText([]byte("(.{4}).*")))
-
-		derivedRule := relabel.DefaultRelabelConfig
-		derivedRule.SourceLabels = []string{"server_id"}
-		derivedRule.Regex = shortIDRegex
-		derivedRule.TargetLabel = "short_id"
-		derivedRule.Replacement = "$1"
-
-		entryHandler := addLokiLabels(handler, "some-instance-key", "abcdefgh", []*relabel.Config{&staticRule, &derivedRule})
-
-		go func() {
-			entryHandler.Chan() <- loki.Entry{
-				Entry: push.Entry{
-					Timestamp: time.Now(),
-					Line:      "some-message",
-				},
-			}
-		}()
-
-		require.Eventually(t, func() bool {
-			return len(handler.Received()) == 1
-		}, 5*time.Second, 100*time.Millisecond)
-
-		assert.Equal(t, model.LabelSet{
-			"job":         database_observability.JobName,
-			"instance":    model.LabelValue("some-instance-key"),
-			"server_id":   model.LabelValue("abcdefgh"),
-			"engine":      model.LabelValue(collector.EngineName),
-			"environment": model.LabelValue("production"),
-			"short_id":    model.LabelValue("abcd"),
-		}, handler.Received()[0].Labels)
 	})
 }
 
@@ -1063,7 +1000,7 @@ func Test_connectAndStartCollectors(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify that connectAndStartCollectors returns an error
-		err = c.connectAndStartCollectors(context.Background(), c.loadInstances()[0])
+		err = connectTestInstance(t, c)
 		assert.Error(t, err, "should return error when connection fails")
 		assert.Contains(t, err.Error(), "failed to", "error should indicate connection failure")
 	})
@@ -1088,34 +1025,12 @@ func Test_connectAndStartCollectors(t *testing.T) {
 		c, err := New(opts, args)
 		require.NoError(t, err)
 
-		// The component should handle nil dbConnection gracefully
-		assert.Nil(t, c.loadInstances()[0].dbConnection, "dbConnection should be nil initially after failed connection")
+		// The component should handle a failed first connection gracefully
+		assert.False(t, c.loadInstances()[0].Started(), "collectors should not run after a failed connection")
 
 		// Calling connectAndStartCollectors again should not panic
-		err = c.connectAndStartCollectors(context.Background(), c.loadInstances()[0])
+		err = connectTestInstance(t, c)
 		assert.Error(t, err, "should return error for unreachable database")
-	})
-}
-
-func TestComponent_cleanupExporterCollectors(t *testing.T) {
-	t.Run("unregisters collectors without a runtime", func(t *testing.T) {
-		registry := prometheus.NewRegistry()
-		collector := prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "test_cleanup_exporter_collectors_plain",
-			Help: "test",
-		})
-		collector.Set(1)
-		require.NoError(t, registry.Register(collector))
-
-		inst := &dbInstance{
-			registry:           registry,
-			exporterCollectors: []prometheus.Collector{collector},
-		}
-
-		inst.cleanupExporterCollectors()
-
-		assert.Nil(t, inst.exporterCollectors)
-		assert.False(t, registry.Unregister(collector))
 	})
 }
 
@@ -1176,22 +1091,27 @@ func TestPostgres_Reconnection(t *testing.T) {
 	})
 
 	t.Run("Run exits on context cancellation", func(t *testing.T) {
-		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) { return nil, assert.AnError })
+		db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true), sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+		mock.ExpectPing()
+		mock.ExpectQuery(selectServerInfo).
+			WillReturnRows(sqlmock.NewRows([]string{"system_identifier", "inet_server_addr", "inet_server_port", "version"}).
+				AddRow("1234567890", "127.0.0.1", "5432", "14.0"))
+		mock.ExpectClose()
+
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) { return db, nil })
+		require.NoError(t, connectTestInstance(t, c))
 		inst := c.loadInstances()[0]
-		oldCollector := prometheus.NewGauge(prometheus.GaugeOpts{Name: "test_run_cleanup_old_exporter", Help: "test"})
-		require.NoError(t, inst.registry.Register(oldCollector))
-		inst.exporterCollectors = []prometheus.Collector{oldCollector}
-		inst.exporterRuntime = newTestExporterRuntime(t)
 
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 
-		err := c.Run(ctx)
-		assert.NoError(t, err)
+		require.NoError(t, c.Run(ctx))
 
-		assert.Nil(t, inst.exporterRuntime)
-		assert.Nil(t, inst.exporterCollectors)
-		assert.False(t, inst.registry.Unregister(oldCollector))
+		// Shutdown stops the instance, which closes its connection.
+		assert.False(t, inst.Started())
+		require.NoError(t, mock.ExpectationsWereMet())
 	})
 }
 
@@ -1705,7 +1625,7 @@ func TestPostgres_Update_FailedRebuildKeepsOldInstances(t *testing.T) {
 
 	before := c.loadInstances()
 	require.Len(t, before, 1)
-	require.NotEmpty(t, before[0].collectors)
+	require.True(t, before[0].Started())
 
 	failGetServiceData = true
 	err = c.Update(args)
@@ -1714,7 +1634,7 @@ func TestPostgres_Update_FailedRebuildKeepsOldInstances(t *testing.T) {
 	after := c.loadInstances()
 	require.Len(t, after, 1)
 	assert.Same(t, before[0], after[0])
-	assert.NotEmpty(t, after[0].collectors)
+	assert.True(t, after[0].Started())
 	assert.Equal(t, cmp.HealthTypeHealthy, c.CurrentHealth().Health)
 }
 
@@ -1829,7 +1749,7 @@ func TestPostgres_Clustering_DistributesDatabases(t *testing.T) {
 	// Only the owned database runs and connects.
 	instances := c.loadInstances()
 	require.Len(t, instances, 1)
-	assert.Equal(t, "postgresql://127.0.0.1:5432/db1", instances[0].instanceKey)
+	assert.Equal(t, "postgresql://127.0.0.1:5432/db1", instances[0].InstanceKey())
 	require.Len(t, connected, 1)
 	assert.Contains(t, connected[0], "/db1")
 
@@ -1905,7 +1825,7 @@ func TestPostgres_Clustering_ReconcileOnOwnershipChange(t *testing.T) {
 
 	before := c.loadInstances()
 	require.Len(t, before, 1)
-	require.Equal(t, "postgresql://127.0.0.1:5432/db1", before[0].instanceKey)
+	require.Equal(t, "postgresql://127.0.0.1:5432/db1", before[0].InstanceKey())
 
 	// Unchanged ownership: reconciling is a no-op that keeps the same instances.
 	c.reconcileCluster()
@@ -1919,8 +1839,8 @@ func TestPostgres_Clustering_ReconcileOnOwnershipChange(t *testing.T) {
 
 	after = c.loadInstances()
 	require.Len(t, after, 1)
-	assert.Equal(t, "postgresql://127.0.0.1:5432/db2", after[0].instanceKey)
-	assert.Empty(t, before[0].collectors)
+	assert.Equal(t, "postgresql://127.0.0.1:5432/db2", after[0].InstanceKey())
+	assert.False(t, before[0].Started())
 
 	exported, ok := gotExports.(Exports)
 	require.True(t, ok)
@@ -1958,7 +1878,7 @@ func TestPostgres_Clustering_NotifyClusterChange(t *testing.T) {
 
 	require.Eventually(t, func() bool {
 		instances := c.loadInstances()
-		return len(instances) == 1 && instances[0].instanceKey == "postgresql://127.0.0.1:5432/db2"
+		return len(instances) == 1 && instances[0].InstanceKey() == "postgresql://127.0.0.1:5432/db2"
 	}, 5*time.Second, 10*time.Millisecond)
 
 	cancel()
@@ -2032,7 +1952,7 @@ func TestPostgres_Clustering_UpdateRecomputesOwnership(t *testing.T) {
 	require.Len(t, instances, 2)
 	assert.ElementsMatch(t,
 		[]string{"postgresql://127.0.0.1:5432/db1", "postgresql://127.0.0.1:5432/db3"},
-		[]string{instances[0].instanceKey, instances[1].instanceKey})
+		[]string{instances[0].InstanceKey(), instances[1].InstanceKey()})
 }
 
 func TestPostgres_Clustering_LookupErrorFailsOpen(t *testing.T) {
@@ -2077,8 +1997,8 @@ func TestPostgres_Clustering_ReconcileMovesOnlyChangedDatabases(t *testing.T) {
 	before := c.loadInstances()
 	require.Len(t, before, 2)
 	instA, instB := before[0], before[1]
-	require.Equal(t, "postgresql://127.0.0.1:5432/db1", instA.instanceKey)
-	require.Equal(t, "postgresql://127.0.0.1:5432/db2", instB.instanceKey)
+	require.Equal(t, "postgresql://127.0.0.1:5432/db1", instA.InstanceKey())
+	require.Equal(t, "postgresql://127.0.0.1:5432/db2", instB.InstanceKey())
 
 	// db2 moves away and db3 moves in: db1 must keep running untouched.
 	fake.owned = map[shard.Key]bool{clusterKeyDB1: true, clusterKeyDB2: false, clusterKeyDB3: true}
@@ -2087,10 +2007,10 @@ func TestPostgres_Clustering_ReconcileMovesOnlyChangedDatabases(t *testing.T) {
 	after := c.loadInstances()
 	require.Len(t, after, 2)
 	assert.Same(t, instA, after[0])
-	assert.NotEmpty(t, instA.collectors)
-	assert.Equal(t, "postgresql://127.0.0.1:5432/db3", after[1].instanceKey)
-	assert.NotEmpty(t, after[1].collectors)
-	assert.Empty(t, instB.collectors)
+	assert.True(t, instA.Started())
+	assert.Equal(t, "postgresql://127.0.0.1:5432/db3", after[1].InstanceKey())
+	assert.True(t, after[1].Started())
+	assert.False(t, instB.Started())
 
 	exported, ok := gotExports.(Exports)
 	require.True(t, ok)

@@ -4,8 +4,6 @@ import (
 	"testing"
 	"time"
 
-	pgcollector "github.com/prometheus-community/postgres_exporter/collector"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -142,32 +140,4 @@ func TestExporterConfigFromAlloySyntax(t *testing.T) {
 	assert.False(t, pgCfg.Collectors["locks"])
 	_, err := pgCfg.Validate()
 	require.NoError(t, err)
-}
-
-// newTestExporterRuntime builds a runtime without connecting; connections open on the first scrape.
-func newTestExporterRuntime(t *testing.T) *pgcollector.Runtime {
-	t.Helper()
-	validated, err := exporterConfig(resolveExporterArgs(nil), testExporterDSN, nil).Validate()
-	require.NoError(t, err)
-	runtime, err := pgcollector.NewRuntime(validated, nil)
-	require.NoError(t, err)
-	return runtime
-}
-
-func TestCleanupExporterCollectorsClosesRuntime(t *testing.T) {
-	runtime := newTestExporterRuntime(t)
-
-	inst := &dbInstance{registry: prometheus.NewRegistry(), exporterRuntime: runtime}
-	for _, col := range runtime.Collectors() {
-		require.NoError(t, inst.registry.Register(col))
-		inst.exporterCollectors = append(inst.exporterCollectors, col)
-	}
-
-	inst.cleanupExporterCollectors()
-
-	assert.Nil(t, inst.exporterRuntime)
-	assert.Nil(t, inst.exporterCollectors)
-	for _, col := range runtime.Collectors() {
-		assert.False(t, inst.registry.Unregister(col))
-	}
 }

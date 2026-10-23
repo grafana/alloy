@@ -3,42 +3,17 @@ package postgres
 import (
 	"testing"
 
-	"github.com/aws/aws-sdk-go-v2/aws/arn"
-	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestPopulateCloudProvider(t *testing.T) {
-	t.Run("populates AWS RDS details from DSN", func(t *testing.T) {
-		dsn := "postgres://user:pass@products-db.abc123xyz.us-east-1.rds.amazonaws.com:5432/mydb"
-		got, err := populateCloudProviderFromDSN(dsn)
-		require.NoError(t, err)
+func TestValidateCloudProvider(t *testing.T) {
+	require.NoError(t, validateCloudProvider(nil))
+	require.NoError(t, validateCloudProvider(&CloudProvider{GCP: &GCPCloudProviderInfo{ConnectionName: "p:r:i"}}))
 
-		assert.Equal(t, &database_observability.CloudProvider{
-			AWS: &database_observability.AWSCloudProviderInfo{
-				ARN: arn.ARN{Resource: "db:products-db", Region: "us-east-1", AccountID: "unknown"},
-			},
-		}, got)
+	err := validateCloudProvider(&CloudProvider{
+		AWS:   &AWSCloudProviderInfo{ARN: "arn:aws:rds:us-east-1:123456789012:db:mydb"},
+		Azure: &AzureCloudProviderInfo{SubscriptionID: "sub", ResourceGroup: "rg"},
 	})
-
-	t.Run("populates Azure details from DSN", func(t *testing.T) {
-		dsn := "postgres://user:pass@products-db.postgres.database.azure.com:5432/mydb"
-		got, err := populateCloudProviderFromDSN(dsn)
-		require.NoError(t, err)
-
-		assert.Equal(t, &database_observability.CloudProvider{
-			Azure: &database_observability.AzureCloudProviderInfo{
-				ServerName: "products-db",
-			},
-		}, got)
-	})
-
-	t.Run("does not panic on a malformed rds host", func(t *testing.T) {
-		dsn := "postgres://user:pass@rds.amazonaws.com:5432/mydb"
-		got, err := populateCloudProviderFromDSN(dsn)
-		require.NoError(t, err)
-
-		assert.Equal(t, &database_observability.CloudProvider{}, got)
-	})
+	assert.EqualError(t, err, "cloud_provider: at most one of aws, azure, or gcp must be specified")
 }
