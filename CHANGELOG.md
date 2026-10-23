@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.21.3](https://github.com/grafana/alloy/compare/v1.21.2...v1.21.3) (2026-10-23)
+
+
+### Bug Fixes 🐛
+
+* **loki.source.kubernetes,loki.source.podlogs:** Prevent re-ingesting logs on re-tails [backport] ([#7512](https://github.com/grafana/alloy/issues/7512)) ([8cda438](https://github.com/grafana/alloy/commit/8cda438c07c8af02dcd1e02577c421d807d1a724))
+
 ## [1.21.2](https://github.com/grafana/alloy/compare/v1.21.1...v1.21.2) (2026-10-22)
 
 
