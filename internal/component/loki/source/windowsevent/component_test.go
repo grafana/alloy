@@ -53,10 +53,10 @@ func TestEventLogger(t *testing.T) {
 		Labels:               map[string]string{"job": "windows"},
 	})
 	require.NoError(t, err)
-	ctx := t.Context()
-	ctx, cancelFunc := context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancelFunc := context.WithTimeout(t.Context(), 10*time.Second)
 	found := false
-	go c.Run(ctx)
+	stopComponent := runInBackground(ctx, cancelFunc, c, rec)
+	defer stopComponent()
 	tm := time.Now().Format(time.RFC3339Nano)
 	err = wlog.Info(2, tm)
 	require.NoError(t, err)
@@ -71,8 +71,32 @@ func TestEventLogger(t *testing.T) {
 			break
 		}
 	}
-	cancelFunc()
 	require.True(t, found)
+}
+
+// runInBackground runs c with ctx in a new goroutine. The returned function
+// calls cancel and waits for Run to return. Waiting matters for goleak: on
+// shutdown the component saves the bookmark file, which can be slow enough on
+// Windows for goleak to report the still-running goroutines as leaked. While
+// waiting, rec is drained so that shutdown isn't blocked forwarding entries
+// that no one reads.
+func runInBackground(ctx context.Context, cancel context.CancelFunc, c *Component, rec loki.LogsReceiver) func() {
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_ = c.Run(ctx)
+	}()
+
+	return func() {
+		cancel()
+		for {
+			select {
+			case <-rec.Chan():
+			case <-done:
+				return
+			}
+		}
+	}
 }
 
 func TestLegacyBookmarkConversion(t *testing.T) {
@@ -117,8 +141,6 @@ func TestLegacyBookmarkConversion(t *testing.T) {
 	require.True(t, string(dd) == bookmarkText)
 
 	// Run the component and cancel it to stop the target that was started in New()
-	ctx := t.Context()
-	ctx, cancelFunc := context.WithTimeout(ctx, 10*time.Second)
-	go c.Run(ctx)
-	cancelFunc()
+	ctx, cancelFunc := context.WithTimeout(t.Context(), 10*time.Second)
+	runInBackground(ctx, cancelFunc, c, rec)()
 }
