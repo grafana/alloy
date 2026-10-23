@@ -62,7 +62,7 @@ func newLogpullStub(t *testing.T, lines ...string) *logpullStub {
 		s.mut.Unlock()
 
 		w.Header().Set("Content-Type", "application/x-ndjson")
-		if first {
+		if first && len(lines) > 0 {
 			_, _ = io.WriteString(w, strings.Join(lines, "\n")+"\n")
 		}
 	}))
@@ -185,32 +185,276 @@ func receive(t *testing.T, receiver loki.LogsReceiver, n int) []loki.Entry {
 	return received
 }
 
+func TestUpdateRestartsTailerOnlyOnConfigChange(t *testing.T) {
+	getClient = realGetClient
+	t.Cleanup(func() { getClient = realGetClient })
+
+	stub := newLogpullStub(t)
+
+	type testCase struct {
+		name          string
+		update        func(args *Arguments)
+		expectRestart bool
+	}
+
+	tests := []testCase{
+		{
+			name:          "same arguments",
+			update:        func(args *Arguments) {},
+			expectRestart: false,
+		},
+		{
+			name: "forward_to changed",
+			update: func(args *Arguments) {
+				args.ForwardTo = []loki.LogsReceiver{loki.NewLogsReceiver()}
+			},
+			expectRestart: false,
+		},
+		{
+			name: "labels changed",
+			update: func(args *Arguments) {
+				args.Labels = map[string]string{"job": "other"}
+			},
+			expectRestart: true,
+		},
+		{
+			name: "workers changed",
+			update: func(args *Arguments) {
+				args.Workers = 2
+			},
+			expectRestart: true,
+		},
+		{
+			name: "pull_range changed",
+			update: func(args *Arguments) {
+				args.PullRange = 2 * time.Minute
+			},
+			expectRestart: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			args := Arguments{
+				APIToken:   alloytypes.Secret("test-token"),
+				ZoneID:     "test-zone-id",
+				APIURL:     stub.apiURL(),
+				Labels:     map[string]string{"job": "cloudflare"},
+				Workers:    1,
+				PullRange:  time.Minute,
+				FieldsType: FieldsTypeDefault,
+				ForwardTo:  []loki.LogsReceiver{loki.NewLogsReceiver()},
+			}
+
+			ctrl, err := componenttest.NewControllerFromID(nil, "loki.source.cloudflare")
+			require.NoError(t, err)
+
+			ctx, cancel := context.WithCancel(t.Context())
+			runErr := make(chan error, 1)
+			go func() { runErr <- ctrl.Run(ctx, args) }()
+			require.NoError(t, ctrl.WaitRunning(time.Minute))
+
+			cmp, err := ctrl.GetComponent()
+			require.NoError(t, err)
+			c := cmp.(*Component)
+
+			c.mut.RLock()
+			before := c.tailer
+			c.mut.RUnlock()
+
+			tt.update(&args)
+			require.NoError(t, ctrl.Update(args))
+
+			c.mut.RLock()
+			after := c.tailer
+			c.mut.RUnlock()
+
+			if tt.expectRestart {
+				require.NotSame(t, before, after)
+			} else {
+				require.Same(t, before, after)
+			}
+
+			cancel()
+			require.NoError(t, <-runErr)
+		})
+	}
+}
+
+func TestUpdateWithBlockedDownstream(t *testing.T) {
+	getClient = realGetClient
+	t.Cleanup(func() { getClient = realGetClient })
+
+	lines := []string{
+		`{"EdgeStartTimestamp":1000000001,"RayID":"test-ray-001"}`,
+		`{"EdgeStartTimestamp":1000000002,"RayID":"test-ray-002"}`,
+		`{"EdgeStartTimestamp":1000000003,"RayID":"test-ray-003"}`,
+	}
+	stub := newLogpullStub(t, lines...)
+
+	ctrl, err := componenttest.NewControllerFromID(nil, "loki.source.cloudflare")
+	require.NoError(t, err)
+
+	receiver := loki.NewLogsReceiver()
+	args := Arguments{
+		APIToken:   alloytypes.Secret("test-token"),
+		ZoneID:     "test-zone-id",
+		APIURL:     stub.apiURL(),
+		Workers:    1,
+		PullRange:  time.Minute,
+		FieldsType: FieldsTypeDefault,
+		ForwardTo:  []loki.LogsReceiver{receiver},
+	}
+
+	ctx, cancel := context.WithCancel(componenttest.TestContext(t))
+	runErr := make(chan error, 1)
+	go func() { runErr <- ctrl.Run(ctx, args) }()
+	require.NoError(t, ctrl.WaitRunning(time.Minute))
+
+	// Read only the first entry. The component then blocks forwarding the
+	// second one, and the tailer blocks handing off the third.
+	require.Equal(t, lines[0], receive(t, receiver, 1)[0].Line)
+
+	args.Workers = 2
+	updated := make(chan error, 1)
+	go func() { updated <- ctrl.Update(args) }()
+
+	select {
+	case err := <-updated:
+		require.NoError(t, err)
+	case <-time.After(10 * time.Second):
+		require.FailNow(t, "Update blocked while the downstream was not reading")
+	}
+
+	// Unblock the downstream so shutdown does not wait for the drain timeout.
+	stopped := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-receiver.Chan():
+			case <-stopped:
+				return
+			}
+		}
+	}()
+
+	cancel()
+	require.NoError(t, <-runErr)
+	close(stopped)
+}
+
 func TestArguments(t *testing.T) {
-	tests := []struct {
-		name       string
-		config     string
-		wantAPIURL string
-		wantErr    string
-	}{
+	type testCase struct {
+		name      string
+		config    string
+		expected  Arguments
+		expectErr bool
+	}
+
+	tests := []testCase{
 		{
-			name:       "api_url defaults to the Cloudflare API",
-			config:     `api_token = "t"` + "\n" + `zone_id = "z"` + "\n" + `forward_to = []`,
-			wantAPIURL: "https://api.cloudflare.com/client/v4",
+			name: "api_url defaults to the Cloudflare API",
+			config: `
+				api_token = "t"
+				zone_id = "z"
+				forward_to = []
+			`,
+			expected: Arguments{
+				APIToken:   alloytypes.Secret("t"),
+				ZoneID:     "z",
+				APIURL:     "https://api.cloudflare.com/client/v4",
+				Workers:    3,
+				PullRange:  time.Minute,
+				FieldsType: FieldsTypeDefault,
+				ForwardTo:  []loki.LogsReceiver{},
+			},
 		},
 		{
-			name:       "api_url can be set",
-			config:     `api_token = "t"` + "\n" + `zone_id = "z"` + "\n" + `api_url = "http://localhost:8080/client/v4"` + "\n" + `forward_to = []`,
-			wantAPIURL: "http://localhost:8080/client/v4",
+			name: "api_url can be set",
+			config: `
+				api_token = "t"
+				zone_id = "z"
+				api_url = "http://localhost:8080/client/v4"
+				forward_to = []
+			`,
+			expected: Arguments{
+				APIToken:   alloytypes.Secret("t"),
+				ZoneID:     "z",
+				APIURL:     "http://localhost:8080/client/v4",
+				Workers:    3,
+				PullRange:  time.Minute,
+				FieldsType: FieldsTypeDefault,
+				ForwardTo:  []loki.LogsReceiver{},
+			},
 		},
 		{
-			name:    "api_url must be absolute",
-			config:  `api_token = "t"` + "\n" + `zone_id = "z"` + "\n" + `api_url = "/client/v4"` + "\n" + `forward_to = []`,
-			wantErr: "api_url must be an absolute http or https URL",
+			name: "api_url must be absolute",
+			config: `
+				api_token = "t"
+				zone_id = "z"
+				api_url = "/client/v4"
+				forward_to = []
+			`,
+			expectErr: true,
 		},
 		{
-			name:    "api_url must be http or https",
-			config:  `api_token = "t"` + "\n" + `zone_id = "z"` + "\n" + `api_url = "ftp://example.com"` + "\n" + `forward_to = []`,
-			wantErr: "api_url must be an absolute http or https URL",
+			name: "api_url must be http or https",
+			config: `
+				api_token = "t"
+				zone_id = "z"
+				api_url = "ftp://example.com"
+				forward_to = []
+			`,
+			expectErr: true,
+		},
+		{
+			name: "api_token must not be empty",
+			config: `
+				api_token = ""
+				zone_id = "z"
+				forward_to = []
+			`,
+			expectErr: true,
+		},
+		{
+			name: "pull_range must not be negative",
+			config: `
+				api_token = "t"
+				zone_id = "z"
+				pull_range = "-1m"
+				forward_to = []
+			`,
+			expectErr: true,
+		},
+		{
+			name: "fields_type must be known",
+			config: `
+				api_token = "t"
+				zone_id = "z"
+				fields_type = "unknown"
+				forward_to = []
+			`,
+			expectErr: true,
+		},
+		{
+			name: "custom fields_type with additional_fields",
+			config: `
+				api_token = "t"
+				zone_id = "z"
+				fields_type = "custom"
+				additional_fields = ["ClientIP"]
+				forward_to = []
+			`,
+			expected: Arguments{
+				APIToken:         alloytypes.Secret("t"),
+				ZoneID:           "z",
+				APIURL:           "https://api.cloudflare.com/client/v4",
+				Workers:          3,
+				PullRange:        time.Minute,
+				FieldsType:       FieldsTypeCustom,
+				AdditionalFields: []string{"ClientIP"},
+				ForwardTo:        []loki.LogsReceiver{},
+			},
 		},
 	}
 
@@ -218,12 +462,12 @@ func TestArguments(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var args Arguments
 			err := syntax.Unmarshal([]byte(tc.config), &args)
-			if tc.wantErr != "" {
-				require.ErrorContains(t, err, tc.wantErr)
+			if tc.expectErr {
+				require.Error(t, err)
 				return
 			}
 			require.NoError(t, err)
-			require.Equal(t, tc.wantAPIURL, args.APIURL)
+			require.Equal(t, tc.expected, args)
 		})
 	}
 }
