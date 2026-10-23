@@ -2162,6 +2162,18 @@ func TestPostgres_Clustering_NonOwnedReceiverDiscards(t *testing.T) {
 }
 
 func Test_resolveExporterArgs(t *testing.T) {
+	t.Run("embedded postgres exporter always sets statstatements limit to 100, regardless of default arguments", func(t *testing.T) {
+		originalDefaultArguments := exporter_postgres.DefaultArguments
+		t.Cleanup(func() {
+			exporter_postgres.DefaultArguments = originalDefaultArguments
+		})
+		exporter_postgres.DefaultArguments.StatStatementFlags = &exporter_postgres.StatStatementFlags{Limit: 500}
+
+		exporterArgs := resolveExporterArgs(nil)
+		require.NotNil(t, exporterArgs.StatStatementFlags)
+		assert.Equal(t, uint(100), exporterArgs.StatStatementFlags.Limit)
+	})
+
 	t.Run("no block at all defaults to stat_statements only with default stat_statements limit", func(t *testing.T) {
 		cfg := `
 			data_source_name = "postgresql://user:pass@localhost:5432/db"
