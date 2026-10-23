@@ -19,225 +19,251 @@ import (
 )
 
 func TestTailer(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-	l := logging.NewSlogNop()
-	ch1 := loki.NewLogsReceiver()
-	tempDir := t.TempDir()
-	logFile, err := os.CreateTemp(tempDir, "example")
-	require.NoError(t, err)
-	positionsFile, err := positions.New(l, positions.Config{
-		SyncPeriod:        50 * time.Millisecond,
-		PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
-		IgnoreInvalidYaml: false,
-		ReadOnly:          false,
-	})
-	require.NoError(t, err)
-	labels := model.LabelSet{
-		"filename": model.LabelValue(logFile.Name()),
-		"foo":      "bar",
-	}
-	tailer := newTailer(
-		newMetrics(nil),
-		l,
-		ch1,
-		positionsFile,
-		func() bool { return true },
-		sourceOptions{
-			path:   logFile.Name(),
-			labels: labels,
-			fileWatch: FileWatch{
-				MinPollFrequency: 25 * time.Millisecond,
-				MaxPollFrequency: 25 * time.Millisecond,
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	runTailerTest(t, func(t *testing.T, send sendFunc, received func() []loki.Entry) {
+		l := logging.NewSlogNop()
+		tempDir := t.TempDir()
+		logFile, err := os.CreateTemp(tempDir, "example")
+		require.NoError(t, err)
+		positionsFile, err := positions.New(l, positions.Config{
+			SyncPeriod:        50 * time.Millisecond,
+			PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
+			IgnoreInvalidYaml: false,
+			ReadOnly:          false,
+		})
+		require.NoError(t, err)
+		labels := model.LabelSet{
+			"filename": model.LabelValue(logFile.Name()),
+			"foo":      "bar",
+		}
+		tailer := newTailer(
+			newMetrics(nil),
+			l,
+			send,
+			positionsFile,
+			func() bool { return true },
+			sourceOptions{
+				path:   logFile.Name(),
+				labels: labels,
+				fileWatch: FileWatch{
+					MinPollFrequency: 25 * time.Millisecond,
+					MaxPollFrequency: 25 * time.Millisecond,
+				},
+				onPositionsFileError: OnPositionsFileErrorRestartBeginning,
 			},
-			onPositionsFileError: OnPositionsFileErrorRestartBeginning,
-		},
-	)
-	require.NoError(t, err)
+		)
 
-	ctx, cancel := context.WithCancel(t.Context())
-	done := make(chan struct{})
-	go func() {
-		tailer.Run(ctx)
-		close(done)
-	}()
+		ctx, cancel := context.WithCancel(t.Context())
+		done := make(chan struct{})
+		go func() {
+			tailer.Run(ctx)
+			close(done)
+		}()
 
-	_, err = logFile.Write([]byte("writing some text\n"))
-	require.NoError(t, err)
-	select {
-	case logEntry := <-ch1.Chan():
-		require.Equal(t, "writing some text", logEntry.Line)
-	case <-time.After(1 * time.Second):
-		require.FailNow(t, "failed waiting for log line")
-	}
+		_, err = logFile.Write([]byte("writing some text\n"))
+		require.NoError(t, err)
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			entries := received()
+			require.Len(c, entries, 1)
+			require.Equal(c, "writing some text", entries[0].Line)
+		}, time.Second, 10*time.Millisecond)
 
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		pos, err := positionsFile.Get(logFile.Name(), labels.String())
-		assert.NoError(c, err)
-		assert.Equal(c, int64(18), pos)
-	}, time.Second, 50*time.Millisecond)
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			pos, err := positionsFile.Get(logFile.Name(), labels.String())
+			require.NoError(c, err)
+			require.Equal(c, int64(18), pos)
+		}, time.Second, 50*time.Millisecond)
 
-	cancel()
-	<-done
+		cancel()
+		<-done
 
-	// Run the tailer again
-	ctx, cancel = context.WithCancel(t.Context())
-	done = make(chan struct{})
-	go func() {
-		tailer.Run(ctx)
-		close(done)
-	}()
+		// Run the tailer again
+		ctx, cancel = context.WithCancel(t.Context())
+		done = make(chan struct{})
+		go func() {
+			tailer.Run(ctx)
+			close(done)
+		}()
 
-	select {
-	case <-ch1.Chan():
-		t.Fatal("no message should be sent because of the position file")
-	case <-time.After(1 * time.Second):
-	}
+		// No entry should be sent because of the position file.
+		require.Never(t, func() bool {
+			return len(received()) > 1
+		}, time.Second, 50*time.Millisecond)
 
-	// Write logs again
-	_, err = logFile.Write([]byte("writing some new text\n"))
-	require.NoError(t, err)
-	select {
-	case logEntry := <-ch1.Chan():
-		require.Equal(t, "writing some new text", logEntry.Line)
-	case <-time.After(1 * time.Second):
-		require.FailNow(t, "failed waiting for log line")
-	}
+		// Write logs again
+		_, err = logFile.Write([]byte("writing some new text\n"))
+		require.NoError(t, err)
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			entries := received()
+			require.Len(c, entries, 2)
+			require.Equal(c, "writing some new text", entries[1].Line)
+		}, time.Second, 10*time.Millisecond)
 
-	cancel()
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		pos, err := positionsFile.Get(logFile.Name(), labels.String())
-		assert.NoError(c, err)
-		assert.Equal(c, int64(40), pos)
-	}, time.Second, 50*time.Millisecond)
+		cancel()
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			pos, err := positionsFile.Get(logFile.Name(), labels.String())
+			require.NoError(c, err)
+			require.Equal(c, int64(40), pos)
+		}, time.Second, 50*time.Millisecond)
+		<-done
 
-	positionsFile.Stop()
-	require.NoError(t, logFile.Close())
+		positionsFile.Stop()
+		require.NoError(t, logFile.Close())
+	})
 }
 
 func TestTailerPositionFileEntryDeleted(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-	l := logging.NewSlogNop()
-	ch1 := loki.NewLogsReceiver()
-	tempDir := t.TempDir()
-	logFile, err := os.CreateTemp(tempDir, "example")
-	require.NoError(t, err)
-	positionsFile, err := positions.New(l, positions.Config{
-		SyncPeriod:        50 * time.Millisecond,
-		PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
-		IgnoreInvalidYaml: false,
-		ReadOnly:          false,
-	})
-	require.NoError(t, err)
-	labels := model.LabelSet{
-		"filename": model.LabelValue(logFile.Name()),
-		"foo":      "bar",
-	}
-	tailer := newTailer(
-		newMetrics(nil),
-		l,
-		ch1,
-		positionsFile,
-		func() bool { return false },
-		sourceOptions{
-			path:   logFile.Name(),
-			labels: labels,
-			fileWatch: FileWatch{
-				MinPollFrequency: 25 * time.Millisecond,
-				MaxPollFrequency: 25 * time.Millisecond,
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	runTailerTest(t, func(t *testing.T, send sendFunc, received func() []loki.Entry) {
+		l := logging.NewSlogNop()
+		tempDir := t.TempDir()
+		logFile, err := os.CreateTemp(tempDir, "example")
+		require.NoError(t, err)
+		positionsFile, err := positions.New(l, positions.Config{
+			SyncPeriod:        50 * time.Millisecond,
+			PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
+			IgnoreInvalidYaml: false,
+			ReadOnly:          false,
+		})
+		require.NoError(t, err)
+		labels := model.LabelSet{
+			"filename": model.LabelValue(logFile.Name()),
+			"foo":      "bar",
+		}
+		tailer := newTailer(
+			newMetrics(nil),
+			l,
+			send,
+			positionsFile,
+			func() bool { return false },
+			sourceOptions{
+				path:   logFile.Name(),
+				labels: labels,
+				fileWatch: FileWatch{
+					MinPollFrequency: 25 * time.Millisecond,
+					MaxPollFrequency: 25 * time.Millisecond,
+				},
+				onPositionsFileError: OnPositionsFileErrorRestartBeginning,
 			},
-			onPositionsFileError: OnPositionsFileErrorRestartBeginning,
-		},
-	)
-	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(t.Context())
-	go tailer.Run(ctx)
+		)
+		ctx, cancel := context.WithCancel(t.Context())
+		done := make(chan struct{})
+		go func() {
+			tailer.Run(ctx)
+			close(done)
+		}()
 
-	_, err = logFile.Write([]byte("writing some text\n"))
-	require.NoError(t, err)
-	select {
-	case logEntry := <-ch1.Chan():
-		require.Equal(t, "writing some text", logEntry.Line)
-	case <-time.After(1 * time.Second):
-		require.FailNow(t, "failed waiting for log line")
-	}
+		_, err = logFile.Write([]byte("writing some text\n"))
+		require.NoError(t, err)
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			entries := received()
+			require.Len(c, entries, 1)
+			require.Equal(c, "writing some text", entries[0].Line)
+		}, time.Second, 10*time.Millisecond)
 
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		pos, err := positionsFile.Get(logFile.Name(), labels.String())
-		assert.NoError(c, err)
-		assert.Equal(c, int64(18), pos)
-	}, time.Second, 50*time.Millisecond)
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			pos, err := positionsFile.Get(logFile.Name(), labels.String())
+			require.NoError(c, err)
+			require.Equal(c, int64(18), pos)
+		}, time.Second, 50*time.Millisecond)
 
-	cancel()
+		cancel()
+		<-done
 
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		pos, err := positionsFile.Get(logFile.Name(), labels.String())
-		assert.NoError(c, err)
-		assert.Equal(c, int64(0), pos)
-	}, time.Second, 50*time.Millisecond)
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			pos, err := positionsFile.Get(logFile.Name(), labels.String())
+			require.NoError(c, err)
+			require.Equal(c, int64(0), pos)
+		}, time.Second, 50*time.Millisecond)
 
-	positionsFile.Stop()
-	require.NoError(t, logFile.Close())
+		positionsFile.Stop()
+		require.NoError(t, logFile.Close())
+	})
 }
 
 func TestTailerDeleteFileInstant(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-	l := logging.NewSlogNop()
-	ch1 := loki.NewLogsReceiver()
-	tempDir := t.TempDir()
-	logFile, err := os.CreateTemp(tempDir, "example")
-	require.NoError(t, err)
-	positionsFile, err := positions.New(l, positions.Config{
-		SyncPeriod:        50 * time.Millisecond,
-		PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
-		IgnoreInvalidYaml: false,
-		ReadOnly:          false,
-	})
-	require.NoError(t, err)
-	labels := model.LabelSet{
-		"filename": model.LabelValue(logFile.Name()),
-		"foo":      "bar",
-	}
-	tailer := newTailer(
-		newMetrics(nil),
-		l,
-		ch1,
-		positionsFile,
-		func() bool { return true },
-		sourceOptions{
-			path:   logFile.Name(),
-			labels: labels,
-			fileWatch: FileWatch{
-				MinPollFrequency: 25 * time.Millisecond,
-				MaxPollFrequency: 25 * time.Millisecond,
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	runTailerTest(t, func(t *testing.T, send sendFunc, _ func() []loki.Entry) {
+		l := logging.NewSlogNop()
+		tempDir := t.TempDir()
+		logFile, err := os.CreateTemp(tempDir, "example")
+		require.NoError(t, err)
+		positionsFile, err := positions.New(l, positions.Config{
+			SyncPeriod:        50 * time.Millisecond,
+			PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
+			IgnoreInvalidYaml: false,
+			ReadOnly:          false,
+		})
+		require.NoError(t, err)
+		labels := model.LabelSet{
+			"filename": model.LabelValue(logFile.Name()),
+			"foo":      "bar",
+		}
+		tailer := newTailer(
+			newMetrics(nil),
+			l,
+			send,
+			positionsFile,
+			func() bool { return true },
+			sourceOptions{
+				path:   logFile.Name(),
+				labels: labels,
+				fileWatch: FileWatch{
+					MinPollFrequency: 25 * time.Millisecond,
+					MaxPollFrequency: 25 * time.Millisecond,
+				},
+				onPositionsFileError: OnPositionsFileErrorRestartBeginning,
 			},
-			onPositionsFileError: OnPositionsFileErrorRestartBeginning,
-		},
-	)
-	require.NoError(t, err)
+		)
 
-	// Close the file before running the tailer
-	require.NoError(t, logFile.Close())
-	require.NoError(t, os.Remove(logFile.Name()))
+		// Close the file before running the tailer
+		require.NoError(t, logFile.Close())
+		require.NoError(t, os.Remove(logFile.Name()))
 
-	done := make(chan struct{})
-	go func() {
-		tailer.Run(t.Context())
-		positionsFile.Stop()
-		close(done)
-	}()
+		done := make(chan struct{})
+		go func() {
+			tailer.Run(t.Context())
+			positionsFile.Stop()
+			close(done)
+		}()
 
-	select {
-	case <-done:
-	case <-time.After(5 * time.Second):
-		t.Fatal("tailer deadlocked")
-	}
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			t.Fatal("tailer deadlocked")
+		}
+	})
 }
 
 func TestTailerCancelWhileSendBlocked(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
+	t.Run("pipeline v1", func(t *testing.T) {
+		recv := loki.NewLogsReceiver()
+		testTailerCancelWhileSendBlocked(t, sendToV1(recv), func() string {
+			entry := <-recv.Chan()
+			return entry.Line
+		})
+	})
+
+	t.Run("pipeline v2", func(t *testing.T) {
+		consumer := &blockingConsumer{CollectingConsumer: loki.NewCollectingConsumer()}
+		testTailerCancelWhileSendBlocked(t, sendToV2(consumer), func() string {
+			var entries []loki.Entry
+			require.Eventually(t, func() bool {
+				entries = consumer.Entries()
+				return len(entries) > 0
+			}, time.Second, 10*time.Millisecond)
+			return entries[0].Line
+		})
+	})
+}
+
+func testTailerCancelWhileSendBlocked(t *testing.T, send sendFunc, firstLine func() string) {
 	l := logging.NewSlogNop()
-	recv := loki.NewLogsReceiver()
 	tempDir := t.TempDir()
 
 	file, err := os.CreateTemp(tempDir, "example")
@@ -268,7 +294,7 @@ func TestTailerCancelWhileSendBlocked(t *testing.T) {
 	tailer := newTailer(
 		newMetrics(nil),
 		l,
-		recv,
+		send,
 		positionsFile,
 		func() bool { return true },
 		sourceOptions{
@@ -290,301 +316,327 @@ func TestTailerCancelWhileSendBlocked(t *testing.T) {
 		close(done)
 	}()
 
-	// Read first line.
-	entry := <-recv.Chan()
-	require.Equal(t, "1", entry.Line)
+	require.Equal(t, "1", firstLine())
 
-	// Stop tailer without reading from recv.
+	// Stop tailer while the send of the second line is blocked.
 	cancel()
-
 	select {
 	case <-done:
 	case <-time.After(5 * time.Second):
 		t.Fatal("tailer deadlocked while send was blocked")
 	}
+
 	pos, err := positionsFile.Get(path, labels.String())
 	require.NoError(t, err)
 	require.Equal(t, int64(2), pos)
 }
 
+type blockingConsumer struct {
+	*loki.CollectingConsumer
+}
+
+func (c *blockingConsumer) Consume(ctx context.Context, batch loki.Batch) error {
+	if len(c.Entries()) > 0 {
+		<-ctx.Done()
+		return ctx.Err()
+	}
+	return c.CollectingConsumer.Consume(ctx, batch)
+}
+
 func TestTailerCorruptedPositions(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-	l := logging.NewSlogNop()
-	ch1 := loki.NewLogsReceiver()
-	tempDir := t.TempDir()
-	logFile, err := os.CreateTemp(tempDir, "example")
-	require.NoError(t, err)
-	_, err = logFile.Write([]byte("initial content\n"))
-	require.NoError(t, err)
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	positionsFile, err := positions.New(l, positions.Config{
-		SyncPeriod:        50 * time.Millisecond,
-		PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
-		IgnoreInvalidYaml: false,
-		ReadOnly:          false,
-	})
-	require.NoError(t, err)
-	labels := model.LabelSet{
-		"filename": model.LabelValue(logFile.Name()),
-		"foo":      "bar",
-	}
-	positionsFile.PutString(logFile.Name(), labels.String(), "\\0\\0\\0\\0123") // Corrupted position entry
-	tailer := newTailer(
-		newMetrics(nil),
-		l,
-		ch1,
-		positionsFile,
-		func() bool { return true },
-		sourceOptions{
-			path:   logFile.Name(),
-			labels: labels,
-			fileWatch: FileWatch{
-				MinPollFrequency: 25 * time.Millisecond,
-				MaxPollFrequency: 25 * time.Millisecond,
+	runTailerTest(t, func(t *testing.T, send sendFunc, received func() []loki.Entry) {
+		l := logging.NewSlogNop()
+		tempDir := t.TempDir()
+		logFile, err := os.CreateTemp(tempDir, "example")
+		require.NoError(t, err)
+		_, err = logFile.Write([]byte("initial content\n"))
+		require.NoError(t, err)
+
+		positionsFile, err := positions.New(l, positions.Config{
+			SyncPeriod:        50 * time.Millisecond,
+			PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
+			IgnoreInvalidYaml: false,
+			ReadOnly:          false,
+		})
+		require.NoError(t, err)
+		defer positionsFile.Stop()
+
+		labels := model.LabelSet{
+			"filename": model.LabelValue(logFile.Name()),
+			"foo":      "bar",
+		}
+		positionsFile.PutString(logFile.Name(), labels.String(), "\\0\\0\\0\\0123") // Corrupted position entry
+		tailer := newTailer(
+			newMetrics(nil),
+			l,
+			send,
+			positionsFile,
+			func() bool { return true },
+			sourceOptions{
+				path:   logFile.Name(),
+				labels: labels,
+				fileWatch: FileWatch{
+					MinPollFrequency: 25 * time.Millisecond,
+					MaxPollFrequency: 25 * time.Millisecond,
+				},
+				onPositionsFileError: OnPositionsFileErrorRestartEnd,
 			},
-			onPositionsFileError: OnPositionsFileErrorRestartEnd,
-		},
-	)
+		)
 
-	ctx, cancel := context.WithCancel(t.Context())
-	done := make(chan struct{})
-	go func() {
-		tailer.Run(ctx)
-		close(done)
-	}()
+		ctx, cancel := context.WithCancel(t.Context())
+		done := make(chan struct{})
+		go func() {
+			tailer.Run(ctx)
+			close(done)
+		}()
 
-	// tailer needs some time to start
-	time.Sleep(50 * time.Millisecond)
+		// tailer needs some time to start
+		time.Sleep(50 * time.Millisecond)
 
-	_, err = logFile.Write([]byte("writing some text\n"))
-	require.NoError(t, err)
-	select {
-	case logEntry := <-ch1.Chan():
-		require.Equal(t, "writing some text", logEntry.Line)
-	case <-time.After(1 * time.Second):
-		require.FailNow(t, "failed waiting for log line")
-	}
+		_, err = logFile.Write([]byte("writing some text\n"))
+		require.NoError(t, err)
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			entries := received()
+			require.Len(c, entries, 1)
+			require.Equal(c, "writing some text", entries[0].Line)
+		}, time.Second, 10*time.Millisecond)
 
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		pos, err := positionsFile.Get(logFile.Name(), labels.String())
-		assert.NoError(c, err)
-		assert.Equal(c, int64(34), pos)
-	}, time.Second, 50*time.Millisecond)
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			pos, err := positionsFile.Get(logFile.Name(), labels.String())
+			require.NoError(c, err)
+			require.Equal(c, int64(34), pos)
+		}, time.Second, 50*time.Millisecond)
 
-	cancel()
-	<-done
+		cancel()
+		<-done
 
-	// Run the tailer again
-	ctx, cancel = context.WithCancel(t.Context())
-	done = make(chan struct{})
-	go func() {
-		tailer.Run(ctx)
-		close(done)
-	}()
+		// Run the tailer again
+		ctx, cancel = context.WithCancel(t.Context())
+		done = make(chan struct{})
+		go func() {
+			tailer.Run(ctx)
+			close(done)
+		}()
 
-	select {
-	case <-ch1.Chan():
-		t.Fatal("no message should be sent because of the position file")
-	case <-time.After(1 * time.Second):
-	}
+		// No entry should be sent because of the position file.
+		require.Never(t, func() bool {
+			return len(received()) > 1
+		}, time.Second, 50*time.Millisecond)
 
-	// Write logs again
-	_, err = logFile.Write([]byte("writing some new text\n"))
-	require.NoError(t, err)
-	select {
-	case logEntry := <-ch1.Chan():
-		require.Equal(t, "writing some new text", logEntry.Line)
-	case <-time.After(1 * time.Second):
-		require.FailNow(t, "failed waiting for log line")
-	}
+		// Write logs again
+		_, err = logFile.Write([]byte("writing some new text\n"))
+		require.NoError(t, err)
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			entries := received()
+			require.Len(c, entries, 2)
+			require.Equal(c, "writing some new text", entries[1].Line)
+		}, time.Second, 10*time.Millisecond)
 
-	cancel()
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		pos, err := positionsFile.Get(logFile.Name(), labels.String())
-		assert.NoError(c, err)
-		assert.Equal(c, int64(56), pos)
-	}, time.Second, 50*time.Millisecond)
+		cancel()
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			pos, err := positionsFile.Get(logFile.Name(), labels.String())
+			require.NoError(c, err)
+			require.Equal(c, int64(56), pos)
+		}, time.Second, 50*time.Millisecond)
 
-	positionsFile.Stop()
-	require.NoError(t, logFile.Close())
+		<-done
+		require.NoError(t, logFile.Close())
+	})
 }
 
 func TestTailer_Compressions(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-	handler := loki.NewCollectingHandler()
-	defer handler.Stop()
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	logger := logging.NewSlogNop()
-	positionsFile, err := positions.New(logger, positions.Config{
-		SyncPeriod:    50 * time.Millisecond,
-		PositionsFile: filepath.Join(t.TempDir(), "positions.yaml"),
+	runTailerTest(t, func(t *testing.T, send sendFunc, received func() []loki.Entry) {
+		logger := logging.NewSlogNop()
+		positionsFile, err := positions.New(logger, positions.Config{
+			SyncPeriod:    50 * time.Millisecond,
+			PositionsFile: filepath.Join(t.TempDir(), "positions.yaml"),
+		})
+		require.NoError(t, err)
+		defer positionsFile.Stop()
+
+		filename := "testdata/onelinelog.tar.gz"
+		labels := model.LabelSet{
+			"filename": model.LabelValue(filename),
+			"foo":      "bar",
+		}
+
+		tailer := newTailer(
+			newMetrics(nil),
+			logger,
+			send,
+			positionsFile,
+			// We return false here to verify that position is kept and we don't re-ingest the file.
+			func() bool { return false },
+			sourceOptions{
+				path:                 filename,
+				labels:               labels,
+				onPositionsFileError: OnPositionsFileErrorRestartBeginning,
+				decompressionConfig:  DecompressionConfig{Enabled: true, Format: "gz"},
+			},
+		)
+
+		// We expect tailer to exit when all compressed data have been consumed.
+		tailer.Run(t.Context())
+
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			entries := received()
+			require.Len(c, entries, 1)
+			require.Contains(c, entries[0].Line, "onelinelog.log")
+		}, 2*time.Second, 50*time.Millisecond)
+
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			pos, err := positionsFile.Get(filename, labels.String())
+			require.NoError(c, err)
+			require.Equal(c, int64(10240), pos)
+		}, time.Second, 50*time.Millisecond)
+
+		// Run the decompressor again
+		tailer.Run(t.Context())
+
+		// No new entries because the position was kept.
+		require.Len(t, received(), 1)
 	})
-	require.NoError(t, err)
-	defer positionsFile.Stop()
-
-	filename := "testdata/onelinelog.tar.gz"
-	labels := model.LabelSet{
-		"filename": model.LabelValue(filename),
-		"foo":      "bar",
-	}
-
-	tailer := newTailer(
-		newMetrics(nil),
-		logger,
-		handler.Receiver(),
-		positionsFile,
-		// We return false here to verify that position is kept and we don't re-ingest the file.
-		func() bool { return false },
-		sourceOptions{
-			path:                 filename,
-			labels:               labels,
-			onPositionsFileError: OnPositionsFileErrorRestartBeginning,
-			decompressionConfig:  DecompressionConfig{Enabled: true, Format: "gz"},
-		},
-	)
-
-	// We expect tailer to exit when all compressed data have been consumed.
-	tailer.Run(t.Context())
-
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		entries := handler.Received()
-		require.Len(c, entries, 1)
-		require.Contains(c, entries[0].Line, "onelinelog.log")
-	}, 2*time.Second, 50*time.Millisecond)
-
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		pos, err := positionsFile.Get(filename, labels.String())
-		assert.NoError(c, err)
-		// FIXME: Previously we stored line posistion..
-		assert.Equal(c, int64(10240), pos)
-	}, time.Second, 50*time.Millisecond)
-
-	handler.Clear()
-	// Run the decompressor again
-	tailer.Run(t.Context())
-
-	entries := handler.Received()
-	require.Len(t, entries, 0)
 }
 
 func TestTailer_GigantiqueGunzipFile(t *testing.T) {
-	file := "testdata/long-access.gz"
-	handler := loki.NewCollectingHandler()
-	defer handler.Stop()
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	tailer := newTailer(
-		newMetrics(prometheus.NewRegistry()),
-		logging.NewSlogNop(),
-		handler.Receiver(),
-		positions.NewNop(),
-		func() bool { return false },
-		sourceOptions{
-			path:                file,
-			decompressionConfig: DecompressionConfig{Enabled: true, Format: "gz"},
-		},
-	)
+	runTailerTest(t, func(t *testing.T, send sendFunc, received func() []loki.Entry) {
+		file := "testdata/long-access.gz"
 
-	// We expect tailer to exit when all compressed data have been consumed.
-	tailer.Run(t.Context())
+		tailer := newTailer(
+			newMetrics(prometheus.NewRegistry()),
+			logging.NewSlogNop(),
+			send,
+			positions.NewNop(),
+			func() bool { return false },
+			sourceOptions{
+				path:                file,
+				decompressionConfig: DecompressionConfig{Enabled: true, Format: "gz"},
+			},
+		)
 
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		require.Equal(c, 100000, len(handler.Received()))
-	}, 2*time.Second, 50*time.Millisecond)
+		// We expect tailer to exit when all compressed data have been consumed.
+		tailer.Run(t.Context())
+
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			require.Equal(c, 100000, len(received()))
+		}, 2*time.Second, 50*time.Millisecond)
+	})
 }
 
 // TestTailer_CompressedOnelineFile test the supported formats for log lines that only contain 1 line.
 // Based on our experience, this is the scenario with the most edge cases.
 func TestTailer_CompressedOnelineFile(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
 	fileContent, err := os.ReadFile("testdata/onelinelog.log")
 	require.NoError(t, err)
 	t.Run("gunzip file", func(t *testing.T) {
-		file := "testdata/onelinelog.log.gz"
-		handler := loki.NewCollectingHandler()
-		defer handler.Stop()
+		runTailerTest(t, func(t *testing.T, send sendFunc, received func() []loki.Entry) {
+			file := "testdata/onelinelog.log.gz"
 
-		tailer := newTailer(
-			newMetrics(prometheus.NewRegistry()),
-			logging.NewSlogNop(),
-			handler.Receiver(),
-			positions.NewNop(),
-			func() bool { return false },
-			sourceOptions{
-				path:                file,
-				decompressionConfig: DecompressionConfig{Enabled: true, Format: "gz"},
-			},
-		)
-		require.NoError(t, err)
+			tailer := newTailer(
+				newMetrics(prometheus.NewRegistry()),
+				logging.NewSlogNop(),
+				send,
+				positions.NewNop(),
+				func() bool { return false },
+				sourceOptions{
+					path:                file,
+					decompressionConfig: DecompressionConfig{Enabled: true, Format: "gz"},
+				},
+			)
 
-		// We expect tailer to exit when all compressed data have been consumed.
-		tailer.Run(t.Context())
+			// We expect tailer to exit when all compressed data have been consumed.
+			tailer.Run(t.Context())
 
-		require.Eventually(t, func() bool {
-			return len(handler.Received()) == 1
-		}, 2*time.Second, 50*time.Millisecond)
+			require.Eventually(t, func() bool {
+				return len(received()) == 1
+			}, 2*time.Second, 50*time.Millisecond)
 
-		entries := handler.Received()
-		require.Equal(t, string(fileContent), entries[0].Line)
+			entries := received()
+			require.Equal(t, string(fileContent), entries[0].Line)
+		})
 	})
 
 	t.Run("bzip2 file", func(t *testing.T) {
-		file := "testdata/onelinelog.log.bz2"
-		handler := loki.NewCollectingHandler()
-		defer handler.Stop()
+		runTailerTest(t, func(t *testing.T, send sendFunc, received func() []loki.Entry) {
+			file := "testdata/onelinelog.log.bz2"
 
-		tailer := newTailer(
-			newMetrics(prometheus.NewRegistry()),
-			logging.NewSlogNop(),
-			handler.Receiver(),
-			positions.NewNop(),
-			func() bool { return false },
-			sourceOptions{
-				path:                file,
-				decompressionConfig: DecompressionConfig{Enabled: true, Format: "bz2"},
-			},
-		)
+			tailer := newTailer(
+				newMetrics(prometheus.NewRegistry()),
+				logging.NewSlogNop(),
+				send,
+				positions.NewNop(),
+				func() bool { return false },
+				sourceOptions{
+					path:                file,
+					decompressionConfig: DecompressionConfig{Enabled: true, Format: "bz2"},
+				},
+			)
 
-		// We expect tailer to exit when all compressed data have been consumed.
-		tailer.Run(t.Context())
+			// We expect tailer to exit when all compressed data have been consumed.
+			tailer.Run(t.Context())
 
-		require.Eventually(t, func() bool {
-			return len(handler.Received()) == 1
-		}, 2*time.Second, 50*time.Millisecond)
+			require.Eventually(t, func() bool {
+				return len(received()) == 1
+			}, 2*time.Second, 50*time.Millisecond)
 
-		entries := handler.Received()
-		require.Equal(t, string(fileContent), entries[0].Line)
+			entries := received()
+			require.Equal(t, string(fileContent), entries[0].Line)
+		})
 	})
 
 	t.Run("tar.gz file", func(t *testing.T) {
-		file := "testdata/onelinelog.tar.gz"
+		runTailerTest(t, func(t *testing.T, send sendFunc, received func() []loki.Entry) {
+			file := "testdata/onelinelog.tar.gz"
+
+			tailer := newTailer(
+				newMetrics(prometheus.NewRegistry()),
+				logging.NewSlogNop(),
+				send,
+				positions.NewNop(),
+				func() bool { return false },
+				sourceOptions{
+					path:                file,
+					decompressionConfig: DecompressionConfig{Enabled: true, Format: "gz"},
+				},
+			)
+
+			// We expect tailer to exit when all compressed data have been consumed.
+			tailer.Run(t.Context())
+
+			require.Eventually(t, func() bool {
+				return len(received()) == 1
+			}, 2*time.Second, 50*time.Millisecond)
+
+			entries := received()
+			require.Contains(t, entries[0].Line, "onelinelog.log") // contains .tar.gz headers
+			require.Contains(
+				t,
+				entries[0].Line,
+				`5.202.214.160 - - [26/Jan/2019:19:45:25 +0330] "GET / HTTP/1.1" 200 30975 "https://www.zanbil.ir/" "Mozilla/5.0 (Windows NT 6.2; WOW64; rv:21.0) Gecko/20100101 Firefox/21.0" "-"`,
+			)
+		})
+	})
+}
+
+func runTailerTest(t *testing.T, run func(t *testing.T, send sendFunc, received func() []loki.Entry)) {
+	t.Helper()
+
+	t.Run("pipeline v1", func(t *testing.T) {
 		handler := loki.NewCollectingHandler()
 		defer handler.Stop()
+		run(t, sendToV1(handler.Receiver()), handler.Received)
+	})
 
-		tailer := newTailer(
-			newMetrics(prometheus.NewRegistry()),
-			logging.NewSlogNop(),
-			handler.Receiver(),
-			positions.NewNop(),
-			func() bool { return false },
-			sourceOptions{
-				path:                file,
-				decompressionConfig: DecompressionConfig{Enabled: true, Format: "gz"},
-			},
-		)
-		require.NoError(t, err)
-
-		// We expect tailer to exit when all compressed data have been consumed.
-		tailer.Run(t.Context())
-
-		require.Eventually(t, func() bool {
-			return len(handler.Received()) == 1
-		}, 2*time.Second, 50*time.Millisecond)
-
-		entries := handler.Received()
-		require.Contains(t, entries[0].Line, "onelinelog.log") // contains .tar.gz headers
-		require.Contains(
-			t,
-			entries[0].Line,
-			`5.202.214.160 - - [26/Jan/2019:19:45:25 +0330] "GET / HTTP/1.1" 200 30975 "https://www.zanbil.ir/" "Mozilla/5.0 (Windows NT 6.2; WOW64; rv:21.0) Gecko/20100101 Firefox/21.0" "-"`,
-		)
+	t.Run("pipeline v2", func(t *testing.T) {
+		consumer := loki.NewCollectingConsumer()
+		run(t, sendToV2(consumer), consumer.Entries)
 	})
 }
