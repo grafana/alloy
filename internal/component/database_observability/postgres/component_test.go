@@ -1,9 +1,11 @@
 package postgres
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -2160,7 +2162,7 @@ func TestPostgres_Clustering_NonOwnedReceiverDiscards(t *testing.T) {
 }
 
 func Test_resolveExporterArgs(t *testing.T) {
-	t.Run("no block at all defaults to stat_statements only", func(t *testing.T) {
+	t.Run("no block at all defaults to stat_statements only with default stat_statements limit", func(t *testing.T) {
 		cfg := `
 			data_source_name = "postgresql://user:pass@localhost:5432/db"
 			forward_to = []
@@ -2169,6 +2171,8 @@ func Test_resolveExporterArgs(t *testing.T) {
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
 		assert.Equal(t, []string{"stat_statements"}, exporterArgs.EnabledCollectors)
+		require.NotNil(t, exporterArgs.StatStatementFlags)
+		assert.Equal(t, uint(100), exporterArgs.StatStatementFlags.Limit)
 	})
 
 	t.Run("block present with sub-block settings but enabled_collectors untouched", func(t *testing.T) {
@@ -2245,5 +2249,120 @@ func Test_resolveExporterArgs(t *testing.T) {
 		var args Arguments
 		err := syntax.Unmarshal([]byte(cfg), &args)
 		require.ErrorContains(t, err, "enabled_collectors cannot be set when disable_default_metrics is true")
+	})
+}
+
+func Test_query_details_stat_statements_different_limits_warning(t *testing.T) {
+	t.Run("logs warning when query_details enabled, stat_statements enabled, and limits differ", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, fmt.Errorf("connection skipped for limit warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		defer c.stopPumps()
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 200},
+			PrometheusExporter:    &PrometheusExporterArguments{StatStatementFlags: &exporter_postgres.StatStatementFlags{Limit: 50}},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.Contains(t, logs.String(), "query_details and prometheus_exporter stat_statements limits differ")
+		assert.Contains(t, logs.String(), "query_details_limit=200")
+		assert.Contains(t, logs.String(), "stat_statements_limit=50")
+	})
+
+	t.Run("does not log warning when query_details is disabled", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, fmt.Errorf("connection skipped for limit warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		defer c.stopPumps()
+		args := Arguments{
+			DataSourceName:     alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			DisableCollectors:  []string{collector.QueryDetailsCollector},
+			PrometheusExporter: &PrometheusExporterArguments{StatStatementFlags: &exporter_postgres.StatStatementFlags{Limit: 50}},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "query_details and prometheus_exporter stat_statements limits differ")
+	})
+
+	t.Run("does not log warning when embedded postgres exporter not used", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, fmt.Errorf("connection skipped for limit warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		defer c.stopPumps()
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			Targets:               []discovery.Target{discovery.NewTargetFromMap(map[string]string{"job": "external"})},
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 200},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "query_details and prometheus_exporter stat_statements limits differ")
+	})
+
+	t.Run("does not log warning when stat_statements is disabled", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, fmt.Errorf("connection skipped for limit warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		defer c.stopPumps()
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 200},
+			PrometheusExporter:    &PrometheusExporterArguments{DisableDefaultMetrics: true, CustomQueriesConfigPath: "/etc/custom-queries.yml"},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "query_details and prometheus_exporter stat_statements limits differ")
+	})
+
+	t.Run("does not log warning when enabled_collectors excludes stat_statements", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, fmt.Errorf("connection skipped for limit warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		defer c.stopPumps()
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 200},
+			PrometheusExporter: &PrometheusExporterArguments{
+				EnabledCollectors:  []string{"wal"},
+				StatStatementFlags: &exporter_postgres.StatStatementFlags{Limit: 50},
+			},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "query_details and prometheus_exporter stat_statements limits differ")
+	})
+
+	t.Run("does not log warning when limits match", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, fmt.Errorf("connection skipped for limit warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		defer c.stopPumps()
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 100},
+			// PrometheusExporter falls to default 100
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "query_details and prometheus_exporter stat_statements limits differ")
 	})
 }

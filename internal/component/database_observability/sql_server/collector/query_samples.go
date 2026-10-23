@@ -572,7 +572,7 @@ func buildQuerySamplesStatement(hashes, excludedUsers []string, excludeCurrentUs
 		userClause = fmt.Sprintf("AND s.original_login_name NOT IN (%s)", strings.Join(userPlaceholders, ", "))
 	}
 
-	args = append(args, sql.Named("exclude_current_user", excludeCurrentUser), sql.Named("collector_marker", QueryMarker))
+	args = append(args, sql.Named("exclude_current_user", excludeCurrentUser), sql.Named("collector_app_name", AppName), sql.Named("collector_marker", QueryMarker))
 
 	return fmt.Sprintf(selectQuerySamplesTemplate, strings.Join(hashPlaceholders, ", "), userClause), args, nil
 }

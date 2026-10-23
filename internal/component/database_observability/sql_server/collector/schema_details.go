@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -39,6 +40,7 @@ type SchemaDetails struct {
 	excludeSchemas   []string
 	excludeDatabases []string
 	entryHandler     loki.EntryHandler
+	tableRegistry    *TableRegistry
 
 	// lastEmittedAt records the wall-clock time at which OP_CREATE_STATEMENT
 	// was last emitted for a table. The outer key is the database name and
@@ -62,6 +64,197 @@ type tableInfo struct {
 	tableName    string
 	tableType    string
 	b64TableSpec string
+}
+
+// TableRegistry is a source-of-truth cache of databases, schemas, and tables
+// reported by information_schema.tables.
+type TableRegistry struct {
+	mu     sync.RWMutex
+	tables map[string]map[string]map[string]struct{}
+}
+
+func NewTableRegistry() *TableRegistry {
+	return &TableRegistry{
+		tables: make(map[string]map[string]map[string]struct{}),
+	}
+}
+
+// SetTablesForDatabase atomically replaces all known tables for a database.
+func (tr *TableRegistry) SetTablesForDatabase(database string, tablesInfo []*tableInfo) {
+	schemas := make(map[string]map[string]struct{})
+	for _, info := range tablesInfo {
+		if schemas[info.schema] == nil {
+			schemas[info.schema] = make(map[string]struct{})
+		}
+		schemas[info.schema][info.tableName] = struct{}{}
+	}
+
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+	tr.tables[database] = schemas
+}
+
+// HasDatabase reports whether tables have been collected for a database.
+// A database with no tables is still considered collected.
+func (tr *TableRegistry) HasDatabase(database string) bool {
+	tr.mu.RLock()
+	defer tr.mu.RUnlock()
+
+	_, ok := tr.tables[database]
+	return ok
+}
+
+// PruneDatabases removes databases that are no longer returned by discovery.
+func (tr *TableRegistry) PruneDatabases(discovered map[string]struct{}) {
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+
+	for database := range tr.tables {
+		if _, ok := discovered[database]; !ok {
+			delete(tr.tables, database)
+		}
+	}
+}
+
+// IsValid resolves a parsed table name against the database's known tables.
+// Unqualified names are checked across schemas because Query Store does not
+// expose the originating user's default schema.
+func (tr *TableRegistry) IsValid(database, parsedTableName string) (string, bool) {
+	schemaName, tableName, qualified, ok := parseSQLServerTableIdentifier(parsedTableName)
+	if !ok {
+		return parsedTableName, false
+	}
+
+	tr.mu.RLock()
+	defer tr.mu.RUnlock()
+
+	schemas, ok := tr.tables[database]
+	if !ok {
+		return parsedTableName, false
+	}
+	if qualified {
+		resolvedSchema, ok := resolveUniqueName(schemas, schemaName)
+		if !ok {
+			return parsedTableName, false
+		}
+		resolvedTable, ok := resolveUniqueName(schemas[resolvedSchema], tableName)
+		if !ok {
+			return parsedTableName, false
+		}
+		return resolvedSchema + "." + resolvedTable, true
+	}
+
+	for _, tables := range schemas {
+		if _, ok := tables[tableName]; ok {
+			return tableName, true
+		}
+	}
+
+	var resolved string
+	for _, tables := range schemas {
+		for candidate := range tables {
+			if !strings.EqualFold(candidate, tableName) {
+				continue
+			}
+			if resolved != "" && resolved != candidate {
+				return parsedTableName, false
+			}
+			resolved = candidate
+		}
+	}
+	if resolved == "" {
+		return parsedTableName, false
+	}
+	return resolved, true
+}
+
+func parseSQLServerTableIdentifier(name string) (schemaName, tableName string, qualified, ok bool) {
+	if name == "" {
+		return "", "", false, false
+	}
+
+	var parts []string
+	for i := 0; i < len(name); {
+		if len(parts) == 2 {
+			return "", "", false, false
+		}
+
+		part, next, valid := scanSQLServerIdentifierPart(name, i)
+		if !valid || part == "" {
+			return "", "", false, false
+		}
+		parts = append(parts, part)
+		if next == len(name) {
+			break
+		}
+		if name[next] != '.' || next+1 == len(name) {
+			return "", "", false, false
+		}
+		i = next + 1
+	}
+
+	switch len(parts) {
+	case 1:
+		return "", parts[0], false, true
+	case 2:
+		return parts[0], parts[1], true, true
+	default:
+		return "", "", false, false
+	}
+}
+
+func scanSQLServerIdentifierPart(name string, start int) (part string, next int, ok bool) {
+	if start >= len(name) {
+		return "", start, false
+	}
+
+	if name[start] == '[' || name[start] == '"' {
+		closing := byte(']')
+		if name[start] == '"' {
+			closing = '"'
+		}
+
+		var b strings.Builder
+		for i := start + 1; i < len(name); i++ {
+			if name[i] == closing {
+				if i+1 < len(name) && name[i+1] == closing {
+					b.WriteByte(closing)
+					i++
+					continue
+				}
+				return b.String(), i + 1, true
+			}
+			b.WriteByte(name[i])
+		}
+		return "", len(name), false
+	}
+
+	end := start
+	for end < len(name) && name[end] != '.' {
+		if name[end] == '[' || name[end] == ']' || name[end] == '"' {
+			return "", end, false
+		}
+		end++
+	}
+	return name[start:end], end, end > start
+}
+
+func resolveUniqueName[V any](values map[string]V, requested string) (string, bool) {
+	if _, ok := values[requested]; ok {
+		return requested, true
+	}
+
+	resolved := ""
+	for candidate := range values {
+		if !strings.EqualFold(candidate, requested) {
+			continue
+		}
+		if resolved != "" {
+			return "", false
+		}
+		resolved = candidate
+	}
+	return resolved, resolved != ""
 }
 
 type tableSpec struct {
@@ -103,6 +296,7 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 		excludeSchemas:   args.ExcludeSchemas,
 		excludeDatabases: args.ExcludeDatabases,
 		entryHandler:     args.EntryHandler,
+		tableRegistry:    NewTableRegistry(),
 		lastEmittedAt:    map[string]map[string]time.Time{},
 		now:              time.Now,
 		logger:           args.Logger.With("collector", SchemaDetailsCollector),
@@ -114,6 +308,10 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 
 func (c *SchemaDetails) Name() string {
 	return SchemaDetailsCollector
+}
+
+func (c *SchemaDetails) GetTableRegistry() *TableRegistry {
+	return c.tableRegistry
 }
 
 func (c *SchemaDetails) Start(ctx context.Context) error {
@@ -216,6 +414,7 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 			delete(c.lastEmittedAt, db)
 		}
 	}
+	c.tableRegistry.PruneDatabases(discovered)
 
 	return nil
 }
@@ -305,6 +504,10 @@ func (c *SchemaDetails) extractSchemaForDatabase(ctx context.Context, conn *sql.
 	})
 	if err != nil {
 		return err
+	}
+
+	if scanComplete {
+		c.tableRegistry.SetTablesForDatabase(dbName, tables)
 	}
 
 	if len(tables) == 0 {

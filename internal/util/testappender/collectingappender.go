@@ -10,6 +10,8 @@ import (
 	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/storage"
 	"golang.org/x/exp/maps"
+
+	"github.com/grafana/alloy/internal/component/prometheus/appenders/adapter"
 )
 
 type MetricSample struct {
@@ -182,13 +184,9 @@ func (c ConstantAppendable) Appender(_ context.Context) storage.Appender {
 	return c.Inner
 }
 
-// AppenderV2 satisfies the AppendableV2 interface.
-//
-// TODO(v2 migration): ConstantAppendable is a test helper; it currently
-// panics because nothing calls it in production yet, and no test exercises
-// the V2 append path yet either. See https://github.com/grafana/alloy/issues/6896
+// AppenderV2 returns c.Inner adapted to the AppenderV2 interface.
 func (c ConstantAppendable) AppenderV2(_ context.Context) storage.AppenderV2 {
-	panic("AppenderV2 not implemented for ConstantAppendable")
+	return adapter.AppenderV1AsV2(c.Inner)
 }
 
 var (

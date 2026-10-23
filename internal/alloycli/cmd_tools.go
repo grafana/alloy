@@ -5,17 +5,17 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/grafana/alloy/internal/alloycli/clitools"
+	"github.com/grafana/alloy/internal/alloycli/clifeature"
 )
 
-func toolsCommand() *cobra.Command {
+func toolsCommand(tools []clifeature.Tool) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tools",
 		Short: "Utilities for various components",
 		Long:  `The tools command contains a collection of utilities for components.`,
 	}
 
-	for _, t := range clitools.All() {
+	for _, t := range tools {
 		cmd.AddCommand(getTools(t.Name, t.Install))
 	}
 

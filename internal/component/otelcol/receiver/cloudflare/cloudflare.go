@@ -15,6 +15,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 // Upstream leaves the factory default at zero and applies 20MiB in Validate().
@@ -42,7 +43,7 @@ func init() {
 
 type Arguments struct {
 	Endpoint           string                      `alloy:"endpoint,attr"`
-	Secret             string                      `alloy:"secret,attr,optional"`
+	Secret             alloytypes.Secret           `alloy:"secret,attr,optional"`
 	TimestampField     string                      `alloy:"timestamp_field,attr,optional"`
 	TimestampFormat    string                      `alloy:"timestamp_format,attr,optional"`
 	Separator          string                      `alloy:"separator,attr,optional"`
@@ -68,7 +69,7 @@ func (args *Arguments) SetToDefault() {
 func (args Arguments) receiverConfig() *cloudflarereceiver.Config {
 	tlsCfg := args.TLS.Convert()
 	cfg := cloudflarereceiver.NewFactory().CreateDefaultConfig().(*cloudflarereceiver.Config)
-	cfg.Logs.Secret = args.Secret
+	cfg.Logs.Secret = string(args.Secret)
 	cfg.Logs.Endpoint = args.Endpoint
 	cfg.Logs.TLS = tlsCfg.Get()
 	cfg.Logs.Attributes = args.Attributes

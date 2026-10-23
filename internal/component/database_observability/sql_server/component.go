@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"net/url"
 	"regexp"
 	"slices"
 	"strings"
@@ -721,7 +722,12 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 		inst.dbConnection = nil
 	}
 
-	dbConnection, err := c.openSQL("sqlserver", string(inst.cfg.dsn))
+	formattedDSN, err := formatDSN(string(inst.cfg.dsn))
+	if err != nil {
+		return fmt.Errorf("failed to format DSN: %w", err)
+	}
+
+	dbConnection, err := c.openSQL("sqlserver", formattedDSN)
 	if err != nil {
 		return fmt.Errorf("failed to open database connection: %w", err)
 	}
@@ -837,6 +843,7 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), inst.instanceKey, serverID, inst.cfg.rules)
 
 	collectors := enableOrDisableCollectors(c.args)
+	var tableRegistry *collector.TableRegistry
 
 	if collectors[collector.SchemaDetailsCollector] {
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
@@ -851,6 +858,7 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 		if err != nil {
 			logStartError(collector.SchemaDetailsCollector, "create", err)
 		} else {
+			tableRegistry = stCollector.GetTableRegistry()
 			if err := stCollector.Start(ctx); err != nil {
 				logStartError(collector.SchemaDetailsCollector, "start", err)
 			}
@@ -915,6 +923,7 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 			QueryTimeout:       c.args.QueryTimeout,
 			ExcludeCurrentUser: c.args.ExcludeCurrentUser,
 			EntryHandler:       entryHandler,
+			TableRegistry:      tableRegistry,
 			Logger:             c.opts.Logger,
 		}
 
@@ -1107,4 +1116,39 @@ func addLokiLabels(entryHandler loki.EntryHandler, instanceKey string, serverID 
 	}, rules).Wrap(entryHandler)
 
 	return entryHandler
+}
+
+// formatDSN sets the connection's application name to collector.AppName when
+// the DSN does not already specify a non-empty application name.
+func formatDSN(dsn string) (string, error) {
+	cfg, err := msdsn.Parse(dsn)
+	if err != nil {
+		return "", err
+	}
+	if cfg.Parameters[msdsn.AppName] != "" {
+		return dsn, nil
+	}
+
+	if strings.HasPrefix(dsn, "sqlserver://") {
+		u, err := url.Parse(dsn)
+		if err != nil {
+			return "", err
+		}
+		q := u.Query()
+		for k := range q {
+			if strings.EqualFold(k, msdsn.AppName) {
+				q.Del(k)
+			}
+		}
+		q.Set(msdsn.AppName, collector.AppName)
+		u.RawQuery = q.Encode()
+		return u.String(), nil
+	}
+
+	param := msdsn.AppName + "=" + collector.AppName
+	trimmed := strings.TrimRight(dsn, "; ")
+	if trimmed == "" || strings.EqualFold(trimmed, "odbc:") {
+		return trimmed + param, nil
+	}
+	return trimmed + ";" + param, nil
 }
