@@ -82,7 +82,7 @@ func TestComprehensive(t *testing.T) {
 }
 
 func testComprehensive(t *testing.T, metadataStore testMetadataStore) {
-	ctx := componenttest.TestContext(t)
+	ctx := t.Context()
 	l := util.TestLogger(t)
 
 	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.receiver.prometheus")
@@ -414,7 +414,7 @@ func testComprehensive(t *testing.T, metadataStore testMetadataStore) {
 // are properly rejected with the expected error message. This essentially verifies that
 // labels.New() will ensure that labels are sorted
 func TestDuplicateLabelNamesError(t *testing.T) {
-	ctx := componenttest.TestContext(t)
+	ctx := t.Context()
 	l := util.TestLogger(t)
 
 	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.receiver.prometheus")
@@ -467,7 +467,7 @@ func TestDuplicateLabelNamesError(t *testing.T) {
 }
 
 func TestUpdateKeepsExportedReceiver(t *testing.T) {
-	ctx := componenttest.TestContext(t)
+	ctx := t.Context()
 	l := util.TestLogger(t)
 
 	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.receiver.prometheus")
