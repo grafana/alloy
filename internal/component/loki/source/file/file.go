@@ -423,7 +423,7 @@ func (c *Component) newSource(opts sourceOptions) (source.Source[positions.Entry
 	tailer := newTailer(
 		c.metrics,
 		c.opts.Logger,
-		c.newSend(),
+		c.newBatcher,
 		c.posFile,
 		c.IsStopping,
 		opts,
@@ -440,11 +440,13 @@ func (c *Component) newSource(opts sourceOptions) (source.Source[positions.Entry
 	}), nil
 }
 
-func (c *Component) newSend() sendFunc {
+func (c *Component) newBatcher(labels model.LabelSet) loki.StreamBatcher {
 	if c.pipelineV2 {
-		return sendToV2(c.fanoutV2)
+		// FIXME(kalleep): Should we make this configurable?
+		const pipelineV2BatchSize = 100
+		return loki.NewStreamBatcherV2(c.fanoutV2, labels, pipelineV2BatchSize)
 	}
-	return sendToV1(c.handler)
+	return loki.NewStreamBatcherV1(c.handler, labels)
 }
 
 func (c *Component) IsStopping() bool {
