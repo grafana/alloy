@@ -30,6 +30,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.20.1
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.113.4
 	github.com/aws/aws-sdk-go-v2/service/servicediscovery v1.49.0
+	github.com/basgys/goxml2json v1.1.1-0.20231018121955-e66ee54ceaad
 	github.com/blang/semver/v4 v4.0.0
 	github.com/bmatcuk/doublestar/v4 v4.10.2
 	github.com/boynux/squid-exporter v1.13.0
@@ -73,6 +74,11 @@ require (
 	github.com/grafana/databricks-prometheus-exporter v0.0.0-20260428132210-9d662a9256ff
 	github.com/grafana/dskit v0.0.0-20260909113722-8b24b9af5808
 	github.com/grafana/go-gelf/v2 v2.0.1
+	github.com/grafana/grafana-plugin-sdk-go v0.292.1
+	github.com/grafana/infinity-libs/lib/go/csvframer v1.0.4
+	github.com/grafana/infinity-libs/lib/go/gframer v1.1.13
+	github.com/grafana/infinity-libs/lib/go/jsonframer v1.3.0
+	github.com/grafana/infinity-libs/lib/go/transformations v1.1.1
 	github.com/grafana/jfr-parser/pprof v0.0.4
 	github.com/grafana/jsonparser v0.0.0-20250909130937-5f438463be34
 	github.com/grafana/kafka_exporter v0.0.0-20261016145052-44e4679ca78b
@@ -118,7 +124,7 @@ require (
 	github.com/natefinch/atomic v1.0.1
 	github.com/ncabatoff/process-exporter v0.8.7
 	github.com/oklog/run v1.2.0
-	github.com/olekukonko/tablewriter v0.0.5
+	github.com/olekukonko/tablewriter v1.1.4
 	github.com/oliver006/redis_exporter v1.86.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.162.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/exceptionsconnector v0.162.0
@@ -235,6 +241,7 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.44.0
+	github.com/tidwall/gjson v1.19.0
 	github.com/tilinna/clock v1.1.0
 	github.com/vektah/gqlparser/v2 v2.5.36
 	github.com/vincent-petithory/dataurl v1.0.0
@@ -513,6 +520,7 @@ require (
 	github.com/apache/arrow/go/v12 v12.0.1 // indirect
 	github.com/apache/thrift v0.24.0 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
+	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aws/aws-msk-iam-sasl-signer-go v1.0.4 // indirect
@@ -567,6 +575,7 @@ require (
 	github.com/bodgit/windows v1.0.1 // indirect
 	github.com/bradleyfalzon/ghinstallation/v2 v2.11.0 // indirect
 	github.com/brunoscheufler/aws-ecs-metadata-go v0.0.0-20221221133751-67e37ae746cd // indirect
+	github.com/casbin/govaluate v1.10.0 // indirect
 	github.com/catppuccin/go v0.3.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
@@ -579,6 +588,7 @@ require (
 	github.com/charmbracelet/x/cellbuf v0.0.15 // indirect
 	github.com/charmbracelet/x/exp/strings v0.0.0-20240722160745-212f7b056ed0 // indirect
 	github.com/charmbracelet/x/term v0.2.2 // indirect
+	github.com/cheekybits/genny v1.0.0 // indirect
 	github.com/cihub/seelog v0.0.0-20170130134532-f561c5e57575 // indirect
 	github.com/cilium/ebpf v0.22.0 // indirect
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect
@@ -708,6 +718,8 @@ require (
 	github.com/grafana/clusterurl v0.3.0 // indirect
 	github.com/grafana/faro/pkg/go v0.0.0-20260427090633-bb5f9417df83 // indirect
 	github.com/grafana/gomemcache v0.0.0-20260728143316-9448343bd654 // indirect
+	github.com/grafana/infinity-libs/lib/go/framesql v1.1.1 // indirect
+	github.com/grafana/infinity-libs/lib/go/utils v1.0.1 // indirect
 	github.com/grafana/jfr-parser v0.9.3 // indirect
 	github.com/grafana/otel-profiling-go v0.6.0 // indirect
 	github.com/grobie/gomemcache v0.0.0-20230213081705-239240bbc445 // indirect
@@ -749,6 +761,7 @@ require (
 	github.com/influxdata/line-protocol v0.0.0-20200327222509-2487e7298839 // indirect
 	github.com/influxdata/line-protocol/v2 v2.2.1 // indirect
 	github.com/ionos-cloud/sdk-go/v6 v6.3.11 // indirect
+	github.com/itchyny/gojq v0.12.17 // indirect
 	github.com/itchyny/timefmt-go v0.1.8 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
@@ -783,9 +796,10 @@ require (
 	github.com/lucasb-eyer/go-colorful v1.4.1 // indirect
 	github.com/lufia/iostat v1.2.1 // indirect
 	github.com/lufia/plan9stats v0.0.0-20260802145828-341c2f0c90b5 // indirect
-	github.com/magefile/mage v1.15.0 // indirect
+	github.com/magefile/mage v1.17.2 // indirect
 	github.com/magiconair/properties v1.8.10 // indirect
 	github.com/mailru/easyjson v0.9.1 // indirect
+	github.com/mattetti/filebuffer v1.0.1 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
@@ -835,12 +849,16 @@ require (
 	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/ncabatoff/go-seq v0.0.0-20180805175032-b08ef85ed833 // indirect
+	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/nginx/nginx-prometheus-exporter v1.5.3 // indirect
 	github.com/nicolai86/scaleway-sdk v1.10.2-0.20180628010248-798f60e20bb2 // indirect
 	github.com/nwaples/rardecode/v2 v2.2.0 // indirect
 	github.com/oapi-codegen/runtime v1.6.0 // indirect
 	github.com/ohler55/ojg v1.28.2 // indirect
 	github.com/oklog/ulid/v2 v2.1.2 // indirect
+	github.com/olekukonko/cat v0.0.0-20250911104152-50322a0618f6 // indirect
+	github.com/olekukonko/errors v1.3.0 // indirect
+	github.com/olekukonko/ll v0.1.8 // indirect
 	github.com/open-telemetry/opamp-go v0.24.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/ackextension v0.162.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/internal/basicauth v0.162.0 // indirect
@@ -953,7 +971,6 @@ require (
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/cvm v1.0.480 // indirect
 	github.com/tetratelabs/wazero v1.12.0 // indirect
 	github.com/tg123/go-htpasswd v1.2.5 // indirect
-	github.com/tidwall/gjson v1.19.0 // indirect
 	github.com/tidwall/match v1.2.0 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/tinylru v1.2.1 // indirect
@@ -991,6 +1008,7 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
+	github.com/xiatechs/jsonata-go v1.8.8 // indirect
 	github.com/xo/dburl v0.24.2 // indirect
 	github.com/xo/terminfo v1.0.0 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
