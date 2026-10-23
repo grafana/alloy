@@ -1,3 +1,22 @@
+---
+name: key-deps-update
+description: >-
+  Update Grafana Alloy's key Go dependencies (OpenTelemetry Collector core and contrib,
+  Prometheus, Beyla, Loki) to their latest compatible versions: find current and latest
+  versions, check cross-dependency alignment and forks, update collector/builder-config.yaml
+  and go.mod, fix build and test failures, and note user-facing changes. Use when bumping OTel,
+  Prometheus, Beyla or Loki in the Alloy repo, or when asked to run some of the key dependency
+  update steps.
+disable-model-invocation: true
+metadata:
+  tags: alloy, dependencies, opentelemetry, prometheus, beyla, loki, go-modules
+  example_prompts:
+    - "update all the key dependencies in Alloy"
+    - "update only the Prometheus dependencies"
+    - "run steps 1-3 of the key dependency update"
+    - "are our forks still needed for the next OTel bump?"
+---
+
 # Key Dependency Updates
 
 A guide for LLM agents to update the key dependencies of the Alloy project.
@@ -31,7 +50,7 @@ So in our example, the `v3.4.2` release would be translated into the `v0.304.2` 
 
 ## Tools and snippets to use throughout the whole process
 
-Use the tools in the `tools/` directory to help you accomplish tasks whenever appropriate:
+Run this process from the root of an Alloy checkout. Use the tools in the `scripts/` directory next to this `SKILL.md` to help you accomplish tasks whenever appropriate:
 
 - Each tool is contained in its own leaf directory within this folder.
 - Each tool contains a runnable `main.go` file that can be used to run the tool.
@@ -44,7 +63,7 @@ Use the tools in the `tools/` directory to help you accomplish tasks whenever ap
 
 With these practices you should be able to directly get the information you need from the tools and run them without unnecessary intermediate steps:
 
-- List all tools by listing their README.md files: `find tools -name README.md`
+- List all tools by listing their README.md files: `find <this skill's directory>/scripts -name README.md`
 - See which tools are relevant to your task based on their name as the first filter. If the name is not clear, open the README.md to read the overview.
 - Read the `README.md` file for each tool directly to understand how to use it as per the Usage section.
 - Run the tool via `go run main.go ...` with appropriate arguments and flags to use the tool as described in readme.
@@ -233,7 +252,7 @@ The bullets here are judgment calls the "Steps to update key dependencies" secti
 
 ## Steps to update key dependencies
 
-Don't write anything in this document. Create a separate document called 'deps-update-<version>-YYYY-MM-DD.md' in the root of the repository. This is your output file where you will write all the output as required.
+Don't write anything in this skill's files. Create a separate document called 'deps-update-<version>-YYYY-MM-DD.md' in the root of the repository. This is your output file where you will write all the output as required.
 
 ### Step 1: Familiarize yourself with the tools and snippets
 
@@ -257,7 +276,7 @@ Start with the shared replace block in `collector/builder-config.yaml`. Every re
 
 Make a short summary of the forks: what version they fork from (if it's possible to determine), the list of commits that are added to the fork, and one sentence summary of these changes.
 
-Search for a GitHub issue or upstream PR associated with the fork. They are often mentioned in `collector/builder-config.yaml`, the commit message, a PR description on the fork, or in the go.mod file. Verify if the required changes were already upstreamed and if we no longer need the fork. Use "Checking if a fork is still needed" tool described below to verify. Always make sure that the changes required are indeed part of the new version and are already released. Otherwise, we may need to keep the fork.
+Search for a GitHub issue or upstream PR associated with the fork. They are often mentioned in `collector/builder-config.yaml`, the commit message, a PR description on the fork, or in the go.mod file. Verify if the required changes were already upstreamed and if we no longer need the fork. Use the "Fork investigation snippets" above to verify. Always make sure that the changes required are indeed part of the new version and are already released. Otherwise, we may need to keep the fork.
 
 If the fork is using a branch or a tag with certain naming convention that can be continued, determine the expected name of the new branch or tag in the fork that can use the latest version of the upstream key dependency as the base.
 
