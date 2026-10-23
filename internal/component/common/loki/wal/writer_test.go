@@ -70,6 +70,13 @@ func TestWriter(t *testing.T) {
 		readEntries := eventuallyReadWAL(t, len(lines), dir)
 		require.NotNil(t, readEntries)
 		require.Equal(t, testLabels, readEntries[0].Labels)
+
+		// The failure counter is exported before the first failure so that alerts can use it.
+		require.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
+# HELP loki_write_wal_writer_failures_total Number of failed attempts to write a log entry to the WAL.
+# TYPE loki_write_wal_writer_failures_total counter
+loki_write_wal_writer_failures_total 0
+`), "loki_write_wal_writer_failures_total"))
 	})
 
 	t.Run("stopped writer returns error", func(t *testing.T) {
@@ -107,7 +114,45 @@ func TestWriter(t *testing.T) {
 			},
 		}), loki.ErrConsumerStopped)
 	})
+
+	t.Run("failed write is counted", func(t *testing.T) {
+		var (
+			reg    = prometheus.NewRegistry()
+			logger = slog.New(slog.DiscardHandler)
+			errLog = fmt.Errorf("no space left on device")
+			entry  = loki.Entry{
+				Labels: model.LabelSet{"key": "value"},
+				Entry: push.Entry{
+					Timestamp: time.Now(),
+					Line:      "line",
+				},
+			}
+		)
+
+		writer := NewWriter(logger, NewWriterMetrics(reg), failingWAL{dir: t.TempDir(), err: errLog}, Config{MaxSegmentAge: time.Minute})
+
+		require.ErrorIs(t, writer.WriteEntry(entry), errLog)
+		require.ErrorIs(t, writer.WriteEntry(entry), errLog)
+
+		require.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
+# HELP loki_write_wal_writer_failures_total Number of failed attempts to write a log entry to the WAL.
+# TYPE loki_write_wal_writer_failures_total counter
+loki_write_wal_writer_failures_total 2
+`), "loki_write_wal_writer_failures_total"))
+	})
 }
+
+// failingWAL is a WAL where every write fails, for example because the disk is full.
+type failingWAL struct {
+	dir string
+	err error
+}
+
+func (w failingWAL) Log(*Record) error         { return w.err }
+func (w failingWAL) Sync() error               { return nil }
+func (w failingWAL) Dir() string               { return w.dir }
+func (w failingWAL) Close()                    {}
+func (w failingWAL) NextSegment() (int, error) { return 0, nil }
 
 func TestWriter_MetricsWorkAfterRecreation(t *testing.T) {
 	var (

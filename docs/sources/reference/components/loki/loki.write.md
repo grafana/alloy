@@ -197,15 +197,36 @@ The following fields are exported and can be referenced by other components:
 
 ## Debug metrics
 
-* `loki_write_batch_retries_total` (counter): Number of times batches have had to be retried.
-* `loki_write_dropped_bytes_total` (counter): Number of bytes dropped because failed to be sent to the ingester after all retries.
-* `loki_write_dropped_entries_total` (counter): Number of log entries dropped because they failed to be sent to the ingester after all retries.
-* `loki_write_sent_bytes_total` (counter): Number of bytes sent.
-* `loki_write_sent_entries_total` (counter): Number of log entries sent to the ingester.
-* `loki_write_batch_size_bytes` (histogram): Number of uncompressed bytes of log lines in a batch when it's sent, to be compared against the configured `batch_size`.
-* `loki_write_request_size_bytes` (histogram): Number of bytes for encoded requests.
-* `loki_write_request_duration_seconds` (histogram): Duration of sent requests.
-* `loki_write_entry_propagation_latency_seconds` (histogram): Time in seconds from entry creation until it's either successfully sent or dropped.
+- `loki_write_batch_retries_total` (counter): Number of times batches have had to be retried.
+- `loki_write_dropped_bytes_total` (counter): Number of bytes that `loki.write` dropped because it couldn't deliver them to the ingester.
+- `loki_write_dropped_entries_total` (counter): Number of log entries that `loki.write` dropped because it couldn't deliver them to the ingester.
+- `loki_write_sent_bytes_total` (counter): Number of bytes sent.
+- `loki_write_sent_entries_total` (counter): Number of log entries sent to the ingester.
+- `loki_write_batch_size_bytes` (histogram): Number of uncompressed bytes of log lines in a batch when it's sent, to be compared against the configured `batch_size`.
+- `loki_write_request_size_bytes` (histogram): Number of bytes for encoded requests.
+- `loki_write_request_duration_seconds` (histogram): Duration of sent requests.
+- `loki_write_entry_propagation_latency_seconds` (histogram): Time in seconds from entry creation until it's either successfully sent or dropped.
+
+The `loki_write_dropped_bytes_total` and `loki_write_dropped_entries_total` metrics have a `reason` label that identifies why `loki.write` dropped the data.
+The `reason` label has one of the following values:
+
+| `reason`          | Cause                                                                                                          |
+| ----------------- | -------------------------------------------------------------------------------------------------------------- |
+| `batch_too_large` | Loki rejected the batch with an `HTTP 413` status code.                                                        |
+| `encoding_failed` | `loki.write` couldn't encode the batch, for example because an entry timestamp is after the year 9999.         |
+| `ingester_error`  | The final send attempt failed, either after `max_backoff_retries` attempts or with a non-retryable status.     |
+| `queue_is_full`   | The send queue is full and `block_on_overflow` is `false`.                                                     |
+| `rate_limited`    | Loki rate-limited the batch on the final attempt, or on the first attempt when `retry_on_http_429` is `false`. |
+| `stream_limited`  | The entry would exceed the `max_streams` limit.                                                                |
+
+### WAL metrics
+
+{{< docs/shared lookup="stability/experimental_feature.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+`loki.write` exports the following metrics only when you enable the WAL.
+
+- `loki_write_wal_writer_failures_total` (counter): Number of times `loki.write` couldn't write a log entry to the WAL. `loki.write` retries the write and blocks the pipeline until the write succeeds.
+- `loki_write_wal_entries_stream_not_found_total` (counter): Number of log entries that `loki.write` read from the WAL and dropped because it couldn't find their stream.
 
 ## Examples
 
