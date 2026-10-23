@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -9,7 +10,9 @@ import (
 
 	"github.com/grafana/dskit/instrument"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/prometheus/model/rulefmt"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 func TestMimirClient_X(t *testing.T) {
@@ -83,6 +86,60 @@ func TestMimirClient_X(t *testing.T) {
 
 			req := <-requestCh
 			require.Equal(t, tc.expURLPath, req.URL.EscapedPath())
+		})
+	}
+}
+
+func TestMimirClient_CreateRuleGroup(t *testing.T) {
+	bodyCh := make(chan []byte, 1)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		bodyCh <- body
+		fmt.Fprintln(w, "success")
+	}))
+	defer ts.Close()
+
+	client, err := New(slog.New(slog.DiscardHandler), Config{
+		Address: ts.URL,
+	}, prometheus.NewHistogramVec(prometheus.HistogramOpts{}, instrument.HistogramCollectorBuckets))
+	require.NoError(t, err)
+
+	for _, tc := range []struct {
+		test string
+		expr string
+	}{
+		{
+			test: "single-line",
+			expr: "up",
+		},
+		{
+			test: "leading-indentation",
+			expr: "  (\n    up\n  )",
+		},
+		{
+			test: "leading-blank-line",
+			expr: "\n# comment\n  (\n    up\n  )",
+		},
+	} {
+		t.Run(tc.test, func(t *testing.T) {
+			rg := MimirRuleGroup{
+				RuleGroup: rulefmt.RuleGroup{
+					Name: "group",
+					Rules: []rulefmt.Rule{
+						{
+							Record: "record",
+							Expr:   tc.expr,
+						},
+					},
+				},
+			}
+			require.NoError(t, client.CreateRuleGroup(t.Context(), "namespace", rg))
+
+			var got MimirRuleGroup
+			require.NoError(t, yaml.Unmarshal(<-bodyCh, &got))
+			require.Equal(t, rg, got)
 		})
 	}
 }
