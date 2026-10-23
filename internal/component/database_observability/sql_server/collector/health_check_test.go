@@ -205,7 +205,7 @@ func TestHealthCheck(t *testing.T) {
 		c := newCollector(t, db)
 
 		expectListDatabases(mock, "db_a", "db_b")
-		mock.ExpectExec("USE [db_a]").WillReturnError(fmt.Errorf("database is currently restoring"))
+		mock.ExpectExec("USE " + QueryMarker + " [db_a]").WillReturnError(fmt.Errorf("database is currently restoring"))
 		expectUseDatabase(mock, "db_b")
 		expectPermissions(mock, "VIEW DEFINITION", "VIEW DATABASE STATE")
 		expectQueryStoreState(mock, "db_b", "READ_WRITE")

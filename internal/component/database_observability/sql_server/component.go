@@ -8,17 +8,17 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"net/url"
 	"regexp"
 	"slices"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/grafana/ckit/shard"
 	_ "github.com/microsoft/go-mssqldb"
 	"github.com/microsoft/go-mssqldb/msdsn"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-
-	"github.com/grafana/ckit/shard"
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
 
@@ -37,20 +37,23 @@ import (
 
 const name = "database_observability.sql_server"
 
-// selectServerInfo returns a stable identifier for the server instance plus
-// its product version, used to derive a server_id label and to expose the
-// engine version on the connection_info metric.
-const selectServerInfo = `
-SELECT
-    CONVERT(NVARCHAR(128), SERVERPROPERTY('ServerName')) AS server_name,
-    CONVERT(NVARCHAR(128), SERVERPROPERTY('MachineName')) AS machine_name,
-    CONVERT(NVARCHAR(128), SERVERPROPERTY('ProductVersion')) AS product_version`
-
 const (
-	selectOriginalLogin    = `SELECT ORIGINAL_LOGIN()`
 	defaultQueryTimeout    = collector.DefaultQueryTimeout
 	databaseConnectTimeout = 10 * time.Second
 )
+
+// taggedPinger wraps a *sql.DB so connectivity checks issue the tagged pingQuery
+// instead of the driver's untagged SELECT 1. It satisfies
+// database_observability.Pinger, so it can drive both the startup connectivity
+// check and the connection_info monitor.
+type taggedPinger struct {
+	db *sql.DB
+}
+
+func (p taggedPinger) PingContext(ctx context.Context) error {
+	var value int
+	return p.db.QueryRowContext(ctx, collector.PingQuery).Scan(&value)
+}
 
 func init() {
 	component.Register(component.Registration{
@@ -104,6 +107,10 @@ type DatabaseArguments struct {
 	Name           string            `alloy:",label"`
 	DataSourceName alloytypes.Secret `alloy:"data_source_name,attr"`
 	CloudProvider  *CloudProvider    `alloy:"cloud_provider,block,optional"`
+	// Rules holds relabel rules applied to the metrics and the logs of this
+	// instance only. They run after the labels the component sets itself, so a
+	// rule can use those as `source_labels`.
+	Rules []*relabel.Config `alloy:"rule,block,optional"`
 }
 
 type CloudProvider struct {
@@ -226,6 +233,10 @@ func (a *Arguments) Validate() error {
 
 		names := make(map[string]struct{}, len(a.Databases))
 		servers := make(map[string]string, len(a.Databases))
+		// instances tracks the instance label each block rewrites to, where a
+		// rule fixes it at load time, so that two blocks can't collapse onto
+		// one series.
+		instances := make(map[string]string, len(a.Databases))
 		for _, db := range a.Databases {
 			if !databaseNameRegex.MatchString(db.Name) {
 				return fmt.Errorf("database_instance block label %q must be a valid identifier (letters, digits, and underscores, not starting with a digit)", db.Name)
@@ -246,6 +257,17 @@ func (a *Arguments) Validate() error {
 
 			if err := validateCloudProvider(db.CloudProvider); err != nil {
 				return fmt.Errorf("database_instance %q: %w", db.Name, err)
+			}
+
+			if err := database_observability.ValidateRelabelRules(db.Rules); err != nil {
+				return fmt.Errorf("database_instance %q: %w", db.Name, err)
+			}
+
+			if value, known := database_observability.StaticInstanceLabel(db.Rules); known {
+				if other, ok := instances[value]; ok {
+					return fmt.Errorf("database_instance blocks %q and %q both set the instance label to %q, which would collapse them onto one series", other, db.Name, value)
+				}
+				instances[value] = db.Name
 			}
 		}
 	}
@@ -700,7 +722,12 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 		inst.dbConnection = nil
 	}
 
-	dbConnection, err := c.openSQL("sqlserver", string(inst.cfg.dsn))
+	formattedDSN, err := formatDSN(string(inst.cfg.dsn))
+	if err != nil {
+		return fmt.Errorf("failed to format DSN: %w", err)
+	}
+
+	dbConnection, err := c.openSQL("sqlserver", formattedDSN)
 	if err != nil {
 		return fmt.Errorf("failed to open database connection: %w", err)
 	}
@@ -710,7 +737,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	}
 
 	connectCtx, cancelConnect := context.WithTimeout(ctx, databaseConnectTimeout)
-	err = dbConnection.PingContext(connectCtx)
+	err = taggedPinger{db: dbConnection}.PingContext(connectCtx)
 	cancelConnect()
 	if err != nil {
 		dbConnection.Close()
@@ -720,7 +747,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 
 	queryCtx, cancelQuery := context.WithTimeout(ctx, c.args.QueryTimeout)
 	var serverName, machineName, engineVersion sql.NullString
-	err = inst.dbConnection.QueryRowContext(queryCtx, selectServerInfo).Scan(&serverName, &machineName, &engineVersion)
+	err = inst.dbConnection.QueryRowContext(queryCtx, collector.SelectServerInfo).Scan(&serverName, &machineName, &engineVersion)
 	cancelQuery()
 	if err != nil {
 		return fmt.Errorf("failed to query server information: %w", err)
@@ -749,13 +776,21 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 		cp = cloudProvider
 	}
 
+	builtinRules := database_observability.GetRelabelingRules(generatedServerID, cp)
+
 	allTargets := append([]discovery.Target{inst.baseTarget}, inst.cfg.targets...)
 	targets := make([]discovery.Target, 0, len(allTargets))
 	for _, t := range allTargets {
 		builder := discovery.NewTargetBuilderFrom(t)
-		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(generatedServerID, cp)...) {
-			targets = append(targets, builder.Target())
+		if !relabel.ProcessBuilder(builder, builtinRules...) {
+			continue
 		}
+		// The per-instance rules run second, so that a rule can use the labels
+		// the component's own rules set, such as server_id, as source_labels.
+		if !database_observability.ApplyRules(builder, inst.cfg.rules) {
+			continue
+		}
+		targets = append(targets, builder.Target())
 	}
 	inst.exportedTargets = targets
 
@@ -805,9 +840,10 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 		c.opts.Logger.Error(errorString)
 		startErrors = append(startErrors, errorString)
 	}
-	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), inst.instanceKey, serverID)
+	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), inst.instanceKey, serverID, inst.cfg.rules)
 
 	collectors := enableOrDisableCollectors(c.args)
+	var tableRegistry *collector.TableRegistry
 
 	if collectors[collector.SchemaDetailsCollector] {
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
@@ -822,6 +858,7 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 		if err != nil {
 			logStartError(collector.SchemaDetailsCollector, "create", err)
 		} else {
+			tableRegistry = stCollector.GetTableRegistry()
 			if err := stCollector.Start(ctx); err != nil {
 				logStartError(collector.SchemaDetailsCollector, "start", err)
 			}
@@ -832,13 +869,14 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 	var queryMetricsCollector *collector.QueryMetrics
 	if collectors[collector.QueryMetricsCollector] {
 		qmCollector, err := collector.NewQueryMetrics(collector.QueryMetricsArguments{
-			DB:              inst.dbConnection,
-			Registry:        inst.registry,
-			QueryTimeout:    c.args.QueryTimeout,
-			CollectInterval: c.args.QueryMetricsArguments.CollectInterval,
-			Limit:           c.args.QueryMetricsArguments.StatementsLimit,
-			Lookback:        c.args.QueryMetricsArguments.StatementsLookback,
-			Logger:          c.opts.Logger,
+			DB:                 inst.dbConnection,
+			Registry:           inst.registry,
+			QueryTimeout:       c.args.QueryTimeout,
+			CollectInterval:    c.args.QueryMetricsArguments.CollectInterval,
+			Limit:              c.args.QueryMetricsArguments.StatementsLimit,
+			Lookback:           c.args.QueryMetricsArguments.StatementsLookback,
+			ExcludeCurrentUser: c.args.ExcludeCurrentUser,
+			Logger:             c.opts.Logger,
 		})
 		if err != nil {
 			logStartError(collector.QueryMetricsCollector, "create", err)
@@ -861,6 +899,7 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 			DisableQueryRedaction: c.args.QuerySamplesArguments.DisableQueryRedaction,
 			ExcludeDatabases:      c.args.ExcludeDatabases,
 			ExcludeUsers:          effectiveExcludeUsers,
+			ExcludeCurrentUser:    c.args.ExcludeCurrentUser,
 		}
 		if queryMetricsCollector != nil {
 			qsArgs.Tracker = queryMetricsCollector.Tracker()
@@ -879,11 +918,13 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 
 	if collectors[collector.QueryDetailsCollector] {
 		qdArgs := collector.QueryDetailsArguments{
-			DB:              inst.dbConnection,
-			CollectInterval: c.args.QueryDetailsArguments.CollectInterval,
-			QueryTimeout:    c.args.QueryTimeout,
-			EntryHandler:    entryHandler,
-			Logger:          c.opts.Logger,
+			DB:                 inst.dbConnection,
+			CollectInterval:    c.args.QueryDetailsArguments.CollectInterval,
+			QueryTimeout:       c.args.QueryTimeout,
+			ExcludeCurrentUser: c.args.ExcludeCurrentUser,
+			EntryHandler:       entryHandler,
+			TableRegistry:      tableRegistry,
+			Logger:             c.opts.Logger,
 		}
 
 		// NOTE: this might change in the future, but for now query_details has
@@ -905,11 +946,12 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 
 	if collectors[collector.ExplainPlansCollector] {
 		epArgs := collector.ExplainPlansArguments{
-			DB:              inst.dbConnection,
-			CollectInterval: c.args.ExplainPlansArguments.CollectInterval,
-			QueryTimeout:    c.args.QueryTimeout,
-			EntryHandler:    entryHandler,
-			Logger:          c.opts.Logger,
+			DB:                 inst.dbConnection,
+			CollectInterval:    c.args.ExplainPlansArguments.CollectInterval,
+			QueryTimeout:       c.args.QueryTimeout,
+			ExcludeCurrentUser: c.args.ExcludeCurrentUser,
+			EntryHandler:       entryHandler,
+			Logger:             c.opts.Logger,
 		}
 
 		// explain_plans has the same hard dependency on query_metrics's tracked
@@ -937,7 +979,7 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 		Registry:      inst.registry,
 		EngineVersion: engineVersion,
 		CloudProvider: cloudProviderInfo,
-		DB:            inst.dbConnection,
+		Pinger:        taggedPinger{db: inst.dbConnection},
 	})
 	if err != nil {
 		logStartError(collector.ConnectionInfoName, "create", err)
@@ -989,7 +1031,7 @@ func resolveExcludeUsers(ctx context.Context, db *sql.DB, queryTimeout time.Dura
 	defer cancel()
 
 	var originalLogin sql.NullString
-	if err := db.QueryRowContext(queryCtx, selectOriginalLogin).Scan(&originalLogin); err != nil {
+	if err := db.QueryRowContext(queryCtx, collector.SelectOriginalLogin).Scan(&originalLogin); err != nil {
 		return nil, fmt.Errorf("failed to query original login: %w", err)
 	}
 	if !originalLogin.Valid || originalLogin.String == "" {
@@ -1063,13 +1105,50 @@ func (c *Component) CurrentHealth() component.Health {
 	}
 }
 
-func addLokiLabels(entryHandler loki.EntryHandler, instanceKey string, serverID string) loki.EntryHandler {
-	entryHandler = loki.AddLabelsMiddleware(model.LabelSet{
+func addLokiLabels(entryHandler loki.EntryHandler, instanceKey string, serverID string, rules []*relabel.Config) loki.EntryHandler {
+	// One middleware adds the labels and applies the per-instance rules, in
+	// that order, so the rules can read these labels as source_labels.
+	entryHandler = database_observability.AddLabelsAndRelabelMiddleware(model.LabelSet{
 		"job":       database_observability.JobName,
 		"instance":  model.LabelValue(instanceKey),
 		"server_id": model.LabelValue(serverID),
 		"engine":    model.LabelValue(collector.EngineName),
-	}).Wrap(entryHandler)
+	}, rules).Wrap(entryHandler)
 
 	return entryHandler
+}
+
+// formatDSN sets the connection's application name to collector.AppName when
+// the DSN does not already specify a non-empty application name.
+func formatDSN(dsn string) (string, error) {
+	cfg, err := msdsn.Parse(dsn)
+	if err != nil {
+		return "", err
+	}
+	if cfg.Parameters[msdsn.AppName] != "" {
+		return dsn, nil
+	}
+
+	if strings.HasPrefix(dsn, "sqlserver://") {
+		u, err := url.Parse(dsn)
+		if err != nil {
+			return "", err
+		}
+		q := u.Query()
+		for k := range q {
+			if strings.EqualFold(k, msdsn.AppName) {
+				q.Del(k)
+			}
+		}
+		q.Set(msdsn.AppName, collector.AppName)
+		u.RawQuery = q.Encode()
+		return u.String(), nil
+	}
+
+	param := msdsn.AppName + "=" + collector.AppName
+	trimmed := strings.TrimRight(dsn, "; ")
+	if trimmed == "" || strings.EqualFold(trimmed, "odbc:") {
+		return trimmed + param, nil
+	}
+	return trimmed + ";" + param, nil
 }

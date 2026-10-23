@@ -14,6 +14,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding/jsonlogencodingextension"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 )
 
 func TestArguments_SetToDefault(t *testing.T) {
@@ -24,6 +25,7 @@ func TestArguments_SetToDefault(t *testing.T) {
 
 	require.Equal(t, defaultConfig.ArrayMode, args.ArrayMode)
 	require.Equal(t, string(defaultConfig.Mode), args.Mode)
+	require.Equal(t, defaultConfig.ParseInts, args.ParseInts)
 }
 
 func TestArguments_UnmarshalAlloy(t *testing.T) {
@@ -31,6 +33,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 	require.NoError(t, syntax.Unmarshal([]byte(`
 		array_mode = false
 		mode = "body_with_inline_attributes"
+		parse_ints = true
 	`), &args))
 
 	converted, err := args.Convert(component.Options{})
@@ -38,6 +41,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 	require.Equal(t, &jsonlogencodingextension.Config{
 		ArrayMode: false,
 		Mode:      jsonlogencodingextension.JSONEncodingModeBodyWithInlineAttributes,
+		ParseInts: true,
 	}, converted)
 }
 
@@ -132,4 +136,67 @@ func TestExtension(t *testing.T) {
 	roundTripped, err := unmarshaler.UnmarshalLogs(marshaled)
 	require.NoError(t, err)
 	require.Equal(t, logs.LogRecordCount(), roundTripped.LogRecordCount())
+}
+
+// TestExtensionParseInts makes sure parse_ints reaches the extension. An
+// integer above 2^53 can't be represented as a float64 without losing precision.
+func TestExtensionParseInts(t *testing.T) {
+	const input = `{"id": 9007199254740993}`
+
+	tests := []struct {
+		name      string
+		cfg       string
+		wantInt   bool
+		wantValue int64
+	}{
+		{name: "default", cfg: `array_mode = false`, wantInt: false, wantValue: 9007199254740992},
+		{name: "parse_ints", cfg: "array_mode = false\nparse_ints = true", wantInt: true, wantValue: 9007199254740993},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(componenttest.TestContext(t), 10*time.Second)
+			runErr := make(chan error, 1)
+
+			ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "otelcol.encoding.jsonlog")
+			require.NoError(t, err)
+
+			var args jsonlog.Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(tc.cfg), &args))
+
+			go func() {
+				runErr <- ctrl.Run(ctx, args)
+			}()
+			defer func() {
+				cancel()
+				select {
+				case err := <-runErr:
+					require.NoError(t, err)
+				case <-time.After(5 * time.Second):
+					require.Fail(t, "component did not stop")
+				}
+			}()
+
+			require.NoError(t, ctrl.WaitRunning(5*time.Second), "component never started")
+			require.NoError(t, ctrl.WaitExports(5*time.Second), "component never exported anything")
+
+			exports, ok := ctrl.Exports().(extension.Exports)
+			require.True(t, ok)
+			unmarshaler, ok := exports.Handler.Extension.(encoding.LogsUnmarshalerExtension)
+			require.True(t, ok)
+
+			logs, err := unmarshaler.UnmarshalLogs([]byte(input))
+			require.NoError(t, err)
+			id, ok := logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0).Body().Map().Get("id")
+			require.True(t, ok)
+
+			if tc.wantInt {
+				require.Equal(t, pcommon.ValueTypeInt, id.Type())
+				require.Equal(t, tc.wantValue, id.Int())
+			} else {
+				require.Equal(t, pcommon.ValueTypeDouble, id.Type())
+				require.Equal(t, float64(tc.wantValue), id.Double())
+			}
+		})
+	}
 }

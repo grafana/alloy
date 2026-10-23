@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -16,21 +15,21 @@ import (
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/regexp"
 )
 
 var (
-	errMultilineStageEmptyConfig  = errors.New("multiline stage config must define `firstline` regular expression")
-	errMultilineStageInvalidRegex = errors.New("multiline stage first line regex compilation error")
+	errMultilineStageEmptyConfig = errors.New("multiline stage config must define `firstline` regular expression")
 )
 
 const multilineFlushTimeout = 10 * time.Second
 
 // MultilineConfig contains the configuration for a Multiline stage.
 type MultilineConfig struct {
-	Expression   string        `alloy:"firstline,attr"`
-	MaxLines     uint64        `alloy:"max_lines,attr,optional"`
-	MaxWaitTime  time.Duration `alloy:"max_wait_time,attr,optional"`
-	TrimNewlines bool          `alloy:"trim_newlines,attr,optional"`
+	Expression   *regexp.Regexp `alloy:"firstline,attr"`
+	MaxLines     uint64         `alloy:"max_lines,attr,optional"`
+	MaxWaitTime  time.Duration  `alloy:"max_wait_time,attr,optional"`
+	TrimNewlines bool           `alloy:"trim_newlines,attr,optional"`
 }
 
 // defaultMultilineConfig applies the default values on
@@ -47,24 +46,14 @@ func (args *MultilineConfig) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (args *MultilineConfig) Validate() error {
+	if args.Expression.IsEmpty() {
+		return errMultilineStageEmptyConfig
+	}
 	if args.MaxWaitTime <= 0 {
 		return fmt.Errorf("max_wait_time must be greater than 0")
 	}
 
 	return nil
-}
-
-func validateMultilineConfig(cfg MultilineConfig) (*regexp.Regexp, error) {
-	if cfg.Expression == "" {
-		return nil, errMultilineStageEmptyConfig
-	}
-
-	expr, err := regexp.Compile(cfg.Expression)
-	if err != nil {
-		return nil, fmt.Errorf("%v: %w", errMultilineStageInvalidRegex, err)
-	}
-
-	return expr, nil
 }
 
 var (
@@ -74,20 +63,14 @@ var (
 )
 
 // newMultilineStage creates a multilineStage from config
-func newMultilineStage(config MultilineConfig, opts stageOpts) (*multilineStage, error) {
-	regex, err := validateMultilineConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
+func newMultilineStage(config MultilineConfig, opts stageOpts) *multilineStage {
 	return &multilineStage{
 		next:    opts.next,
 		logger:  opts.slogger.With("stage", "multiline"),
 		cfg:     config,
-		regex:   regex,
 		streams: newMultilineStreamsStriped(),
 		done:    make(chan struct{}),
-	}, nil
+	}
 }
 
 // multilineStage matches lines to determine whether the following lines belong to a block and should be collapsed
@@ -95,7 +78,6 @@ type multilineStage struct {
 	next   nextFn
 	logger *slog.Logger
 	cfg    MultilineConfig
-	regex  *regexp.Regexp
 
 	streams *multilineStreamsStriped
 
@@ -110,7 +92,7 @@ func (m *multilineStage) process(ctx context.Context, entries []Entry) error {
 	for _, e := range entries {
 		fp := e.Labels.FastFingerprint()
 		m.streams.Mutate(fp, func(state *multilineState, hasState bool) *multilineState {
-			isFirstLine := m.regex.MatchString(e.Line)
+			isFirstLine := m.cfg.Expression.MatchString(e.Line)
 
 			if !hasState {
 				// Stream does not have any existing state and it's not identified

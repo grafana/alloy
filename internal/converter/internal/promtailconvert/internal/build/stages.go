@@ -9,6 +9,7 @@ import (
 	"github.com/alecthomas/units"
 	"github.com/go-viper/mapstructure/v2"
 
+	"github.com/grafana/alloy/internal/component/common/regexp"
 	"github.com/grafana/alloy/internal/component/loki/process/metric"
 	"github.com/grafana/alloy/internal/component/loki/process/stages"
 	"github.com/grafana/alloy/internal/converter/diag"
@@ -202,9 +203,15 @@ func convertMultiline(cfg any, diags *diag.Diagnostics) (stages.StageConfig, boo
 		maxWaitTime = d
 	}
 
+	expr, err := regexp.Compile(defaultEmpty(pMulti.Expression))
+	if err != nil {
+		addInvalidStageError(diags, cfg, err)
+		return stages.StageConfig{}, false
+	}
+
 	return stages.StageConfig{
 		MultilineConfig: &stages.MultilineConfig{
-			Expression:   defaultEmpty(pMulti.Expression),
+			Expression:   expr,
 			MaxLines:     defaultZero(pMulti.MaxLines),
 			MaxWaitTime:  maxWaitTime,
 			TrimNewlines: true,
@@ -566,9 +573,16 @@ func convertRegex(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 		addInvalidStageError(diags, cfg, err)
 		return stages.StageConfig{}, false
 	}
+
+	expr, err := regexp.Compile(pCfg.Expression)
+	if err != nil {
+		addInvalidStageError(diags, cfg, err)
+		return stages.StageConfig{}, false
+	}
+
 	return stages.StageConfig{
 		RegexConfig: &stages.RegexConfig{
-			Expression: pCfg.Expression,
+			Expression: expr,
 			Source:     pCfg.Source,
 		}}, true
 }
@@ -579,11 +593,15 @@ func convertLogfmt(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) 
 		addInvalidStageError(diags, cfg, err)
 		return stages.StageConfig{}, false
 	}
-	return stages.StageConfig{
-		LogfmtConfig: &stages.LogfmtConfig{
-			Source:  defaultEmpty(pCfg.Source),
-			Mapping: pCfg.Mapping,
-		}}, true
+	logfmtCfg := &stages.LogfmtConfig{
+		Source:  defaultEmpty(pCfg.Source),
+		Mapping: pCfg.Mapping,
+	}
+	if err := logfmtCfg.Validate(); err != nil {
+		addInvalidStageError(diags, cfg, err)
+		return stages.StageConfig{}, false
+	}
+	return stages.StageConfig{LogfmtConfig: logfmtCfg}, true
 }
 
 func convertJSONStage(iCfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {

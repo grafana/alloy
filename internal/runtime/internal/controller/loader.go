@@ -1012,6 +1012,7 @@ func splitPath(id string) (string, string) {
 func setDataFlowEdges(n dag.Node, refs []astutil.Reference) {
 	otelConsumerType := reflect.TypeOf((*otelcol.Consumer)(nil)).Elem()
 	appendableType := reflect.TypeOf((*storage.Appendable)(nil)).Elem()
+	appendableV2Type := reflect.TypeOf((*storage.AppendableV2)(nil)).Elem()
 	logsReceiverType := reflect.TypeOf((*loki.LogsReceiver)(nil)).Elem()
 	pyroscopeAppendableType := reflect.TypeOf((*pyroscope.Appendable)(nil)).Elem()
 	if cn, ok := n.(ComponentNode); ok {
@@ -1046,7 +1047,7 @@ func setDataFlowEdges(n dag.Node, refs []astutil.Reference) {
 				// For most export types, the data flow edge has the opposite direction of the reference.
 				if found {
 					switch field.Type {
-					case otelConsumerType, appendableType, logsReceiverType, pyroscopeAppendableType:
+					case otelConsumerType, appendableType, appendableV2Type, logsReceiverType, pyroscopeAppendableType:
 						cn.AddDataFlowEdgeTo(tn.NodeID())
 					default:
 						tn.AddDataFlowEdgeTo(cn.NodeID())
