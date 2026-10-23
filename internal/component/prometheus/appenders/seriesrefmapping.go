@@ -11,7 +11,6 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/storage"
-	"go.uber.org/atomic"
 )
 
 type MappingStore interface {
@@ -293,18 +292,18 @@ type SeriesRefMappingStore struct {
 	// below this value is from a previous generation and must be treated as unmapped.
 	firstRefOfCurrentGeneration storage.SeriesRef
 
-	// timestampTrackingMu protects uniqueRefTimestamps and cellPool
+	// timestampTrackingMu protects uniqueRefTimestamps
 	timestampTrackingMu sync.Mutex
 	// uniqueRefTimestamps maps unique refs to their last append timestamp
 	uniqueRefTimestamps map[storage.SeriesRef]int64
 	// cellPool is used to pool slices of SeriesRefs used for tracking unique refs in TrackAppendedSeries.
+	// Get runs without a lock, so it must never be reassigned.
 	cellPool sync.Pool
 
-	// Cleanup goroutine coordination (no lock required)
+	// Cleanup goroutine coordination (no lock required). Never reassigned.
 	startRefCleanup sync.Once
-	cleanupStarted  atomic.Bool
+	stopOnce        sync.Once
 	stopCleanup     chan struct{}
-	cleanupStopped  chan struct{}
 
 	// Metrics (safe for concurrent access, no lock required)
 	activeMappings  prometheus.Gauge
@@ -349,7 +348,6 @@ func NewSeriesRefMappingStore(reg prometheus.Registerer) *SeriesRefMappingStore 
 			},
 		},
 		stopCleanup:     make(chan struct{}),
-		cleanupStopped:  make(chan struct{}),
 		activeMappings:  activeMappings,
 		trackedRefs:     trackedRefs,
 		refsCleaned:     refsCleaned,
@@ -414,7 +412,6 @@ func (s *SeriesRefMappingStore) ResolveMapping(uniqueRef storage.SeriesRef, lbls
 func (s *SeriesRefMappingStore) CreateMapping(refResults []storage.SeriesRef, lbls labels.Labels) storage.SeriesRef {
 	// Start cleanup goroutine on first mapping
 	s.startRefCleanup.Do(func() {
-		s.cleanupStarted.Store(true)
 		go s.cleanupStaleRefs()
 	})
 
@@ -491,8 +488,6 @@ func (s *SeriesRefMappingStore) GetCellForAppendedSeries() *Cell {
 }
 
 func (s *SeriesRefMappingStore) cleanupStaleRefs() {
-	defer close(s.cleanupStopped)
-
 	ticker := time.NewTicker(15 * time.Minute)
 	defer ticker.Stop()
 
@@ -560,25 +555,17 @@ func (s *SeriesRefMappingStore) deleteMappings(refs []storage.SeriesRef) {
 	s.activeMappings.Set(float64(len(s.uniqueRefToChildRefs)))
 }
 
-// Clear will clear all internal mappings and stop the cleaner goroutine if it is running.
+// Stop ends the cleanup goroutine. It is safe to call more than once, and before the
+// goroutine has started.
+func (s *SeriesRefMappingStore) Stop() {
+	s.stopOnce.Do(func() { close(s.stopCleanup) })
+}
+
+// Clear will clear all internal mappings. The cleanup goroutine keeps running.
 // It is safe to re-use the same instance after calling Clear.
 // Returns the generation boundary; any ref below this value is stale.
 func (s *SeriesRefMappingStore) Clear() storage.SeriesRef {
-	// Stop the cleanup goroutine and wait for it to be stopped so we can
-	// avoid a possible deadlock with cleanup that also holds both locks
-	if s.cleanupStarted.Load() {
-		select {
-		case <-s.stopCleanup:
-			// Already closed
-		default:
-			close(s.stopCleanup)
-			<-s.cleanupStopped
-		}
-	}
-
-	// We need to hold both locks to do this safely and we do it in the same order as
-	// cleanupStaleRefs. We stopped and waited for the background worker that calls it
-	// to finish but some extra safety won't hurt.
+	// Same lock order as removeStaleRefs.
 	s.timestampTrackingMu.Lock()
 	defer s.timestampTrackingMu.Unlock()
 
@@ -589,13 +576,6 @@ func (s *SeriesRefMappingStore) Clear() storage.SeriesRef {
 	clear(s.uniqueRefTimestamps)
 	clear(s.labelHashToUniqueRef)
 
-	// reset the pool
-	s.cellPool = sync.Pool{
-		New: func() any {
-			return &Cell{Refs: make([]storage.SeriesRef, 0, 100)}
-		},
-	}
-
 	// NOTE: We do NOT reset nextUniqueRef here. Resetting it would cause ref collisions
 	// with components like prometheus.scrape which will keep re-sending the same cached refs.
 	// We continue incrementing to ensure all refs remain unique across the lifetime of the process.
@@ -604,12 +584,6 @@ func (s *SeriesRefMappingStore) Clear() storage.SeriesRef {
 	// Reset metrics
 	s.activeMappings.Set(0)
 	s.trackedRefs.Set(0)
-
-	// Reset channels and flags
-	s.stopCleanup = make(chan struct{})
-	s.cleanupStopped = make(chan struct{})
-	s.startRefCleanup = sync.Once{}
-	s.cleanupStarted.Store(false)
 
 	return s.firstRefOfCurrentGeneration
 }

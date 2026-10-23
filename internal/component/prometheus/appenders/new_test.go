@@ -27,7 +27,7 @@ func TestNew_SingleChildReturnsPassthrough(t *testing.T) {
 
 func TestNew_MultipleChildrenReturnsSeriesRefMapping(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
-	t.Cleanup(func() { store.Clear() })
+	t.Cleanup(store.Stop)
 
 	child1 := &mockAppender{}
 	child2 := &mockAppender{}
@@ -39,6 +39,7 @@ func TestNew_MultipleChildrenReturnsSeriesRefMapping(t *testing.T) {
 
 func TestNew_PassthroughReceivesDeadRefThreshold(t *testing.T) {
 	store := NewSeriesRefMappingStore(nil)
+	t.Cleanup(store.Stop)
 
 	// Issue a mapping so nextUniqueRef advances past 1.
 	lbls := labels.FromStrings("job", "test")

@@ -122,7 +122,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 
 // Run implements Component.
 func (c *Component) Run(ctx context.Context) error {
-	defer c.fanout.Clear()
+	defer c.fanout.Stop()
 
 	for {
 		select {
