@@ -44,7 +44,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	}, []string{labelHost})
 	m.droppedBytes = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_write_dropped_bytes_total",
-		Help: "Number of bytes dropped because all retries exhausted.",
+		Help: "Number of bytes dropped because they couldn't be delivered to the ingester.",
 	}, []string{labelHost, labelReason})
 	m.sentEntries = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_write_sent_entries_total",
@@ -52,7 +52,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	}, []string{labelHost})
 	m.droppedEntries = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_write_dropped_entries_total",
-		Help: "Number of log entries dropped because all retries exhausted.",
+		Help: "Number of log entries dropped because they couldn't be delivered to the ingester.",
 	}, []string{labelHost, labelReason})
 
 	const (
