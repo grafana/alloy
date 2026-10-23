@@ -168,6 +168,34 @@ func (l *Loki) QueryLogsPresent(t *testing.T, testName string, matchers ...LogMa
 	}, timeout, retryInterval)
 }
 
+// QueryLabelsNotIndexed asserts that no series labelled
+// alloy_test_name=<testName> has any of labels as an index label. Call it
+// after QueryLogs, as it only checks series Loki already has.
+func (l *Loki) QueryLabelsNotIndexed(t *testing.T, testName string, labels ...string) {
+	t.Helper()
+
+	seriesURL, err := url.Parse(l.endpoint("/loki/api/v1/series"))
+	require.NoError(t, err)
+	values := seriesURL.Query()
+	values.Set("match[]", "{"+testNameLabel+"="+strconv.Quote(testName)+"}")
+	seriesURL.RawQuery = values.Encode()
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		resp := curl(c, seriesURL.String(), nil)
+
+		var parsed lokihttp.LogSeriesResponse
+		require.NoError(c, json.Unmarshal([]byte(resp), &parsed), "failed to parse loki response")
+		require.Equal(c, "success", parsed.Status, "loki query failed: %s", parsed.Status)
+		require.NotEmpty(c, parsed.Data, "no Loki series found for test %q", testName)
+
+		for _, series := range parsed.Data {
+			for _, label := range labels {
+				assert.NotContainsf(c, series, label, "label %q was unexpectedly indexed in series %v", label, series)
+			}
+		}
+	}, timeout, retryInterval)
+}
+
 func (l *Loki) queryEntries(c *assert.CollectT, testName string, m LogMatcher) []lokihttp.LogEntry {
 	selectors := []string{testNameLabel + "=" + strconv.Quote(testName)}
 	for name, value := range m.Labels {

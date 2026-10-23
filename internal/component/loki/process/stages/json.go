@@ -64,10 +64,7 @@ func validateJSONConfig(c *JSONConfig) (map[string]jmespath.JMESPath, *regexp.Re
 	return expressions, re, nil
 }
 
-var (
-	_ Stage          = (*jsonStage)(nil)
-	_ entryProcessor = (*jsonStage)(nil)
-)
+var _ entryProcessor = (*jsonStage)(nil)
 
 // newJSONStage creates a new json pipeline stage from a config.
 func newJSONStage(cfg JSONConfig, opts stageOpts) (*jsonStage, error) {
@@ -93,21 +90,6 @@ type jsonStage struct {
 	regex       regexp.Regexp
 	expressions map[string]jmespath.JMESPath
 	logger      *slog.Logger
-}
-
-func (j *jsonStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		for e := range in {
-			e, drop := j.processEntry(e)
-			if drop {
-				continue
-			}
-			out <- e
-		}
-	}()
-	return out
 }
 
 func (j *jsonStage) process(ctx context.Context, entries []Entry) error {
@@ -215,5 +197,3 @@ func (j *jsonStage) simplifyType(value any) (any, bool) {
 		return string(jm), true
 	}
 }
-
-func (*jsonStage) Cleanup() {}

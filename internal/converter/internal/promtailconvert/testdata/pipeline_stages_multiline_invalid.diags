@@ -1,0 +1,1 @@
+(Error) invalid pipeline stage config: map[firstline:[unclosed max_lines:50 max_wait_time:1s] - error parsing regexp: missing closing ]: `[unclosed`

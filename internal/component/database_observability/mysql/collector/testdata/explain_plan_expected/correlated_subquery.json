@@ -1,0 +1,67 @@
+{
+  "operation": "Unique Key Lookup",
+  "details": {
+    "estimatedRows": 0,
+    "estimatedCost": 92570.18,
+    "alias": "\u003csubquery2\u003e",
+    "accessType": "eq_ref",
+    "keyUsed": "\u003cauto_distinct_key\u003e",
+    "joinAlgorithm": "nested_loop"
+  },
+  "children": [
+    {
+      "operation": "Non-Unique Key Lookup",
+      "details": {
+        "estimatedRows": 44514,
+        "estimatedCost": 344070.91,
+        "alias": "t",
+        "accessType": "ref",
+        "keyUsed": "PRIMARY",
+        "joinAlgorithm": "nested_loop",
+        "condition": "( `employees` . `t` . `to_date` = date ? )"
+      },
+      "children": [
+        {
+          "operation": "Full Table Scan",
+          "details": {
+            "estimatedRows": 299556,
+            "estimatedCost": 30884.6,
+            "alias": "e",
+            "accessType": "all"
+          }
+        }
+      ]
+    },
+    {
+      "operation": "Materialized Subquery",
+      "details": {
+        "estimatedRows": 0
+      },
+      "children": [
+        {
+          "operation": "Non-Unique Key Lookup",
+          "details": {
+            "estimatedRows": 140585,
+            "estimatedCost": 110962.32,
+            "alias": "titles",
+            "accessType": "ref",
+            "keyUsed": "PRIMARY",
+            "joinAlgorithm": "nested_loop"
+          },
+          "children": [
+            {
+              "operation": "Full Table Scan",
+              "details": {
+                "estimatedRows": 94604,
+                "estimatedCost": 289962.6,
+                "alias": "salaries",
+                "accessType": "all",
+                "condition": "( ( `employees` . `salaries` . `to_date` = date ? ) and ( `employees` . `salaries` . `salary` \u003e ? ) )"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

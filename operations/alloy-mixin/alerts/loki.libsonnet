@@ -18,12 +18,12 @@ local alert = import './utils/alert.jsonnet';
           '5m',
         ),
 
-        // A failed WAL write loses the entry, for example when the disk is full.
+        // loki.write retries a failed WAL write until it succeeds, so the pipeline blocks while writes fail.
         alert.newRule(
           'LokiWriteWALWriteFailures',
-          'sum by (%s) (increase(loki_write_wal_writer_failed_entries_total[10m])) > 0' % sumBy(enableK8sCluster),
+          'sum by (%s) (increase(loki_write_wal_writer_failures_total[10m])) > 0' % sumBy(enableK8sCluster),
           'loki.write is failing to write log entries to the WAL.',
-          'loki.write component {{ $labels.component_id }} under job {{ $labels.job }} failed to write log entries to the WAL. Check the free disk space for the WAL directory.',
+          'loki.write component {{ $labels.component_id }} under job {{ $labels.job }} failed to write log entries to the WAL and blocks the pipeline while it retries. Check the free disk space for the WAL directory.',
           '5m',
         ),
 
@@ -35,12 +35,17 @@ local alert = import './utils/alert.jsonnet';
           '5m',
         ),
 
-        // Retries are normal during short failures, so only a sustained retry rate fires the alert.
+        // Retries are normal during short failures and on endpoints that rate-limit,
+        // so the alert fires only when retries continue and no entries get through.
         alert.newRule(
           'LokiWriteSustainedRetries',
-          'sum by (%s) (rate(loki_write_batch_retries_total[5m])) > 0' % sumBy(enableK8sCluster, ['host']),
+          |||
+            sum by (%(by)s) (rate(loki_write_batch_retries_total[5m])) > 0
+            and
+            sum by (%(by)s) (rate(loki_write_sent_entries_total[5m])) == 0
+          ||| % { by: sumBy(enableK8sCluster, ['host']) },
           'loki.write is continuously retrying batches.',
-          'loki.write component {{ $labels.component_id }} under job {{ $labels.job }} has retried batches to host {{ $labels.host }} for 15 minutes. The endpoint may be unreachable.',
+          'loki.write component {{ $labels.component_id }} under job {{ $labels.job }} has retried batches to host {{ $labels.host }} for 15 minutes without sending any entries. The endpoint may be unreachable.',
           '15m',
         ),
       ]

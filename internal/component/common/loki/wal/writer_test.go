@@ -71,12 +71,12 @@ func TestWriter(t *testing.T) {
 		require.NotNil(t, readEntries)
 		require.Equal(t, testLabels, readEntries[0].Labels)
 
-		// The failure counters are exported before the first failure so that alerts can use them.
+		// The failure counter is exported before the first failure so that alerts can use it.
 		require.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
-# HELP loki_write_wal_writer_failed_entries_total Number of log entries that failed to be written to the WAL.
-# TYPE loki_write_wal_writer_failed_entries_total counter
-loki_write_wal_writer_failed_entries_total 0
-`), "loki_write_wal_writer_failed_entries_total"))
+# HELP loki_write_wal_writer_failures_total Number of failed attempts to write a log entry to the WAL.
+# TYPE loki_write_wal_writer_failures_total counter
+loki_write_wal_writer_failures_total 0
+`), "loki_write_wal_writer_failures_total"))
 	})
 
 	t.Run("stopped writer returns error", func(t *testing.T) {
@@ -134,14 +134,11 @@ loki_write_wal_writer_failed_entries_total 0
 		require.ErrorIs(t, writer.WriteEntry(entry), errLog)
 		require.ErrorIs(t, writer.WriteEntry(entry), errLog)
 
-		require.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(fmt.Sprintf(`
-# HELP loki_write_wal_writer_failed_bytes_total Number of bytes that failed to be written to the WAL.
-# TYPE loki_write_wal_writer_failed_bytes_total counter
-loki_write_wal_writer_failed_bytes_total %d
-# HELP loki_write_wal_writer_failed_entries_total Number of log entries that failed to be written to the WAL.
-# TYPE loki_write_wal_writer_failed_entries_total counter
-loki_write_wal_writer_failed_entries_total 2
-`, 2*entry.Size())), "loki_write_wal_writer_failed_bytes_total", "loki_write_wal_writer_failed_entries_total"))
+		require.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
+# HELP loki_write_wal_writer_failures_total Number of failed attempts to write a log entry to the WAL.
+# TYPE loki_write_wal_writer_failures_total counter
+loki_write_wal_writer_failures_total 2
+`), "loki_write_wal_writer_failures_total"))
 	})
 }
 

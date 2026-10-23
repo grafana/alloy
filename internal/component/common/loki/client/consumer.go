@@ -2,9 +2,18 @@ package client
 
 import (
 	"context"
+	"errors"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 )
+
+// ErrWALWrite is returned by WALConsumer when an entry could not be written to the WAL.
+var ErrWALWrite = errors.New("wal write failed")
+
+// IsRetryableErr reports whether a failed ConsumeEntry is worth retrying.
+func IsRetryableErr(err error) bool {
+	return errors.Is(err, loki.ErrConsumerStopped) || errors.Is(err, ErrWALWrite)
+}
 
 // Consumer is an interface for consuming Loki log entries.
 type Consumer interface {

@@ -1,0 +1,158 @@
+config: |
+  loki.relabel "heroku" {
+    forward_to = []
+
+    rule {
+      source_labels = ["__heroku_drain_app"]
+      target_label  = "app"
+    }
+
+    rule {
+      source_labels = ["__heroku_drain_host"]
+      target_label  = "host"
+    }
+  }
+
+  loki.source.heroku "default" {
+    http {
+      listen_address = "127.0.0.1"
+      listen_port    = 1516
+    }
+
+    // Keep the drain's timestamps, so the test can assert them exactly.
+    use_incoming_timestamp = true
+
+    relabel_rules = loki.relabel.heroku.rules
+    forward_to    = [loki.process.default.receiver]
+  }
+
+  loki.process "default" {
+    stage.structured_metadata {
+      values = {
+        host = "",
+      }
+    }
+
+    forward_to = [loki.relabel.default.receiver]
+  }
+
+  loki.relabel "default" {
+    forward_to = [pipelinetest.loki.receiver]
+
+    rule {
+      source_labels = ["app"]
+      target_label  = "service_name"
+    }
+
+    rule {
+      action = "labeldrop"
+      regex  = "app"
+    }
+  }
+
+inputs:
+  http:
+    - url: http://127.0.0.1:1516/heroku/api/v1/drain
+      headers:
+        Content-Type: application/heroku_drain-1
+        Logplex-Drain-Token: d.pipeline-test
+        Logplex-Frame-Id: pipeline-test-0
+        Logplex-Msg-Count: "4"
+      expected_status: 204
+      body: |
+        74 <190>1 2026-01-01T00:00:00+00:00 host app-1 web.1 - log line 0 from app-1
+        74 <190>1 2026-01-01T00:00:01+00:00 host app-1 web.1 - log line 1 from app-1
+        74 <190>1 2026-01-01T00:00:02+00:00 host app-2 web.1 - log line 0 from app-2
+        74 <190>1 2026-01-01T00:00:03+00:00 host app-2 web.1 - log line 1 from app-2
+    - url: http://127.0.0.1:1516/heroku/api/v1/drain
+      headers:
+        Content-Type: application/heroku_drain-1
+        Logplex-Drain-Token: d.pipeline-test
+        Logplex-Frame-Id: pipeline-test-1
+        Logplex-Msg-Count: "2"
+      expected_status: 204
+      body: |
+        74 <190>1 2026-01-01T00:00:04+00:00 host app-1 web.1 - log line 2 from app-1
+        74 <190>1 2026-01-01T00:00:05+00:00 host app-2 web.1 - log line 2 from app-2
+
+assert:
+  loki:
+    # Six frames in, six entries out.
+    - type: count
+      count: 6
+    - type: count
+      count: 3
+      match:
+        labels:
+          values:
+            service_name: app-1
+    - type: count
+      count: 3
+      match:
+        labels:
+          values:
+            service_name: app-2
+
+    # Each frame becomes one entry with the drain's timestamp. The app becomes
+    # service_name and is dropped as a label, and the host moves to structured
+    # metadata. Exact matches prove neither app nor host is left as a label.
+    - type: contains
+      match:
+        line: "log line 0 from app-1\n"
+        timestamp: "2026-01-01T00:00:00Z"
+        labels:
+          values:
+            service_name: app-1
+        structured_metadata:
+          values:
+            host: host
+    - type: contains
+      match:
+        line: "log line 1 from app-1\n"
+        timestamp: "2026-01-01T00:00:01Z"
+        labels:
+          values:
+            service_name: app-1
+        structured_metadata:
+          values:
+            host: host
+    - type: contains
+      match:
+        line: "log line 0 from app-2\n"
+        timestamp: "2026-01-01T00:00:02Z"
+        labels:
+          values:
+            service_name: app-2
+        structured_metadata:
+          values:
+            host: host
+    - type: contains
+      match:
+        line: "log line 1 from app-2\n"
+        timestamp: "2026-01-01T00:00:03Z"
+        labels:
+          values:
+            service_name: app-2
+        structured_metadata:
+          values:
+            host: host
+    - type: contains
+      match:
+        line: "log line 2 from app-1\n"
+        timestamp: "2026-01-01T00:00:04Z"
+        labels:
+          values:
+            service_name: app-1
+        structured_metadata:
+          values:
+            host: host
+    - type: contains
+      match:
+        line: "log line 2 from app-2\n"
+        timestamp: "2026-01-01T00:00:05Z"
+        labels:
+          values:
+            service_name: app-2
+        structured_metadata:
+          values:
+            host: host

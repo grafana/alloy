@@ -7,18 +7,23 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-10-19
 title: prometheus.exporter.redis
 ---
 
 # `prometheus.exporter.redis`
 
-The `prometheus.exporter.redis` component embeds the [`redis_exporter`](https://github.com/oliver006/redis_exporter) for collecting metrics from a Redis database.
+The `prometheus.exporter.redis` component embeds the [`redis_exporter`][redis-exporter] to collect metrics from a Redis database.
+
+You can specify multiple `prometheus.exporter.redis` components by giving them different labels.
+
+[redis-exporter]: https://github.com/oliver006/redis_exporter
 
 ## Usage
 
 ```alloy
 prometheus.exporter.redis "<LABEL>" {
-    redis_addr = "<REDIS_ADDRESS>"
+  redis_addr = "<REDIS_ADDRESS>"
 }
 ```
 
@@ -28,53 +33,81 @@ You can use the following arguments with `prometheus.exporter.redis`:
 
 | Name                          | Type           | Description                                                                                                             | Default    | Required |
 | ----------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------- | -------- |
-| `redis_addr`                  | `string`       | Address (host and port) of the Redis instance to connect to.                                                            |            | yes      |
-| `check_key_groups_batch_size` | `int`          | Check key or key groups batch size hint for the underlying SCAN.                                                        | `10000`    | no       |
-| `check_key_groups`            | `list(string)` | List of Lua regular expressions (regex) for grouping keys.                                                              |            | no       |
+| `redis_addr`                  | `string`       | Address of the Redis instance to connect to, with or without a URI scheme.                                              |            | yes      |
+| `check_key_groups`            | `list(string)` | List of Lua regular expressions for grouping keys.                                                                      |            | no       |
+| `check_key_groups_batch_size` | `int`          | Approximate number of keys to process in each SCAN execution.                                                           | `10000`    | no       |
 | `check_keys`                  | `list(string)` | List of key-patterns to export value and length/size, searched for with SCAN.                                           |            | no       |
 | `check_single_keys`           | `list(string)` | List of single keys to export value and length/size.                                                                    |            | no       |
 | `check_single_streams`        | `list(string)` | List of single streams to export info about streams, groups, and consumers.                                             |            | no       |
 | `check_streams`               | `list(string)` | List of stream-patterns to export info about streams, groups, and consumers to search for with SCAN.                    |            | no       |
-| `config_command`              | `string`       | What to use for the CONFIG command.                                                                                     | `"CONFIG"` | no       |
-| `connection_timeout`          | `duration`     | Timeout for connection to Redis instance (in Golang duration format).                                                   | `"15s"`    | no       |
-| `count_keys`                  | `list(string)` | List of individual keys to export counts for.                                                                           |            | no       |
-| `export_client_list`          | `bool`         | Whether to scrape Client List specific metrics.                                                                         |            | no       |
-| `export_client_port`          | `bool`         | Whether to include the client's port when exporting the client list.                                                    |            | no       |
-| `export_key_values`           | `bool`         | Whether to export key values as labels when using `check_keys` or `check_single_keys`.                                  | `true`     | no       |
-| `incl_system_metrics`         | `bool`         | Whether to include system metrics. For example `redis_total_system_memory_bytes`.                                       |            | no       |
-| `is_cluster`                  | `bool`         | Whether the connection is to a Redis cluster.                                                                           |            | no       |
-| `is_tile38`                   | `bool`         | Whether to scrape Tile38-specific metrics.                                                                              |            | no       |
+| `config_command`              | `string`       | What to use for the CONFIG command. Set it to `-` to skip config metrics extraction.                                    | `"CONFIG"` | no       |
+| `connection_timeout`          | `duration`     | Timeout for the connection to the Redis instance.                                                                       | `"15s"`    | no       |
+| `count_keys`                  | `list(string)` | List of key patterns to count, searched for with SCAN.                                                                  |            | no       |
+| `export_client_list`          | `bool`         | Scrape Client List specific metrics.                                                                                    | `false`    | no       |
+| `export_client_port`          | `bool`         | Include the client port when exporting the client list.                                                                 | `false`    | no       |
+| `export_key_values`           | `bool`         | Export key values as labels with `check_keys` or `check_single_keys`.                                                   | `true`     | no       |
+| `incl_system_metrics`         | `bool`         | Include system metrics, for example `redis_total_system_memory_bytes`.                                                  | `false`    | no       |
+| `include_exporter_metrics`    | `bool`         | Report metrics about the exporter itself.                                                                               | `false`    | no       |
+| `is_cluster`                  | `bool`         | Treat the connection as a Redis cluster.                                                                                | `false`    | no       |
+| `is_tile38`                   | `bool`         | Scrape Tile38-specific metrics.                                                                                         | `false`    | no       |
 | `max_distinct_key_groups`     | `int`          | The maximum number of distinct key groups with the most memory utilization to present as distinct metrics per database. | `100`      | no       |
 | `namespace`                   | `string`       | Namespace for the metrics.                                                                                              | `"redis"`  | no       |
-| `ping_on_connect`             | `bool`         | Whether to ping the Redis instance after connecting.                                                                    |            | no       |
-| `redis_metrics_only`          | `bool`         | Whether to just export metrics or to also export go runtime metrics.                                                    |            | no       |
+| `ping_on_connect`             | `bool`         | Ping the Redis instance after connecting.                                                                               | `false`    | no       |
+| `redis_metrics_only`          | `bool`         | Export only Redis metrics and omit Go process and runtime metrics.                                                      | `false`    | no       |
+| `redis_password`              | `secret`       | Password of the Redis instance.                                                                                         |            | no       |
 | `redis_password_file`         | `string`       | Path of a file containing a password.                                                                                   |            | no       |
 | `redis_password_map_file`     | `string`       | Path of a JSON file containing a map of Redis URIs to passwords.                                                        |            | no       |
-| `redis_password`              | `secret`       | Password of the Redis instance.                                                                                         |            | no       |
-| `redis_user`                  | `string`       | User name to use for authentication. Redis ACL for Redis 6.0 and newer.                                                 |            | no       |
+| `redis_user`                  | `string`       | User name for authentication. Requires Redis 6.0 or later with ACL support.                                             |            | no       |
 | `script_path`                 | `string`       | Path to Lua Redis script for collecting extra metrics.                                                                  |            | no       |
 | `script_paths`                | `list(string)` | List of paths to Lua Redis scripts for collecting extra metrics.                                                        |            | no       |
-| `set_client_name`             | `bool`         | Whether to set client name to `redis_exporter`.                                                                         | `true`     | no       |
-| `skip_tls_verification`       | `bool`         | Whether to skip TLS verification.                                                                                       |            | no       |
-| `tls_ca_cert_file`            | `string`       | Name of the CA certificate file (including full path) if the server requires TLS client authentication.                 |            | no       |
-| `tls_client_cert_file`        | `string`       | Name of the client certificate file (including full path) if the server requires TLS client authentication.             |            | no       |
-| `tls_client_key_file`         | `string`       | Name of the client key file (including full path) if the server requires TLS client authentication.                     |            | no       |
+| `set_client_name`             | `bool`         | Set the client name to `redis_exporter`.                                                                                | `true`     | no       |
+| `skip_tls_verification`       | `bool`         | Skip TLS verification.                                                                                                  | `false`    | no       |
+| `tls_ca_cert_file`            | `string`       | Full path to the CA certificate file that the component uses to verify the Redis server certificate.                    |            | no       |
+| `tls_client_cert_file`        | `string`       | Full path to the client certificate file if the server requires TLS client authentication.                              |            | no       |
+| `tls_client_key_file`         | `string`       | Full path to the client key file if the server requires TLS client authentication.                                      |            | no       |
 
-If `redis_password_file` is defined, it takes precedence over `redis_password`.
+The `redis_addr` argument accepts a host and port, such as `localhost:6379`, or a URI with one of the following schemes:
 
-When `check_key_groups` isn't set, no key groups are made.
+- `redis://`: Connects without TLS. This is the default when you omit the scheme.
+- `rediss://`: Connects with TLS.
+- `valkey://`: Equivalent to `redis://`.
+- `valkeys://`: Equivalent to `rediss://`.
+
+{{< admonition type="caution" >}}
+The exporter enables TLS only when `redis_addr` starts with `rediss://` or `valkeys://`.
+The `tls_ca_cert_file`, `tls_client_cert_file`, `tls_client_key_file`, and `skip_tls_verification` arguments have no effect on a connection that uses any other scheme.
+{{< /admonition >}}
+
+You can supply the Redis password with `redis_password`, `redis_password_file`, or `redis_password_map_file`.
+Set only one of `redis_password_file` and `redis_password_map_file`.
+If you set both of them, the component fails with an invalid configuration error.
+
+You can set `redis_password` together with one of the file arguments.
+If you set `redis_password_file`, the component uses the password from that file and ignores `redis_password`.
+If you set `redis_password_map_file`, the component ignores `redis_password` only for the addresses that the file maps.
+
+Set `tls_client_cert_file` and `tls_client_key_file` together.
+If you set only one of them, the component fails with an invalid configuration error.
+
+If you don't set `tls_ca_cert_file`, the component verifies the Redis server certificate against the system CA certificates.
+
+If you don't set `check_key_groups`, the component creates no key groups.
 
 The `check_key_groups_batch_size` argument name reflects key groups for backwards compatibility, but applies to both key and key groups.
 
-The `script_path` argument may also be specified as a comma-separated string of paths, though it's encouraged to use `script_paths` when using multiple Lua scripts.
+The component aggregates any leftover key groups beyond `max_distinct_key_groups` into the `overflow` bucket.
 
-Any leftover key groups beyond `max_distinct_key_groups` are aggregated in the 'overflow' bucket.
+Set `is_cluster` to `true` when you connect to a Redis cluster and use `check_keys` or `check_single_keys`.
 
-The `is_cluster` argument must be set to `true` when connecting to a Redis cluster and using either of the `check_keys` and `check_single_keys` arguments.
+The `script_path` argument accepts a comma-separated string of paths, but use `script_paths` when you have multiple Lua scripts.
+Set either `script_path` or `script_paths`, not both.
+If you set both, the component fails with an invalid configuration error.
 
 {{< admonition type="note" >}}
 Setting `export_client_port` increases the cardinality of all Redis metrics.
 {{< /admonition >}}
+
+The component sets the `instance` label on its exported targets to the value of `redis_addr`.
 
 ## Blocks
 
@@ -126,9 +159,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
 
