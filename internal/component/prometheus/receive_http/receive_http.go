@@ -159,7 +159,12 @@ func (c *Component) Update(args component.Arguments) error {
 	c.server = s
 
 	err = c.server.MountAndRun(func(router *mux.Router) {
-		router.Path("/api/v1/metrics/write").Methods("POST").Handler(c.handler)
+		router.Path("/api/v1/metrics/write").Methods(http.MethodPost).Handler(c.handler)
+		// The Pushgateway API puts the grouping labels in the path, so everything
+		// below /metrics/ is routed to the push handler and parsed there.
+		router.Path(fmt.Sprintf("/metrics/{%s:.+}", pushPathVar)).
+			Methods(http.MethodPost, http.MethodPut).
+			HandlerFunc(c.handlePush)
 	})
 	if err != nil {
 		return err
