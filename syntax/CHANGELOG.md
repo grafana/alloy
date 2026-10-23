@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/grafana/alloy/compare/syntax/v0.1.2...syntax/v0.1.3) (2026-10-23)
+
+
+### Bug Fixes 🐛
+
+* Update go version to 1.27.3 ([#7469](https://github.com/grafana/alloy/issues/7469)) ([8d0105f](https://github.com/grafana/alloy/commit/8d0105fa06819a84d210c47a1163f4ac6cad5576))
+
 ## [0.1.2](https://github.com/grafana/alloy/compare/syntax/v0.1.1...syntax/v0.1.2) (2026-08-21)
 
 
