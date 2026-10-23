@@ -212,8 +212,8 @@ func TestSharedInstanceAcrossSignals(t *testing.T) {
 	require.NoError(t, fdb.mocks[dsnA][0].ExpectationsWereMet(), "the one server-info query ran")
 
 	ids := map[string]struct{}{}
-	forEachDatapoint(ms.AllMetrics(), func(_ string, _, attrs pcommon.Map) { ids[str(attrs, "server_id")] = struct{}{} })
-	forEachLogRecord(ls.AllLogs(), func(_, attrs pcommon.Map) { ids[str(attrs, "server_id")] = struct{}{} })
+	forEachDatapoint(ms.AllMetrics(), func(_ string, res, _ pcommon.Map) { ids[str(res, "server_id")] = struct{}{} })
+	forEachLogRecord(ls.AllLogs(), func(res, _ pcommon.Map) { ids[str(res, "server_id")] = struct{}{} })
 	require.Equal(t, map[string]struct{}{fdb.wantServerID(dsnA): {}}, ids)
 }
 
@@ -241,7 +241,7 @@ func TestTwoDatabasesTwoServerIDs(t *testing.T) {
 		if got[key] == nil {
 			got[key] = map[string]struct{}{}
 		}
-		got[key][str(attrs, "server_id")] = struct{}{}
+		got[key][str(res, "server_id")] = struct{}{}
 		require.Equal(t, key, str(attrs, "instance"), "log instance label matches the resource")
 	}
 	forEachLogRecord(ls.AllLogs(), add)
@@ -249,12 +249,12 @@ func TestTwoDatabasesTwoServerIDs(t *testing.T) {
 	require.Equal(t, want, gotLogs)
 
 	got = map[string]map[string]struct{}{}
-	forEachDatapoint(ms.AllMetrics(), func(_ string, res, attrs pcommon.Map) {
+	forEachDatapoint(ms.AllMetrics(), func(_ string, res, _ pcommon.Map) {
 		key := str(res, attrServiceInstanceID)
 		if got[key] == nil {
 			got[key] = map[string]struct{}{}
 		}
-		got[key][str(attrs, "server_id")] = struct{}{}
+		got[key][str(res, "server_id")] = struct{}{}
 	})
 	require.Equal(t, want, got)
 	require.NotEqual(t, fdb.wantServerID(dsnA), fdb.wantServerID(dsnB))
@@ -370,18 +370,19 @@ func TestResourceAttributes(t *testing.T) {
 	checkRes := func(res pcommon.Map) {
 		require.Equal(t, "integrations/db-o11y", str(res, attrServiceName))
 		require.Equal(t, keyA, str(res, attrServiceInstanceID))
-		_, onResource := res.Get("server_id")
-		require.False(t, onResource, "side b: server_id isn't a resource attribute")
+		require.Equal(t, wantID, str(res, "server_id"), "side a: server_id is a resource attribute")
 	}
 	forEachDatapoint(ms.AllMetrics(), func(name string, res, attrs pcommon.Map) {
 		checkRes(res)
-		require.Equal(t, wantID, str(attrs, "server_id"), name)
+		_, hasID := attrs.Get("server_id")
+		require.False(t, hasID, name)
 		_, hasJob := attrs.Get("job")
 		require.False(t, hasJob, name)
 	})
 	forEachLogRecord(ls.AllLogs(), func(res, attrs pcommon.Map) {
 		checkRes(res)
-		require.Equal(t, wantID, str(attrs, "server_id"))
+		_, hasID := attrs.Get("server_id")
+		require.False(t, hasID)
 		require.Equal(t, "integrations/db-o11y", str(attrs, "job"))
 		require.Equal(t, keyA, str(attrs, "instance"))
 	})
@@ -411,8 +412,8 @@ func TestExporterDisabledNoPgMetrics(t *testing.T) {
 			require.NoError(t, mr.Shutdown(context.Background()))
 
 			wantID := fdb.wantServerID(dsn)
-			forEachDatapoint(ms.AllMetrics(), func(name string, _, attrs pcommon.Map) {
-				require.Equal(t, wantID, str(attrs, "server_id"), name)
+			forEachDatapoint(ms.AllMetrics(), func(name string, res, _ pcommon.Map) {
+				require.Equal(t, wantID, str(res, "server_id"), name)
 			})
 
 			names := metricNames(ms.AllMetrics())

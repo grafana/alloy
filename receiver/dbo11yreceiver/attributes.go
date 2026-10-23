@@ -14,10 +14,10 @@ const (
 )
 
 // serverIDOnResource is the one switch for where server_id lives on both
-// signals (fork F-15). This branch is side b: server_id stays on every metric
-// datapoint and every log record, as it ships today. It's a var so the
-// always-false branches don't trip unparam.
-var serverIDOnResource = false
+// signals (fork F-15). This branch is side a: server_id is a resource
+// attribute only, not on datapoints or log records. It's a var so the
+// constant branches don't trip unparam.
+var serverIDOnResource = true
 
 // putResource sets the resource attributes of one database's output from its
 // labels. job and instance become service.name and service.instance.id, which

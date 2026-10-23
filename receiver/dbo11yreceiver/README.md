@@ -43,8 +43,8 @@ Put the same receiver ID on a metrics and a logs pipeline. Both pipelines then s
 
 Each database gets its own resource with `service.name="integrations/db-o11y"` and `service.instance.id=<postgresql://host:port/dbname>`. Prometheus OTLP ingest turns those back into `job` and `instance`.
 
-- Metrics: the database's Prometheus registry (db-o11y metrics plus the embedded postgres_exporter) is gathered every `scrape_interval`. `server_id` and the cloud provider labels are datapoint attributes, the way a scrape adds target labels today. There's no `up` or `scrape_*` series, since nothing is scraped.
-- Logs: one log record per db-o11y entry. The line is the body. Every former Loki label (`op`, `job`, `instance`, `server_id`, `engine`) is a log record attribute. Loki doesn't rebuild `job`/`instance` from `service.*`, so a tenant `otlp_config` has to promote the attributes the app needs.
+- Metrics: the database's Prometheus registry (db-o11y metrics plus the embedded postgres_exporter) is gathered every `scrape_interval`. `server_id` is a resource attribute, so Prometheus OTLP ingest puts it in `target_info` unless it's promoted. The cloud provider labels are datapoint attributes, the way a scrape adds target labels today. There's no `up` or `scrape_*` series, since nothing is scraped.
+- Logs: one log record per db-o11y entry. The line is the body. Every former Loki label except `server_id` (`op`, `job`, `instance`, `engine`) is a log record attribute. `server_id` is a resource attribute, so Loki needs a `resource_attributes` entry for it. Loki doesn't rebuild `job`/`instance` from `service.*`, so a tenant `otlp_config` has to promote the attributes the app needs.
 
 The receiver's own health goes to the collector's status reporting (recoverable error while a database is unreachable or has stopped collectors) and its own counters (`dbo11y_receiver_connect_errors`, `dbo11y_receiver_gather_errors`, `dbo11y_receiver_consume_errors`) to the collector's telemetry.
 
