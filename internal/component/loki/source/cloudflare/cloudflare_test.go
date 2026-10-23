@@ -212,6 +212,11 @@ func TestArguments(t *testing.T) {
 			config:  `api_token = "t"` + "\n" + `zone_id = "z"` + "\n" + `api_url = "ftp://example.com"` + "\n" + `forward_to = []`,
 			wantErr: "api_url must be an absolute http or https URL",
 		},
+		{
+			name:    "api_token must not be empty",
+			config:  `api_token = ""` + "\n" + `zone_id = "z"` + "\n" + `forward_to = []`,
+			wantErr: "api_token must not be empty",
+		},
 	}
 
 	for _, tc := range tests {

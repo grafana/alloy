@@ -11,80 +11,88 @@ import (
 func NewFanout(children []LogsReceiver) *Fanout {
 	return &Fanout{
 		children: children,
+		changed:  make(chan struct{}),
 	}
 }
 
 // Fanout distributes log entries to multiple LogsReceivers.
-// It is thread-safe and allows the list of receivers to be updated dynamically
+// It is thread-safe and allows the list of receivers to be updated dynamically.
+//
+// UpdateChildren never blocks. This matters during a config reload: receivers
+// that are new in the reload don't read entries until every component has
+// been updated, so an UpdateChildren that waited for in-flight sends could
+// deadlock the reload.
+//
+// A Send that is blocked when the receivers change stops waiting on receivers
+// that were removed and delivers the entry to the new receivers instead. A
+// receiver that is in both lists doesn't get the entry again. If the new list
+// is empty, the entry goes nowhere, as it would for an entry sent after the
+// change.
 type Fanout struct {
 	mut      sync.RWMutex
 	children []LogsReceiver
+	changed  chan struct{} // Closed and replaced every time children change.
 }
 
 // Send forwards a log entry to all registered receivers. It returns an error
 // if the context is cancelled while sending.
 func (f *Fanout) Send(ctx context.Context, entry Entry) error {
-	// NOTE: It's important that we hold a read lock for the duration of Send
-	// rather than making a copy of children and releasing the lock early.
-	//
-	// When config is updated, the loader evaluates all components and updates
-	// them while they continue running. The scheduler only stops removed components
-	// after all updates complete. During this window, Send may execute concurrently
-	// with receiver list updates. By holding the read lock for the entire Send
-	// operation, receiver list updates (which require a write lock) will block
-	// until all in-flight Send calls complete. This prevents sending entries to
-	// receivers that have been removed by the scheduler.
+	// Receivers that already got the entry, so they can be skipped if the
+	// receivers change mid-Send. The array keeps the common case free of
+	// allocations.
+	var buf [8]LogsReceiver
+	sent := buf[:0]
+	restarted := false
 
-	f.mut.RLock()
-	defer f.mut.RUnlock()
-	for _, recv := range f.children {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case recv.Chan() <- entry:
-		}
-	}
-	return nil
-}
-
-// SendBatch forwards a batch of entires to all registered receivers. It returns an error
-// if the context is cancelled while sending.
-func (f *Fanout) SendBatch(ctx context.Context, batch []Entry) error {
-	// NOTE: It's important that we hold a read lock for the duration of SendBatch
-	// rather than making a copy of children and releasing the lock early.
-	//
-	// When config is updated, the loader evaluates all components and updates
-	// them while they continue running. The scheduler only stops removed components
-	// after all updates complete. During this window, Send may execute concurrently
-	// with receiver list updates. By holding the read lock for the entire Send
-	// operation, receiver list updates (which require a write lock) will block
-	// until all in-flight Send calls complete. This prevents sending entries to
-	// receivers that have been removed by the scheduler.
-
-	f.mut.RLock()
-	defer f.mut.RUnlock()
-	for _, e := range batch {
-		for _, recv := range f.children {
+	children, changed := f.load()
+outer:
+	for {
+		for _, recv := range children {
+			if restarted && slices.Contains(sent, recv) {
+				continue
+			}
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case recv.Chan() <- e:
+			case recv.Chan() <- entry:
+				sent = append(sent, recv)
+			case <-changed:
+				children, changed = f.load()
+				restarted = true
+				continue outer
 			}
+		}
+		return nil
+	}
+}
+
+// SendBatch forwards a batch of entries to all registered receivers. It
+// returns an error if the context is cancelled while sending.
+func (f *Fanout) SendBatch(ctx context.Context, batch []Entry) error {
+	for _, e := range batch {
+		if err := f.Send(ctx, e); err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
 // UpdateChildren updates the list of receivers that will receive log entries.
+// It never blocks on in-flight sends.
 func (f *Fanout) UpdateChildren(children []LogsReceiver) {
-	f.mut.RLock()
-	if !slices.Equal(f.children, children) {
-		// Upgrade lock to write.
-		f.mut.RUnlock()
-		f.mut.Lock()
-		f.children = children
-		f.mut.Unlock()
-	} else {
-		f.mut.RUnlock()
+	f.mut.Lock()
+	defer f.mut.Unlock()
+
+	if slices.Equal(f.children, children) {
+		return
 	}
+	f.children = children
+	close(f.changed)
+	f.changed = make(chan struct{})
+}
+
+func (f *Fanout) load() ([]LogsReceiver, chan struct{}) {
+	f.mut.RLock()
+	defer f.mut.RUnlock()
+	return f.children, f.changed
 }

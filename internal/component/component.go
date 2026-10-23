@@ -86,6 +86,13 @@ type Component interface {
 	//
 	// Implementations of Component should perform any necessary cleanup before
 	// returning from Run.
+	//
+	// Run must return in bounded time once ctx is canceled. When a reload
+	// removes components, they are stopped one at a time within each connected
+	// pipeline, and new components are only started once all of them have
+	// returned from Run or the task shutdown deadline has passed. A Run that
+	// keeps waiting on a blocked downstream component delays the whole reload,
+	// so give up on data that can't be handed off within a timeout.
 	Run(ctx context.Context) error
 
 	// Update provides a new Config to the component. The type of newConfig will
@@ -95,6 +102,37 @@ type Component interface {
 	// gracefully handle updating its config while still running.
 	//
 	// An error may be returned if the provided config is invalid.
+	//
+	// Update is called during a reload, before removed components are stopped
+	// and new components are started, and at any time when a component it
+	// depends on changes its exports. So a component that the new Arguments
+	// send data to may not be running yet, and it only starts after every
+	// Update in the reload has returned. Components that send data to others
+	// must follow these rules:
+	//
+	//   - Update must not wait on the data path: not for data to be delivered
+	//     or drained, not for a producer that may be blocked sending, and not
+	//     on a lock that is held while sending. Any downstream component may be
+	//     blocked, directly or through others, on one that only starts after
+	//     Update returns.
+	//   - Update must switch to the downstream components in the new Arguments
+	//     before it returns, even when it returns an error. Removed components
+	//     are stopped either way.
+	//   - Work that can block or fail, such as stopping and starting producers
+	//     or binding ports, belongs in Run: Update stores the desired config and
+	//     signals Run, which retries failures and reports them through
+	//     HealthComponent. Small goroutine-safe changes can be applied directly
+	//     in Update.
+	//   - Config that can never work should fail the reload: check it in
+	//     Validate (see syntax.Validator) rather than in Run, where it would
+	//     only be retried.
+	//
+	// If the new Arguments can't be evaluated, Update isn't called and the
+	// component keeps its old downstream components, even ones that the reload
+	// removes.
+	//
+	// loki.SourceRunner implements these rules for log sources, and
+	// loki.Fanout switches downstream components without blocking.
 	Update(args Arguments) error
 }
 
