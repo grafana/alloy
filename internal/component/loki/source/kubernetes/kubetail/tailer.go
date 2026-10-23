@@ -99,15 +99,15 @@ func (t *tailer) Run(ctx context.Context) {
 
 	bo := backoff.New(ctx, retailBackoff)
 
-	handler := loki.NewEntryMutatorHandler(t.opts.Handler, func(e loki.Entry) loki.Entry {
-		// A log line got read, we can reset the backoff period now.
-		bo.Reset()
-		return e
-	})
-	defer handler.Stop()
-
 	for bo.Ongoing() {
-		if err := t.tail(ctx, handler); err != nil {
+		start := time.Now()
+		err := t.tail(ctx)
+		// Only short-lived connections can cause a tight reconnect loop, so a
+		// connection that outlived the maximum backoff resets it.
+		if time.Since(start) >= retailBackoff.MaxBackoff {
+			bo.Reset()
+		}
+		if err != nil {
 			t.target.reportError(err)
 			t.log.Warn("tailer stopped; will retry", "err", err)
 			bo.Wait()
@@ -139,7 +139,7 @@ func (t *tailer) shouldStop(ctx context.Context) (bool, error) {
 	return t.shouldStopTailingContainer(podInfo)
 }
 
-func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
+func (t *tailer) tail(ctx context.Context) error {
 	// Set a maximum lifetime of the tail to ensure that connections are
 	// reestablished. This avoids an issue where the Kubernetes API server stops
 	// responding with new logs while the connection is kept open.
@@ -254,7 +254,7 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 
 	t.log.Info("opened log stream", "start time", lastReadTime)
 
-	return t.processLogStream(ctx, stream, handler, lastReadTime, positionsEnt, calc)
+	return t.processLogStream(ctx, stream, t.opts.Handler, lastReadTime, positionsEnt, calc)
 }
 
 // processLogStream reads log lines from a reader and processes them.
