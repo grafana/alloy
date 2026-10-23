@@ -200,7 +200,7 @@ require (
 	github.com/pingcap/tidb/pkg/parser v0.0.0-20250501143621-a50a2323f4ba
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
 	github.com/prometheus-community/elasticsearch_exporter v1.5.0
-	github.com/prometheus-community/postgres_exporter v0.19.0
+	github.com/prometheus-community/postgres_exporter v0.20.2-0.20261023160039-db75270b3144
 	github.com/prometheus-community/stackdriver_exporter v0.18.0
 	github.com/prometheus-community/windows_exporter v0.31.3 // if you update the windows_exporter version, make sure to update the PROM_WIN_EXP_VERSION in _index
 	github.com/prometheus-community/yet-another-cloudwatch-exporter v0.64.0
@@ -209,10 +209,10 @@ require (
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.93.0
 	github.com/prometheus/alertmanager v0.34.0
 	github.com/prometheus/blackbox_exporter v0.24.1-0.20230623125439-bd22efa1c900
-	github.com/prometheus/client_golang v1.24.1
+	github.com/prometheus/client_golang v1.25.0
 	github.com/prometheus/client_golang/exp v0.0.0-20260910191836-3f5d6801b956
 	github.com/prometheus/client_model v0.6.3
-	github.com/prometheus/common v0.71.0
+	github.com/prometheus/common v0.72.1
 	github.com/prometheus/consul_exporter v0.8.0
 	github.com/prometheus/memcached_exporter v0.13.0
 	github.com/prometheus/mysqld_exporter v0.18.0
@@ -911,7 +911,7 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20260805114148-88456608a4f6 // indirect
 	github.com/prometheus-community/go-runit v0.1.0 // indirect
 	github.com/prometheus-community/prom-label-proxy v0.15.0 // indirect
-	github.com/prometheus/exporter-toolkit v0.19.0 // indirect
+	github.com/prometheus/exporter-toolkit v0.20.0 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 	github.com/puzpuzpuz/xsync/v4 v4.5.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
@@ -1146,9 +1146,6 @@ replace github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-2026091
 
 // cadvisor v0.60 split its /lib submodule out; its local replace is ignored from a dependency, so redirect /lib to the fork here too. (auto-synced from collector/builder-config.yaml)
 replace github.com/google/cadvisor/lib => github.com/grafana/cadvisor/lib v0.0.0-20260914142459-6f984a063abc
-
-// TODO - this tracks exporter-package-v0.19.1 branch of grafana fork; remove once all patches are merged upstream (auto-synced from collector/builder-config.yaml)
-replace github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20260225165717-9c2c77e3702a
 
 // TODO - this tracks exporter-package-v0.19.0 branch of grafana fork; remove once all patches are merged upstream (auto-synced from collector/builder-config.yaml)
 replace github.com/prometheus/mysqld_exporter => github.com/grafana/mysqld_exporter v0.0.0-20260319134024-e0461af8db16

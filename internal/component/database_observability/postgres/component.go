@@ -16,7 +16,7 @@ import (
 	"github.com/grafana/ckit/shard"
 	"github.com/lib/pq"
 	pg_collector "github.com/prometheus-community/postgres_exporter/collector"
-	pg_exporter "github.com/prometheus-community/postgres_exporter/exporter"
+	pgconfig "github.com/prometheus-community/postgres_exporter/config"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/prometheus/common/model"
@@ -32,6 +32,7 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/cluster"
 	http_service "github.com/grafana/alloy/internal/service/http"
+	"github.com/grafana/alloy/internal/static/integrations/postgres_exporter"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
@@ -226,6 +227,21 @@ func resolveExporterArgs(userBlock *PrometheusExporterArguments) exporter_postgr
 	exporterArgs.StatStatementFlags = &statStatementsFlags
 
 	return exporterArgs
+}
+
+// exporterConfig maps resolved exporter arguments onto upstream's library config. It always
+// auto-discovers databases and ignores the block's data_source_names and autodiscovery settings.
+func exporterConfig(args exporter_postgres.Arguments, dsn string, excludeDatabases []string) pgconfig.Config {
+	cfg := postgres_exporter.Config{
+		DisableSettingsMetrics: args.DisableSettingsMetrics,
+		AutodiscoverDatabases:  true,
+		ExcludeDatabases:       excludeDatabases,
+		DisableDefaultMetrics:  args.DisableDefaultMetrics,
+		QueryPath:              args.CustomQueriesConfigPath,
+		EnabledCollectors:      args.EnabledCollectors,
+		StatStatementFlags:     args.StatStatementFlags.Convert(),
+	}
+	return cfg.UpstreamConfig([]string{dsn})
 }
 
 func (a *Arguments) SetToDefault() {
@@ -690,47 +706,19 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	}
 
 	if len(inst.cfg.targets) == 0 {
-		exporterArgs := resolveExporterArgs(c.args.PrometheusExporter)
-		dsn := string(inst.cfg.dsn)
-
-		e := pg_exporter.NewExporter(
-			[]string{dsn},
-			c.opts.Logger,
-			pg_exporter.DisableDefaultMetrics(exporterArgs.DisableDefaultMetrics),
-			pg_exporter.WithUserQueriesPath(exporterArgs.CustomQueriesConfigPath),
-			pg_exporter.DisableSettingsMetrics(exporterArgs.DisableSettingsMetrics),
-			pg_exporter.AutoDiscoverDatabases(true),
-			pg_exporter.ExcludeDatabases(c.args.ExcludeDatabases),
-			pg_exporter.WithMetricPrefix("pg"),
-		)
-		if err := inst.registry.Register(e); err != nil {
-			return fmt.Errorf("failed to register prometheus_exporter: %w", err)
+		cfg := exporterConfig(resolveExporterArgs(c.args.PrometheusExporter), string(inst.cfg.dsn), c.args.ExcludeDatabases)
+		validated, err := cfg.Validate()
+		if err != nil {
+			return fmt.Errorf("invalid prometheus_exporter config: %w", err)
 		}
-		inst.exporterCollectors = append(inst.exporterCollectors, e)
-
-		if !exporterArgs.DisableDefaultMetrics {
-			collectorOpts := []pg_collector.Option{pg_collector.WithCollectionTimeout("10s")}
-			if exporterArgs.StatStatementFlags != nil {
-				collectorOpts = append(collectorOpts, pg_collector.WithStatStatementsConfig(pg_collector.StatStatementsConfig{
-					IncludeQuery:     exporterArgs.StatStatementFlags.IncludeQuery,
-					QueryLength:      exporterArgs.StatStatementFlags.QueryLength,
-					Limit:            exporterArgs.StatStatementFlags.Limit,
-					ExcludeDatabases: exporterArgs.StatStatementFlags.ExcludeDatabases,
-					ExcludeUsers:     exporterArgs.StatStatementFlags.ExcludeUsers,
-				}))
-			}
-			col, err := pg_collector.NewPostgresCollector(
-				c.opts.Logger,
-				c.args.ExcludeDatabases,
-				dsn,
-				exporterArgs.EnabledCollectors,
-				collectorOpts...,
-			)
-			if err != nil {
-				return fmt.Errorf("failed to create postgres collector: %w", err)
-			}
+		runtime, err := pg_collector.NewRuntime(validated, c.opts.Logger)
+		if err != nil {
+			return fmt.Errorf("failed to create prometheus_exporter: %w", err)
+		}
+		inst.exporterRuntime = runtime
+		for _, col := range runtime.Collectors() {
 			if err := inst.registry.Register(col); err != nil {
-				return fmt.Errorf("failed to register postgres collector: %w", err)
+				return fmt.Errorf("failed to register prometheus_exporter: %w", err)
 			}
 			inst.exporterCollectors = append(inst.exporterCollectors, col)
 		}

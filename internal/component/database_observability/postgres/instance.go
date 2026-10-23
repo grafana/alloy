@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path"
 
+	pgcollector "github.com/prometheus-community/postgres_exporter/collector"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
@@ -72,6 +73,8 @@ type dbInstance struct {
 	dbConnection       *sql.DB
 	healthErr          *atomic.String
 	exporterCollectors []prometheus.Collector
+	// exporterRuntime is the embedded postgres_exporter, nil when targets point at an external one.
+	exporterRuntime *pgcollector.Runtime
 
 	// logsReceiver is the instance's internal logs receiver. The component's
 	// receiver pump forwards entries from the database's exported receiver
@@ -106,17 +109,18 @@ func newDBInstance(opts component.Options, cfg databaseConfig) (*dbInstance, err
 	}, nil
 }
 
-// cleanupExporterCollectors releases resources held by embedded exporter
-// collectors: the postgres_exporter keeps one connection open per discovered
-// database until its servers are closed. Callers must hold the component mut.
+// cleanupExporterCollectors unregisters the embedded exporter's collectors and
+// closes its runtime: the postgres_exporter keeps one connection open per
+// discovered database until then. Callers must hold the component mut.
 func (inst *dbInstance) cleanupExporterCollectors() {
 	for _, col := range inst.exporterCollectors {
-		if closable, ok := col.(interface{ CloseServers() }); ok {
-			closable.CloseServers()
-		}
 		inst.registry.Unregister(col)
 	}
 	inst.exporterCollectors = nil
+	if inst.exporterRuntime != nil {
+		_ = inst.exporterRuntime.Close()
+		inst.exporterRuntime = nil
+	}
 }
 
 // metricsPath returns the HTTP path of a database's metrics endpoint,

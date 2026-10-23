@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"slices"
 	"strings"
+	"time"
 
 	"github.com/lib/pq"
 	"github.com/prometheus-community/postgres_exporter/collector"
-	postgres_exporter "github.com/prometheus-community/postgres_exporter/exporter"
+	pgconfig "github.com/prometheus-community/postgres_exporter/config"
 	config_util "github.com/prometheus/common/config"
 
 	"github.com/grafana/alloy/internal/static/integrations"
@@ -164,67 +166,103 @@ func New(logger *slog.Logger, cfg *Config) (integrations.Integration, error) {
 		return nil, err
 	}
 
-	e := postgres_exporter.NewExporter(
-		dsns,
-		logger,
-		postgres_exporter.DisableDefaultMetrics(cfg.DisableDefaultMetrics),
-		postgres_exporter.WithUserQueriesPath(cfg.QueryPath),
-		postgres_exporter.DisableSettingsMetrics(cfg.DisableSettingsMetrics),
-		postgres_exporter.AutoDiscoverDatabases(cfg.AutodiscoverDatabases),
-		postgres_exporter.ExcludeDatabases(cfg.ExcludeDatabases),
-		postgres_exporter.IncludeDatabases(strings.Join(cfg.IncludeDatabases, ",")),
-		postgres_exporter.WithMetricPrefix("pg"),
-	)
+	validated, err := cfg.UpstreamConfig(dsns).Validate()
+	if err != nil {
+		return nil, fmt.Errorf("invalid postgres_exporter config: %w", err)
+	}
+	// The collector package only runs against the first DSN; the exporter runs against all of them.
+	runtime, err := collector.NewRuntime(validated, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create postgres_exporter collector: %w", err)
+	}
 
 	run := func(ctx context.Context) error {
 		<-ctx.Done()
-		e.CloseServers()
-		return nil
-	}
-
-	if cfg.DisableDefaultMetrics {
-		// Don't include the collector metrics if the default metrics are disabled.
-		return integrations.NewCollectorIntegration(
-			cfg.Name(),
-			integrations.WithLogger(logger),
-			integrations.WithCollectors(e),
-			integrations.WithRunner(run),
-		), nil
-	}
-
-	// Build per-instance collector options.
-	collectorOpts := []collector.Option{
-		collector.WithCollectionTimeout("10s"),
-	}
-	if cfg.StatStatementFlags != nil {
-		collectorOpts = append(collectorOpts, collector.WithStatStatementsConfig(collector.StatStatementsConfig{
-			IncludeQuery:     cfg.StatStatementFlags.IncludeQuery,
-			QueryLength:      cfg.StatStatementFlags.QueryLength,
-			Limit:            cfg.StatStatementFlags.Limit,
-			ExcludeDatabases: cfg.StatStatementFlags.ExcludeDatabases,
-			ExcludeUsers:     cfg.StatStatementFlags.ExcludeUsers,
-		}))
-	}
-
-	// On top of the exporter's metrics, the postgres exporter also has metrics exposed via collector package.
-	// However, these can only work for the first DSN provided. This matches the current implementation of the exporter.
-	// TODO: Once https://github.com/prometheus-community/postgres_exporter/issues/999 is addressed, update the exporter
-	// and change this.
-	c, err := collector.NewPostgresCollector(
-		logger,
-		cfg.ExcludeDatabases,
-		dsns[0],
-		cfg.EnabledCollectors,
-		collectorOpts...,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create postgres_exporter collector: %w", err)
+		return runtime.Close()
 	}
 
 	return integrations.NewCollectorIntegration(
 		cfg.Name(),
 		integrations.WithLogger(logger),
-		integrations.WithCollectors(e, c),
+		integrations.WithCollectors(runtime.Collectors()...),
 		integrations.WithRunner(run),
 	), nil
+}
+
+const collectionTimeout = 10 * time.Second
+
+// UpstreamConfig maps c onto upstream's library config for dsns. The result still needs Validate.
+func (c *Config) UpstreamConfig(dsns []string) pgconfig.Config {
+	cfg := pgconfig.NewConfigWithDefaults()
+	cfg.DataSourceNames = dsns
+	cfg.MetricPrefix = "pg"
+	cfg.CollectionTimeout = collectionTimeout
+	// The fork never wrapped counters; upstream wraps them at 2^53 by default.
+	cfg.WrapLargeCounters = false
+	cfg.DisableDefaultMetrics = c.DisableDefaultMetrics
+	cfg.AutoDiscoverDatabases = c.AutodiscoverDatabases
+	cfg.UserQueriesPath = c.QueryPath
+	cfg.ExcludeDatabases = c.ExcludeDatabases
+	cfg.IncludeDatabases = c.IncludeDatabases
+	cfg.Collectors = collectorStates(c.EnabledCollectors, c.DisableDefaultMetrics, c.DisableSettingsMetrics)
+	cfg.PGStatStatements = upstreamStatStatements(c.StatStatementFlags)
+	return cfg
+}
+
+// legacyDefaultCollectors are the upstream collectors that replaced the exporter's built-in
+// queries, which used to run whenever default metrics were enabled, whatever enabled_collectors said.
+var legacyDefaultCollectors = []string{
+	pgconfig.CollectorSettings,
+	pgconfig.CollectorStatActivity,
+	pgconfig.CollectorStatArchiver,
+	pgconfig.CollectorStatReplication,
+}
+
+// collectorStates builds upstream's Config.Collectors, which is merged over upstream's defaults.
+// A non-empty enabled is an allowlist: every collector not in it is turned off.
+func collectorStates(enabled []string, disableDefaultMetrics, disableSettingsMetrics bool) map[string]bool {
+	states := pgconfig.DefaultCollectorConfig()
+	if disableDefaultMetrics {
+		for name := range states {
+			states[name] = false
+		}
+		return states
+	}
+	if len(enabled) > 0 {
+		for name := range states {
+			states[name] = false
+		}
+		// Unknown names are kept so that upstream's Validate rejects them.
+		for _, name := range enabled {
+			states[name] = true
+		}
+	}
+	for _, name := range legacyDefaultCollectors {
+		states[name] = true
+	}
+	states[pgconfig.CollectorSettings] = !disableSettingsMetrics
+	return states
+}
+
+// upstreamStatStatements maps the stat_statements flags onto upstream's config. Zero Limit and
+// QueryLength mean "unset" here, but upstream rejects them, so they get upstream's defaults.
+func upstreamStatStatements(f *StatStatementFlags) pgconfig.PGStatStatementsConfig {
+	out := pgconfig.PGStatStatementsConfig{
+		IncludeQuery: pgconfig.DefaultPGStatStatementsIncludeQuery,
+		QueryLength:  pgconfig.DefaultPGStatStatementsQueryLength,
+		Limit:        pgconfig.DefaultPGStatStatementsLimit,
+	}
+	if f == nil {
+		return out
+	}
+	out.IncludeQuery = f.IncludeQuery
+	out.ExcludeDatabases = slices.Clone(f.ExcludeDatabases)
+	out.ExcludeUsers = slices.Clone(f.ExcludeUsers)
+	if f.QueryLength > 0 {
+		out.QueryLength = f.QueryLength
+	}
+	if f.Limit > 0 {
+		out.Limit = f.Limit
+	}
+	return out
 }

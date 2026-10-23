@@ -804,7 +804,7 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20260805114148-88456608a4f6 // indirect
 	github.com/prometheus-community/elasticsearch_exporter v1.5.0 // indirect
 	github.com/prometheus-community/go-runit v0.1.0 // indirect
-	github.com/prometheus-community/postgres_exporter v0.19.0 // indirect
+	github.com/prometheus-community/postgres_exporter v0.20.2-0.20261023160039-db75270b3144 // indirect
 	github.com/prometheus-community/prom-label-proxy v0.15.0 // indirect
 	github.com/prometheus-community/stackdriver_exporter v0.18.0 // indirect
 	github.com/prometheus-community/windows_exporter v0.31.3 // indirect
@@ -814,13 +814,13 @@ require (
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.93.0 // indirect
 	github.com/prometheus/alertmanager v0.34.0 // indirect
 	github.com/prometheus/blackbox_exporter v0.24.1-0.20230623125439-bd22efa1c900 // indirect
-	github.com/prometheus/client_golang v1.24.1 // indirect
+	github.com/prometheus/client_golang v1.25.0 // indirect
 	github.com/prometheus/client_golang/exp v0.0.0-20260910191836-3f5d6801b956 // indirect
 	github.com/prometheus/client_model v0.6.3 // indirect
-	github.com/prometheus/common v0.71.0 // indirect
+	github.com/prometheus/common v0.72.1 // indirect
 	github.com/prometheus/common/assets v0.2.0 // indirect
 	github.com/prometheus/consul_exporter v0.8.0 // indirect
-	github.com/prometheus/exporter-toolkit v0.19.0 // indirect
+	github.com/prometheus/exporter-toolkit v0.20.0 // indirect
 	github.com/prometheus/memcached_exporter v0.13.0 // indirect
 	github.com/prometheus/mysqld_exporter v0.18.0 // indirect
 	github.com/prometheus/node_exporter v1.10.2 // indirect
@@ -1128,8 +1128,6 @@ replace github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-2025
 replace github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20260914142459-6f984a063abc
 
 replace github.com/google/cadvisor/lib => github.com/grafana/cadvisor/lib v0.0.0-20260914142459-6f984a063abc
-
-replace github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20260225165717-9c2c77e3702a
 
 replace github.com/prometheus/mysqld_exporter => github.com/grafana/mysqld_exporter v0.0.0-20260319134024-e0461af8db16
 

@@ -1097,42 +1097,8 @@ func Test_connectAndStartCollectors(t *testing.T) {
 	})
 }
 
-type fakeClosableCollector struct {
-	prometheus.Collector
-	closeCalls int
-}
-
-func newFakeClosableCollector(name string) *fakeClosableCollector {
-	gauge := prometheus.NewGauge(prometheus.GaugeOpts{
-		Name: name,
-		Help: name,
-	})
-	return &fakeClosableCollector{Collector: gauge}
-}
-
-func (c *fakeClosableCollector) CloseServers() {
-	c.closeCalls++
-}
-
 func TestComponent_cleanupExporterCollectors(t *testing.T) {
-	t.Run("closes closable exporters and unregisters them", func(t *testing.T) {
-		registry := prometheus.NewRegistry()
-		collector := newFakeClosableCollector("test_cleanup_exporter_collectors_closable")
-		require.NoError(t, registry.Register(collector))
-
-		inst := &dbInstance{
-			registry:           registry,
-			exporterCollectors: []prometheus.Collector{collector},
-		}
-
-		inst.cleanupExporterCollectors()
-
-		assert.Equal(t, 1, collector.closeCalls)
-		assert.Nil(t, inst.exporterCollectors)
-		assert.False(t, registry.Unregister(collector))
-	})
-
-	t.Run("unregisters non-closable collectors without panicking", func(t *testing.T) {
+	t.Run("unregisters collectors without a runtime", func(t *testing.T) {
 		registry := prometheus.NewRegistry()
 		collector := prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: "test_cleanup_exporter_collectors_plain",
@@ -1212,9 +1178,10 @@ func TestPostgres_Reconnection(t *testing.T) {
 	t.Run("Run exits on context cancellation", func(t *testing.T) {
 		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) { return nil, assert.AnError })
 		inst := c.loadInstances()[0]
-		oldCollector := newFakeClosableCollector("test_run_cleanup_old_exporter")
+		oldCollector := prometheus.NewGauge(prometheus.GaugeOpts{Name: "test_run_cleanup_old_exporter", Help: "test"})
 		require.NoError(t, inst.registry.Register(oldCollector))
 		inst.exporterCollectors = []prometheus.Collector{oldCollector}
+		inst.exporterRuntime = newTestExporterRuntime(t)
 
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
@@ -1222,7 +1189,7 @@ func TestPostgres_Reconnection(t *testing.T) {
 		err := c.Run(ctx)
 		assert.NoError(t, err)
 
-		assert.Equal(t, 1, oldCollector.closeCalls)
+		assert.Nil(t, inst.exporterRuntime)
 		assert.Nil(t, inst.exporterCollectors)
 		assert.False(t, inst.registry.Unregister(oldCollector))
 	})
