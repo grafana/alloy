@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	_ "unsafe" // for go:linkname to gitleaks' extend depth counter
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -231,9 +232,26 @@ func loadGitleaksConfig(path string) (config.Config, error) {
 	return cfg, nil
 }
 
+// gitleaksConfigMu serializes gitleaks config loading across components.
+// Gitleaks resolves [extend] through the global viper instance and the
+// package-level gitleaksExtendDepth counter, so concurrent loads interfere.
+var gitleaksConfigMu sync.Mutex
+
+// gitleaksExtendDepth is gitleaks' package-level [extend] depth counter.
+// Gitleaks increments it for every extended config it loads and never resets
+// it, so once one config with [extend] is loaded, later loads in the same
+// process silently skip their [extend] section. It is reset before each load.
+//
+//go:linkname gitleaksExtendDepth github.com/zricethezav/gitleaks/v8/config.extendDepth
+var gitleaksExtendDepth int
+
 // newDetectorFromArgs creates a gitleaks detector from component arguments.
 // If GitleaksConfig is empty, the default gitleaks config is used.
 func newDetectorFromArgs(args Arguments) (*detect.Detector, error) {
+	gitleaksConfigMu.Lock()
+	defer gitleaksConfigMu.Unlock()
+	gitleaksExtendDepth = 0
+
 	if args.GitleaksConfig == "" {
 		return detect.NewDetectorDefaultConfig()
 	}
