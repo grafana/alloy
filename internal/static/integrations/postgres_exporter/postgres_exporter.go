@@ -44,6 +44,18 @@ type Config struct {
 	StatStatementFlags *StatStatementFlags
 }
 
+// ValidateMetricSelection rejects disable_default_metrics without
+// custom_queries_config_path, or together with enabled_collectors.
+func ValidateMetricSelection(disableDefaultMetrics bool, queryPath string, enabledCollectors []string) error {
+	if disableDefaultMetrics && queryPath == "" {
+		return fmt.Errorf("custom_queries_config_path must be set when disable_default_metrics is true")
+	}
+	if disableDefaultMetrics && len(enabledCollectors) != 0 {
+		return fmt.Errorf("enabled_collectors cannot be set when disable_default_metrics is true")
+	}
+	return nil
+}
+
 // Config for the stat_statement collector flags
 type StatStatementFlags struct {
 	IncludeQuery     bool

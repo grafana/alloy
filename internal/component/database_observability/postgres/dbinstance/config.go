@@ -5,6 +5,7 @@ package dbinstance
 
 import (
 	"database/sql"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -59,6 +60,27 @@ type CloudProvider struct {
 	AWS   *AWSCloudProviderInfo   `alloy:"aws,block,optional"`
 	Azure *AzureCloudProviderInfo `alloy:"azure,block,optional"`
 	GCP   *GCPCloudProviderInfo   `alloy:"gcp,block,optional"`
+}
+
+// ValidateCloudProvider rejects more than one of aws, azure and gcp.
+func ValidateCloudProvider(cp *CloudProvider) error {
+	if cp == nil {
+		return nil
+	}
+	count := 0
+	if cp.AWS != nil {
+		count++
+	}
+	if cp.Azure != nil {
+		count++
+	}
+	if cp.GCP != nil {
+		count++
+	}
+	if count > 1 {
+		return errors.New("cloud_provider: at most one of aws, azure, or gcp must be specified")
+	}
+	return nil
 }
 
 type AWSCloudProviderInfo struct {

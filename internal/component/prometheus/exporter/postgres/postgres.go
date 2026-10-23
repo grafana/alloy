@@ -1,8 +1,6 @@
 package postgres
 
 import (
-	"fmt"
-
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -60,13 +58,7 @@ type Arguments struct {
 }
 
 func (a *Arguments) Validate() error {
-	if a.DisableDefaultMetrics && a.CustomQueriesConfigPath == "" {
-		return fmt.Errorf("custom_queries_config_path must be set when disable_default_metrics is true")
-	}
-	if a.DisableDefaultMetrics && len(a.EnabledCollectors) != 0 {
-		return fmt.Errorf("enabled_collectors cannot be set when disable_default_metrics is true")
-	}
-	return nil
+	return postgres_exporter.ValidateMetricSelection(a.DisableDefaultMetrics, a.CustomQueriesConfigPath, a.EnabledCollectors)
 }
 
 // AutoDiscovery controls discovery of databases outside any specified in DataSourceNames.

@@ -60,6 +60,9 @@ processors:
   - gomod: go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.162.0
 
 receivers:
+  - gomod: github.com/grafana/alloy v1.21.0 # x-release-please-version
+    import: github.com/grafana/alloy/receiver/dbo11yreceiver
+    name: dbo11yreceiver
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscloudwatchreceiver v0.162.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awsecscontainermetricsreceiver v0.162.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awss3receiver v0.162.0

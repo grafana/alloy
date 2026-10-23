@@ -53,8 +53,11 @@ type Instance struct {
 	logsReceiver loki.LogsReceiver
 	logsRunning  bool
 
-	db                 *sql.DB
-	collectors         []dbCollector
+	db         *sql.DB
+	collectors []dbCollector
+	// entryHandler is the labeling middleware the collectors send to, nil
+	// while no collectors run.
+	entryHandler       loki.EntryHandler
 	exporterCollectors []prometheus.Collector
 	// exporterRuntime is the embedded postgres_exporter, nil when cfg.Exporter is.
 	exporterRuntime *pgcollector.Runtime
@@ -144,6 +147,12 @@ func (i *Instance) stopCollectors() {
 	}
 	i.collectors = nil
 	i.logsRunning = false
+	// Each Connect wraps a new middleware with its own goroutine, so stop it
+	// once nothing sends to it anymore.
+	if i.entryHandler != nil {
+		i.entryHandler.Stop()
+		i.entryHandler = nil
+	}
 }
 
 // cleanupExporterCollectors unregisters the embedded exporter's collectors and
@@ -272,6 +281,7 @@ func (i *Instance) startCollectors(systemID string, engineVersion string, cloudP
 	}
 
 	entryHandler := addLokiLabels(i.deps.Entries, i.instanceKey, systemID, cfg.Rules)
+	i.entryHandler = entryHandler
 
 	var tableRegistry *collector.TableRegistry
 	collectors := cfg.Collectors
