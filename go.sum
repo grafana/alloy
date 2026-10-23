@@ -1293,8 +1293,6 @@ github.com/grafana/cadvisor/lib v0.0.0-20260914142459-6f984a063abc h1:EnTpJWWs5g
 github.com/grafana/cadvisor/lib v0.0.0-20260914142459-6f984a063abc/go.mod h1:htHKT0OSYO6zaik+iLOo3Wj1mf/5l8uV5TJaqLz13oM=
 github.com/grafana/ckit v0.0.0-20260226120531-bbed30d6364e h1:XN6vpnyS0vur4R23ePYBgmU1GY9lPmf1jqWMFIdExS0=
 github.com/grafana/ckit v0.0.0-20260226120531-bbed30d6364e/go.mod h1:OUtfKg0lKXnJ6wNdgO6ubGmlDL7yFj2zZr5GYZQAxcw=
-github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2 h1:qhugDMdQ4Vp68H0tp/0iN17DM2ehRo1rLEdOFe/gB8I=
-github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2/go.mod h1:w/aiO1POVIeXUQyl0VQSZjl5OAGDTL5aX+4v0RA1tcw=
 github.com/grafana/clusterurl v0.3.0 h1:fUryzdeUfIsC5th1fNLpt8KnZhtnN8OTEM3F/BXAelI=
 github.com/grafana/clusterurl v0.3.0/go.mod h1:8yLbSklgFkdwtWB22DymG56+da09Y02zIvfA48Hppgw=
 github.com/grafana/databricks-prometheus-exporter v0.0.0-20260428132210-9d662a9256ff h1:/v+WgSjDWKBQg9iIDULBDy0F26ds6asrNtEQt3x+95A=
