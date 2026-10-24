@@ -292,7 +292,9 @@ location {
 }
 ```
 
-The component checks location blocks in order, so place location blocks with an empty `minified_path_prefix` after the ones for your web apps.
+The component checks local `path` locations first, then remote `http://` or `https://` locations.
+Within each group, it checks `location` blocks in the order you declare them, and it uses the first sourcemap it finds.
+Place `location` blocks with an empty `minified_path_prefix` after the ones for your web apps, because an empty prefix matches every file.
 
 When you specify a remote location, the procedure for retrieving the sourcemaps is the same as for a location block with a local path, except that the component retrieves the sourcemap from a remote HTTP server.
 
