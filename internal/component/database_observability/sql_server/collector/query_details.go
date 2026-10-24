@@ -22,23 +22,6 @@ const (
 	QueryDetailsCollector = "query_details"
 )
 
-// selectQueryTextTemplate returns the query text for the tracked
-// query_hashes on the currently connected database.
-//
-// TODO(cristian): consider fetching only the first query_sql_text
-// and also using a cursor.
-const selectQueryTextTemplate = `
-	SELECT
-		q.query_hash,
-		qt.query_sql_text
-	FROM
-		sys.query_store_query q
-	JOIN
-		sys.query_store_query_text qt ON qt.query_text_id = q.query_text_id
-	WHERE
-		q.is_internal_query = 0
-		AND q.query_hash IN (%s)`
-
 // QueryTracker reports which (database, query_hash) pairs are currently tracked
 // by the query_metrics collector.
 type QueryTracker interface {
@@ -46,28 +29,36 @@ type QueryTracker interface {
 }
 
 type QueryDetailsArguments struct {
-	DB              *sql.DB
-	CollectInterval time.Duration
-	QueryTimeout    time.Duration
-	Tracker         QueryTracker
-	EntryHandler    loki.EntryHandler
+	DB                 *sql.DB
+	CollectInterval    time.Duration
+	QueryTimeout       time.Duration
+	Tracker            QueryTracker
+	ExcludeCurrentUser bool
+	EntryHandler       loki.EntryHandler
+	TableRegistry      *TableRegistry
 
 	Logger *slog.Logger
 }
 
 type QueryDetails struct {
-	dbConnection    *sql.DB
-	collectInterval time.Duration
-	queryTimeout    time.Duration
-	entryHandler    loki.EntryHandler
-	tracker         QueryTracker
-	obfuscator      *sqllexer.Obfuscator
-	normalizer      *sqllexer.Normalizer
+	dbConnection       *sql.DB
+	collectInterval    time.Duration
+	queryTimeout       time.Duration
+	excludeCurrentUser bool
+	entryHandler       loki.EntryHandler
+	tracker            QueryTracker
+	obfuscator         *sqllexer.Obfuscator
+	normalizer         *sqllexer.Normalizer
+	tableRegistry      *TableRegistry
 
 	// lastEmittedAt records the wall-clock time at which OP_QUERY_ASSOCIATION
 	// was last emitted for a (database, query_hash), used to throttle logging
 	// to at most one emission per EmitInterval per query.
 	lastEmittedAt map[queryMetricsKey]time.Time
+	// unvalidated tracks queries whose parsed tables were emitted before schema
+	// collection populated the database in tableRegistry, so they can be
+	// re-emitted once when the database schema becomes available.
+	unvalidated map[queryMetricsKey]struct{}
 
 	// now allows overriding time.Now() in tests.
 	now func() time.Time
@@ -81,17 +72,20 @@ type QueryDetails struct {
 
 func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 	return &QueryDetails{
-		dbConnection:    args.DB,
-		collectInterval: args.CollectInterval,
-		queryTimeout:    queryTimeoutOrDefault(args.QueryTimeout),
-		entryHandler:    args.EntryHandler,
-		tracker:         args.Tracker,
-		obfuscator:      sqllexer.NewObfuscator(),
+		dbConnection:       args.DB,
+		collectInterval:    args.CollectInterval,
+		queryTimeout:       queryTimeoutOrDefault(args.QueryTimeout),
+		excludeCurrentUser: args.ExcludeCurrentUser,
+		entryHandler:       args.EntryHandler,
+		tracker:            args.Tracker,
+		obfuscator:         sqllexer.NewObfuscator(),
+		tableRegistry:      args.TableRegistry,
 		normalizer: sqllexer.NewNormalizer(
 			sqllexer.WithCollectTables(true),
 			sqllexer.WithKeepIdentifierQuotation(true),
 		),
 		lastEmittedAt: map[queryMetricsKey]time.Time{},
+		unvalidated:   map[queryMetricsKey]struct{}{},
 		now:           time.Now,
 		logger:        args.Logger.With("collector", QueryDetailsCollector),
 		running:       &atomic.Bool{},
@@ -162,7 +156,7 @@ func (c *QueryDetails) collect(ctx context.Context) error {
 		return nil
 	}
 
-	query, args, err := buildQueryTextStatement(hashes)
+	query, args, err := buildQueryTextStatement(hashes, c.excludeCurrentUser)
 	if err != nil {
 		return err
 	}
@@ -203,11 +197,18 @@ func (c *QueryDetails) collect(ctx context.Context) error {
 			seen[key] = struct{}{}
 
 			if last, ok := c.lastEmittedAt[key]; ok && now.Sub(last) < database_observability.EmitInterval {
-				continue
+				if _, pending := c.unvalidated[key]; !pending || !c.tableRegistry.HasDatabase(database) {
+					continue
+				}
 			}
 
-			c.emit(database, queryHash, queryText)
+			pendingValidation := c.emit(database, queryHash, queryText)
 			c.lastEmittedAt[key] = now
+			if pendingValidation {
+				c.unvalidated[key] = struct{}{}
+			} else {
+				delete(c.unvalidated, key)
+			}
 		}
 
 		if err := rs.Err(); err != nil {
@@ -225,11 +226,14 @@ func (c *QueryDetails) collect(ctx context.Context) error {
 
 // emit strips comments and obfuscates literals while preserving the query's
 // structure, then emits the query_association and query_parsed_table_name logs.
-func (c *QueryDetails) emit(database, queryHash, queryText string) {
+// It returns true when parsed tables were emitted without schema data for the
+// database, indicating the query should be re-emitted once schema collection
+// populates tableRegistry.
+func (c *QueryDetails) emit(database, queryHash, queryText string) bool {
 	commentFree, err := stripSQLServerComments(queryText)
 	if err != nil {
 		c.logger.Warn("failed to sanitize query text", "database", database, "query_hash", queryHash, "err", err)
-		return
+		return false
 	}
 	statementText := strings.TrimSpace(stripSQLServerParameterDeclarations(commentFree))
 
@@ -243,16 +247,28 @@ func (c *QueryDetails) emit(database, queryHash, queryText string) {
 	_, metadata, err := c.normalizer.Normalize(statementText, sqllexer.WithDBMS(sqllexer.DBMSSQLServer))
 	if err != nil {
 		c.logger.Warn("failed to extract tables from query text", "database", database, "query_hash", queryHash, "err", err)
-		return
+		return false
+	}
+	if len(metadata.Tables) == 0 {
+		return false
 	}
 
+	hasDatabase := c.tableRegistry != nil && c.tableRegistry.HasDatabase(database)
 	for _, table := range metadata.Tables {
+		validated := false
+		resolvedTable := table
+		if hasDatabase {
+			resolvedTable, validated = c.tableRegistry.IsValid(database, table)
+		}
+
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			database_observability.OP_QUERY_PARSED_TABLE_NAME,
-			fmt.Sprintf(`database=%q query_hash=%q table=%q`, database, queryHash, table),
+			fmt.Sprintf(`database=%q query_hash=%q table=%q validated="%t"`, database, queryHash, resolvedTable, validated),
 		)
 	}
+
+	return c.tableRegistry != nil && !hasDatabase
 }
 
 func stripSQLServerComments(queryText string) (string, error) {
@@ -469,13 +485,14 @@ func (c *QueryDetails) pruneThrottle(seen map[queryMetricsKey]struct{}) {
 	for key := range c.lastEmittedAt {
 		if _, ok := seen[key]; !ok {
 			delete(c.lastEmittedAt, key)
+			delete(c.unvalidated, key)
 		}
 	}
 }
 
 // buildQueryTextStatement returns the query text statement plus its named
 // parameters, binding each 16-char hex hash back to its binary(8) form.
-func buildQueryTextStatement(hashes []string) (string, []any, error) {
+func buildQueryTextStatement(hashes []string, excludeCurrentUser bool) (string, []any, error) {
 	placeholders := make([]string, 0, len(hashes))
 	args := make([]any, 0, len(hashes))
 	for i, h := range hashes {
@@ -487,6 +504,8 @@ func buildQueryTextStatement(hashes []string) (string, []any, error) {
 		placeholders = append(placeholders, "@"+name)
 		args = append(args, sql.Named(name, raw))
 	}
+
+	args = append(args, sql.Named("exclude_current_user", excludeCurrentUser), sql.Named("collector_marker", QueryMarker))
 
 	return fmt.Sprintf(selectQueryTextTemplate, strings.Join(placeholders, ", ")), args, nil
 }

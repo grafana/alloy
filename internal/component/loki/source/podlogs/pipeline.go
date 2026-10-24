@@ -12,6 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/regexp"
 	"github.com/grafana/alloy/internal/component/loki/process/stages"
 	monitoringv1alpha2 "github.com/grafana/alloy/internal/component/loki/source/podlogs/internal/apis/monitoring/v1alpha2"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -155,12 +156,19 @@ func convertPipeline(spec *monitoringv1alpha2.PipelineSpec) ([]stages.StageConfi
 		}
 		if stage.Regex != nil {
 			set++
+			expr, err := regexp.Compile(stage.Regex.Expression)
+			if err != nil {
+				return nil, fmt.Errorf("stage %d: regex: %w", i, err)
+			}
 			cfg.RegexConfig = &stages.RegexConfig{
-				Expression:       stage.Regex.Expression,
+				Expression:       expr,
 				LabelsFromGroups: stage.Regex.LabelsFromGroups,
 			}
 			if stage.Regex.Source != "" {
 				cfg.RegexConfig.Source = &stage.Regex.Source
+			}
+			if err := cfg.RegexConfig.Validate(); err != nil {
+				return nil, fmt.Errorf("stage %d: regex: %w", i, err)
 			}
 		}
 		if stage.Labels != nil {

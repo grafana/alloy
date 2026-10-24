@@ -34,10 +34,6 @@ const requiredSchemaPermission = "VIEW DEFINITION"
 // as a distinct permission name by sys.fn_my_permissions.
 var queryStoreAccessPermissions = []string{"VIEW DATABASE STATE", "VIEW DATABASE PERFORMANCE STATE"}
 
-const selectMyPermissionsQuery = `SELECT permission_name FROM sys.fn_my_permissions(NULL, 'DATABASE')`
-
-const selectQueryStoreHasRowsQuery = `SELECT TOP 1 1 FROM sys.query_store_runtime_stats`
-
 const noAccessibleDatabasesValue = "no accessible databases"
 
 type HealthCheckArguments struct {
@@ -208,7 +204,7 @@ func (c *HealthCheck) runPerDatabaseChecks(ctx context.Context) ([]healthCheckRe
 
 	for _, db := range databases {
 		if err := withQueryTimeout(ctx, c.queryTimeout, func(queryCtx context.Context) error {
-			_, err := conn.ExecContext(queryCtx, fmt.Sprintf("USE %s", db.quoted))
+			_, err := conn.ExecContext(queryCtx, fmt.Sprintf(useDatabaseTemplate, db.quoted))
 			return err
 		}); err != nil {
 			// A failed USE is a check-execution error (e.g. the database is
