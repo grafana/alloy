@@ -2,35 +2,40 @@ package stages
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"reflect"
-	"regexp"
 	"slices"
 
+	"github.com/grafana/alloy/internal/component/common/regexp"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 )
 
 type StructuredMetadataConfig struct {
 	Values map[string]*string `alloy:"values,attr,optional"`
-	Regex  string             `alloy:"regex,attr,optional"`
+	Regex  regexp.Regexp      `alloy:"regex,attr,optional"`
 }
 
-// validateStructuredMetadataConfig validates the structured metadata stage config.
-func validateStructuredMetadataConfig(c map[string]*string) (map[string]string, error) {
-	// We must not mutate the c.Values, create a copy with changes we need.
-	ret := map[string]string{}
-	if c == nil {
-		return nil, errors.New(errEmptyLabelStageConfig)
-	}
-	for labelName, labelSrc := range c {
+var _ syntax.Validator = (*StructuredMetadataConfig)(nil)
+
+func (c *StructuredMetadataConfig) Validate() error {
+	for labelName := range c.Values {
 		// TODO: add support for different validation schemes.
 		//nolint:staticcheck
 		if !model.LabelName(labelName).IsValid() {
-			return nil, fmt.Errorf(errInvalidLabelName, labelName)
+			return fmt.Errorf(errInvalidLabelName, labelName)
 		}
+	}
+	return nil
+}
+
+// mapEmptyLabelSrc maps the labelName to a map entry if the src is empty
+// otherwise derefernces labelSrc value and assigns it
+func mapEmptyLabelSrc(m map[string]*string) map[string]string {
+	ret := make(map[string]string, len(m))
+	for labelName, labelSrc := range m {
 		// If no label source was specified, use the key name
 		if labelSrc == nil || *labelSrc == "" {
 			ret[labelName] = labelName
@@ -38,34 +43,18 @@ func validateStructuredMetadataConfig(c map[string]*string) (map[string]string, 
 			ret[labelName] = *labelSrc
 		}
 	}
-	return ret, nil
+	return ret
 }
 
 var _ entryProcessor = (*structuredMetadataStage)(nil)
 
-func newStructuredMetadataStage(configs StructuredMetadataConfig, opts stageOpts) (*structuredMetadataStage, error) {
-	var (
-		err                   error
-		validatedLabelsConfig map[string]string
-	)
-
-	if len(configs.Values) > 0 {
-		validatedLabelsConfig, err = validateStructuredMetadataConfig(configs.Values)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	re, err := regexp.Compile(configs.Regex)
-	if err != nil {
-		return nil, err
-	}
+func newStructuredMetadataStage(configs StructuredMetadataConfig, opts stageOpts) *structuredMetadataStage {
 	return &structuredMetadataStage{
 		next:         opts.next,
-		labelsConfig: validatedLabelsConfig,
-		regex:        *re,
+		labelsConfig: mapEmptyLabelSrc(configs.Values),
+		regex:        configs.Regex,
 		logger:       opts.slogger.With("stage", "structured_metadata"),
-	}, nil
+	}
 }
 
 type structuredMetadataStage struct {
@@ -139,7 +128,7 @@ func processExtractedLabelsByConfig(logger *slog.Logger, extracted map[string]an
 
 // processExtractedLabelsByRegex adds structured metadata from extracted values whose keys match the configured regex.
 func processExtractedLabelsByRegex(logger *slog.Logger, extracted map[string]any, regex regexp.Regexp, consumer labelsConsumer) {
-	if regex.String() == "" {
+	if regex.IsEmpty() {
 		return
 	}
 
@@ -187,7 +176,7 @@ func processEntryLabelsByConfig(labels model.LabelSet, labelsConfig map[string]s
 
 // processEntryLabelsByRegex adds structured metadata from entry labels whose keys match the configured regex and removes those labels.
 func processEntryLabelsByRegex(labels model.LabelSet, regex regexp.Regexp, consumer labelsConsumer) {
-	if regex.String() == "" {
+	if regex.IsEmpty() {
 		return
 	}
 
