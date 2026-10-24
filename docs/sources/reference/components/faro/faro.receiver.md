@@ -270,7 +270,7 @@ To look up the sourcemaps for a file hosted at `http://example.com/example.js`, 
 1. Removes the minified path prefix to extract the path to the file `example.js`.
 1. Searches the path for the file with a `.map` extension, for example `example.js.map` in the path `/var/my-app/build/example.js.map`.
 
-Optionally, the value for the `path` argument may contain the following template values:
+Optionally, the value for the `path` argument may contain the following Go template values:
 
 - `{{ .Release }}`: The release of the app, such as `/var/my-app/{{ .Release }}/build`.
   The template value is replaced with the release value provided by the [Faro Web App SDK][faro-sdk].
