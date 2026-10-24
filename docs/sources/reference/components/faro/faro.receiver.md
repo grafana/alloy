@@ -279,6 +279,7 @@ Optionally, the value for the `path` argument may contain the following Go templ
   The Faro bundler plugins and the Faro React Native SDK set this value.
 
 The component removes path separators and leading dots from template values before it uses them in the path.
+If the Faro SDK doesn't send the value, the template value is empty and the path has no segment for it.
 
 React Native apps report stack frames with the bundle filename, such as `index.android.bundle`, instead of a URL.
 To look up the sourcemaps for these frames, set `minified_path_prefix` to an empty string.
