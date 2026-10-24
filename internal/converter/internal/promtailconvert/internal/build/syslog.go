@@ -22,9 +22,14 @@ func (s *ScrapeConfigBuilder) AppendSyslogConfig() {
 		return
 	}
 
+	listenProtocol := s.cfg.SyslogConfig.ListenProtocol
+	if listenProtocol == "" {
+		listenProtocol = syslog.DefaultListenerConfig.ListenProtocol
+	}
+
 	listenerConfig := syslog.ListenerConfig{
 		ListenAddress:        s.cfg.SyslogConfig.ListenAddress,
-		ListenProtocol:       s.cfg.SyslogConfig.ListenProtocol,
+		ListenProtocol:       listenProtocol,
 		IdleTimeout:          s.cfg.SyslogConfig.IdleTimeout,
 		LabelStructuredData:  s.cfg.SyslogConfig.LabelStructuredData,
 		Labels:               convertPromLabels(s.cfg.SyslogConfig.Labels),

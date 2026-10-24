@@ -1,0 +1,25 @@
+discovery.relabel "syslog_default" {
+	targets = []
+
+}
+
+loki.source.syslog "syslog_default" {
+	listener {
+		address                = "localhost:4000"
+		protocol               = "tcp"
+		idle_timeout           = "1m0s"
+		max_message_length     = 0
+		syslog_format          = "rfc5424"
+		udp_queue_size         = 0
+		udp_host_cache_size    = 0
+	}
+	forward_to    = [loki.write.default.receiver]
+	relabel_rules = null
+}
+
+loki.write "default" {
+	endpoint {
+		url = "http://localhost/loki/api/v1/push"
+	}
+	external_labels = {}
+}
