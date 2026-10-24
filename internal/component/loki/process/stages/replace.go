@@ -30,19 +30,16 @@ func (c *ReplaceConfig) Validate() error {
 var _ entryProcessor = (*replaceStage)(nil)
 
 // newReplaceStage creates a replaceStage
-func newReplaceStage(config ReplaceConfig, opts stageOpts) (*replaceStage, error) {
-	templ, err := config.Replace.parse()
-	// We should not get an error here when built from alloy syntax.
-	if err != nil {
-		return nil, err
-	}
+func newReplaceStage(config ReplaceConfig, opts stageOpts) *replaceStage {
+	// Template is validated during unmarshal.
+	templ, _ := config.Replace.parse()
 
 	return &replaceStage{
 		next:     opts.next,
 		cfg:      config,
 		template: templ,
 		logger:   opts.slogger.With("stage", "replace"),
-	}, nil
+	}
 }
 
 // replaceStage sets extracted data using regular expressions
