@@ -136,6 +136,14 @@ alloy:
   # -- Resource requests and limits to apply to the Grafana Alloy container.
   resources: {}
 
+  # -- Resize policy for the Grafana Alloy container. Controls whether an
+  # in-place resize of CPU or memory restarts the container.
+  resizePolicy: []
+    # - resourceName: cpu
+    #   restartPolicy: NotRequired
+    # - resourceName: memory
+    #   restartPolicy: RestartContainer
+
   # -- Set lifecycle hooks for the Grafana Alloy container.
   lifecycle: {}
     # preStop:
@@ -251,7 +259,7 @@ configReloader:
     # -- Repository to get config reloader image from.
     repository: prometheus-operator/prometheus-config-reloader
     # -- Tag of image to use for config reloading.
-    tag: v0.94.0@sha256:142a1f11df8dd165f00375b0b1826aecb9c9adeb05c39855893138d7c7575ff7
+    tag: v0.94.2@sha256:a1897c67478bc23434534e91ad3855280771196b1daf17144db9dbcb655bef71
     # -- SHA256 digest of image to use for config reloading (either in format "sha256:XYZ" or "XYZ"). When set, will override `configReloader.image.tag`
     digest: ""
     # -- Config reloader image pull policy.
@@ -263,6 +271,9 @@ configReloader:
     requests:
       cpu: "10m"
       memory: "50Mi"
+  # -- Resize policy for the config reloader container. Controls whether an
+  # in-place resize of CPU or memory restarts the container.
+  resizePolicy: []
   # -- Security context to apply to the Grafana configReloader container.
   securityContext:
     allowPrivilegeEscalation: false

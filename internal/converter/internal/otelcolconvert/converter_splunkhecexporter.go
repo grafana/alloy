@@ -72,19 +72,17 @@ func toSplunkHecExporter(cfg *splunkhecexporter.Config) *splunkhec_config.Splunk
 }
 
 func toSplunkHecHTTPClientArguments(cfg *splunkhecexporter.Config) splunkhec_config.SplunkHecClientArguments {
+	keepalive := effectiveClientKeepalive(cfg.ClientConfig)
 	return splunkhec_config.SplunkHecClientArguments{
 		Endpoint:        cfg.ClientConfig.Endpoint,
 		Timeout:         cfg.ClientConfig.Timeout,
 		ReadBufferSize:  cfg.ClientConfig.ReadBufferSize,
 		WriteBufferSize: cfg.ClientConfig.WriteBufferSize,
-		// Deprecated fields remain the source of truth for an already-unmarshaled ClientConfig.
-		//nolint:staticcheck
-		MaxIdleConns: cfg.ClientConfig.MaxIdleConns,
-		//nolint:staticcheck
-		MaxIdleConnsPerHost: cfg.ClientConfig.MaxIdleConnsPerHost,
+		// The keepalive settings live in either the keepalive section or the deprecated fields.
+		MaxIdleConns:        keepalive.MaxIdleConns,
+		MaxIdleConnsPerHost: keepalive.MaxIdleConnsPerHost,
 		MaxConnsPerHost:     cfg.ClientConfig.MaxConnsPerHost,
-		//nolint:staticcheck
-		IdleConnTimeout: cfg.ClientConfig.IdleConnTimeout,
+		IdleConnTimeout:     keepalive.IdleConnTimeout,
 		//nolint:staticcheck
 		DisableKeepAlives:  cfg.ClientConfig.DisableKeepAlives,
 		InsecureSkipVerify: cfg.ClientConfig.TLS.Insecure,

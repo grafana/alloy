@@ -182,11 +182,14 @@ You can use the following blocks with `otelcol.receiver.kafka`:
 
 The `logs` block configures how to receive logs from Kafka brokers.
 
-| Name       | Type           | Description                                                                                    | Default         | Required |
-| ---------- | -------------- | ---------------------------------------------------------------------------------------------- | --------------- | -------- |
-| `encoding` | `string`       | The encoding for logs. Refer to [Supported encodings](#supported-encodings).                   | `"otlp_proto"`  | no       |
-| `topic`    | `string`       | (Deprecated: use `topics` instead) The name of the Kafka topic on which logs will be received. | `""`            | no       |
-| `topics`   | `list(string)` | The names of the Kafka topics on which logs will be received.                                  | `["otlp_logs"]` | no       |
+| Name                 | Type                       | Description                                                                                         | Default         | Required |
+| -------------------- | -------------------------- | --------------------------------------------------------------------------------------------------- | --------------- | -------- |
+| `encoding`           | `string`                   | The built-in encoding for logs. Refer to [Supported encodings](#supported-encodings).               | `"otlp_proto"`  | no       |
+| `encoding_extension` | `capsule(otelcol.Handler)` | An encoding extension handler to decode logs. Refer to [Encoding extensions](#encoding-extensions). |                 | no       |
+| `topic`              | `string`                   | (Deprecated: use `topics` instead) The name of the Kafka topic to receive logs from.                | `""`            | no       |
+| `topics`             | `list(string)`             | The names of the Kafka topics to receive logs from.                                                 | `["otlp_logs"]` | no       |
+
+You can't set `encoding` and `encoding_extension` in the same block.
 
 {{< admonition type="warning" >}}
 The `topic` argument is deprecated in favor of `topics`.
@@ -197,11 +200,14 @@ If `topic` is set, it will take precedence over default value of `topics`.
 
 The `metrics` block configures how to receive metrics from Kafka brokers.
 
-| Name       | Type           | Description                                                                                       | Default            | Required |
-| ---------- | -------------- | ------------------------------------------------------------------------------------------------- | ------------------ | -------- |
-| `encoding` | `string`       | The encoding for logs. Refer to [Supported encodings](#supported-encodings).                      | `"otlp_proto"`     | no       |
-| `topic`    | `string`       | (Deprecated: use `topics` instead) The name of the Kafka topic on which metrics will be received. | `""`               | no       |
-| `topics`   | `list(string)` | The names of the Kafka topics on which metrics will be received.                                  | `["otlp_metrics"]` | no       |
+| Name                 | Type                       | Description                                                                                            | Default            | Required |
+| -------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------ | -------- |
+| `encoding`           | `string`                   | The built-in encoding for metrics. Refer to [Supported encodings](#supported-encodings).               | `"otlp_proto"`     | no       |
+| `encoding_extension` | `capsule(otelcol.Handler)` | An encoding extension handler to decode metrics. Refer to [Encoding extensions](#encoding-extensions). |                    | no       |
+| `topic`              | `string`                   | (Deprecated: use `topics` instead) The name of the Kafka topic to receive metrics from.                | `""`               | no       |
+| `topics`             | `list(string)`             | The names of the Kafka topics to receive metrics from.                                                 | `["otlp_metrics"]` | no       |
+
+You can't set `encoding` and `encoding_extension` in the same block.
 
 {{< admonition type="warning" >}}
 The `topic` argument is deprecated in favor of `topics`.
@@ -212,11 +218,14 @@ If `topic` is set, it will take precedence over default value of `topics`.
 
 The `traces` block configures how to receive traces from Kafka brokers.
 
-| Name       | Type           | Description                                                                                      | Default          | Required |
-| ---------- | -------------- | ------------------------------------------------------------------------------------------------ | ---------------- | -------- |
-| `encoding` | `string`       | The encoding for logs. Refer to [Supported encodings](#supported-encodings).                     | `"otlp_proto"`   | no       |
-| `topic`    | `string`       | (Deprecated: use `topics` instead) The name of the Kafka topic on which traces will be received. | `""`             | no       |
-| `topics`   | `list(string)` | The names of the Kafka topics on which traces will be received.                                  | `["otlp_spans"]` | no       |
+| Name                 | Type                       | Description                                                                                           | Default          | Required |
+| -------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------- | ---------------- | -------- |
+| `encoding`           | `string`                   | The built-in encoding for traces. Refer to [Supported encodings](#supported-encodings).               | `"otlp_proto"`   | no       |
+| `encoding_extension` | `capsule(otelcol.Handler)` | An encoding extension handler to decode traces. Refer to [Encoding extensions](#encoding-extensions). |                  | no       |
+| `topic`              | `string`                   | (Deprecated: use `topics` instead) The name of the Kafka topic to receive traces from.                | `""`             | no       |
+| `topics`             | `list(string)`             | The names of the Kafka topics to receive traces from.                                                 | `["otlp_spans"]` | no       |
+
+You can't set `encoding` and `encoding_extension` in the same block.
 
 {{< admonition type="warning" >}}
 The `topic` argument is deprecated in favor of `topics`.
@@ -362,7 +371,8 @@ Enabling `independent` lets each assigned partition be processed by its own work
 
 ## Supported encodings
 
-`otelcol.receiver.kafka` supports encoding extensions, as well as the following built-in encodings.
+`otelcol.receiver.kafka` supports the following built-in encodings, which you can set with the `encoding` argument.
+To decode other formats, use an [encoding extension](#encoding-extensions).
 
 Available for all signals:
 
@@ -383,6 +393,24 @@ Available only for logs:
 - `text`: the payload are decoded as text and inserted as the body of a log record. By default, it uses UTF-8 to decode. You can use `text_<ENCODING>`, like `text_utf-8`, `text_shift_jis`, etc., to customize this behavior.
 - `json`: the payload is decoded as JSON and inserted as the body of a log record.
 - `azure_resource_logs`: Deprecated in {{< param "PRODUCT_NAME" >}} v1.17.
+  Use [`otelcol.encoding.azure`][otelcol.encoding.azure] with `encoding_extension` instead.
+
+### Encoding extensions
+
+The `encoding_extension` argument in the `logs`, `metrics`, and `traces` blocks accepts a handler exported by an encoding extension component.
+`otelcol.receiver.kafka` uses the extension to decode the payload of every message on the topics of that signal.
+
+The following components export compatible handlers:
+
+- [`otelcol.encoding.azure`][otelcol.encoding.azure]: Azure resource logs, metrics, and traces.
+- [`otelcol.encoding.jsonlog`][otelcol.encoding.jsonlog]: JSON logs.
+- [`otelcol.encoding.text`][otelcol.encoding.text]: Text logs.
+
+If the extension doesn't support decoding the signal of the block, `otelcol.receiver.kafka` fails to start.
+
+[otelcol.encoding.azure]: ../otelcol.encoding.azure/
+[otelcol.encoding.jsonlog]: ../otelcol.encoding.jsonlog/
+[otelcol.encoding.text]: ../otelcol.encoding.text/
 
 ## Message header propagation
 
@@ -428,6 +456,51 @@ otelcol.exporter.otlphttp "default" {
   }
 }
 ```
+
+### Decode Azure resource logs from Event Hubs
+
+This example reads Azure resource logs from an Azure Event Hubs namespace through its Kafka-compatible endpoint, and decodes them with `otelcol.encoding.azure`.
+Event Hubs doesn't fully support leader epochs, so the example sets `use_leader_epoch` to `false`.
+
+```alloy
+otelcol.encoding.azure "default" { }
+
+otelcol.receiver.kafka "eventhubs" {
+  brokers          = ["<NAMESPACE>.servicebus.windows.net:9093"]
+  protocol_version = "2.0.0"
+  use_leader_epoch = false
+
+  authentication {
+    sasl {
+      username  = "$ConnectionString"
+      password  = sys.env("EVENTHUBS_CONNECTION_STRING")
+      mechanism = "PLAIN"
+    }
+  }
+
+  tls { }
+
+  logs {
+    topics             = ["<EVENT_HUB>"]
+    encoding_extension = otelcol.encoding.azure.default.handler
+  }
+
+  output {
+    logs = [otelcol.exporter.otlphttp.default.input]
+  }
+}
+
+otelcol.exporter.otlphttp "default" {
+  client {
+    endpoint = sys.env("OTLP_ENDPOINT")
+  }
+}
+```
+
+Replace the following:
+
+- _`<NAMESPACE>`_: The name of your Event Hubs namespace.
+- _`<EVENT_HUB>`_: The name of the event hub that receives the resource logs.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

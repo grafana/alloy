@@ -39,6 +39,7 @@ You can use the following arguments with `otelcol.encoding.jsonlog`:
 | ------------ | -------- | ------------------------------------------------ | -------- | -------- |
 | `array_mode` | `bool`   | Whether to encode and decode JSON arrays.        | `true`   | no       |
 | `mode`       | `string` | How to marshal fields from each log record.      | `"body"` | no       |
+| `parse_ints` | `bool`   | Whether to decode integers as `int64` values.    | `false`  | no       |
 
 The `array_mode` argument controls the JSON document shape.
 When `array_mode` is `true`, unmarshaled input must be a JSON array of objects, and marshaled output is a JSON array.
@@ -52,6 +53,13 @@ The `mode` argument supports the following values:
 
 The `mode` argument affects marshaling only.
 During unmarshaling, the component stores each JSON object as a log record body.
+
+The `parse_ints` argument affects unmarshaling only.
+By default, the component decodes every JSON number as a `float64`, so integers larger than 2^53 can lose precision.
+When `parse_ints` is `true`, the component decodes integer literals within the `int64` range as `int64`, including those in nested objects and arrays.
+For example, with the input `{"id": 9007199254740993}`, `id` is `9007199254740992` when `parse_ints` is `false`, and `9007199254740993` when it's `true`.
+Numbers with a fraction, such as `1.0`, numbers with an exponent, such as `1e3`, and values outside the `int64` range are always decoded as `float64`.
+Enabling `parse_ints` adds processing overhead.
 
 ## Blocks
 

@@ -47,7 +47,7 @@ You can use the following arguments with `otelcol.connector.signaltometrics`:
 
 | Name         | Type     | Description                                                            | Default       | Required |
 | ------------ | -------- | ---------------------------------------------------------------------- | ------------- | -------- |
-| `error_mode` | `string` | How the connector reacts to errors when it evaluates OTTL expressions. | `"propagate"` | no       |
+| `error_mode` | `string` | How the connector reacts to errors when it evaluates OTTL expressions. | `"ignore"`    | no       |
 
 The `error_mode` argument determines how the connector reacts to errors that occur while it evaluates an OTTL condition or expression during runtime data consumption.
 This setting doesn't affect errors during OTTL parsing at configuration time, which always causes a startup failure.

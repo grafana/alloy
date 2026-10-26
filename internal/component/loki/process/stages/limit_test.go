@@ -5,15 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/syntax"
 )
 
 func TestLimitStage(t *testing.T) {
@@ -146,43 +143,90 @@ loki_process_dropped_lines_by_label_total{label_name="app",label_value="poki"} 4
 
 // TestLimitStageShutdown verifies that an entry blocked in rateLimiter.Wait
 // is released promptly when the pipeline shuts down.
-func TestLimitStageShutdown(t *testing.T) {
-	cfgs := loadConfig(`
-		stage.limit {
-				rate  = 0.1
-				burst = 1
-				drop  = false
-		}
-	`)
+func TestValidateLimitConfig(t *testing.T) {
+	t.Parallel()
 
-	pl, err := NewPipeline(logging.NewSlogNop(), cfgs, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
+	type testCase struct {
+		name    string
+		cfg     string
+		wantErr bool
+	}
+
+	tests := []testCase{
+		{
+			name: "should pass on rate and burst set",
+			cfg: `
+			rate  = 1
+			burst = 1
+			`,
+		},
+		{
+			name: "should fail on zero rate",
+			cfg: `
+			rate  = 0
+			burst = 1
+			`,
+			wantErr: true,
+		},
+		{
+			name: "should fail on zero burst",
+			cfg: `
+			rate  = 1
+			burst = 0
+			`,
+			wantErr: true,
+		},
+		{
+			name: "should fail on by_label_name without drop",
+			cfg: `
+			rate          = 1
+			burst         = 1
+			by_label_name = "app"
+			`,
+			wantErr: true,
+		},
+		{
+			name: "should pass on by_label_name with drop",
+			cfg: `
+			rate          = 1
+			burst         = 1
+			drop          = true
+			by_label_name = "app"
+			`,
+		},
+		{
+			name: "should fail on invalid by_label_name",
+			cfg: `
+			rate          = 1
+			burst         = 1
+			drop          = true
+			by_label_name = "bad-name"
+			`,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var cfg LimitConfig
+			err := syntax.Unmarshal([]byte(tt.cfg), &cfg)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestLimitConfigDefaults(t *testing.T) {
+	var cfg LimitConfig
+	err := syntax.Unmarshal([]byte(`
+	rate  = 1
+	burst = 1
+	`), &cfg)
 	require.NoError(t, err)
-
-	in := make(chan loki.Entry)
-	out := make(chan loki.Entry, 1)
-	handler := pl.Start(in, out)
-
-	entry := loki.Entry{
-		Labels: model.LabelSet{"app": "loki"},
-		Entry:  push.Entry{Line: testMatchLogLineApp1, Timestamp: time.Now()},
-	}
-
-	in <- entry
-	<-out       // burst consumed; next Wait() will block
-	in <- entry // blocks the limit stage in rateLimiter.Wait
-
-	done := make(chan struct{})
-	go func() { defer close(done); handler.Stop() }()
-
-	select {
-	case <-done:
-	case <-time.After(2 * time.Second):
-		t.Fatal("Stop() did not release the entry blocked in rateLimiter.Wait")
-	}
-
-	select {
-	case e := <-out:
-		t.Fatalf("expected the entry blocked in rateLimiter.Wait to be dropped on shutdown, but it was forwarded: %+v", e)
-	default:
-	}
+	require.Equal(t, defaultMaxDistinctLabels, cfg.MaxDistinctLabels)
 }

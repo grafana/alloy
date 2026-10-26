@@ -41,13 +41,13 @@ func newRoutes(maxMessageSize int) ([]source.LogsRoute, []source.HandlerRoute) {
 	}
 
 	return []source.LogsRoute{
-			newLokiRoute(pathPush, maxMessageSize),
-			newLokiRoute(pathLokiPush, maxMessageSize),
-			newPlainTextRoute(pathRaw),
-			newPlainTextRoute(pathLokiRaw),
-		}, []source.HandlerRoute{
-			newReadyHandler(),
-		}
+		newLokiRoute(pathPush, maxMessageSize),
+		newLokiRoute(pathLokiPush, maxMessageSize),
+		newPlainTextRoute(pathRaw),
+		newPlainTextRoute(pathLokiRaw),
+	}, []source.HandlerRoute{
+		newReadyHandler(),
+	}
 }
 
 var _ source.LogsRoute = (*lokiRoute)(nil)

@@ -8,10 +8,7 @@ import (
 
 type DecolorizeConfig struct{}
 
-var (
-	_ Stage          = (*decolorizeStage)(nil)
-	_ entryProcessor = (*decolorizeStage)(nil)
-)
+var _ entryProcessor = (*decolorizeStage)(nil)
 
 func newDecolorizeStage(_ DecolorizeConfig, opts stageOpts) *decolorizeStage {
 	return &decolorizeStage{next: opts.next}
@@ -26,15 +23,6 @@ const ansiPattern = "[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\
 
 var ansiRegex = regexp.MustCompile(ansiPattern)
 
-// Run implements Stage
-func (m *decolorizeStage) Run(in chan Entry) chan Entry {
-	return RunWith(in, func(e Entry) Entry {
-		decolorizedLine := ansiRegex.ReplaceAll([]byte(e.Line), []byte{})
-		e.Entry.Line = string(decolorizedLine)
-		return e
-	})
-}
-
 func (m *decolorizeStage) process(ctx context.Context, entries []Entry) error {
 	for i := range entries {
 		decolorizedLine := ansiRegex.ReplaceAll([]byte(entries[i].Line), []byte{})
@@ -42,5 +30,3 @@ func (m *decolorizeStage) process(ctx context.Context, entries []Entry) error {
 	}
 	return m.next(ctx, entries)
 }
-
-func (*decolorizeStage) Cleanup() {}
