@@ -562,8 +562,8 @@ func TestConnectAndStartCollectorsFailsWhenCurrentUserCannotBeResolved(t *testin
 
 	mock.ExpectQuery("SELECT " + collector.QueryMarker + " 1").WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(1))
 	mock.ExpectQuery(collector.SelectServerInfo).
-		WillReturnRows(sqlmock.NewRows([]string{"server_name", "machine_name", "product_version"}).
-			AddRow("server", "machine", "16.0"))
+		WillReturnRows(sqlmock.NewRows([]string{"server_name", "machine_name", "instance_name", "product_version"}).
+			AddRow("server", "machine", nil, "16.0"))
 	mock.ExpectQuery(collector.SelectOriginalLogin).WillReturnError(errors.New("permission denied"))
 
 	var args Arguments
@@ -939,6 +939,10 @@ func clusteringTestArgs() Arguments {
 // successful ping and the server-info query. The always-on ConnectionInfo
 // collector issues no queries of its own.
 func clusteringTestMockDB(t *testing.T, serverName string) *sql.DB {
+	return componentTestMockDB(t, serverName, nil)
+}
+
+func componentTestMockDB(t *testing.T, serverName string, instanceName any) *sql.DB {
 	t.Helper()
 	db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true), sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
@@ -946,9 +950,69 @@ func clusteringTestMockDB(t *testing.T, serverName string) *sql.DB {
 
 	mock.ExpectQuery("SELECT " + collector.QueryMarker + " 1").WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(1))
 	mock.ExpectQuery(collector.SelectServerInfo).
-		WillReturnRows(sqlmock.NewRows([]string{"server_name", "machine_name", "product_version"}).
-			AddRow(serverName, "machine", "16.0"))
+		WillReturnRows(sqlmock.NewRows([]string{"server_name", "machine_name", "instance_name", "product_version"}).
+			AddRow(serverName, "machine", instanceName, "16.0"))
 	return db
+}
+
+func TestGenerateServerID(t *testing.T) {
+	tests := []struct {
+		name         string
+		instanceName string
+		expected     string
+	}{
+		{
+			name:         "default instance preserves the legacy server ID",
+			instanceName: "",
+			expected:     "d2334b3fc946b6ae794406680d0dad15709fe7e70c75f5b89f2270a0f3de78f3",
+		},
+		{
+			name:         "named instance is included in the server ID",
+			instanceName: "INSTANCE",
+			expected:     "6f7b4bc17cfee580f2f4e5d098432bdab8707acefb8999920ff8779b132decae",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, generateServerID("server", "machine", tt.instanceName))
+		})
+	}
+}
+
+func TestSqlServer_NamedInstancesHaveDistinctServerIDs(t *testing.T) {
+	args := Arguments{
+		Databases: []DatabaseArguments{
+			{Name: "one", DataSourceName: "sqlserver://user:pass@same-host/INST_ONE?database=db1"},
+			{Name: "two", DataSourceName: "sqlserver://user:pass@same-host/INST_TWO?database=db1"},
+		},
+		QueryTimeout:         10 * time.Second,
+		DisableCollectors:    []string{"schema_details", "query_metrics", "query_samples", "query_details", "explain_plans"},
+		HealthCheckArguments: HealthCheckArguments{CollectInterval: 1 * time.Hour},
+	}
+	require.NoError(t, args.Validate())
+
+	var gotExports cmp.Exports
+	dbOne := componentTestMockDB(t, "same-host", "INST_ONE")
+	dbTwo := componentTestMockDB(t, "same-host", "INST_TWO")
+
+	_, err := newComponent(clusteringTestOptions(t, &fakeCluster{ready: true}, &gotExports), args, func(_ string, dsn string) (*sql.DB, error) {
+		if strings.Contains(dsn, "INST_ONE") {
+			return dbOne, nil
+		}
+		return dbTwo, nil
+	})
+	require.NoError(t, err)
+
+	exported, ok := gotExports.(Exports)
+	require.True(t, ok)
+	require.Len(t, exported.Targets, 2)
+
+	serverIDOne, _ := exported.Targets[0].Get("server_id")
+	serverIDTwo, _ := exported.Targets[1].Get("server_id")
+	assert.NotEmpty(t, serverIDOne)
+	assert.NotEmpty(t, serverIDTwo)
+	assert.NotEqual(t, serverIDOne, serverIDTwo)
 }
 
 // TestSqlServer_PerInstanceRules_Targets checks that the rules of a
