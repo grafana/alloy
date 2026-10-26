@@ -182,6 +182,8 @@ func (a *PrometheusExporterArguments) Validate() error {
 	return args.Validate()
 }
 
+var defaultEnabledCollectors = []string{eventsStatementsCollector}
+
 const eventsStatementsCollector = "perf_schema.eventsstatements"
 
 func defaultArguments() Arguments {
@@ -863,8 +865,6 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 
 	return nil
 }
-
-var defaultEnabledCollectors = []string{eventsStatementsCollector}
 
 func resolveExporterArgs(userBlock *PrometheusExporterArguments) exporter_mysql.Arguments {
 	exporterArgs := exporter_mysql.DefaultArguments
