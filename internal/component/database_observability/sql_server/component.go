@@ -759,7 +759,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 		return fmt.Errorf("failed to resolve current login for query_samples user exclusion: %w", err)
 	}
 
-	generatedServerID := fmt.Sprintf("%x", sha256.Sum256(fmt.Appendf(nil, "%s:%s:%s", serverName.String, machineName.String, instanceName.String)))
+	generatedServerID := generateServerID(serverName.String, machineName.String, instanceName.String)
 
 	var cp *database_observability.CloudProvider
 	if inst.cfg.cloudProvider != nil {
@@ -804,6 +804,14 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	}
 
 	return nil
+}
+
+func generateServerID(serverName, machineName, instanceName string) string {
+	identity := fmt.Appendf(nil, "%s:%s", serverName, machineName)
+	if instanceName != "" {
+		identity = fmt.Appendf(identity, ":%s", instanceName)
+	}
+	return fmt.Sprintf("%x", sha256.Sum256(identity))
 }
 
 func enableOrDisableCollectors(a Arguments) map[string]bool {

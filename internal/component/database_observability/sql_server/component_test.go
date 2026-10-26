@@ -939,10 +939,10 @@ func clusteringTestArgs() Arguments {
 // successful ping and the server-info query. The always-on ConnectionInfo
 // collector issues no queries of its own.
 func clusteringTestMockDB(t *testing.T, serverName string) *sql.DB {
-	return clusteringTestMockDBWithInstance(t, serverName, nil)
+	return componentTestMockDB(t, serverName, nil)
 }
 
-func clusteringTestMockDBWithInstance(t *testing.T, serverName string, instanceName any) *sql.DB {
+func componentTestMockDB(t *testing.T, serverName string, instanceName any) *sql.DB {
 	t.Helper()
 	db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true), sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
@@ -953,6 +953,31 @@ func clusteringTestMockDBWithInstance(t *testing.T, serverName string, instanceN
 		WillReturnRows(sqlmock.NewRows([]string{"server_name", "machine_name", "instance_name", "product_version"}).
 			AddRow(serverName, "machine", instanceName, "16.0"))
 	return db
+}
+
+func TestGenerateServerID(t *testing.T) {
+	tests := []struct {
+		name         string
+		instanceName string
+		expected     string
+	}{
+		{
+			name:         "default instance preserves the legacy server ID",
+			instanceName: "",
+			expected:     "d2334b3fc946b6ae794406680d0dad15709fe7e70c75f5b89f2270a0f3de78f3",
+		},
+		{
+			name:         "named instance is included in the server ID",
+			instanceName: "INSTANCE",
+			expected:     "6f7b4bc17cfee580f2f4e5d098432bdab8707acefb8999920ff8779b132decae",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, generateServerID("server", "machine", tt.instanceName))
+		})
+	}
 }
 
 func TestSqlServer_NamedInstancesHaveDistinctServerIDs(t *testing.T) {
@@ -968,8 +993,8 @@ func TestSqlServer_NamedInstancesHaveDistinctServerIDs(t *testing.T) {
 	require.NoError(t, args.Validate())
 
 	var gotExports cmp.Exports
-	dbOne := clusteringTestMockDBWithInstance(t, "same-host", "INST_ONE")
-	dbTwo := clusteringTestMockDBWithInstance(t, "same-host", "INST_TWO")
+	dbOne := componentTestMockDB(t, "same-host", "INST_ONE")
+	dbTwo := componentTestMockDB(t, "same-host", "INST_TWO")
 
 	_, err := newComponent(clusteringTestOptions(t, &fakeCluster{ready: true}, &gotExports), args, func(_ string, dsn string) (*sql.DB, error) {
 		if strings.Contains(dsn, "INST_ONE") {
