@@ -1,7 +1,7 @@
 # Proposal: Reliable Loki pipelines
 
 - Author: Karl Persson (@kalleep), Piotr Gwizdala (@thampiotr)
-- Last updated: 2026-10-23
+- Last updated: 2026-10-26
 - Discussion link: https://github.com/grafana/alloy/pull/4940
 
 ## Abstract
@@ -95,11 +95,11 @@ type Consumer interface {
 }
 ```
 
-This replaces the current Chan() chan<- loki.Entry. The call is synchronous — the caller's goroutine does the work through the pipeline. context.Context scopes the processing lifetime (HTTP request context, shutdown signal).
+This replaces the current Chan() chan<- loki.Entry. The call is synchronous: the caller's goroutine does the work through the pipeline. context.Context scopes the processing lifetime (HTTP request context, shutdown signal).
 
-Consume() returns `nil`, a context error or `ErrConsumerStopped`. Components retry their own failures and only stop when the context is cancelled or the component stops. Any other error is unexpected and most likely a bug. When Consume() returns an error, the caller checks its own context with `ctx.Err() != nil` to tell a context error apart, instead of inspecting the returned error, since a component can return the error it was retrying when the context is cancelled.
+Consume() returns `nil`, a context error or `ErrConsumerStopped`. Components retry their own failures and only stop when the context is cancelled or the component stops. `ErrConsumerStopped` means a component in the pipeline has stopped, usually because a config reload removed it, and the source retries the batch. Any other error is unexpected and most likely a bug. When Consume() returns an error, the caller checks its own context with `ctx.Err() != nil` to tell a context error apart, instead of inspecting the returned error, since a component can return the error it was retrying when the context is cancelled.
 
-Pipeline components like loki.process, loki.relabel, loki.write, and fan-out all implement Consumer. These components are stream-agnostic — they process whatever entries they receive. The entries they receive will already be grouped by stream.
+Pipeline components like loki.process, loki.relabel, loki.write, and fan-out all implement Consumer. These components are stream-agnostic: they process whatever entries they receive. The entries they receive will already be grouped by stream.
 
 ### FanoutV2
 
@@ -112,7 +112,7 @@ type FanoutV2 struct { ... }
 func (f *FanoutV2) Consume(ctx context.Context, batch loki.Batch) error
 ```
 
-`FanoutV2` always delivers to the current set of consumers. It takes a snapshot of its consumers for each call. If a consumer returns `ErrConsumerStopped` because it was removed during a config reload, `FanoutV2` takes a new snapshot and delivers the batch to the consumers added since the previous one, repeating if that happens again. A stopped consumer that was not replaced does not get the batch, the same as a consumer removed from the fanout. `FanoutV2` never returns `ErrConsumerStopped` to its caller. Every component sends through `FanoutV2`, so components only need to use it to get this behavior.
+`FanoutV2` takes a snapshot of its consumers for each call and delivers the batch to all of them. It returns the errors from its consumers together, including `ErrConsumerStopped`.
 
 ### Architecture
 
@@ -149,9 +149,9 @@ loki.source.api                            loki.source.file
 
 The goroutine that calls Consume() handles the full processing path inline: the call passes through loki.process (mutations, filtering) and into loki.write. No goroutine hand-offs. Concurrency comes from the sources themselves, each HTTP request and each file tailer runs on its own goroutine.
 
-loki.source.api. Calls Consume(ctx, batch) with all entries from the HTTP request. If success → respond 200. If the client disconnects, the HTTP request context is cancelled and processing aborts — no 200 is sent, so no commitment is made. If the context is cancelled because Alloy or the component is shutting down → respond with a retryable status code (503), so the client retries, possibly to another instance. Any other error from the pipeline is unexpected and most likely a bug → log it and respond 500. Apart from that, errors returned to the client only come from handling the request itself, such as parsing errors. To bound goroutine creation, loki.source.api will limit the number of concurrently accepted connections at the HTTP server level.
+loki.source.api. Calls Consume(ctx, batch) with all entries from the HTTP request. If success → respond 200. If the client disconnects, the HTTP request context is cancelled and processing aborts. No 200 is sent, so no commitment is made. If the context is cancelled because Alloy or the component is shutting down, or Consume() returns `ErrConsumerStopped` → respond with a retryable status code (503), so the client retries, possibly to another instance. Any other error from the pipeline is unexpected and most likely a bug → log it and respond 500. Apart from that, errors returned to the client only come from handling the request itself, such as parsing errors. To bound goroutine creation, loki.source.api will limit the number of concurrently accepted connections at the HTTP server level.
 
-loki.source.file. Each tailer calls Consume(ctx, batch) for each batch read from its file (already single-stream). If success → advance position. If Consume() returns an error and the context is cancelled (shutdown or target removed) → do not advance, clean exit. Any other error is unexpected and most likely a bug → log it and advance position.
+loki.source.file. Each tailer calls Consume(ctx, batch) for each batch read from its file (already single-stream). If success → advance position. If Consume() returns an error and the context is cancelled (shutdown or target removed) → do not advance, clean exit. If Consume() returns `ErrConsumerStopped` → do not advance, back off and send the batch again until it succeeds or the context is cancelled. The tailer keeps the lines it read until the batch is delivered and rebuilds the batch from them, since downstream components may have modified it. Any other error is unexpected and most likely a bug → log it and advance position.
 
 loki.write. Implements Consumer by appending to a WAL or in-memory queue. Blocks if the queue is full and `block_on_overflow = true` (default). With `block_on_overflow = false` it drops and counts the entries instead. WAL I/O errors and client updates are retried inside loki.write until the context is cancelled or the component stops, so a failing WAL turns into backpressure instead of an error returned to the source.
 
@@ -162,7 +162,7 @@ Every component in the pipeline follows these rules. Together they keep config r
 1. **Consume() is a plain call.** This applies to every component that exports a Loki receiver, such as `loki.echo`, `loki.relabel`, `loki.enrich`, `loki.secretfilter`, `loki.process`, `loki.write`, `otelcol.receiver.loki` and `database_observability.postgres`.
    - It works from the moment the component is created until it stops. During a config reload, upstream components are pointed at new components before those are started, so a Consume() that waited for the component to start would block the upstream component.
    - It only waits on downstream backpressure. Cancelling the context or stopping the component ends the wait.
-   - It returns `nil`, a context error or `ErrConsumerStopped`. The component retries its own failures. Entries it drops on purpose are counted in its metrics, and Consume() returns `nil`.
+   - It returns `nil`, a context error or `ErrConsumerStopped`. The component retries its own failures. Entries it drops on purpose are counted in its metrics, and Consume() returns `nil`. An `ErrConsumerStopped` from downstream is returned to the caller unchanged.
    - After the component stops, new and in-flight calls return `ErrConsumerStopped`. A component that buffers entries stops in this order: mark itself stopped, wait for in-flight calls to return, then flush the buffer.
    - It never holds a lock while calling downstream, so an Update() of the component is never stuck behind a blocked downstream call.
 2. **Update() never waits on data.**
@@ -170,12 +170,13 @@ Every component in the pipeline follows these rules. Together they keep config r
    - A source restarts its workers only when the relevant config changed. It cancels their context first, then waits for them to exit.
 3. **Sources handle Consume() errors.** Only when Consume() returns an error does a source check `ctx.Err() != nil` to tell a context error apart, instead of inspecting the returned error. A `nil` return is a success, even if the context was cancelled after it.
    - On a context error the entries may not have been delivered. The source does not advance its position and sends them again when the worker restarts. A push source returns the error to its client, so the client retries. A source that can't replay, such as UDP syslog, drops the entries and logs it.
+   - On `ErrConsumerStopped` a component in the pipeline has stopped, usually during a config reload. The source does not advance its position and retries with backoff until Consume() succeeds or the context is cancelled. It rebuilds the batch from its own data, since downstream components may have modified it. A push source returns a retryable error to its client instead. A source that can't replay drops the entries and logs it.
    - Any other error is most likely a bug in the pipeline. The source logs it clearly, drops the entries to unblock the pipeline, and advances.
-4. **`FanoutV2` delivers to the current downstream**, as described in [FanoutV2](#fanoutv2). Components only need to use `FanoutV2`.
+4. **`FanoutV2` delivers to the current downstream and returns its errors**, as described in [FanoutV2](#fanoutv2).
 
 ### Error handling and backpressure
 
-Errors propagate synchronously back to the source through Consume() return values. Components retry their own failures, so the only expected error is a context error. `ErrConsumerStopped` is handled by `FanoutV2` and never reaches the source. The source has not committed yet (no 200 sent, no positions advanced) when it gets one.
+Errors propagate synchronously back to the source through Consume() return values. Components retry their own failures, so the only expected errors are a context error and `ErrConsumerStopped` during a config reload. The source has not committed yet (no 200 sent, no positions advanced) when it gets one.
 
 | Error                                            | What happens                                                     | Source behavior                                                                                  |
 | ------------------------------------------------ | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
@@ -183,6 +184,7 @@ Errors propagate synchronously back to the source through Consume() return value
 | Queue full, `block_on_overflow = true` (default) | loki.write.Consume() blocks                                      | API: request eventually times out → retryable error. File: reader blocks, positions not updated. |
 | Queue full, `block_on_overflow = false`          | loki.write drops the entries, counts them, Consume() returns nil | Same as success. API: respond 200. File: advance position.                                       |
 | Context cancelled                                | Consume() returns an error and `ctx.Err() != nil`                | API: return a retryable error so the client retries. File: don't advance, clean exit.            |
+| Consumer stopped                                 | Consume() returns `ErrConsumerStopped`                           | API: return a retryable error so the client retries. File: don't advance, retry with backoff.    |
 | Unexpected error                                 | Most likely a bug in the pipeline                                | API: log it, respond 500. File: log it, advance position.                                        |
 
 #### Backpressure flow under sustained congestion
@@ -198,7 +200,7 @@ The HTTP request timeout acts as the natural load shedding mechanism. No explici
 ### Shutdown
 
 1. Sources stop accepting new requests / reads.
-2. In-flight processing is cancelled via context. Since sources have not committed (no 200 response sent, no positions advanced), cancellation is safe — clients will retry, and file positions will be re-read on restart.
+2. In-flight processing is cancelled via context. Since sources have not committed (no 200 response sent, no positions advanced), cancellation is safe: clients will retry, and file positions will be re-read on restart.
 3. Components that buffer entries, such as multiline stages in loki.process, flush their buffer downstream. To not lose an entry added by a call that is still in flight, a buffering component stops in this order: mark itself stopped, wait for in-flight calls to return, then flush the buffer.
 4. loki.write drains its internal queue (entries already accepted into the queue are flushed to the network / WAL). It already supports this today.
 
@@ -208,9 +210,11 @@ Logs keep flowing while a config reload is applied, so calls can be in flight wh
 
 - **New component:** `file -> process -> write` becomes `file -> process -> relabel -> write`. Batches in flight during the reload go straight to `write` and skip `relabel`. Nothing is lost. This relies on `relabel` accepting batches as soon as it is created.
 - **Component added to fanout:** `process -> write1` becomes `process -> write1, write2`. `write2` misses the batches in flight, `write1` still gets everything.
-- **Component removed from fanout:** `process -> write1, write2` becomes `process -> write1`. Batches in flight to `write2` are rejected with `ErrConsumerStopped` and ignored, `write1` still gets everything. Not delivering to a removed component is the intended behavior.
-- **Component swapped:** `file -> process -> write` becomes `file -> relabel -> write`. A batch that `file` sent to `process` just before `process` stopped is rejected with `ErrConsumerStopped`. `FanoutV2` delivers it to `relabel` instead, so nothing is lost. The same applies when the swapped component is a sink, for example `write1` becomes `write2`.
+- **Component removed from fanout:** `process -> write1, write2` becomes `process -> write1`. Batches in flight to `write2` are rejected with `ErrConsumerStopped`. The source retries them, so `write1` gets them twice. Not delivering to a removed component is the intended behavior.
+- **Component swapped:** `file -> process -> write` becomes `file -> relabel -> write`. A batch that `file` sent to `process` just before `process` stopped is rejected with `ErrConsumerStopped`. `file` retries it, and by then it forwards to `relabel`, so nothing is lost. The same applies when the swapped component is a sink, for example `write1` becomes `write2`: `process` returns the `ErrConsumerStopped` from `write1` and `file` retries.
 - **Component replaced:** `process "a"` becomes `process "b"`. A component with a new name is a new component, so this is the same as a swap. Buffered state, such as multiline entries, is not carried over, it is flushed downstream when `process "a"` stops.
+- **Chain removed:** `file -> process -> write "old"` becomes `file -> relabel -> write "new"`. `write "old"` rejects the batch `process` is forwarding, `process` returns `ErrConsumerStopped`, and `file` retries the batch through the new chain.
+- **Stale `forward_to`:** a reload changes `file`'s `forward_to` from `write "old"` to `write "new"`, but `file`'s arguments fail to evaluate. Its Update() is not called and it keeps forwarding to `write "old"`, which the reload stops. `file` retries until a fixed config is applied, so nothing is lost, but it stalls until then. If `file` also forwards to a healthy component, that component stalls too and gets the batch again on every retry. The component is reported unhealthy because its evaluation failed.
 
 ### Ordering
 
@@ -235,7 +239,8 @@ The pipeline prefers duplicates over loss: a downstream component can get the sa
 
 - A source is cancelled and Consume() returns an error after part of the batch was already delivered. `loki.source.file` does not advance its position and sends the batch again after it restarts. A push source returns a retryable error and the client sends it again.
 - loki.write retries a batch after its client was updated. Endpoints that already accepted the batch get it again.
-- `FanoutV2` redelivers a batch after a config reload. Redelivery only goes to consumers added since the snapshot, but the removed component may already have forwarded part of the batch to a component the new chain also uses. For example, a removed `loki.process` already passed part of the batch to `loki.write`, and the new `loki.relabel` sends the full batch to the same `loki.write`.
+- A source retries a batch after `ErrConsumerStopped` and the batch was forked on its way. A config reload stops a component on one branch while another branch already accepted the batch, so that branch gets the batches in flight again. For example, `process -> write1, write2` becomes `process -> write1`, and `write1` gets the batches in flight twice.
+- A source retries a batch because of a [stale `forward_to`](#config-reload) and also forwards to a healthy component. The healthy component gets the batch again on every retry until a fixed config is applied. For example, `file -> old, kept` should become `file -> new, kept`, but `file`'s arguments fail to evaluate, so `kept` gets the same batch once per retry.
 
 Entries can still be lost in these cases:
 
@@ -262,6 +267,16 @@ We have an option to mitigate this in the future:
 * We introduce a configurable lag for position file updates, initially set to ~30 seconds. We delay committing the read position, so if Alloy crashes, we re-read and re-send entries from the last committed position.
 * Loki handles duplicates correctly as long as timestamps come from the log entry itself (not the wall clock), which is the standard behavior.
 
-#### Future improvement
+### Future improvement
 
-Automatically tune the lag based on a total pipeline latency estimate (e.g. from loki.write metrics).
+#### Position file update lag
+
+Automatically tune the position file update lag based on a total pipeline latency estimate (e.g. from loki.write metrics).
+
+#### Fewer duplicates after a config reload
+
+Some of the duplicates after a config reload can be avoided in `FanoutV2`. When consumers were only removed from the fanout since the snapshot, and every consumer that rejected a batch with `ErrConsumerStopped` is among the removed ones, `FanoutV2` returns `nil` instead of `ErrConsumerStopped`. Not delivering to a removed consumer is the intended behavior, and no consumer was added that should get the batch, so there is nothing for the source to retry. In every other case it returns `ErrConsumerStopped` and the source retries as before.
+
+For example, `process -> write1, write2` becoming `process -> write1` no longer sends the batches in flight to `write1` twice. `process -> write1, write2` becoming `process -> write1, write3` still returns `ErrConsumerStopped`, so `write3` gets the batches in flight and `write1` gets them twice.
+
+This does not help when a consumer was added in the same reload, since it needs the batch. It also does not help when the fork is further down a removed chain, or with a stale `forward_to`, since those fanouts never see their consumers change.
