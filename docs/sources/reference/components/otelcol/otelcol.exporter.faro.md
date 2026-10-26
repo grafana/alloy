@@ -2,7 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/components/otelcol/otelcol.exporter.faro/
 description: Learn about otelcol.exporter.faro
 labels:
-  stage: experimental
+  stage: public-preview
   products:
     - oss
 title: otelcol.exporter.faro
@@ -10,7 +10,7 @@ title: otelcol.exporter.faro
 
 # `otelcol.exporter.faro`
 
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.exporter.faro` accepts logs and traces telemetry data from other `otelcol` components and sends it to [Faro][Faro] endpoint.
 Use this exporter to send telemetry data to Grafana Cloud Collector Endpoint for [Frontend Observability][Frontend Observability] or to any backend that supports Faro format, allowing you to gain insights into the end user experience of your web application.
@@ -51,20 +51,24 @@ You can use the following blocks with `otelcol.exporter.faro`:
 | [`client`][client]                                    | Configures the HTTP client to send telemetry data to.                          | yes      |
 | `client` > [`compression_params`][compression_params] | Configure advanced compression options.                                        | no       |
 | `client` > [`cookies`][cookies]                       | Store cookies from server responses and reuse them in subsequent requests.     | no       |
+| `client` > [`keepalive`][keepalive]                   | Configures HTTP keep-alive settings.                                           | no       |
 | `client` > [`tls`][tls]                               | Configures TLS for the HTTP client.                                            | no       |
 | `client` > `tls` > [`tpm`][tpm]                       | Configures TPM settings for the TLS `key_file`.                                | no       |
 | [`debug_metrics`][debug_metrics]                      | Configures the metrics that this component generates to monitor its state.     | no       |
 | [`retry_on_failure`][retry_on_failure]                | Configures retry mechanism for failed requests.                                | no       |
 | [`sending_queue`][sending_queue]                      | Configures batching of data before sending.                                    | no       |
 | `sending_queue` > [`batch`][batch]                    | Configures batching requests based on a timeout and a minimum number of items. | no       |
+| `sending_queue` > `batch` > [`partition`][partition]  | Configures partitioning of batches by client metadata.                         | no       |
 
 [client]: #client
 [tls]: #tls
 [tpm]: #tpm
 [cookies]: #cookies
+[keepalive]: #keepalive
 [compression_params]: #compression_params
 [sending_queue]: #sending_queue
 [batch]: #batch
+[partition]: #partition
 [retry_on_failure]: #retry_on_failure
 [debug_metrics]: #debug_metrics
 
@@ -91,6 +95,12 @@ The `cookies` block allows the HTTP client to store cookies from server response
 This could be useful in situations such as load balancers relying on cookies for sticky sessions and enforcing a maximum session age.
 
 {{< docs/shared lookup="reference/components/otelcol-cookies-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `keepalive`
+
+The `keepalive` block configures HTTP keep-alive settings for the HTTP client.
+
+{{< docs/shared lookup="reference/components/otelcol-keepalive-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `tls`
 
@@ -125,6 +135,12 @@ The `sending_queue` block configures queueing and batching for the exporter.
 The `batch` block configures batching requests based on a timeout and a minimum number of items.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `partition`
+
+The `partition` block configures how batches are partitioned by client metadata.
+
+{{< docs/shared lookup="reference/components/otelcol-queue-batch-partition-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 
@@ -176,4 +192,4 @@ Refer to the linked documentation for more details.
 <!-- END GENERATED COMPATIBLE COMPONENTS -->
 
 [Faro]: https://grafana.com/oss/faro/
-[Frontend Observability]: https://grafana.com/products/cloud/frontend-observability-for-real-user-monitoring/
+[Frontend Observability]: https://grafana.com/products/cloud/frontend-observability/

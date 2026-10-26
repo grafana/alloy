@@ -199,9 +199,9 @@ func TestConfigConversion(t *testing.T) {
 			require.NoError(t, err)
 			actualCfg := actual.(*googlecloudexporter.Config)
 			// testify cannot test for function field equality, so set them to nil to correctly compare other fields
-			actualCfg.MetricConfig.GetMetricName = nil
-			actualCfg.MetricConfig.MapMonitoredResource = nil
-			actualCfg.LogConfig.MapMonitoredResource = nil
+			actualCfg.Config.MetricConfig.GetMetricName = nil
+			actualCfg.Config.MetricConfig.MapMonitoredResource = nil
+			actualCfg.Config.LogConfig.MapMonitoredResource = nil
 			require.Equal(t, &tc.expected, actualCfg)
 		})
 	}

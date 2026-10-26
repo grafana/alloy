@@ -17,6 +17,7 @@ import (
 	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/syncbuffer"
@@ -127,9 +128,9 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		lokiEntries := lokiClient.Received()
 
 		assert.Len(t, lokiEntries, 2)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, lokiEntries[0].Labels)
 		require.Equal(t, `level="info" datname="books_store" schema="public" table="authors"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true},{"name":"name","type":"character varying(255)"}],"indexes":[{"name":"authors_pkey","type":"btree","columns":["id"],"unique":true,"nullable":true}]}`))
 		require.Equal(t, fmt.Sprintf(`level="info" datname="books_store" schema="public" table="authors" table_spec="%s"`, expectedTableSpec), lokiEntries[1].Line)
 	})
@@ -310,15 +311,15 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		lokiEntries := lokiClient.Received()
 
 		assert.Len(t, lokiEntries, 6)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, lokiEntries[0].Labels)
 		require.Equal(t, `level="info" datname="books_store" schema="public" table="authors"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, lokiEntries[1].Labels)
 		require.Equal(t, `level="info" datname="books_store" schema="public" table="categories"`, lokiEntries[1].Line)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[2].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, lokiEntries[2].Labels)
 		require.Equal(t, `level="info" datname="books_store" schema="postgis" table="spatial_ref_sys"`, lokiEntries[2].Line)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[3].Labels)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[4].Labels)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[5].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_CREATE_STATEMENT}, lokiEntries[3].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_CREATE_STATEMENT}, lokiEntries[4].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_CREATE_STATEMENT}, lokiEntries[5].Labels)
 		expectedAuthorsTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true}],"indexes":[{"name":"authors_pkey","type":"btree","columns":["id"],"unique":true,"nullable":false}]}`))
 		expectedCategoriesTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true}],"indexes":[{"name":"categories_pkey","type":"btree","columns":["id"],"unique":true,"nullable":false}]}`))
 		expectedSpatialTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"srid","type":"integer","not_null":true,"primary_key":true}]}`))
@@ -425,14 +426,14 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		lokiEntries := lokiClient.Received()
 		assert.Len(t, lokiEntries, 4)
 
-		assert.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, lokiEntries[0].Labels)
 		assert.Equal(t, `level="info" datname="db1" schema="public" table="users"`, lokiEntries[0].Line)
-		assert.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
 		assert.Equal(t, fmt.Sprintf(`level="info" datname="db1" schema="public" table="users" table_spec="%s"`, base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true}]}`))), lokiEntries[1].Line)
 
-		assert.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[2].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, lokiEntries[2].Labels)
 		assert.Equal(t, `level="info" datname="db2" schema="public" table="metrics"`, lokiEntries[2].Line)
-		assert.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[3].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_CREATE_STATEMENT}, lokiEntries[3].Labels)
 		assert.Equal(t, fmt.Sprintf(`level="info" datname="db2" schema="public" table="metrics" table_spec="%s"`, base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"bigint","not_null":true,"primary_key":true}]}`))), lokiEntries[3].Line)
 	})
 
@@ -541,9 +542,9 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		assert.Len(t, lokiEntries, 2)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, lokiEntries[0].Labels)
 		require.Equal(t, `level="info" datname="multi_index_db" schema="public" table="users"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true},{"name":"name","type":"character varying(255)","not_null":true},{"name":"email","type":"character varying(255)"},{"name":"created_at","type":"timestamp with time zone","not_null":true,"default_value":"now()"}],"indexes":[{"name":"users_pkey","type":"btree","columns":["id"],"unique":true,"nullable":false},{"name":"idx_users_email_unique","type":"btree","columns":["email"],"unique":true,"nullable":false},{"name":"idx_users_name","type":"btree","columns":["name"],"unique":false,"nullable":false},{"name":"idx_users_name_lower","type":"btree","columns":null,"expressions":["lower(name::text)"],"unique":false,"nullable":true},{"name":"idx_users_created_at","type":"btree","columns":["created_at"],"unique":false,"nullable":false}]}`))
 		require.Equal(t, fmt.Sprintf(`level="info" datname="multi_index_db" schema="public" table="users" table_spec="%s"`, expectedTableSpec), lokiEntries[1].Line)
 	})
@@ -713,9 +714,9 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		assert.Len(t, lokiEntries, 2)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, lokiEntries[0].Labels)
 		require.Equal(t, `level="info" datname="test_db" schema="public" table="test_table"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true},{"name":"name","type":"character varying(255)"}]}`))
 		require.Equal(t, fmt.Sprintf(`level="info" datname="test_db" schema="public" table="test_table" table_spec="%s"`, expectedTableSpec), lokiEntries[1].Line)
 	})
@@ -823,9 +824,9 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 
 		lokiEntries := lokiClient.Received()
 		assert.Len(t, lokiEntries, 2)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, lokiEntries[0].Labels)
 		require.Equal(t, `level="info" datname="serial_test_db" schema="public" table="users"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"nextval('users_id_seq'::regclass)"},{"name":"username","type":"character varying(255)","not_null":true}]}`))
 		require.Equal(t, fmt.Sprintf(`level="info" datname="serial_test_db" schema="public" table="users" table_spec="%s"`, expectedTableSpec), lokiEntries[1].Line)
 	})
@@ -930,9 +931,9 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 
 		lokiEntries := lokiClient.Received()
 		assert.Len(t, lokiEntries, 2)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, lokiEntries[0].Labels)
 		require.Equal(t, `level="info" datname="identity_test_db" schema="public" table="products"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"auto_increment":true,"primary_key":true},{"name":"code","type":"integer","not_null":true,"auto_increment":true},{"name":"name","type":"character varying(255)","not_null":true}]}`))
 		require.Equal(t, fmt.Sprintf(`level="info" datname="identity_test_db" schema="public" table="products" table_spec="%s"`, expectedTableSpec), lokiEntries[1].Line)
 	})
@@ -1115,10 +1116,10 @@ func Test_Postgres_SchemaDetails_throttling(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 
 		entries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, entries[0].Labels)
 		require.Equal(t, `level="info" datname="throttle_test_db" schema="public" table="test_table"`, entries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, entries[1].Labels)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[2].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_CREATE_STATEMENT}, entries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, entries[2].Labels)
 		require.Equal(t, `level="info" datname="throttle_test_db" schema="public" table="test_table"`, entries[2].Line)
 	})
 
@@ -1172,7 +1173,7 @@ func Test_Postgres_SchemaDetails_throttling(t *testing.T) {
 		}
 
 		require.NoError(t, collector.extractNames(context.Background()))
-		fakeNow = fakeNow.Add(emitInterval + time.Minute) // past the throttle window
+		fakeNow = fakeNow.Add(database_observability.EmitInterval + time.Minute) // past the throttle window
 		require.NoError(t, collector.extractNames(context.Background()))
 
 		require.Eventually(t, func() bool {
@@ -1182,10 +1183,10 @@ func Test_Postgres_SchemaDetails_throttling(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 
 		entries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[0].Labels)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, entries[1].Labels)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[2].Labels)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, entries[3].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_CREATE_STATEMENT}, entries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, entries[2].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_CREATE_STATEMENT}, entries[3].Labels)
 	})
 
 	t.Run("table dropped between scrapes is removed from throttle map", func(t *testing.T) {
@@ -1243,7 +1244,7 @@ func Test_Postgres_SchemaDetails_throttling(t *testing.T) {
 
 		// Second scrape: only table_a remains. table_b should be evicted from
 		// the throttle map by housekeeping. Since table_a was already emitted
-		// less than emitInterval ago, no further metadata queries are expected.
+		// less than EmitInterval ago, no further metadata queries are expected.
 		fakeNow = fakeNow.Add(time.Minute)
 		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows([]string{"datname"}).AddRow("throttle_test_db"))
@@ -1388,7 +1389,7 @@ func Test_Postgres_SchemaDetails_throttling(t *testing.T) {
 		require.Contains(t, collector.lastEmittedAt[database("db_a")], schemaTableKey("public", "test_table"))
 		require.Contains(t, collector.lastEmittedAt[database("db_b")], schemaTableKey("public", "test_table"))
 
-		// Second scrape (within emitInterval): db_a scrapes successfully but
+		// Second scrape (within EmitInterval): db_a scrapes successfully but
 		// is throttled (no metadata queries). db_b's selectSchemaNames fails
 		// transiently. The throttle entry for db_b must survive — otherwise
 		// the throttle guarantee is broken.
@@ -1492,7 +1493,7 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 		require.EventuallyWithT(t, func(c *assert.CollectT) {
 			entries := lokiClient.Received()
 			require.Len(c, entries, 1)
-			require.Equal(c, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[0].Labels)
+			require.Equal(c, model.LabelSet{"op": database_observability.OP_TABLE_DETECTION}, entries[0].Labels)
 			require.Equal(c, `level="info" datname="testdb" schema="schema_a" table="table_a"`, entries[0].Line)
 		}, 2*time.Second, 100*time.Millisecond)
 	})
@@ -1876,6 +1877,25 @@ func Test_TableRegistry_IsValid(t *testing.T) {
 		assert.False(t, valid)
 		assert.Equal(t, "myschema.mytable", resolvedTable)
 	})
+
+	t.Run("unqualified lookup prefers exact case match over lowercase match in another schema", func(t *testing.T) {
+		for i := 0; i < 50; i++ {
+			tr := NewTableRegistry()
+			tr.SetTablesForDatabase("mydb", []*tableInfo{
+				{database: "mydb", schema: "schema_a", tableName: "users"},
+				{database: "mydb", schema: "schema_b", tableName: "Users"},
+				{database: "mydb", schema: "schema_c", tableName: "users"},
+			})
+
+			resolvedTable, valid := tr.IsValid("mydb", "Users")
+			assert.True(t, valid)
+			assert.Equal(t, "Users", resolvedTable)
+
+			resolvedTable, valid = tr.IsValid("mydb", "USERS")
+			assert.True(t, valid)
+			assert.Equal(t, "users", resolvedTable)
+		}
+	})
 }
 
 func Test_formatPostgresIdentifier(t *testing.T) {
@@ -2007,6 +2027,34 @@ func Test_parseSchemaQualifiedIfAny(t *testing.T) {
 	}
 }
 
+func Test_TableRegistry_SchemasForDatabase(t *testing.T) {
+	t.Run("returns all schemas for a known database", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTablesForDatabase("mydb", []*tableInfo{
+			{database: "mydb", schema: "public", tableName: "users"},
+			{database: "mydb", schema: "catalog", tableName: "products"},
+			{database: "mydb", schema: "catalog", tableName: "categories"},
+		})
+
+		schemas := tr.SchemasForDatabase("mydb")
+		assert.ElementsMatch(t, []string{"public", "catalog"}, schemas)
+	})
+
+	t.Run("returns nil for an unknown database", func(t *testing.T) {
+		tr := NewTableRegistry()
+		tr.SetTablesForDatabase("mydb", []*tableInfo{
+			{database: "mydb", schema: "public", tableName: "users"},
+		})
+
+		assert.Nil(t, tr.SchemasForDatabase("otherdb"))
+	})
+
+	t.Run("returns nil for an empty registry", func(t *testing.T) {
+		tr := NewTableRegistry()
+		assert.Nil(t, tr.SchemasForDatabase("mydb"))
+	})
+}
+
 func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
 
@@ -2126,6 +2174,121 @@ func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
 				},
 			},
 		}, actual)
+	})
+
+	t.Run("extractNames prunes undiscovered databases from TableRegistry", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
+
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
+			DB:              db,
+			DSN:             "postgres://user:pass@localhost:5432/testdb",
+			CollectInterval: time.Hour,
+			EntryHandler:    lokiClient,
+			Logger:          util.TestAlloyLogger(t).Slog(),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				return db, nil
+			},
+		})
+		require.NoError(t, err)
+
+		collector.tableRegistry.SetTablesForDatabase("gone_db", []*tableInfo{
+			{database: "gone_db", schema: "public", tableName: "old_table"},
+		})
+		collector.tableRegistry.SetTablesForDatabase("testdb", []*tableInfo{
+			{database: "testdb", schema: "public", tableName: "users"},
+		})
+		collector.lastEmittedAt[database("testdb")] = map[string]time.Time{
+			schemaTableKey("public", "users"): collector.now(),
+		}
+
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"datname"}).AddRow("testdb"))
+		mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"schema_name"}).AddRow("public"))
+		mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"table_name"}).AddRow("users"))
+
+		require.NoError(t, collector.extractNames(context.Background()))
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		_, valid := collector.tableRegistry.IsValid("gone_db", "old_table")
+		assert.False(t, valid)
+		assert.Nil(t, collector.tableRegistry.SchemasForDatabase("gone_db"))
+
+		resolved, valid := collector.tableRegistry.IsValid("testdb", "users")
+		assert.True(t, valid)
+		assert.Equal(t, "users", resolved)
+	})
+
+	t.Run("extractSchemas clears TableRegistry when database has no schemas", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
+
+		collector := &SchemaDetails{
+			logger:        logging.NewSlogNop(),
+			now:           time.Now,
+			lastEmittedAt: map[database]map[string]time.Time{},
+			tableRegistry: NewTableRegistry(),
+			entryHandler:  lokiClient,
+		}
+		collector.tableRegistry.SetTablesForDatabase("testdb", []*tableInfo{
+			{database: "testdb", schema: "public", tableName: "previous_table"},
+		})
+
+		mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"schema_name"}))
+
+		require.NoError(t, collector.extractSchemas(context.Background(), "testdb", db))
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		_, valid := collector.tableRegistry.IsValid("testdb", "previous_table")
+		assert.False(t, valid)
+		assert.Nil(t, collector.tableRegistry.SchemasForDatabase("testdb"))
+	})
+
+	t.Run("extractSchemas preserves TableRegistry and throttle when pg_namespace row scan fails", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
+
+		fakeNow := time.Date(2024, 5, 1, 12, 0, 0, 0, time.UTC)
+		collector := &SchemaDetails{
+			logger:        logging.NewSlogNop(),
+			now:           func() time.Time { return fakeNow },
+			lastEmittedAt: map[database]map[string]time.Time{},
+			tableRegistry: NewTableRegistry(),
+			entryHandler:  lokiClient,
+		}
+		collector.lastEmittedAt[database("testdb")] = map[string]time.Time{
+			schemaTableKey("public", "previous_table"): fakeNow,
+		}
+		collector.tableRegistry.SetTablesForDatabase("testdb", []*tableInfo{
+			{database: "testdb", schema: "public", tableName: "previous_table"},
+		})
+
+		// Return 2 columns instead of 1 so schemaRs.Scan(&schema) fails without setting schemaRs.Err().
+		mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"schema_name", "extra"}).AddRow("public", "unexpected"))
+
+		require.NoError(t, collector.extractSchemas(context.Background(), "testdb", db))
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		require.Contains(t, collector.lastEmittedAt[database("testdb")], schemaTableKey("public", "previous_table"))
+		resolved, valid := collector.tableRegistry.IsValid("testdb", "previous_table")
+		assert.True(t, valid)
+		assert.Equal(t, "previous_table", resolved)
 	})
 }
 

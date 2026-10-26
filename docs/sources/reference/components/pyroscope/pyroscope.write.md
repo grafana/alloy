@@ -7,16 +7,17 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-10-01
 title: pyroscope.write
 ---
 
 # `pyroscope.write`
 
 `pyroscope.write` receives performance profiles from other components and forwards them to a series of user-supplied endpoints.
-When `pyroscope.write` forwards profiles, all labels starting with double underscore (`__`) are dropped before the data is sent, with the following exceptions:
+When `pyroscope.write` forwards profiles, it drops all labels that start with a double underscore, with the following exceptions:
 
-* `__name__` is preserved because it identifies the profile type.
-* `__delta__`is preserved because it's required for delta profiles.
+- `__name__`, because it identifies the profile type.
+- `__delta__`, because delta profiles require it.
 
 You can specify multiple `pyroscope.write` components by giving them different labels.
 
@@ -68,19 +69,19 @@ You can use the following blocks with `pyroscope.write`:
 ### `endpoint`
 
 The `endpoint` block describes a single location to send profiles to.
-Multiple `endpoint` blocks can be provided to send profiles to multiple locations.
+You can provide multiple `endpoint` blocks to send profiles to multiple locations.
 
-The following arguments are supported:
+You can use the following arguments with the `endpoint` block:
 
 | Name                     | Type                | Description                                                                                      | Default   | Required |
 | ------------------------ | ------------------- | ------------------------------------------------------------------------------------------------ | --------- | -------- |
-| `url`                    | `string`            | Full URL to send metrics to.                                                                     |           | yes      |
-| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |           | no       |
+| `url`                    | `string`            | Full URL to send profiles to.                                                                    |           | yes      |
 | `bearer_token`           | `secret`            | Bearer token to authenticate with.                                                               |           | no       |
-| `enable_http2`           | `bool`              | Whether HTTP2 is supported for requests.                                                         | `true`    | no       |
-| `follow_redirects`       | `bool`              | Whether redirects returned by the server should be followed.                                     | `true`    | no       |
+| `bearer_token_file`      | `string`            | File containing a bearer token to authenticate with.                                             |           | no       |
+| `enable_http2`           | `bool`              | Whether to support HTTP2 for requests.                                                           | `true`    | no       |
+| `follow_redirects`       | `bool`              | Whether to follow redirects from the server.                                                     | `true`    | no       |
 | `headers`                | `map(string)`       | Extra headers to deliver with the request.                                                       |           | no       |
-| `http_headers`           | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name.          |           | no       |
+| `http_headers`           | `map(list(secret))` | Custom HTTP headers to send with each request. The map key is the header name.                   |           | no       |
 | `max_backoff_period`     | `duration`          | Maximum backoff time between retries.                                                            | `"5m"`    | no       |
 | `max_backoff_retries`    | `int`               | Maximum number of retries. 0 to retry infinitely.                                                | `10`      | no       |
 | `min_backoff_period`     | `duration`          | Initial backoff time between retries.                                                            | `"500ms"` | no       |
@@ -90,23 +91,23 @@ The following arguments are supported:
 | `proxy_from_environment` | `bool`              | Use the proxy URL indicated by environment variables.                                            | `false`   | no       |
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |           | no       |
 | `remote_timeout`         | `duration`          | Timeout for requests made to the URL.                                                            | `"10s"`   | no       |
-| `retry_on_http_429`      | `bool`              | Retry when an HTTP 429 status code is received.                                                  | `true`    | no       |
+| `retry_on_http_429`      | `bool`              | Retry when the server returns an HTTP 429 status code.                                           | `true`    | no       |
 
- At most, one of the following can be provided:
+You can provide at most one of the following:
 
-* [`authorization`](#authorization) block
-* [`basic_auth`](#basic_auth) block
-* [`bearer_token_file`](#endpoint) argument
-* [`bearer_token`](#endpoint) argument
-* [`oauth2`](#oauth2) block
+- [`authorization`](#authorization) block
+- [`basic_auth`](#basic_auth) block
+- [`bearer_token_file`](#endpoint) argument
+- [`bearer_token`](#endpoint) argument
+- [`oauth2`](#oauth2) block
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 When you provide multiple `endpoint` blocks, profiles are concurrently forwarded to all configured locations.
 
-The `retry_on_http_429` argument specifies whether `HTTP 429` status code responses should be treated as recoverable errors.
+The `retry_on_http_429` argument controls whether the component treats `HTTP 429` responses as recoverable errors.
 Other `HTTP 4xx` status code responses are never considered recoverable errors, with the exception of `HTTP 408 Request Timeout`, which is always retried.
-When `retry_on_http_429` is enabled, the retry mechanism is governed by the backoff configuration specified through `min_backoff_period`, `max_backoff_period` and `max_backoff_retries` attributes.
+When you enable `retry_on_http_429`, the `min_backoff_period`, `max_backoff_period`, and `max_backoff_retries` arguments control the retry backoff.
 
 ### `authorization`
 
@@ -135,33 +136,36 @@ The following fields are exported and can be referenced by other components:
 ## Component health
 
 `pyroscope.write` is only reported as unhealthy if given an invalid configuration.
-In those cases, exported fields are kept at their last healthy values.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
 `pyroscope.write` doesn't expose any component-specific debug information.
 
-## Metrics
+## Debug metrics
 
-`pyroscope.write` exposes the following metrics:
+The following Prometheus metrics are exposed:
 
-| Metric                                   | Type      | Description                                                      |
-|------------------------------------------|-----------|------------------------------------------------------------------|
-| `pyroscope_write_sent_bytes_total`       | Counter   | Total number of compressed bytes sent to Pyroscope endpoints.    |
-| `pyroscope_write_dropped_bytes_total`    | Counter   | Total number of compressed bytes dropped by Pyroscope endpoints. |
-| `pyroscope_write_sent_profiles_total`    | Counter   | Total number of profiles sent to Pyroscope endpoints.            |
-| `pyroscope_write_dropped_profiles_total` | Counter   | Total number of profiles dropped by Pyroscope endpoints.         |
-| `pyroscope_write_retries_total`          | Counter   | Total number of retries to Pyroscope endpoints.                  |
-| `pyroscope_write_latency`                | Histogram | Write latency for sending profiles to Pyroscope endpoints.       |
+| Name                                     | Type        | Description                                                      |
+| ---------------------------------------- | ----------- | ---------------------------------------------------------------- |
+| `pyroscope_write_sent_bytes_total`       | `counter`   | Total number of compressed bytes sent to Pyroscope endpoints.    |
+| `pyroscope_write_dropped_bytes_total`    | `counter`   | Total number of compressed bytes dropped by Pyroscope endpoints. |
+| `pyroscope_write_sent_profiles_total`    | `counter`   | Total number of profiles sent to Pyroscope endpoints.            |
+| `pyroscope_write_dropped_profiles_total` | `counter`   | Total number of profiles dropped by Pyroscope endpoints.         |
+| `pyroscope_write_retries_total`          | `counter`   | Total number of retries to Pyroscope endpoints.                  |
+| `pyroscope_write_latency`                | `histogram` | Write latency for sending profiles to Pyroscope endpoints.       |
 
-All metrics include an `endpoint` label identifying the specific endpoint URL. The `pyroscope_write_latency` metric includes an additional `type` label with the following values:
+All metrics include an `endpoint` label identifying the specific endpoint URL.
+The `pyroscope_write_latency` metric includes an additional `type` label with the following values:
 
 - `push_total`: Total latency for push operations
-- `push_endpoint`: Per-endpoint latency for push operations  
+- `push_endpoint`: Per-endpoint latency for push operations
 - `push_downstream`: Downstream request latency for push operations
 - `ingest_total`: Total latency for ingest operations
 - `ingest_endpoint`: Per-endpoint latency for ingest operations
 - `ingest_downstream`: Downstream request latency for ingest operations
+
+For the `push_total` and `ingest_total` types, the `endpoint` label is `-` because these series aggregate across all endpoints rather than identifying a single one.
 
 ## Troubleshoot
 
@@ -171,7 +175,7 @@ All metrics include an `endpoint` label identifying the specific endpoint URL. T
 
 ```alloy
 pyroscope.write "staging" {
-  // Send metrics to a locally running Pyroscope instance.
+  // Send profiles to a locally running Pyroscope instance.
   endpoint {
     url = "http://pyroscope:4040"
     headers = {

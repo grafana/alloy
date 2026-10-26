@@ -6,6 +6,7 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/testutils"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/transform"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor"
 	"github.com/stretchr/testify/require"
@@ -240,6 +241,48 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 				},
+				"profile_statements": []any{},
+			},
+		},
+		{
+			testName: "TransformWithSharedCache",
+			cfg: `
+			error_mode = "ignore"
+			trace_statements {
+				context = "resource"
+				shared_cache = true
+				statements = [
+					` + backtick + `set(cache["shared"], "value")` + backtick + `,
+				]
+			}
+			metric_statements {
+				context = "datapoint"
+				statements = [
+					` + backtick + `set(attributes["cached"], cache["shared"])` + backtick + `,
+				]
+			}
+			output {}
+			`,
+			expected: map[string]any{
+				"error_mode": "ignore",
+				"trace_statements": []any{
+					map[string]any{
+						"context":      "resource",
+						"shared_cache": true,
+						"statements": []any{
+							`set(cache["shared"], "value")`,
+						},
+					},
+				},
+				"metric_statements": []any{
+					map[string]any{
+						"context": "datapoint",
+						"statements": []any{
+							`set(attributes["cached"], cache["shared"])`,
+						},
+					},
+				},
+				"log_statements":     []any{},
 				"profile_statements": []any{},
 			},
 		},
@@ -787,7 +830,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			errorMsg: `statement has invalid syntax: 1:18: unexpected token "where" (expected ")" Key*)`,
+			errorMsg: `statement has invalid syntax at 1:18 near ` + backtick + `where attr` + backtick + `: (expected ")" Key*)`,
 		},
 		{
 			testName: "bad_syntax_metric",
@@ -801,7 +844,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			errorMsg: `statement has invalid syntax: 1:18: unexpected token "where" (expected ")" Key*)`,
+			errorMsg: `statement has invalid syntax at 1:18 near ` + backtick + `where attr` + backtick + `: (expected ")" Key*)`,
 		},
 		{
 			testName: "bad_syntax_trace",
@@ -815,7 +858,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			errorMsg: `statement has invalid syntax: 1:18: unexpected token "where" (expected ")" Key*)`,
+			errorMsg: `statement has invalid syntax at 1:18 near ` + backtick + `where attr` + backtick + `: (expected ")" Key*)`,
 		},
 		{
 			testName: "unknown_function_log",
@@ -906,4 +949,28 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			testutils.CompareConfigsAsJSON(t, actual, &expectedCfg)
 		})
 	}
+}
+
+func TestArguments_ValidateStabilityLevel(t *testing.T) {
+	withSharedCache := transform.Arguments{
+		TraceStatements: transform.ContextStatementsSlice{{
+			Context:     "span",
+			Statements:  transform.Statements{`set(span.name, "test")`},
+			SharedCache: true,
+		}},
+	}
+
+	t.Run("shared_cache unset never requires experimental", func(t *testing.T) {
+		var args transform.Arguments
+		require.NoError(t, args.ValidateStabilityLevel(featuregate.StabilityGenerallyAvailable))
+	})
+
+	t.Run("shared_cache set rejects non-experimental stability", func(t *testing.T) {
+		require.Error(t, withSharedCache.ValidateStabilityLevel(featuregate.StabilityGenerallyAvailable))
+		require.Error(t, withSharedCache.ValidateStabilityLevel(featuregate.StabilityPublicPreview))
+	})
+
+	t.Run("shared_cache set allows experimental stability", func(t *testing.T) {
+		require.NoError(t, withSharedCache.ValidateStabilityLevel(featuregate.StabilityExperimental))
+	})
 }

@@ -1,7 +1,11 @@
 package wal
 
 import (
+	"bytes"
+	"context"
+	"encoding/binary"
 	"fmt"
+	"hash/crc32"
 	"log/slog"
 	"testing"
 	"time"
@@ -10,6 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/tsdb/record"
+	"github.com/prometheus/prometheus/tsdb/wlog"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 
@@ -36,7 +41,7 @@ func (t *testWriteTo) SeriesReset(segmentNum int) {
 	t.ReceivedSeriesReset = append(t.ReceivedSeriesReset, segmentNum)
 }
 
-func (t *testWriteTo) AppendEntries(entries RefEntries, _ int) error {
+func (t *testWriteTo) AppendEntries(_ context.Context, entries RefEntries, _ int) error {
 	var entry loki.Entry
 	if l, ok := t.series[uint64(entries.Ref)]; ok {
 		entry.Labels = l
@@ -316,9 +321,9 @@ var cases = map[string]watcherTest{
 	},
 }
 
-type noMarker struct{}
+type noSavepoint struct{}
 
-func (n noMarker) LastMarkedSegment() int {
+func (n noSavepoint) LastStoredSegment() int {
 	return -1
 }
 
@@ -338,12 +343,9 @@ func TestWatcher(t *testing.T) {
 				ReadEntries: util.NewSyncSlice[loki.Entry](),
 			}
 			// create new watcher, and defer stop
-			watcher := NewWatcher(dir, "test", metrics, writeTo, logger, DefaultWatchConfig, noMarker{})
+			watcher := NewWatcher(dir, "test", metrics, writeTo, logger, DefaultWatchConfig, noSavepoint{})
 			defer watcher.Stop()
-			wl, err := New(Config{
-				Enabled: true,
-				Dir:     dir,
-			}, logger, reg)
+			wl, err := New(logger, reg, dir)
 			require.NoError(t, err)
 			defer wl.Close()
 			ew := newEntryWriter()
@@ -352,7 +354,7 @@ func TestWatcher(t *testing.T) {
 				t,
 				&watcherTestResources{
 					writeEntry: func(entry loki.Entry) {
-						_ = ew.WriteEntry(entry, wl)
+						_ = ew.writeEntry(entry, wl)
 					},
 					notifyWrite: func() {
 						watcher.NotifyWrite()
@@ -377,12 +379,12 @@ func TestWatcher(t *testing.T) {
 	}
 }
 
-type mockMarker struct {
-	LastMarkedSegmentFunc func() int
+type mockSavepoint struct {
+	LastStoredSegmentFunc func() int
 }
 
-func (m mockMarker) LastMarkedSegment() int {
-	return m.LastMarkedSegmentFunc()
+func (m mockSavepoint) LastStoredSegment() int {
+	return m.LastStoredSegmentFunc()
 }
 
 func TestWatcher_Replay(t *testing.T) {
@@ -400,7 +402,7 @@ func TestWatcher_Replay(t *testing.T) {
 		"after 3",
 	}
 
-	t.Run("replay from marked segment if marker is not invalid", func(t *testing.T) {
+	t.Run("replay from stored segment if savepoint is not invalid", func(t *testing.T) {
 		reg := prometheus.NewRegistry()
 		logger := autil.TestAlloyLogger(t).Slog()
 		dir := t.TempDir()
@@ -411,24 +413,21 @@ func TestWatcher_Replay(t *testing.T) {
 			ReadEntries: util.NewSyncSlice[loki.Entry](),
 		}
 		// create new watcher, and defer stop
-		watcher := NewWatcher(dir, "test", metrics, writeTo, logger, DefaultWatchConfig, mockMarker{
-			LastMarkedSegmentFunc: func() int {
+		watcher := NewWatcher(dir, "test", metrics, writeTo, logger, DefaultWatchConfig, mockSavepoint{
+			LastStoredSegmentFunc: func() int {
 				// when starting watcher, read from segment 0
 				return 0
 			},
 		})
 		defer watcher.Stop()
-		wl, err := New(Config{
-			Enabled: true,
-			Dir:     dir,
-		}, logger, reg)
+		wl, err := New(logger, reg, dir)
 		require.NoError(t, err)
 		defer wl.Close()
 
 		ew := newEntryWriter()
 
 		// First, write to segment 0. This will be the last "marked" segment
-		err = ew.WriteEntry(loki.Entry{
+		err = ew.writeEntry(loki.Entry{
 			Labels: labels,
 			Entry: push.Entry{
 				Timestamp: time.Now(),
@@ -443,7 +442,7 @@ func TestWatcher_Replay(t *testing.T) {
 
 		// Now, write to segment 1, this will be a segment not marked, hence replayed
 		for _, line := range segment1Lines {
-			err = ew.WriteEntry(loki.Entry{
+			err = ew.writeEntry(loki.Entry{
 				Labels: labels,
 				Entry: push.Entry{
 					Timestamp: time.Now(),
@@ -459,7 +458,7 @@ func TestWatcher_Replay(t *testing.T) {
 
 		// Finally, write some data to the last segment, this will be the write head
 		for _, line := range segment2Lines {
-			err = ew.WriteEntry(loki.Entry{
+			err = ew.writeEntry(loki.Entry{
 				Labels: labels,
 				Entry: push.Entry{
 					Timestamp: time.Now(),
@@ -482,7 +481,7 @@ func TestWatcher_Replay(t *testing.T) {
 		writeTo.AssertContainsLines(t, segment2Lines...)
 	})
 
-	t.Run("do not replay at all if invalid marker", func(t *testing.T) {
+	t.Run("do not replay at all if invalid savepoint", func(t *testing.T) {
 		reg := prometheus.NewRegistry()
 		logger := autil.TestAlloyLogger(t).Slog()
 		dir := t.TempDir()
@@ -493,24 +492,21 @@ func TestWatcher_Replay(t *testing.T) {
 			ReadEntries: util.NewSyncSlice[loki.Entry](),
 		}
 		// create new watcher, and defer stop
-		watcher := NewWatcher(dir, "test", metrics, writeTo, logger, DefaultWatchConfig, mockMarker{
-			LastMarkedSegmentFunc: func() int {
+		watcher := NewWatcher(dir, "test", metrics, writeTo, logger, DefaultWatchConfig, mockSavepoint{
+			LastStoredSegmentFunc: func() int {
 				// when starting watcher, read from segment 0
 				return -1
 			},
 		})
 		defer watcher.Stop()
-		wl, err := New(Config{
-			Enabled: true,
-			Dir:     dir,
-		}, logger, reg)
+		wl, err := New(logger, reg, dir)
 		require.NoError(t, err)
 		defer wl.Close()
 
 		ew := newEntryWriter()
 
 		// First, write to segment 0. This will be the last "marked" segment
-		err = ew.WriteEntry(loki.Entry{
+		err = ew.writeEntry(loki.Entry{
 			Labels: labels,
 			Entry: push.Entry{
 				Timestamp: time.Now(),
@@ -525,7 +521,7 @@ func TestWatcher_Replay(t *testing.T) {
 
 		// Now, write to segment 1, this will be a segment not marked, hence replayed
 		for _, line := range segment1Lines {
-			err = ew.WriteEntry(loki.Entry{
+			err = ew.writeEntry(loki.Entry{
 				Labels: labels,
 				Entry: push.Entry{
 					Timestamp: time.Now(),
@@ -547,7 +543,7 @@ func TestWatcher_Replay(t *testing.T) {
 
 		// Write something after watcher started
 		for _, line := range segment2Lines {
-			err = ew.WriteEntry(loki.Entry{
+			err = ew.writeEntry(loki.Entry{
 				Labels: labels,
 				Entry: push.Entry{
 					Timestamp: time.Now(),
@@ -580,7 +576,7 @@ func (s *slowWriteTo) SeriesReset(segmentNum int) {
 func (s *slowWriteTo) StoreSeries(series []record.RefSeries, segmentNum int) {
 }
 
-func (s *slowWriteTo) AppendEntries(entries RefEntries, segmentNum int) error {
+func (s *slowWriteTo) AppendEntries(_ context.Context, entries RefEntries, segmentNum int) error {
 	s.entriesReceived.Add(uint64(len(entries.Entries)))
 	time.Sleep(s.sleepAfterAppendEntries)
 	return nil
@@ -603,9 +599,9 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 			sleepAfterAppendEntries: time.Second,
 		}
 
-		watcher := NewWatcher(dir, "test", metrics, writeTo, logger, cfg, mockMarker{
-			LastMarkedSegmentFunc: func() int {
-				// Ignore marker to read from last segment, which is none
+		watcher := NewWatcher(dir, "test", metrics, writeTo, logger, cfg, mockSavepoint{
+			LastStoredSegmentFunc: func() int {
+				// Ignore savepoint to read from last segment, which is none
 				return -1
 			},
 		})
@@ -613,10 +609,7 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 		// start watcher, and burn through WAL as we write to it
 		watcher.Start()
 
-		wl, err := New(Config{
-			Enabled: true,
-			Dir:     dir,
-		}, logger, reg)
+		wl, err := New(logger, reg, dir)
 		require.NoError(t, err)
 		return writeTo, watcher, wl
 	}
@@ -637,7 +630,7 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 		writeNLines := func(t *testing.T, n int) {
 			for range n {
 				// First, write to segment 0. This will be the last "marked" segment
-				err := ew.WriteEntry(loki.Entry{
+				err := ew.writeEntry(loki.Entry{
 					Labels: labels,
 					Entry: push.Entry{
 						Timestamp: time.Now(),
@@ -689,7 +682,7 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 		writeNLines := func(t *testing.T, n int) {
 			for range n {
 				// First, write to segment 0. This will be the last "marked" segment
-				err := ew.WriteEntry(loki.Entry{
+				err := ew.writeEntry(loki.Entry{
 					Labels: labels,
 					Entry: push.Entry{
 						Timestamp: time.Now(),
@@ -742,7 +735,7 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 		writeNLines := func(t *testing.T, n int) {
 			for range n {
 				// First, write to segment 0. This will be the last "marked" segment
-				err := ew.WriteEntry(loki.Entry{
+				err := ew.writeEntry(loki.Entry{
 					Labels: labels,
 					Entry: push.Entry{
 						Timestamp: time.Now(),
@@ -777,5 +770,30 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 		require.InDelta(t, time.Second*10, time.Since(now), float64(time.Millisecond*2000), "expected the drain procedure to take around 15s")
 		require.Less(t, int(writeTo.entriesReceived.Load()), 20, "expected watcher to have not consumed WAL fully")
 		require.InDelta(t, 15, int(writeTo.entriesReceived.Load()), 1.0, "expected Watcher to consume at most +/- 1 entry from the WAL")
+	})
+}
+
+// Regression test: reading a record that spans a page boundary must not panic.
+func TestLiveReaderRecordSpanningPage(t *testing.T) {
+	const recFull = byte(1)
+
+	payload := make([]byte, 10)
+	crc := crc32.Checksum(payload, crc32.MakeTable(crc32.Castagnoli))
+
+	var page bytes.Buffer
+	page.WriteByte(recFull)
+	binary.Write(&page, binary.BigEndian, uint16(len(payload)))
+	binary.Write(&page, binary.BigEndian, crc)
+	page.Write(payload)
+	page.WriteByte(recFull)
+	binary.Write(&page, binary.BigEndian, uint16(32750))
+	binary.Write(&page, binary.BigEndian, uint32(0))
+
+	logger := autil.TestAlloyLogger(t).Slog()
+	reader := wlog.NewLiveReader(logger, wlog.NewLiveReaderMetrics(nil), bytes.NewReader(page.Bytes()))
+
+	require.NotPanics(t, func() {
+		for reader.Next() {
+		}
 	})
 }

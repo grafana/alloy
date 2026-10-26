@@ -92,11 +92,15 @@ body:
       - otelcol.auth.oauth2
       - otelcol.auth.sigv4
       - otelcol.connector.count
+      - otelcol.connector.exceptions
       - otelcol.connector.host_info
       - otelcol.connector.servicegraph
       - otelcol.connector.signaltometrics
       - otelcol.connector.spanlogs
       - otelcol.connector.spanmetrics
+      - otelcol.encoding.azure
+      - otelcol.encoding.jsonlog
+      - otelcol.encoding.text
       - otelcol.exporter.awss3
       - otelcol.exporter.datadog
       - otelcol.exporter.debug
@@ -125,6 +129,7 @@ body:
       - otelcol.processor.memory_limiter
       - otelcol.processor.metric_start_time
       - otelcol.processor.probabilistic_sampler
+      - otelcol.processor.redaction
       - otelcol.processor.resourcedetection
       - otelcol.processor.span
       - otelcol.processor.tail_sampling
@@ -160,7 +165,6 @@ body:
       - prometheus.exporter.azure
       - prometheus.exporter.blackbox
       - prometheus.exporter.cadvisor
-      - prometheus.exporter.catchpoint
       - prometheus.exporter.cloudwatch
       - prometheus.exporter.consul
       - prometheus.exporter.databricks
@@ -193,7 +197,6 @@ body:
       - prometheus.relabel
       - prometheus.remote_write
       - prometheus.scrape
-      - prometheus.write.queue
       - pyroscope.ebpf
       - pyroscope.enrich
       - pyroscope.java

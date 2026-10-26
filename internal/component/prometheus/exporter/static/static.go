@@ -17,6 +17,7 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/grafana/alloy/internal/static/integrations/config"
+	"github.com/grafana/alloy/internal/util"
 )
 
 func init() {
@@ -75,13 +76,14 @@ func (c *Config) Name() string {
 	return "static"
 }
 
-func (c *Config) NewIntegration(_ *slog.Logger) (integrations.Integration, error) {
-	return &Integration{cfg: *c, reg: prometheus.NewRegistry()}, nil
+func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error) {
+	return &Integration{cfg: *c, reg: prometheus.NewRegistry(), log: l}, nil
 }
 
 type Integration struct {
 	cfg Config
 	reg *prometheus.Registry
+	log *slog.Logger
 }
 
 func (i *Integration) MetricsHandler() (http.Handler, error) {
@@ -93,7 +95,7 @@ func (i *Integration) MetricsHandler() (http.Handler, error) {
 		return nil, fmt.Errorf("failed to parse prom text: %w", err)
 	}
 
-	return promhttp.HandlerFor(newStaticGatherer(mf), promhttp.HandlerOpts{
+	return util.PromHTTPHandlerFor(newStaticGatherer(mf), i.log, promhttp.HandlerOpts{
 		EnableOpenMetrics: true,
 	}), nil
 }

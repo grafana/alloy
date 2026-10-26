@@ -49,6 +49,7 @@ You can use the following blocks with `otelcol.extension.jaeger_remote_sampling`
 | `source` > `remote` > [`keepalive` client][keepalive_client]      | Configures keepalive settings for the gRPC client.                               | no       |
 | `source` > `remote` > [`tls` client][tls_client]                  | Configures TLS for the gRPC client.                                              | no       |
 | [`http`][http]                                                    | Configures the HTTP server to serve Jaeger remote sampling.                      | no       |
+| `http` > [`keepalive` http][keepalive_http]                       | Configures keepalive settings for the HTTP server.                              | no       |
 | `http` > [`cors`][cors]                                           | Configures CORS for the HTTP server.                                             | no       |
 | `http` > [`tls`][tls]                                             | Configures TLS for the HTTP server.                                              | no       |
 | `http` > `tls` > [`tpm`][tpm]                                     | Configures TPM settings for the TLS `key_file`.                                  | no       |
@@ -61,6 +62,7 @@ You can use the following blocks with `otelcol.extension.jaeger_remote_sampling`
 | [`debug_metrics`][debug_metrics]                                  | Configures the metrics that this component generates to monitor its state.       | no       |
 
 [http]: #http
+[keepalive_http]: #keepalive-http
 [tls]: #tls
 [tpm]: #tpm
 [cors]: #cors
@@ -175,17 +177,24 @@ The following arguments are supported:
 | `read_timeout`           | `duration`                 | Maximum time allowed to read an HTTP request, including the body.            | `""`                                                       | no       |
 | `write_timeout`          | `duration`                 | Maximum time allowed to write an HTTP response.                              | `"30s"`                                                    | no       |
 
+### `keepalive` http
+
+The `keepalive` block configures HTTP keep-alive settings for the HTTP server.
+
+{{< docs/shared lookup="reference/components/otelcol-keepalive-server-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 ### `cors`
 
 The `cors` block configures CORS settings for an HTTP server.
 
 The following arguments are supported:
 
-| Name              | Type           | Description                                              | Default                | Required |
-|-------------------|----------------|----------------------------------------------------------|------------------------|----------|
-| `allowed_headers` | `list(string)` | Accepted headers from CORS requests.                     | `["X-Requested-With"]` | no       |
-| `allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                  |                        | no       |
-| `max_age`         | `number`       | Configures the `Access-Control-Max-Age` response header. |                        | no       |
+| Name              | Type           | Description                                                     | Default                | Required |
+|-------------------|----------------|-----------------------------------------------------------------|------------------------|----------|
+| `allowed_headers` | `list(string)` | Accepted headers from CORS requests.                            | `["X-Requested-With"]` | no       |
+| `allowed_origins` | `list(string)` | Allowed values for the `Origin` header.                         |                        | no       |
+| `exposed_headers` | `list(string)` | Configures the `Access-Control-Expose-Headers` response header. |                        | no       |
+| `max_age`         | `number`       | Configures the `Access-Control-Max-Age` response header.        |                        | no       |
 
 The `allowed_headers` specifies which headers are acceptable from a CORS request.
 The following headers are always implicitly allowed:

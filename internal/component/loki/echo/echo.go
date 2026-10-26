@@ -7,6 +7,8 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/lokipipelinev2"
+	"github.com/grafana/loki/pkg/push"
 )
 
 func init() {
@@ -44,20 +46,31 @@ var (
 	_ component.Component = (*Component)(nil)
 )
 
-// Component implements the loki.source.file component.
 type Component struct {
-	opts component.Options
+	opts       component.Options
+	pipelineV2 bool
+	receiver   loki.LogsReceiver
 
-	mut      sync.RWMutex
-	args     Arguments
-	receiver loki.LogsReceiver
+	mut     sync.RWMutex
+	stopped bool
 }
 
 // New creates a new loki.echo component.
 func New(o component.Options, args Arguments) (*Component, error) {
+	svc, err := o.GetServiceData(lokipipelinev2.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
 	c := &Component{
-		opts:     o,
-		receiver: loki.NewLogsReceiver(loki.WithComponentID(o.ID)),
+		opts:       o,
+		pipelineV2: svc.(lokipipelinev2.Data).PipelineV2Enabled(),
+	}
+
+	if c.pipelineV2 {
+		c.receiver = loki.NewLogsReceiverV2(c, o.ID)
+	} else {
+		c.receiver = loki.NewLogsReceiver(loki.WithComponentID(o.ID))
 	}
 
 	// Call to Update() once at the start.
@@ -74,53 +87,53 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
+	defer func() {
+		c.mut.Lock()
+		defer c.mut.Unlock()
+		c.stopped = true
+	}()
+
+	if c.pipelineV2 {
+		<-ctx.Done()
+		return nil
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case entry := <-c.receiver.Chan():
-			_ = c.ConsumeEntry(ctx, entry)
+		case e := <-c.receiver.Chan():
+			c.printEntry(e.Labels.String(), e.Entry)
 		}
 	}
 }
 
 // Update implements component.Component.
-func (c *Component) Update(args component.Arguments) error {
-	newArgs := args.(Arguments)
-
-	c.mut.Lock()
-	defer c.mut.Unlock()
-	c.args = newArgs
-
+func (c *Component) Update(_ component.Arguments) error {
 	return nil
 }
 
 func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
-	return batch.ConsumeStreams(func(stream loki.Stream, created int64) error {
-		logger := c.opts.Logger.With("labels", stream.Labels.String())
-		for _, e := range stream.Entries {
-			sm, err := e.StructuredMetadata.MarshalJSON()
-			if err != nil {
-				logger.Error("failed to marshal structured metadata", "error", err)
-				sm = []byte("{}")
-			}
-			logger.Info("received log entry", "entry", e.Line, "entry_timestamp", e.Timestamp, "structured_metadata", string(sm))
-		}
-		return nil
-	})
-}
-
-// TODO: Remove this when we have moved over to batching.
-func (c *Component) ConsumeEntry(ctx context.Context, entry loki.Entry) error {
-	structured_metadata, err := entry.StructuredMetadata.MarshalJSON()
-	if err != nil {
-		c.opts.Logger.Error("failed to marshal structured metadata", "error", err)
-		structured_metadata = []byte("{}")
+	c.mut.RLock()
+	defer c.mut.RUnlock()
+	if c.stopped {
+		return loki.ErrConsumerStopped
 	}
-	c.opts.Logger.Info("received log entry", "entry", entry.Line, "entry_timestamp", entry.Timestamp, "labels", entry.Labels.String(), "structured_metadata", string(structured_metadata))
+
+	for _, stream := range batch.Streams() {
+		lbls := stream.Labels.String()
+		for _, e := range stream.Entries {
+			c.printEntry(lbls, e)
+		}
+	}
 	return nil
 }
 
-func (c *Component) String() string {
-	return c.opts.ID + ".receiver"
+func (c *Component) printEntry(lbls string, e push.Entry) {
+	sm, err := e.StructuredMetadata.MarshalJSON()
+	if err != nil {
+		c.opts.Logger.Error("failed to marshal structured metadata", "error", err)
+		sm = []byte("{}")
+	}
+	c.opts.Logger.Info("received log entry", "labels", lbls, "entry", e.Line, "entry_timestamp", e.Timestamp, "structured_metadata", string(sm))
 }

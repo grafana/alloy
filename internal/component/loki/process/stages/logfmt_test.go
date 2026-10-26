@@ -4,291 +4,344 @@ import (
 	"testing"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/stretchr/testify/assert"
-
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
+	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/require"
 )
 
-var testLogfmtAlloySingleStageWithoutSource = `
-stage.logfmt {
-		mapping = { "out" = "message", "app" = "", "duration" = "", "unknown" = "" }
-}`
+func TestLogfmtStage(t *testing.T) {
+	var (
+		now               = time.Now()
+		testLogfmtLogLine = `
+			time=2012-11-01T22:08:41+00:00 app=loki	level=WARN duration=125 message="this is a log line" extra="user=foo""
+		`
+		testLogfmtLogFixture = `
+			time=2012-11-01T22:08:41+00:00
+			app=loki
+			level=WARN
+			nested="child=value"
+			message="this is a log line"
+		`
+	)
 
-var testLogfmtAlloyMultiStageWithSource = `
-stage.logfmt {
-		mapping = { "extra" = "" }
-}
-stage.logfmt {
-		mapping = { "user" = "" }
-		source  = "extra"
-}`
-
-var testLogfmtAlloyRegex = `
-stage.logfmt {
-    regex = "pod_.*"
-}
-`
-
-var testLogfmtAlloyRegexAll = `
-stage.logfmt {
-    regex = ".*"
-}
-`
-
-var testLogfmtAlloyRegexAndMapping = `
-stage.logfmt {
-    mapping = { "out" = "message", "app" = ""}
-    regex = "(app|duration)"
-}
-`
-
-func TestLogfmt(t *testing.T) {
-	var testLogfmtLogLine = `
-		time=2012-11-01T22:08:41+00:00 app=loki	level=WARN duration=125 message="this is a log line" extra="user=foo""
-	`
-	t.Parallel()
-
-	tests := map[string]struct {
-		config          string
-		entry           string
-		expectedExtract map[string]any
-	}{
-		"successfully run a pipeline with 1 logfmt stage without source": {
-			testLogfmtAlloySingleStageWithoutSource,
-			testLogfmtLogLine,
-			map[string]any{
-				"out":      "this is a log line",
-				"app":      "loki",
-				"duration": "125",
-			},
-		},
-		"successfully run a pipeline with 2 logfmt stages with source": {
-			testLogfmtAlloyMultiStageWithSource,
-			testLogfmtLogLine,
-			map[string]any{
-				"extra": "user=foo",
-				"user":  "foo",
-			},
-		},
-		"successfully extract regex values from logfmt": {
-			testLogfmtAlloyRegex,
-			`time=2012-11-01T22:08:41+00:00 pod_name=my-pod-123 pod_label=my-label`,
-			map[string]any{
-				"pod_name":  "my-pod-123",
-				"pod_label": "my-label",
-			},
-		},
-		"successfully extract all values via regex from logfmt": {
-			testLogfmtAlloyRegexAll,
-			testLogfmtLogLine,
-			map[string]any{
-				"time":     "2012-11-01T22:08:41+00:00",
-				"app":      "loki",
-				"level":    "WARN",
-				"duration": "125",
-				"message":  "this is a log line",
-				"extra":    "user=foo",
-			},
-		},
-		"successfully extract values with expressions and regex from logfmt": {
-			testLogfmtAlloyRegexAndMapping,
-			testLogfmtLogLine,
-			map[string]any{
-				"out":      "this is a log line",
-				"app":      "loki",
-				"duration": "125",
-			},
-		},
+	type testCase struct {
+		name     string
+		config   string
+		entries  []Entry
+		expected []Entry
 	}
 
-	for testName, testData := range tests {
-		testData := testData
-
-		t.Run(testName, func(t *testing.T) {
-			t.Parallel()
-
-			pl, err := NewPipeline(logging.NewSlogNop(), loadConfig(testData.config), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
-			assert.NoError(t, err)
-			out := processEntries(pl, newEntry(nil, nil, testData.entry, time.Now()))[0]
-			assert.Equal(t, testData.expectedExtract, out.Extracted)
-		})
-	}
-}
-
-func TestLogfmtConfigValidation(t *testing.T) {
-	t.Parallel()
-
-	tests := map[string]struct {
-		config           LogfmtConfig
-		wantMappingCount int
-		err              error
-	}{
-		"no mapping": {
-			LogfmtConfig{},
-			0,
-			ErrMappingOrRegexRequired,
-		},
-		"valid without source": {
-			LogfmtConfig{
-				Mapping: map[string]string{
-					"foo1": "foo",
-					"foo2": "",
-				},
-			},
-			2,
-			nil,
-		},
-		"valid with source": {
-			LogfmtConfig{
-				Mapping: map[string]string{
-					"foo1": "foo",
-					"foo2": "",
-				},
-				Source: "log",
-			},
-			2,
-			nil,
-		},
-	}
-	for tName, tt := range tests {
-		tt := tt
-		t.Run(tName, func(t *testing.T) {
-			got, _, err := validateLogfmtConfig(&tt.config)
-			if tt.err != nil {
-				assert.EqualError(t, err, tt.err.Error())
-			} else {
-				assert.NoError(t, err)
+	tests := []testCase{
+		{
+			name: "decode logfmt on entry",
+			config: `
+			stage.logfmt {
+				mapping = { "time" = "", "app" = "", "level" = "", "nested" = "", "message" = "" }
 			}
-			assert.Equal(t, tt.wantMappingCount, len(got))
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, testLogfmtLogFixture, now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"time":    "2012-11-01T22:08:41+00:00",
+					"app":     "loki",
+					"level":   "WARN",
+					"nested":  "child=value",
+					"message": "this is a log line",
+				}, model.LabelSet{}, testLogfmtLogFixture, now),
+			},
+		},
+		{
+			name: "decode logfmt on extracted source",
+			config: `
+			stage.logfmt {
+				mapping = { "time" = "", "app" = "", "level" = "", "nested" = "", "message" = "" }
+				source  = "log"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"log": testLogfmtLogFixture}, model.LabelSet{}, "{}", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"time":    "2012-11-01T22:08:41+00:00",
+					"app":     "loki",
+					"level":   "WARN",
+					"nested":  "child=value",
+					"message": "this is a log line",
+					"log":     testLogfmtLogFixture,
+				}, model.LabelSet{}, "{}", now),
+			},
+		},
+		{
+			name: "missing extracted source",
+			config: `
+			stage.logfmt {
+				mapping = { "app" = "" }
+				source  = "log"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, testLogfmtLogFixture, now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, testLogfmtLogFixture, now),
+			},
+		},
+		{
+			name: "invalid logfmt on entry",
+			config: `
+			stage.logfmt {
+				mapping = { "expr1" = "" }
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, `{"invalid":"logfmt"}`, now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, `{"invalid":"logfmt"}`, now),
+			},
+		},
+		{
+			name: "invalid logfmt on extracted source",
+			config: `
+			stage.logfmt {
+				mapping = { "app" = "" }
+				source  = "log"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"log": "not logfmt"}, model.LabelSet{}, testLogfmtLogFixture, now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"log": "not logfmt"}, model.LabelSet{}, testLogfmtLogFixture, now),
+			},
+		},
+		{
+			name: "nil source",
+			config: `
+			stage.logfmt {
+				mapping = { "app" = "" }
+				source  = "log"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"log": nil}, model.LabelSet{}, testLogfmtLogFixture, now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"log": nil}, model.LabelSet{}, testLogfmtLogFixture, now),
+			},
+		},
+		{
+			name: "single stage without source",
+			config: `
+			stage.logfmt {
+				mapping = { "out" = "message", "app" = "", "duration" = "", "unknown" = "" }
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, testLogfmtLogLine, now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"out":      "this is a log line",
+					"app":      "loki",
+					"duration": "125",
+				}, model.LabelSet{}, testLogfmtLogLine, now),
+			},
+		},
+		{
+			name: "multiple stages with source",
+			config: `
+			stage.logfmt {
+				mapping = { "extra" = "" }
+			}
+
+			stage.logfmt {
+				mapping = { "user" = "" }
+				source  = "extra"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, testLogfmtLogLine, now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"extra": "user=foo",
+					"user":  "foo",
+				}, model.LabelSet{}, testLogfmtLogLine, now),
+			},
+		},
+		{
+			name: "regex",
+			config: `
+			stage.logfmt {
+				regex = "pod_.*"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, `time=2012-11-01T22:08:41+00:00 pod_name=my-pod-123 pod_label=my-label`, now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"pod_name":  "my-pod-123",
+					"pod_label": "my-label",
+				}, model.LabelSet{}, `time=2012-11-01T22:08:41+00:00 pod_name=my-pod-123 pod_label=my-label`, now),
+			},
+		},
+		{
+			name: "regex matching everything",
+			config: `
+			stage.logfmt {
+				regex = ".*"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, testLogfmtLogLine, now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"time":     "2012-11-01T22:08:41+00:00",
+					"app":      "loki",
+					"level":    "WARN",
+					"duration": "125",
+					"message":  "this is a log line",
+					"extra":    "user=foo",
+				}, model.LabelSet{}, testLogfmtLogLine, now),
+			},
+		},
+		{
+			name: "expressions and regex",
+			config: `
+			stage.logfmt {
+				mapping = { "out" = "message", "app" = "" }
+				regex   = "(app|duration)"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, testLogfmtLogLine, now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"out":      "this is a log line",
+					"app":      "loki",
+					"duration": "125",
+				}, model.LabelSet{}, testLogfmtLogLine, now),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			runPipelineTest(t, loadConfig(tt.config), tt.entries, tt.expected)
 		})
 	}
 }
 
-var testLogfmtLogFixture = `
-	time=2012-11-01T22:08:41+00:00
-	app=loki
-	level=WARN
-	nested="child=value"
-	message="this is a log line"
-`
-
-func TestLogfmtParser_Parse(t *testing.T) {
+func TestValidateLogfmtConfig(t *testing.T) {
 	t.Parallel()
-	logger := util.TestAlloyLogger(t)
-	tests := map[string]struct {
-		config          LogfmtConfig
-		extracted       map[string]any
-		entry           string
-		expectedExtract map[string]any
+
+	tests := []struct {
+		name      string
+		config    string
+		expectErr bool
 	}{
-		"successfully decode logfmt on entry": {
-			LogfmtConfig{
-				Mapping: map[string]string{
-					"time":    "",
-					"app":     "",
-					"level":   "",
-					"nested":  "",
-					"message": "",
-				},
-			},
-			map[string]any{},
-			testLogfmtLogFixture,
-			map[string]any{
-				"time":    "2012-11-01T22:08:41+00:00",
-				"app":     "loki",
-				"level":   "WARN",
-				"nested":  "child=value",
-				"message": "this is a log line",
-			},
+		{
+			name:   "valid mapping without source",
+			config: `mapping = { "foo1" = "foo", "foo2" = "" }`,
 		},
-		"successfully decode logfmt on extracted[source]": {
-			LogfmtConfig{
-				Mapping: map[string]string{
-					"time":    "",
-					"app":     "",
-					"level":   "",
-					"nested":  "",
-					"message": "",
-				},
-				Source: "log",
-			},
-			map[string]any{
-				"log": testLogfmtLogFixture,
-			},
-			"{}",
-			map[string]any{
-				"time":    "2012-11-01T22:08:41+00:00",
-				"app":     "loki",
-				"level":   "WARN",
-				"nested":  "child=value",
-				"message": "this is a log line",
-				"log":     testLogfmtLogFixture,
-			},
+		{
+			name: "valid mapping with source",
+			config: `
+			mapping = { "foo1" = "foo", "foo2" = "" }
+			source  = "log"
+			`,
 		},
-		"missing extracted[source]": {
-			LogfmtConfig{
-				Mapping: map[string]string{
-					"app": "",
-				},
-				Source: "log",
-			},
-			map[string]any{},
-			testLogfmtLogFixture,
-			map[string]any{},
+		{
+			name:   "valid regex",
+			config: `regex = "pod_.*"`,
 		},
-		"invalid logfmt on entry": {
-			LogfmtConfig{
-				Mapping: map[string]string{
-					"expr1": "",
-				},
-			},
-			map[string]any{},
-			"{\"invalid\":\"logfmt\"}",
-			map[string]any{},
+		{
+			name: "valid mapping and regex",
+			config: `
+			mapping = { "foo1" = "foo" }
+			regex   = "pod_.*"
+			`,
 		},
-		"invalid logfmt on extracted[source]": {
-			LogfmtConfig{
-				Mapping: map[string]string{
-					"app": "",
-				},
-				Source: "log",
-			},
-			map[string]any{
-				"log": "not logfmt",
-			},
-			testLogfmtLogFixture,
-			map[string]any{
-				"log": "not logfmt",
-			},
+		{
+			name:      "invalid regex returns err",
+			config:    `regex = "[unclosed"`,
+			expectErr: true,
 		},
-		"nil source": {
-			LogfmtConfig{
-				Mapping: map[string]string{
-					"app": "",
-				},
-				Source: "log",
-			},
-			map[string]any{
-				"log": nil,
-			},
-			testLogfmtLogFixture,
-			map[string]any{
-				"log": nil,
-			},
+		{
+			name:      "empty mapping returns err",
+			config:    `mapping = {}`,
+			expectErr: true,
+		},
+		{
+			name:      "source only returns err",
+			config:    `source = "log"`,
+			expectErr: true,
+		},
+		{
+			name:      "empty config returns err",
+			config:    ``,
+			expectErr: true,
 		},
 	}
-	for tName, tt := range tests {
-		tt := tt
-		t.Run(tName, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			p, err := New(logger.Slog(), StageConfig{LogfmtConfig: &tt.config}, nil, featuregate.StabilityGenerallyAvailable)
-			assert.NoError(t, err)
-			out := processEntries(p, newEntry(tt.extracted, nil, tt.entry, time.Now()))[0]
 
-			assert.Equal(t, tt.expectedExtract, out.Extracted)
+			var cfg LogfmtConfig
+			err := syntax.Unmarshal([]byte(tt.config), &cfg)
+
+			if tt.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestReverseMapping(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		mapping  map[string]string
+		expected map[string]string
+	}{
+		{
+			name:     "nil mapping",
+			mapping:  nil,
+			expected: map[string]string{},
+		},
+		{
+			name:     "value is used as the logfmt key",
+			mapping:  map[string]string{"out": "message"},
+			expected: map[string]string{"message": "out"},
+		},
+		{
+			name:     "empty value falls back to the extracted key",
+			mapping:  map[string]string{"app": ""},
+			expected: map[string]string{"app": "app"},
+		},
+		{
+			name:     "mixed values",
+			mapping:  map[string]string{"out": "message", "app": ""},
+			expected: map[string]string{"message": "out", "app": "app"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, tt.expected, reverseMapping(tt.mapping))
 		})
 	}
 }

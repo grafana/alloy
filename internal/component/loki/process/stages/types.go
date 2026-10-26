@@ -2,8 +2,34 @@ package stages
 
 import (
 	"encoding"
+	"errors"
 	"fmt"
 )
+
+// Source names a value in the extracted map for stages that read their input
+// from it. Unlike SourceType below (which selects the kind of location a
+// stage reads from), a Source is the non-empty key itself; rejecting the
+// empty string at decode time keeps misconfigurations out of the pipeline.
+type Source string
+
+var (
+	_ encoding.TextMarshaler   = Source("")
+	_ encoding.TextUnmarshaler = (*Source)(nil)
+)
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *Source) UnmarshalText(text []byte) error {
+	if len(text) == 0 {
+		return errors.New("source cannot be empty")
+	}
+	*s = Source(text)
+	return nil
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s Source) MarshalText() (text []byte, err error) {
+	return []byte(s), nil
+}
 
 type SourceType string
 

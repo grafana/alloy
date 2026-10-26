@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/alecthomas/units"
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/prometheus-operator/prometheus-operator/pkg/namespacelabeler"
 	commonConfig "github.com/prometheus/common/config"
@@ -29,13 +30,19 @@ var (
 func (cg *ConfigGenerator) GeneratePodMonitorConfig(m *promopv1.PodMonitor, ep promopv1.PodMetricsEndpoint, i int) (cfg *config.ScrapeConfig, err error) {
 	cfg = cg.generateDefaultScrapeConfig()
 
+	scrapeClass, err := cg.ScrapeClasses.Get(m.Spec.ScrapeClassName)
+	if err != nil {
+		return nil, err
+	}
+
 	cfg.JobName = fmt.Sprintf("podMonitor/%s/%s/%d", m.Namespace, m.Name, i)
 	cfg.HonorLabels = ep.HonorLabels
 	if ep.HonorTimestamps != nil {
 		cfg.HonorTimestamps = *ep.HonorTimestamps
 	}
 
-	cfg.ServiceDiscoveryConfigs = append(cfg.ServiceDiscoveryConfigs, cg.generateK8SSDConfig(m.Spec.NamespaceSelector, m.Namespace, promk8s.RolePod, m.Spec.AttachMetadata))
+	attachMetadata := scrapeClassAttachMetadata(m.Spec.AttachMetadata, scrapeClass)
+	cfg.ServiceDiscoveryConfigs = append(cfg.ServiceDiscoveryConfigs, cg.generateK8SSDConfig(m.Spec.NamespaceSelector, m.Namespace, promk8s.RolePod, attachMetadata))
 
 	if ep.Interval != "" {
 		if cfg.ScrapeInterval, err = model.ParseDuration(string(ep.Interval)); err != nil {
@@ -54,6 +61,17 @@ func (cg *ConfigGenerator) GeneratePodMonitorConfig(m *promopv1.PodMonitor, ep p
 		}
 		cfg.ScrapeProtocols = protocols
 	}
+
+	if m.Spec.ScrapeClassicHistograms != nil {
+		vCopy := *m.Spec.ScrapeClassicHistograms
+		cfg.AlwaysScrapeClassicHistograms = &vCopy
+	}
+
+	if m.Spec.ScrapeNativeHistograms != nil {
+		vCopy := *m.Spec.ScrapeNativeHistograms
+		cfg.ScrapeNativeHistograms = &vCopy
+	}
+
 	if ep.Path != "" {
 		cfg.MetricsPath = ep.Path
 	}
@@ -106,6 +124,11 @@ func (cg *ConfigGenerator) GeneratePodMonitorConfig(m *promopv1.PodMonitor, ep p
 			return nil, err
 		}
 	}
+
+	epHasTLS := ep.TLSConfig != nil
+	epHasAuth := (ep.BearerTokenSecret != nil && ep.BearerTokenSecret.Name != "") || //nolint:staticcheck
+		ep.BasicAuth != nil || ep.OAuth2 != nil || ep.Authorization != nil
+	applyScrapeClassHTTPClientConfig(&cfg.HTTPClientConfig, scrapeClass, epHasTLS, epHasAuth)
 
 	relabels := cg.initRelabelings()
 	if ep.FilterRunning == nil || *ep.FilterRunning {
@@ -274,6 +297,8 @@ func (cg *ConfigGenerator) GeneratePodMonitorConfig(m *promopv1.PodMonitor, ep p
 	}
 
 	labeler := namespacelabeler.New("", nil, false)
+	// Scrape class relabelings are prepended to the endpoint's own relabelings.
+	relabels.addScrapeClassRelabelings(scrapeClass)
 	if err = relabels.addFromV1(labeler.GetRelabelingConfigs(m.TypeMeta, m.ObjectMeta, ep.RelabelConfigs)...); err != nil {
 		return nil, fmt.Errorf("parsing relabel configs: %w", err)
 	}
@@ -281,6 +306,8 @@ func (cg *ConfigGenerator) GeneratePodMonitorConfig(m *promopv1.PodMonitor, ep p
 	cfg.RelabelConfigs = relabels.configs
 
 	metricRelabels := relabeler{}
+	// Scrape class metric relabelings are prepended to the endpoint's own.
+	metricRelabels.addScrapeClassMetricRelabelings(scrapeClass)
 	if err = metricRelabels.addFromV1(labeler.GetRelabelingConfigs(m.TypeMeta, m.ObjectMeta, ep.MetricRelabelConfigs)...); err != nil {
 		return nil, fmt.Errorf("parsing metric relabel configs: %w", err)
 	}
@@ -291,6 +318,11 @@ func (cg *ConfigGenerator) GeneratePodMonitorConfig(m *promopv1.PodMonitor, ep p
 	cfg.LabelLimit = uint(defaultIfNil(m.Spec.LabelLimit, 0))
 	cfg.LabelNameLengthLimit = uint(defaultIfNil(m.Spec.LabelNameLengthLimit, 0))
 	cfg.LabelValueLengthLimit = uint(defaultIfNil(m.Spec.LabelValueLengthLimit, 0))
+	if m.Spec.BodySizeLimit != nil {
+		if cfg.BodySizeLimit, err = units.ParseBase2Bytes(string(*m.Spec.BodySizeLimit)); err != nil {
+			return nil, fmt.Errorf("parsing bodySizeLimit from podMonitor: %w", err)
+		}
+	}
 
 	return cfg, cfg.Validate(cg.ScrapeOptions.GlobalConfig())
 }

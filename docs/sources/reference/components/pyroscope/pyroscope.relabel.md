@@ -7,6 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-10-01
 title: pyroscope.relabel
 ---
 
@@ -14,14 +15,16 @@ title: pyroscope.relabel
 
 The `pyroscope.relabel` component rewrites the external label set of each profile passed to its receiver by applying one or more relabeling rules and forwards the results to the list of receivers.
 
-If no rules are defined or applicable to some profiles, then those profiles are forwarded as-is to each receiver passed in the component's arguments. 
-The profile is dropped if no external labels remain after the relabeling rules are applied.
+When no rules apply to a profile, the component forwards that profile as-is to each receiver in its arguments.
+The component drops the profile when no external labels remain after it applies the rules.
 
 `pyroscope.relabel` only rewrites labels that aren't embedded in the profile itself, such as labels inferred by `pyroscope.scrape` or labels provided through the `/ingest?name=...` query parameter.
 It doesn't parse or modify labels embedded inside profile payloads like pprof sample labels.
 
 The most common use of `pyroscope.relabel` is to filter profiles or standardize external labels passed to one or more downstream receivers.
-The `rule` blocks are applied to the label set of each profile in order of their appearance in the configuration file.
+The component applies each `rule` block to the label set of every profile in the order the blocks appear in your configuration file.
+
+You can specify multiple `pyroscope.relabel` components by giving them different labels.
 
 ## Usage
 
@@ -41,10 +44,10 @@ pyroscope.relabel "<LABEL>" {
 
 You can use the following arguments with `pyroscope.relabel`:
 
-| Name             | Type                         | Description                                               | Default | Required |
-| ---------------- | ---------------------------- | --------------------------------------------------------- | ------- | -------- |
-| `forward_to`     | `list(pyroscope.Appendable)` | List of receivers to forward profiles to after relabeling |         | yes      |
-| `max_cache_size` | `number`                     | Maximum number of entries in the label cache              | `10000` | no       |
+| Name             | Type                     | Description                                               | Default | Required |
+| ---------------- | ------------------------ | --------------------------------------------------------- | ------- | -------- |
+| `forward_to`     | `list(ProfilesReceiver)` | List of receivers to forward profiles to after relabeling |         | yes      |
+| `max_cache_size` | `number`                 | Maximum number of entries in the label cache              | `10000` | no       |
 
 ## Blocks
 
@@ -52,7 +55,7 @@ You can use the following block with `pyroscope.relabel`:
 
 {{< docs/alloy-config >}}
 
-|      Name      |                      Description                       | Required |
+| Block          | Description                                            | Required |
 | -------------- | ------------------------------------------------------ | -------- |
 | [`rule`][rule] | Relabeling rules to apply to received profile entries. | no       |
 
@@ -71,20 +74,31 @@ The following fields are exported and can be referenced by other components:
 | Name       | Type               | Description                                      |
 | ---------- | ------------------ | ------------------------------------------------ |
 | `receiver` | `ProfilesReceiver` | A receiver that accepts profiles for relabeling. |
-| `rules`    | `[]relabel.Config` | The list of relabeling rules.                    |
+| `rules`    | `RelabelRules`     | The list of relabeling rules.                    |
 
 ## Component health
 
-`pyroscope.relabel` is reported as unhealthy if it is given an invalid configuration.
+`pyroscope.relabel` is only reported as unhealthy if given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
+
+## Debug information
+
+`pyroscope.relabel` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-* `pyroscope_relabel_cache_hits` (counter): Total number of cache hits.
-* `pyroscope_relabel_cache_misses` (counter): Total number of cache misses.
-* `pyroscope_relabel_cache_size` (gauge): Total size of relabel cache.
-* `pyroscope_relabel_profiles_dropped` (counter): Total number of profiles dropped by relabeling rules.
-* `pyroscope_relabel_profiles_processed` (counter): Total number of profiles processed.
-* `pyroscope_relabel_profiles_written` (counter): Total number of profiles forwarded.
+The following Prometheus metrics are exposed:
+
+| Name                                   | Type        | Description                                                  |
+| -------------------------------------- | ----------- | ------------------------------------------------------------ |
+| `pyroscope_relabel_cache_hits`         | `counter`   | Total number of cache hits.                                  |
+| `pyroscope_relabel_cache_misses`       | `counter`   | Total number of cache misses.                                |
+| `pyroscope_relabel_cache_size`         | `gauge`     | Total size of relabel cache.                                 |
+| `pyroscope_relabel_profiles_dropped`   | `counter`   | Total number of profiles dropped by relabeling rules.        |
+| `pyroscope_relabel_profiles_processed` | `counter`   | Total number of profiles processed.                          |
+| `pyroscope_relabel_profiles_written`   | `counter`   | Total number of profiles forwarded.                          |
+| `pyroscope_fanout_latency`             | `histogram` | Write latency for sending to direct and indirect components. |
+| `pyroscope_forwarded_entries_total`    | `counter`   | Total number of samples sent to downstream components.       |
 
 ## Example
 

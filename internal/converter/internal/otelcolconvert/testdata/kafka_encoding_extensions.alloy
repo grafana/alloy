@@ -1,0 +1,34 @@
+otelcol.encoding.azure "default_eventhub" { }
+
+otelcol.receiver.kafka "default" {
+	brokers          = ["broker:9092"]
+	protocol_version = "2.0.0"
+
+	logs {
+		topics             = ["otlp_logs"]
+		encoding_extension = otelcol.encoding.azure.default_eventhub.handler
+	}
+
+	metrics {
+		topics   = ["otlp_metrics"]
+		encoding = "otlp_json"
+	}
+
+	traces {
+		topics             = ["otlp_spans"]
+		encoding_extension = otelcol.encoding.azure.default_eventhub.handler
+	}
+	group_rebalance_strategies = ["range"]
+
+	output {
+		metrics = [otelcol.exporter.otlp.default.input]
+		logs    = [otelcol.exporter.otlp.default.input]
+		traces  = [otelcol.exporter.otlp.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+	}
+}

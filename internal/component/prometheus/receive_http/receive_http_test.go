@@ -122,16 +122,13 @@ func TestForwardsMetrics(t *testing.T) {
 
 	actualSamples := make(chan testSample, 100)
 
-	// Start the component
-	port, err := freeport.GetFreePort()
-	require.NoError(t, err)
 	args := Arguments{
 		Server: &fnet.ServerConfig{
 			HTTP: &fnet.HTTPConfig{
 				ListenAddress: "localhost",
-				ListenPort:    port,
+				ListenPort:    0,
 			},
-			GRPC: testGRPCConfig(t),
+			GRPC: testGRPCConfig(),
 		},
 		AcceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType)},
 		ForwardTo:                           testAppendable(actualSamples),
@@ -145,7 +142,7 @@ func TestForwardsMetrics(t *testing.T) {
 		require.NoError(t, comp.Run(ctx))
 	}()
 
-	verifyExpectations(t, input, expected, actualSamples, args, ctx)
+	verifyExpectations(t, input, expected, actualSamples, comp.server.HTTPListenAddr(), ctx)
 }
 
 func TestForwardsMetricsTLS(t *testing.T) {
@@ -179,20 +176,17 @@ func TestForwardsMetricsTLS(t *testing.T) {
 	testCert, testKey, err := generateTestCertAndKey()
 	require.NoError(t, err)
 
-	// Start the component with TLS configuration
-	port, err := freeport.GetFreePort()
-	require.NoError(t, err)
 	args := Arguments{
 		Server: &fnet.ServerConfig{
 			HTTP: &fnet.HTTPConfig{
 				ListenAddress: "localhost",
-				ListenPort:    port,
+				ListenPort:    0,
 				TLSConfig: &fnet.TLSConfig{
 					Cert: testCert,
 					Key:  alloytypes.Secret(testKey),
 				},
 			},
-			GRPC: testGRPCConfig(t),
+			GRPC: testGRPCConfig(),
 		},
 		AcceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType)},
 		ForwardTo:                           testAppendable(actualSamples),
@@ -205,7 +199,7 @@ func TestForwardsMetricsTLS(t *testing.T) {
 		require.NoError(t, comp.Run(ctx))
 	}()
 
-	verifyExpectationsTLS(t, input, expected, actualSamples, args, ctx)
+	verifyExpectationsTLS(t, input, expected, actualSamples, comp.server.HTTPListenAddr(), ctx)
 }
 
 func verifyExpectationsTLS(
@@ -213,18 +207,14 @@ func verifyExpectationsTLS(
 	input []prompb.TimeSeries,
 	expected []testSample,
 	actualSamples chan testSample,
-	args Arguments,
+	addr string,
 	ctx context.Context,
 ) {
 	// In case server didn't start yet
-	waitForServerToBeReady(t, args)
+	waitForServerToBeReady(t, addr, &tls.Config{InsecureSkipVerify: true})
 
 	// Send the input time series to the component using HTTPS
-	endpoint := fmt.Sprintf(
-		"https://%s:%d/api/v1/metrics/write",
-		args.Server.HTTP.ListenAddress,
-		args.Server.HTTP.ListenPort,
-	)
+	endpoint := fmt.Sprintf("https://%s/api/v1/metrics/write", addr)
 	err := requestTLS(ctx, endpoint, &prompb.WriteRequest{Timeseries: input})
 	require.NoError(t, err)
 
@@ -312,16 +302,13 @@ func TestUpdate(t *testing.T) {
 
 	actualSamples := make(chan testSample, 100)
 
-	// Start the component
-	port, err := freeport.GetFreePort()
-	require.NoError(t, err)
 	args := Arguments{
 		Server: &fnet.ServerConfig{
 			HTTP: &fnet.HTTPConfig{
 				ListenAddress: "localhost",
-				ListenPort:    port,
+				ListenPort:    0,
 			},
-			GRPC: testGRPCConfig(t),
+			GRPC: testGRPCConfig(),
 		},
 		AcceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType)},
 		ForwardTo:                           testAppendable(actualSamples),
@@ -334,28 +321,28 @@ func TestUpdate(t *testing.T) {
 		require.NoError(t, comp.Run(ctx))
 	}()
 
-	verifyExpectations(t, input01, expected01, actualSamples, args, ctx)
+	verifyExpectations(t, input01, expected01, actualSamples, comp.server.HTTPListenAddr(), ctx)
 
-	otherPort, err := freeport.GetFreePort()
-	require.NoError(t, err)
 	args = Arguments{
 		Server: &fnet.ServerConfig{
 			HTTP: &fnet.HTTPConfig{
 				ListenAddress: "localhost",
-				ListenPort:    otherPort,
+				ListenPort:    0,
 			},
-			GRPC: testGRPCConfig(t),
+			GRPC: testGRPCConfig(),
 		},
 		ForwardTo: testAppendable(actualSamples),
 	}
 	err = comp.Update(args)
 	require.NoError(t, err)
 
-	verifyExpectations(t, input02, expected02, actualSamples, args, ctx)
+	verifyExpectations(t, input02, expected02, actualSamples, comp.server.HTTPListenAddr(), ctx)
 }
 
-func testGRPCConfig(t *testing.T) *fnet.GRPCConfig {
-	return &fnet.GRPCConfig{ListenAddress: "127.0.0.1", ListenPort: getFreePort(t)}
+// GRPC is never dialed in these tests, so ListenPort 0 avoids racing a
+// separately probed port against other tests.
+func testGRPCConfig() *fnet.GRPCConfig {
+	return &fnet.GRPCConfig{ListenAddress: "127.0.0.1", ListenPort: 0}
 }
 
 func TestServerRestarts(t *testing.T) {
@@ -378,14 +365,14 @@ func TestServerRestarts(t *testing.T) {
 					HTTP: &fnet.HTTPConfig{ListenAddress: "localhost", ListenPort: port},
 				},
 				AcceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType)},
-				ForwardTo:                           []storage.Appendable{},
+				ForwardTo:                           []storage.AppendableV2{},
 			},
 			newArgs: Arguments{
 				Server: &fnet.ServerConfig{
 					HTTP: &fnet.HTTPConfig{ListenAddress: "localhost", ListenPort: port},
 				},
 				AcceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType)},
-				ForwardTo:                           []storage.Appendable{},
+				ForwardTo:                           []storage.AppendableV2{},
 			},
 			shouldRestart: false,
 		},
@@ -396,7 +383,7 @@ func TestServerRestarts(t *testing.T) {
 					HTTP: &fnet.HTTPConfig{ListenAddress: "localhost", ListenPort: port},
 				},
 				AcceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType)},
-				ForwardTo:                           []storage.Appendable{},
+				ForwardTo:                           []storage.AppendableV2{},
 			},
 			newArgs: Arguments{
 				Server: &fnet.ServerConfig{
@@ -414,7 +401,7 @@ func TestServerRestarts(t *testing.T) {
 					HTTP: &fnet.HTTPConfig{ListenAddress: "localhost", ListenPort: port},
 				},
 				AcceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType)},
-				ForwardTo:                           []storage.Appendable{},
+				ForwardTo:                           []storage.AppendableV2{},
 			},
 			newArgs: Arguments{
 				Server: &fnet.ServerConfig{
@@ -431,7 +418,7 @@ func TestServerRestarts(t *testing.T) {
 					HTTP: &fnet.HTTPConfig{ListenAddress: "localhost", ListenPort: port},
 				},
 				AcceptedRemoteWriteProtobufMessages: []string{string(remote.WriteV1MessageType)},
-				ForwardTo:                           []storage.Appendable{},
+				ForwardTo:                           []storage.AppendableV2{},
 			},
 			newArgs: Arguments{
 				Server: &fnet.ServerConfig{
@@ -457,7 +444,7 @@ func TestServerRestarts(t *testing.T) {
 				serverExit <- comp.Run(ctx)
 			}()
 
-			waitForServerToBeReady(t, comp.args)
+			waitForServerToBeReady(t, comp.server.HTTPListenAddr(), nil)
 
 			initialServer := comp.server
 			require.NotNil(t, initialServer)
@@ -465,7 +452,7 @@ func TestServerRestarts(t *testing.T) {
 			err = comp.Update(tc.newArgs)
 			require.NoError(t, err)
 
-			waitForServerToBeReady(t, comp.args)
+			waitForServerToBeReady(t, comp.server.HTTPListenAddr(), nil)
 
 			require.NotNil(t, comp.server)
 			restarted := initialServer != comp.server
@@ -492,25 +479,16 @@ type testSample struct {
 	l   labels.Labels
 }
 
-func waitForServerToBeReady(t *testing.T, args Arguments) {
+// waitForServerToBeReady polls addr until it responds. Pass a non-nil
+// tlsConfig to poll over HTTPS.
+func waitForServerToBeReady(t *testing.T, addr string, tlsConfig *tls.Config) {
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		// Determine if TLS is enabled to choose the right protocol
 		protocol := "http"
-		var tlsConfig *tls.Config
-
-		if args.Server.HTTP.TLSConfig != nil {
+		if tlsConfig != nil {
 			protocol = "https"
-			tlsConfig = &tls.Config{
-				InsecureSkipVerify: true,
-			}
 		}
 
-		url := fmt.Sprintf(
-			"%s://%v:%d/wrong/path",
-			protocol,
-			args.Server.HTTP.ListenAddress,
-			args.Server.HTTP.ListenPort,
-		)
+		url := fmt.Sprintf("%s://%s/wrong/path", protocol, addr)
 
 		var resp *http.Response
 		var err error
@@ -541,18 +519,14 @@ func verifyExpectations(
 	input []prompb.TimeSeries,
 	expected []testSample,
 	actualSamples chan testSample,
-	args Arguments,
+	addr string,
 	ctx context.Context,
 ) {
 	// In case server didn't start yet
-	waitForServerToBeReady(t, args)
+	waitForServerToBeReady(t, addr, nil)
 
 	// Send the input time series to the component
-	endpoint := fmt.Sprintf(
-		"http://%s:%d/api/v1/metrics/write",
-		args.Server.HTTP.ListenAddress,
-		args.Server.HTTP.ListenPort,
-	)
+	endpoint := fmt.Sprintf("http://%s/api/v1/metrics/write", addr)
 	err := request(ctx, endpoint, &prompb.WriteRequest{Timeseries: input})
 	require.NoError(t, err)
 
@@ -573,7 +547,7 @@ func verifyExpectations(
 	}
 }
 
-func testAppendable(actualSamples chan testSample) []storage.Appendable {
+func testAppendable(actualSamples chan testSample) []storage.AppendableV2 {
 	hookFn := func(
 		ref storage.SeriesRef,
 		l labels.Labels,
@@ -586,7 +560,7 @@ func testAppendable(actualSamples chan testSample) []storage.Appendable {
 		return ref, nil
 	}
 
-	return []storage.Appendable{alloyprom.NewInterceptor(
+	return []storage.AppendableV2{alloyprom.NewInterceptor(
 		nil,
 		alloyprom.WithAppendHook(
 			hookFn))}
@@ -650,12 +624,6 @@ func testOptions(t *testing.T) component.Options {
 			return labelstore.New(nil, prometheus.DefaultRegisterer), nil
 		},
 	}
-}
-
-func getFreePort(t *testing.T) int {
-	p, err := freeport.GetFreePort()
-	require.NoError(t, err)
-	return p
 }
 
 func TestRemoteWriteV2(t *testing.T) {
@@ -794,16 +762,13 @@ func TestRemoteWriteV2(t *testing.T) {
 			actualSamples := make(chan testSample, 100)
 			actualMetadata := make(chan testMetadata, 10)
 
-			// Start the component
-			port, err := freeport.GetFreePort()
-			require.NoError(t, err)
 			args := Arguments{
 				Server: &fnet.ServerConfig{
 					HTTP: &fnet.HTTPConfig{
 						ListenAddress: "localhost",
-						ListenPort:    port,
+						ListenPort:    0,
 					},
-					GRPC: testGRPCConfig(t),
+					GRPC: testGRPCConfig(),
 				},
 				ForwardTo:                           testAppendableWithMetadata(actualSamples, actualMetadata),
 				AppendMetadata:                      tc.appendMetadata,
@@ -818,15 +783,13 @@ func TestRemoteWriteV2(t *testing.T) {
 				require.NoError(t, comp.Run(ctx))
 			}()
 
+			addr := comp.server.HTTPListenAddr()
+
 			// Wait for server to be ready
-			waitForServerToBeReady(t, args)
+			waitForServerToBeReady(t, addr, nil)
 
 			// Send the remote write v2 request
-			endpoint := fmt.Sprintf(
-				"http://%s:%d/api/v1/metrics/write",
-				args.Server.HTTP.ListenAddress,
-				args.Server.HTTP.ListenPort,
-			)
+			endpoint := fmt.Sprintf("http://%s/api/v1/metrics/write", addr)
 			err = requestV2(ctx, endpoint, input)
 			require.NoError(t, err)
 
@@ -882,7 +845,7 @@ type testMetadata struct {
 	unit       string
 }
 
-func testAppendableWithMetadata(actualSamples chan testSample, actualMetadata chan testMetadata) []storage.Appendable {
+func testAppendableWithMetadata(actualSamples chan testSample, actualMetadata chan testMetadata) []storage.AppendableV2 {
 	appendHook := func(
 		ref storage.SeriesRef,
 		l labels.Labels,
@@ -912,7 +875,7 @@ func testAppendableWithMetadata(actualSamples chan testSample, actualMetadata ch
 		return ref, nil
 	}
 
-	return []storage.Appendable{alloyprom.NewInterceptor(
+	return []storage.AppendableV2{alloyprom.NewInterceptor(
 		nil,
 		alloyprom.WithAppendHook(appendHook),
 		alloyprom.WithMetadataHook(metadataHook),
@@ -976,18 +939,15 @@ func TestAcceptedRemoteWriteProtobufMessages(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			port, err := freeport.GetFreePort()
-			require.NoError(t, err)
-
 			args := Arguments{
 				Server: &fnet.ServerConfig{
 					HTTP: &fnet.HTTPConfig{
 						ListenAddress: "localhost",
-						ListenPort:    port,
+						ListenPort:    0,
 					},
-					GRPC: testGRPCConfig(t),
+					GRPC: testGRPCConfig(),
 				},
-				ForwardTo:                           []storage.Appendable{alloyprom.NewFanout(nil, "", prometheus.NewRegistry(), nil)},
+				ForwardTo:                           []storage.AppendableV2{alloyprom.NewFanout(nil, "", prometheus.NewRegistry(), nil)},
 				AcceptedRemoteWriteProtobufMessages: tc.acceptedRemoteWriteProtobufMessages,
 			}
 

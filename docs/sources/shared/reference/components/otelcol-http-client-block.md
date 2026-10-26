@@ -40,4 +40,11 @@ If `http2_read_idle_timeout` is unset or set to `0s`, then no health check will 
 Golang's default HTTP transport attempts HTTP/2 by default, however some settings (`max_conns_per_host`, `max_idle_conns_per_host`, `max_idle_conns`) are only relevant for HTTP/1.
 The `force_attempt_http2` attribute allows a user to only attempt HTTP/1.
 
+{{< admonition type="note" >}}
+`idle_conn_timeout`, `max_idle_conns`, and `max_idle_conns_per_host` are deprecated in favor of the
+`keepalive` block, following the same deprecation in the upstream OpenTelemetry Collector. They still
+work, but new configurations should use `keepalive` instead. `disable_keep_alives` is unaffected and
+remains the only way to fully disable HTTP keep-alive.
+{{< /admonition >}}
+
 {{< docs/shared lookup="reference/components/otelcol-compression-field.md" source="alloy" version="<ALLOY_VERSION>" >}}

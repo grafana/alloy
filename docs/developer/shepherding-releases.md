@@ -65,11 +65,21 @@ out the section below on modifying a PR's changelog entry after it's been merged
 
 ### 3. Validate the RC on internal deployments
 
-1. Deploy the RC to internal clusters following the
-   [Argo Workflows documentation](https://github.com/grafana/alloy-internal/tree/main/Argo-Workflows)
-   in the internal repo.
-2. Validate performance metrics are consistent with the prior version.
-3. Validate components are healthy.
+Publishing the RC starts the [Argo Workflows](https://argo-workflows.grafana.net/workflows/alloy-cd)
+rollout automatically. You don't need to submit a workflow by hand.
+
+1. The rollout opens a PR against `deployment_tools` for each wave and assigns whoever started the
+   release pipeline as the reviewer. Watch for those review requests.
+2. Approve and merge each wave's PR to advance the rollout. The workflow blocks on these PRs, so the
+   rollout stalls until you act and eventually fails when it times out.
+3. Validate performance metrics are consistent with the prior version.
+4. Validate components are healthy.
+
+> **NOTE:** Only submit a workflow by hand from the
+> [Argo Workflows UI](https://argo-workflows.grafana.net/workflows/alloy-cd) to retry a failed
+> rollout or for a special case, following the
+> [Argo Workflows documentation](https://github.com/grafana/alloy-internal/tree/main/Argo-Workflows)
+> in the internal repo.
 
 ### 4. (Optional) Add critical fixes to the release
 
@@ -138,6 +148,15 @@ channels:
 
 > **Note:** The internal Alloy channel is automatically notified via GitHub Workflow.
 
+### 9. Shepherd the rollout to production
+
+Publishing the final release starts the rollout automatically, exactly as it did for the RC in
+step 3. Approve and merge each wave's `deployment_tools` PR until the last wave is merged.
+
+> **NOTE:** Pushing the release through to the final wave is the shepherd's responsibility. A
+> rollout left part-finished doesn't fail loudly; it leaves clusters on mixed versions until someone
+> notices, and the workflow fails when it times out.
+
 ## Cutting a new PATCH release
 
 The process for this is exactly the same as a minor release with a few notable exceptions:
@@ -150,6 +169,20 @@ The process for this is exactly the same as a minor release with a few notable e
    truly goofed and backported a feature instead of a fix, revert it and update changelog entries as
    necessary.
 4. Patch releases typically do not have RCs.
+
+## Publishing fails with a tag rule violation
+
+Publishing a draft can fail with:
+
+```
+Cannot create ref due to creations being restricted.
+Published releases must have a valid tag
+```
+
+The draft has lost its tag and is trying to publish against its `untagged-<hash>` placeholder. A tag
+ruleset blocks that, so the release stays a draft and nothing has become permanent.
+
+To recover, edit the draft, select the correct tag from the tag dropdown, and publish again.
 
 ## Modifying a PR's CHANGELOG entry post-merge
 

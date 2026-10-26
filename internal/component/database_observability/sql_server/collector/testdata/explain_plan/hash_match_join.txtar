@@ -1,0 +1,35 @@
+SQL Server showplan XML generated from a query shaped like:
+
+```
+SELECT o.OrderId, c.Name
+FROM Orders o
+JOIN Customers c ON c.CustomerId = o.CustomerId
+```
+
+-- hash_match_join.xml --
+<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan">
+  <BatchSequence>
+    <Batch>
+      <Statements>
+        <StmtSimple>
+          <QueryPlan>
+            <RelOp PhysicalOp="Hash Match" LogicalOp="Inner Join" EstimateRows="500" EstimatedTotalSubtreeCost="1.2">
+              <Hash>
+                <RelOp PhysicalOp="Table Scan" LogicalOp="Table Scan" EstimateRows="1000" EstimatedTotalSubtreeCost="0.5">
+                  <TableScan>
+                    <Object Database="[MyDb]" Schema="[dbo]" Table="[Customers]" />
+                  </TableScan>
+                </RelOp>
+                <RelOp PhysicalOp="Table Scan" LogicalOp="Table Scan" EstimateRows="2000" EstimatedTotalSubtreeCost="0.6">
+                  <TableScan>
+                    <Object Database="[MyDb]" Schema="[dbo]" Table="[Orders]" />
+                  </TableScan>
+                </RelOp>
+              </Hash>
+            </RelOp>
+          </QueryPlan>
+        </StmtSimple>
+      </Statements>
+    </Batch>
+  </BatchSequence>
+</ShowPlanXML>

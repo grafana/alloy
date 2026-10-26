@@ -2,7 +2,6 @@ package collector
 
 import (
 	"context"
-	"database/sql"
 	"strings"
 
 	"github.com/microsoft/go-mssqldb/msdsn"
@@ -14,12 +13,17 @@ import (
 
 const ConnectionInfoName = "connection_info"
 
+// EngineName is the value the sql_server component uses to identify itself
+// wherever an engine identifier is needed, e.g. the connection_info metric's
+// "engine" label and the "engine" Loki label added to every log line.
+const EngineName = "sql_server"
+
 type ConnectionInfoArguments struct {
 	DSN           string
 	Registry      *prometheus.Registry
 	EngineVersion string
 	CloudProvider *database_observability.CloudProvider
-	DB            *sql.DB
+	Pinger        database_observability.Pinger
 }
 
 type ConnectionInfo struct {
@@ -28,7 +32,7 @@ type ConnectionInfo struct {
 	EngineVersion string
 	InfoMetric    *prometheus.GaugeVec
 	CloudProvider *database_observability.CloudProvider
-	dbConnection  *sql.DB
+	pinger        database_observability.Pinger
 
 	running *atomic.Bool
 	stop    func()
@@ -49,7 +53,7 @@ func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
 		EngineVersion: args.EngineVersion,
 		InfoMetric:    infoMetric,
 		CloudProvider: args.CloudProvider,
-		dbConnection:  args.DB,
+		pinger:        args.Pinger,
 		running:       &atomic.Bool{},
 	}, nil
 }
@@ -64,7 +68,7 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 		providerRegion       = "unknown"
 		providerAccount      = "unknown"
 		dbInstanceIdentifier = "unknown"
-		engine               = "sql_server"
+		engine               = EngineName
 	)
 
 	if c.CloudProvider != nil {
@@ -117,10 +121,10 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 	labelValues := []string{providerName, providerRegion, providerAccount, dbInstanceIdentifier, engine, c.EngineVersion}
 	c.InfoMetric.WithLabelValues(labelValues...).Set(1)
 
-	if c.dbConnection != nil {
+	if c.pinger != nil {
 		c.stop = database_observability.RunConnectionInfoMonitor(
 			ctx,
-			c.dbConnection,
+			c.pinger,
 			c.Registry,
 			c.InfoMetric,
 			labelValues,

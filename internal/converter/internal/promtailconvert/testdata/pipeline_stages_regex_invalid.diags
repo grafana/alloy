@@ -1,0 +1,1 @@
+(Error) invalid pipeline stage config: map[expression:[unclosed source:msg] - error parsing regexp: missing closing ]: `[unclosed`

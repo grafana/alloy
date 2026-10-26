@@ -5,7 +5,6 @@ otelcol.receiver.otlp "default" {
 
 	http {
 		endpoint            = "localhost:4318"
-		idle_timeout        = "0s"
 		write_timeout       = "0s"
 		read_header_timeout = "0s"
 	}
@@ -23,8 +22,18 @@ otelcol.exporter.otlp "default" {
 }
 
 otelcol.connector.spanmetrics "default" {
+	dimension {
+		glob = "http.*"
+	}
+
 	histogram {
 		explicit { }
+	}
+
+	events {
+		dimension {
+			glob = "http.*"
+		}
 	}
 
 	output {

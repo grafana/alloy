@@ -17,19 +17,19 @@ Not every item applies to every configuration or platform.
 Use only what matches your components and environment.
 
 1. When your components allow it, run {{< param "PRODUCT_NAME" >}} as a non-root user on [Linux][linux], [Kubernetes][kubernetes], or a dedicated service account on [Windows][windows].
-1. If you don't need remote access to the UI or `/metrics`, restrict the HTTP server to `127.0.0.1` or a private network address with the [`http` block][http-block].
-1. When you expose the HTTP server beyond localhost, enable TLS with the [`http` block][http-block].
-1. Use TLS for outbound connections.
-   Refer to the [component][components] you're configuring, for example [`prometheus.remote_write`][prometheus-remote-write] for remote write and [`otelcol.exporter.otlp`][otelcol-exporter-otlp] for OTLP.
+1. Restrict network exposure: bind the HTTP server and OpenTelemetry receivers to localhost when remote access isn't required, and use TLS and authentication when you expose listeners or connect to remote backends.
+   Refer to [Network exposure][network-exposure].
+1. Include [`otelcol.processor.memory_limiter`][otelcol-processor-memory-limiter] after OpenTelemetry receivers, and configure exporter queue, retry, and timeout settings to protect against memory exhaustion under traffic spikes.
+   Refer to [Pipeline resource limits](#pipeline-resource-limits).
 1. Avoid `insecure_skip_verify = true` in production.
    Refer to the TLS settings in the [component][components] reference, for example [`prometheus.remote_write`][prometheus-remote-write].
-1. Store credentials outside configuration files when you can.
-   Refer to [Types and values][types-values].
+1. Store credentials outside configuration files when you can, and review collected telemetry for accidental secret exposure before you export it.
+   Refer to [Secrets and credentials](#secrets-and-credentials).
 1. On Kubernetes, set RBAC to the permissions your configuration uses.
    Refer to [Access and permissions on Kubernetes][kubernetes].
-1. For container deployments, set `readOnlyRootFilesystem: true` when your volume mounts and components allow it.
+1. For container deployments on Kubernetes, set `readOnlyRootFilesystem: true` when your volume mounts and components allow it.
    Refer to [Access and permissions on Kubernetes][kubernetes].
-1. For container deployments, set `allowPrivilegeEscalation: false` when your components don't need privilege escalation.
+1. For container deployments on Kubernetes, set `allowPrivilegeEscalation: false` when your components don't need privilege escalation.
    Refer to [Access and permissions on Kubernetes][kubernetes].
 1. Use a dedicated {{< param "PRODUCT_NAME" >}} instance for components that require elevated access, for example [`beyla.ebpf`][beyla-ebpf] and [`pyroscope.ebpf`][pyroscope-ebpf].
    Refer to each component reference for required capabilities and privileges.
@@ -44,28 +44,98 @@ Create a dedicated service account or user on your deployment platform:
 
 ## Network exposure
 
+{{< param "PRODUCT_NAME" >}} exposes network listeners through its HTTP server and through OpenTelemetry receivers.
+Review bind addresses, TLS, and authentication before you expose an endpoint beyond localhost.
+
+### HTTP server
+
 {{< param "PRODUCT_NAME" >}} runs an HTTP server for its UI, API, and `/metrics` endpoint.
 The binary binds to `127.0.0.1:12345` by default, which limits exposure to the local machine.
 The Grafana Helm chart sets `alloy.listenAddr` to `0.0.0.0` by default so other Pods can reach the container on port `12345`.
 Review what you expose before you change either default.
+When you must expose the HTTP server beyond localhost, enable TLS with the [`http` block][http-block].
+
+### OpenTelemetry receivers
+
+OpenTelemetry receivers such as [`otelcol.receiver.otlp`][otelcol-receiver-otlp] accept incoming telemetry on network interfaces.
+`otelcol.receiver.otlp` binds to `0.0.0.0` by default on ports `4317` and `4318`.
+Many other HTTP-based receivers default to `localhost`.
+Confirm the `endpoint` default in the component reference before you deploy.
+
+If all clients are on the same host as the receiver, set `endpoint` to `127.0.0.1` or `localhost` instead of `0.0.0.0`.
+An unauthenticated receiver that's reachable from other hosts lets anyone push metrics, logs, and traces into your pipeline.
+
+Because {{< param "PRODUCT_NAME" >}} implements these endpoints with OpenTelemetry Collector components, the same binding and authentication recommendations apply.
+For the full upstream guidance, refer to [OpenTelemetry Collector configuration best practices][otel-security-best-practices].
+
+### TLS and authentication
+
+When you must expose a listener beyond localhost, enable TLS on the receiver's `http`, `grpc`, or equivalent block, or on an exporter's `client` block.
+Set the `auth` attribute on that block and reference an `otelcol.auth.*` component's `handler` export for credentials.
+Not every auth component supports server-side authentication.
+Refer to the [`otelcol` component reference][otelcol] for compatible options and component-specific TLS settings.
+
+Don't set `insecure_skip_verify = true` in production on outbound connections.
+Refer to the TLS settings in the [component reference][components] for the component you configure, such as [`prometheus.remote_write`][prometheus-remote-write] or [`otelcol.exporter.otlp`][otelcol-exporter-otlp].
+
+## Pipeline resource limits
+
+OpenTelemetry receivers can accept sudden traffic spikes large enough to exhaust process memory.
+The upstream OpenTelemetry Collector security guidance recommends memory limits, exporter queues, and timeout and retry limits as safeguards for resource utilization.
+
+Place `otelcol.processor.memory_limiter` immediately after each receiver in the pipeline.
+It drops telemetry and triggers garbage collection when memory use exceeds configured soft and hard limits.
+For each exporter that supports them, configure `sending_queue`, `retry_on_failure`, and `timeout` settings so backend failures don't accumulate too much data in memory.
+Some exporters also support `sending_queue > batch` settings to batch data before export.
+
+Refer to [OpenTelemetry Collector configuration best practices][otel-security-best-practices] for related guidance on queue sizes, filters, and exporter timeouts.
 
 ## Secrets and credentials
 
-You can load secrets at runtime through several patterns:
+Secrets require different controls depending on where they appear.
+Protect credentials that {{< param "PRODUCT_NAME" >}} uses to access other systems, and protect sensitive data that applications write into telemetry.
 
-- [`sys.env()`][sys-env] in configuration to reference environment variables
-- [`remote.vault`][remote-vault] to load secrets from HashiCorp Vault
-- Secrets from the cluster: [remote.kubernetes.secret][remote-k8s-secret]
-- [`remote.s3`][remote-s3] to load configuration or secrets from AWS S3
+### Configuration credentials
 
-For `secret`-typed values at runtime and protection from exposure in the UI and component exports, refer to [Types and values][types-values].
+Store authentication tokens, passwords, and similar values outside plain configuration when you can.
+The following patterns load secrets at runtime.
+Pair them with the `secret` type described in [Types and values][types-values] so credentials don't appear in the UI or component exports.
+
+- [`sys.env()`][sys-env] loads environment variables in configuration.
+- [`remote.vault`][remote-vault] loads secrets from HashiCorp Vault.
+- [`remote.kubernetes.secret`][remote-k8s-secret] loads secrets from the cluster.
+- [`remote.s3`][remote-s3] loads configuration or secrets from AWS S3.
+
+### Secrets in collected data
+
+Log lines can contain API keys, tokens, and passwords that applications print to `stdout` or write to log files.
+Runtime loading and the `secret` type don't apply to those values because they travel with the telemetry to your backends.
+
+Prevent secrets from appearing in logs at the application source where you can.
+When source-level controls aren't enough, you can use components such as [`loki.secretfilter`][loki-secretfilter], [`loki.process`][loki-process], or [`otelcol.processor.transform`][otelcol-processor-transform] to drop or redact sensitive fields before export.
+Restrict access to observability backends that store log data.
+
+## Next steps
+
+- [Access and permissions on Linux][linux]
+- [Access and permissions on Kubernetes][kubernetes]
+- [Access and permissions on Windows][windows]
+- [OpenTelemetry Collector configuration best practices][otel-security-best-practices]
 
 [linux]: ./linux/
 [kubernetes]: ./kubernetes/
 [windows]: ./windows/
+[network-exposure]: #network-exposure
 [http-block]: ../reference/config-blocks/http/
 [prometheus-remote-write]: ../reference/components/prometheus/prometheus.remote_write/
 [otelcol-exporter-otlp]: ../reference/components/otelcol/otelcol.exporter.otlp/
+[otelcol-receiver-otlp]: ../reference/components/otelcol/otelcol.receiver.otlp/
+[otelcol-processor-memory-limiter]: ../reference/components/otelcol/otelcol.processor.memory_limiter/
+[otelcol-processor-transform]: ../reference/components/otelcol/otelcol.processor.transform/
+[otelcol]: ../reference/components/otelcol/
+[otel-security-best-practices]: https://opentelemetry.io/docs/security/config-best-practices/
+[loki-secretfilter]: ../reference/components/loki/loki.secretfilter/
+[loki-process]: ../reference/components/loki/loki.process/
 [remote-vault]: ../reference/components/remote/remote.vault/
 [sys-env]: ../reference/stdlib/sys/#sys.env
 [remote-k8s-secret]: ../reference/components/remote/remote.kubernetes.secret/

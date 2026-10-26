@@ -99,6 +99,7 @@ func Test_processLogStream(t *testing.T) {
 		logLines           []string
 		lastReadTime       time.Time
 		expectLines        []string
+		expectLastEntry    time.Time
 	}{
 		{name: "duplicate timestamps are not discarded",
 			logLines: []string{
@@ -153,6 +154,32 @@ func Test_processLogStream(t *testing.T) {
 			lastReadTime:       baseTime,
 			expectLines:        []string{"line1\n", "line2\n", "line3\n", "line4\n"},
 			preserveMetaLabels: true,
+		},
+		{
+			// The container runtime stamps stdout and stderr independently, so a
+			// live stream can carry a line whose timestamp precedes the previous
+			// line's. It must still be forwarded, and the reported position must
+			// not move backwards.
+			name: "out-of-order line on a live stream is not discarded",
+			logLines: []string{
+				"2023-01-23T17:00:10.000000000Z line1\n",
+				"2023-01-23T17:00:11.011798230Z stderr_late_stamp\n",
+				"2023-01-23T17:00:11.011741569Z stdout_early_stamp\n",
+				"2023-01-23T17:00:12.000000000Z line4\n",
+			},
+			lastReadTime:    baseTime.Add(-1 * time.Second),
+			expectLines:     []string{"line1\n", "stderr_late_stamp\n", "stdout_early_stamp\n", "line4\n"},
+			expectLastEntry: baseTime.Add(2 * time.Second),
+		},
+		{
+			name: "out-of-order line older than the resume time is discarded",
+			logLines: []string{
+				"2023-01-23T17:00:09.999Z old_line\n",
+				"2023-01-23T17:00:10Z line1\n",
+				"2023-01-23T17:00:09.999Z old_line_again\n",
+			},
+			lastReadTime: baseTime,
+			expectLines:  []string{"line1\n"},
 		},
 	}
 
@@ -221,6 +248,10 @@ func Test_processLogStream(t *testing.T) {
 
 			require.Equal(t, tc.expectLines, receivedLines, "received lines should match expected lines")
 
+			if !tc.expectLastEntry.IsZero() {
+				require.Eventually(t, func() bool { return target.LastEntry().Equal(tc.expectLastEntry) }, time.Second, 10*time.Millisecond, "LastEntry should be the latest timestamp seen, got %v", target.LastEntry())
+			}
+
 			if tc.preserveMetaLabels {
 				lbls := target.Labels()
 				require.Equal(t, "test", lbls.Get("job"))
@@ -236,6 +267,86 @@ func Test_processLogStream(t *testing.T) {
 				require.Equal(t, "value", lbls.Get("test"))
 				require.Equal(t, "default/test-pod:test-container", lbls.Get("instance"))
 			}
+		})
+	}
+}
+
+func Test_processLogStream_retail(t *testing.T) {
+	tt := []struct {
+		name        string
+		firstLines  []string
+		retailLines []string // Replayed from the start of the resume second.
+		expectLines []string
+	}{
+		{
+			name:        "last line is not forwarded again",
+			firstLines:  []string{"2023-01-23T17:00:10Z line1\n"},
+			retailLines: []string{"2023-01-23T17:00:10Z line1\n"},
+		},
+		{
+			name: "only new lines sharing the resume timestamp are forwarded",
+			firstLines: []string{
+				"2023-01-23T17:00:10Z line1\n",
+				"2023-01-23T17:00:10Z line2\n",
+			},
+			retailLines: []string{
+				"2023-01-23T17:00:10Z line1\n",
+				"2023-01-23T17:00:10Z line2\n",
+				"2023-01-23T17:00:10Z line3\n",
+				"2023-01-23T17:00:11Z line4\n",
+			},
+			expectLines: []string{"line3\n", "line4\n"},
+		},
+		{
+			name: "sub-second lines in the resume second are not forwarded again",
+			firstLines: []string{
+				"2023-01-23T17:00:10.200Z line1\n",
+				"2023-01-23T17:00:10.500Z line2\n",
+			},
+			retailLines: []string{
+				"2023-01-23T17:00:10.200Z line1\n",
+				"2023-01-23T17:00:10.500Z line2\n",
+				"2023-01-23T17:00:10.700Z line3\n",
+			},
+			expectLines: []string{"line3\n"},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			lset := labels.FromStrings(
+				kubePodName, "test-pod",
+				kubePodNamespace, "default",
+				kubePodContainerName, "test-container",
+				kubePodUID, "test-uid-123",
+			)
+			lset, err := PrepareLabels(lset, "test")
+			require.NoError(t, err)
+
+			target := NewTarget(lset, lset, false)
+			tailer := &tailer{
+				target: target,
+				lset:   newLabelSet(target.Labels()),
+				opts:   &Options{Positions: &mockPositions{}},
+			}
+			calc := newRollingAverageCalculator(10000, 100, 2*time.Second, 1*time.Hour)
+
+			// The handler is buffered, so each stream is read until EOF.
+			process := func(lines []string, sinceTime time.Time) []string {
+				handler := newMockEntryHandler()
+				stream := &mockReadCloser{strings.NewReader(strings.Join(lines, ""))}
+				require.NoError(t, tailer.processLogStream(t.Context(), stream, handler, sinceTime, positions.Entry{}, calc))
+				close(handler.ch)
+
+				var got []string
+				for e := range handler.ch {
+					got = append(got, e.Line)
+				}
+				return got
+			}
+
+			require.Len(t, process(tc.firstLines, time.Time{}), len(tc.firstLines))
+			require.Equal(t, tc.expectLines, process(tc.retailLines, target.LastEntry()))
 		})
 	}
 }

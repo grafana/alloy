@@ -1,0 +1,37 @@
+SQL Server showplan XML generated from a query shaped like:
+
+```
+SELECT OrderId, Total * 1.1 AS TotalWithTax
+FROM Orders
+WHERE Total > 100
+```
+
+-- compute_scalar_with_filter.xml --
+<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan">
+  <BatchSequence>
+    <Batch>
+      <Statements>
+        <StmtSimple>
+          <QueryPlan>
+            <RelOp PhysicalOp="Compute Scalar" LogicalOp="Compute Scalar" EstimateRows="80" EstimatedTotalSubtreeCost="0.55">
+              <ComputeScalar>
+                <RelOp PhysicalOp="Filter" LogicalOp="Filter" EstimateRows="80" EstimatedTotalSubtreeCost="0.54">
+                  <Filter>
+                    <Predicate>
+                      <ScalarOperator ScalarString="[dbo].[Orders].[Total]&gt;(100)" />
+                    </Predicate>
+                    <RelOp PhysicalOp="Table Scan" LogicalOp="Table Scan" EstimateRows="2000" EstimatedTotalSubtreeCost="0.5">
+                      <TableScan>
+                        <Object Database="[MyDb]" Schema="[dbo]" Table="[Orders]" />
+                      </TableScan>
+                    </RelOp>
+                  </Filter>
+                </RelOp>
+              </ComputeScalar>
+            </RelOp>
+          </QueryPlan>
+        </StmtSimple>
+      </Statements>
+    </Batch>
+  </BatchSequence>
+</ShowPlanXML>

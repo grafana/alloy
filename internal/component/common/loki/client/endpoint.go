@@ -2,98 +2,83 @@ package client
 
 import (
 	"context"
-	"crypto/sha256"
 	"errors"
-	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/grafana/dskit/backoff"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/client/internal/marker"
+	"github.com/grafana/alloy/internal/component/common/loki/client/internal/savepoint"
 )
 
 type endpoint struct {
 	cfg     Config
 	metrics *metrics
 	logger  *slog.Logger
-	entries chan loki.Entry
-
-	ctx    context.Context
-	cancel context.CancelFunc
-
 	shards  *shards
-	backoff *backoff.Backoff
 }
 
-func newEndpoint(metrics *metrics, cfg Config, logger *slog.Logger, markerHandler marker.Tracker) (*endpoint, error) {
+func newEndpoint(metrics *metrics, cfg Config, logger *slog.Logger, tracker savepoint.Tracker) (*endpoint, error) {
 	logger = logger.With("component", "endpoint", "host", cfg.URL.Host)
 
-	shards, err := newShards(metrics, logger, markerHandler, cfg)
+	shards, err := newShards(metrics, logger, tracker, cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	c := &endpoint{
+	return &endpoint{
 		cfg:     cfg,
 		logger:  logger,
 		metrics: metrics,
-		entries: make(chan loki.Entry),
-		ctx:     ctx,
-		cancel:  cancel,
 		shards:  shards,
-		backoff: backoff.New(ctx, backoff.Config{
-			MinBackoff: 5 * time.Millisecond,
-			MaxBackoff: 50 * time.Millisecond,
-		}),
-	}
-
-	c.shards.start(cfg.QueueConfig.MinShards)
-	return c, nil
+	}, nil
 }
 
-var errQueueIsFull = errors.New("queue is full")
+// start starts the endpoint and must be called before the first call to enqueue.
+func (e *endpoint) start() {
+	e.shards.start(e.cfg.QueueConfig.MinShards)
+}
 
-// enqueue tries to enqueue an entry. It returns an error if the entry could not be enqueued.
-// errQueueIsFull when the queue is full and BlockOnOverflow is false, or context.Canceled when
-// endpoint is stopped.
-func (e *endpoint) enqueue(entry loki.Entry, segmentNum int) error {
-	defer e.backoff.Reset()
+// enqueue tries to enqueue an entry. It waits for room while BlockOnOverflow
+// is set and drops the entry when it is not, returning errQueueIsFull. It will
+// return context error if caller cancels context or loki.ErrConsumerStopped
+// if endpoint has been stopped.
+func (e *endpoint) enqueue(ctx context.Context, entry loki.Entry, segmentNum int) error {
+	bo := backoff.New(ctx, backoff.Config{
+		MinBackoff: 5 * time.Millisecond,
+		MaxBackoff: 50 * time.Millisecond,
+	})
 
 	tenantID := getTenantID(e.cfg, entry)
-	for !e.shards.enqueue(tenantID, entry, segmentNum) {
-		if !e.cfg.QueueConfig.BlockOnOverflow {
-			e.metrics.droppedEntries.WithLabelValues(e.cfg.URL.Host, tenantID, reasonQueueIsFull).Inc()
-			e.metrics.droppedBytes.WithLabelValues(e.cfg.URL.Host, tenantID, reasonQueueIsFull).Add(float64(entry.Size()))
+
+	for bo.Ongoing() {
+		err := e.shards.enqueue(tenantID, entry, segmentNum)
+
+		if err == nil {
+			return nil
+		}
+
+		if errors.Is(err, loki.ErrConsumerStopped) {
+			return err
+		}
+
+		if errors.Is(err, errQueueIsFull) && !e.cfg.QueueConfig.BlockOnOverflow {
+			e.metrics.droppedEntries.WithLabelValues(e.cfg.URL.Host, reasonQueueIsFull).Inc()
+			e.metrics.droppedBytes.WithLabelValues(e.cfg.URL.Host, reasonQueueIsFull).Add(float64(entry.Size()))
 			return errQueueIsFull
 		}
 
-		e.backoff.Wait()
-		if !e.backoff.Ongoing() {
-			return e.backoff.Err()
-		}
+		bo.Wait()
 	}
 
-	return nil
+	return bo.Err()
 }
 
+// stop stops the endpoint, waiting up to the configured drain timeout for queued
+// entries to be sent before canceling in-flight requests.
 func (e *endpoint) stop() {
-	e.cancel()
 	e.shards.stop()
-}
-
-// getEndpointName computes the specific name for each endpoint config. The name is either the configured Name setting in Config,
-// or a hash of the config as whole, this allows us to detect repeated configs.
-func getEndpointName(cfg Config) string {
-	if cfg.Name != "" {
-		return cfg.Name
-	}
-
-	h := sha256.New()
-	_, _ = fmt.Fprintf(h, "%v", cfg)
-	return fmt.Sprintf("%x", h.Sum(nil))[:6]
 }
 
 func getTenantID(cfg Config, e loki.Entry) string {

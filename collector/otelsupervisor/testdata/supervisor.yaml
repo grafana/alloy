@@ -1,0 +1,13 @@
+server:
+  endpoint: ${env:SUPERVISOR_TEST_ENDPOINT}
+  headers:
+    X-Test: test-value
+agent:
+  executable: /path/to/alloy
+  passthrough_logs: true
+  args:
+    - otel
+storage:
+  directory: /tmp/supervisor
+capabilities:
+  accepts_remote_config: true

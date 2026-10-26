@@ -23,14 +23,14 @@ import (
 	"go.opentelemetry.io/ebpf-profiler/libpf/xsync"
 	"go.opentelemetry.io/ebpf-profiler/process"
 	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
-	"go.opentelemetry.io/ebpf-profiler/traceutil"
 )
 
 var vdsoPathName = libpf.Intern(process.VdsoPathName)
 
 type PPROF struct {
-	Raw    []byte
-	Labels labels.Labels
+	Raw     []byte
+	Samples int
+	Labels  labels.Labels
 }
 
 type PPROFConsumer func(ctx context.Context, p []PPROF)
@@ -105,7 +105,7 @@ func (p *PPROFReporter) ReportTraceEvent(trace *libpf.Trace, meta *samples.Trace
 	}
 
 	sampleKey := samples.SampleKey{
-		Hash:    traceutil.HashTrace(trace),
+		Hash:    trace.Hash(),
 		Comm:    meta.Comm,
 		TID:     int64(meta.TID),
 		CPU:     int64(meta.CPU),
@@ -329,8 +329,9 @@ func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, profileTy
 		builder.Set(model.MetricNameLabel, metric)
 		pyroscope.AddScopeLabels(builder, pyroscope.ScopeNameEBPF)
 		res = append(res, PPROF{
-			Raw:    buf.Bytes(),
-			Labels: builder.Labels(),
+			Raw:     buf.Bytes(),
+			Samples: len(b.Profile.Sample),
+			Labels:  builder.Labels(),
 		})
 	}
 	return res

@@ -49,13 +49,13 @@ func (googleCloudExporterConverter) ConvertAndAppend(state *State, id components
 func toGoogleCloudExporter(cfg *googlecloudexporter.Config) *googlecloud.Arguments {
 	return &googlecloud.Arguments{
 		Queue:                   toQueueArguments(cfg.QueueSettings),
-		Project:                 cfg.ProjectID,
-		DestinationProjectQuota: cfg.DestinationProjectQuota,
-		UserAgent:               cfg.UserAgent,
-		Impersonate:             toGoogleCloudImpersonateArguments(cfg.ImpersonateConfig),
-		Metric:                  toGoogleCloudMetricArguments(cfg.MetricConfig),
-		Trace:                   toGoogleCloudTraceArguments(cfg.TraceConfig),
-		Log:                     toGoogleCloudLogArguments(cfg.LogConfig),
+		Project:                 cfg.Config.ProjectID,
+		DestinationProjectQuota: cfg.Config.DestinationProjectQuota,
+		UserAgent:               cfg.Config.UserAgent,
+		Impersonate:             toGoogleCloudImpersonateArguments(cfg.Config.ImpersonateConfig),
+		Metric:                  toGoogleCloudMetricArguments(cfg.Config.MetricConfig),
+		Trace:                   toGoogleCloudTraceArguments(cfg.Config.TraceConfig),
+		Log:                     toGoogleCloudLogArguments(cfg.Config.LogConfig),
 		DebugMetrics:            common.DefaultValue[googlecloud.Arguments]().DebugMetrics,
 	}
 }

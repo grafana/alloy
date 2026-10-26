@@ -1,0 +1,28 @@
+logging {
+  level = "debug"
+}
+
+livedebugging {
+  enabled = true
+}
+
+prometheus.exporter.redis "redis_metrics" {
+  redis_addr = "redis:6379"
+}
+
+prometheus.scrape "redis_metrics" {
+  targets         = prometheus.exporter.redis.redis_metrics.targets
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+  scrape_interval = "1s"
+  scrape_timeout  = "500ms"
+}
+
+prometheus.remote_write "mimir" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+  }
+
+  external_labels = {
+    alloy_test_name = "prometheus-exporter-redis",
+  }
+}

@@ -27,8 +27,7 @@ import (
 )
 
 const (
-	ExplainPlansCollector  = "explain_plans"
-	OP_EXPLAIN_PLAN_OUTPUT = "explain_plan_output"
+	ExplainPlansCollector = "explain_plans"
 )
 
 const selectDigestsForExplainPlan = `
@@ -56,6 +55,31 @@ func newExplainPlansOutput(logger *slog.Logger, explainJson []byte) (*database_o
 }
 
 func parseTopLevelPlanNode(logger *slog.Logger, topLevelPlanNode []byte) (database_observability.ExplainPlanNode, error) {
+	planNode, err := parseTopLevelPlanNodeWithoutQueryCost(logger, topLevelPlanNode)
+	if err != nil {
+		return planNode, err
+	}
+
+	queryCost, err := parseCostInfoFloat(topLevelPlanNode, "query_cost")
+	if err != nil {
+		return planNode, err
+	}
+	if queryCost != nil {
+		missingCost := math.Round((*queryCost-sumEstimatedCosts(planNode))*100) / 100
+		if missingCost > 0 {
+			if planNode.Details.EstimatedCost == nil {
+				planNode.Details.EstimatedCost = &missingCost
+			} else {
+				adjustedCost := *planNode.Details.EstimatedCost + missingCost
+				planNode.Details.EstimatedCost = &adjustedCost
+			}
+		}
+	}
+
+	return planNode, nil
+}
+
+func parseTopLevelPlanNodeWithoutQueryCost(logger *slog.Logger, topLevelPlanNode []byte) (database_observability.ExplainPlanNode, error) {
 	if table, _, _, err := jsonparser.Get(topLevelPlanNode, "table"); err == nil {
 		tableDetails, err := parseTableNode(logger, table)
 		if err != nil {
@@ -113,11 +137,11 @@ func parseTopLevelPlanNode(logger *slog.Logger, topLevelPlanNode []byte) (databa
 
 func parseTableNode(logger *slog.Logger, tableNode []byte) (database_observability.ExplainPlanNode, error) {
 	pnode := database_observability.ExplainPlanNode{
-		Operation: database_observability.ExplainPlanOutputOperationTableScan,
-		Details:   database_observability.ExplainPlanNodeDetails{},
+		Details: database_observability.ExplainPlanNodeDetails{},
 	}
 
-	// Check for join algorithm. Nested loop would be set in parseNestedLoopJoinNode, since not all table nodes are children of nested loop joins.
+	// A reported join buffer identifies a real join operator. Implicit nested
+	// loops are represented by chaining the table access nodes instead.
 	if joinAlgorithm, _, _, err := jsonparser.Get(tableNode, "using_join_buffer"); err == nil {
 		if string(joinAlgorithm) == "hash join" {
 			joinAlgorithmConst := database_observability.ExplainPlanJoinAlgorithmHash
@@ -138,6 +162,7 @@ func parseTableNode(logger *slog.Logger, tableNode []byte) (database_observabili
 	}
 	accessTypeconst := database_observability.ExplainPlanAccessType(strings.ToLower(accessType))
 	pnode.Details.AccessType = &accessTypeconst
+	pnode.Operation = mysqlAccessTypeOperation(accessTypeconst)
 
 	// Until now, the properties being parsed were probably mandatory, now let's look for ones that are optional.
 	estimatedRows, err := jsonparser.GetInt(tableNode, "rows_produced_per_join")
@@ -190,19 +215,94 @@ func parseTableNode(logger *slog.Logger, tableNode []byte) (database_observabili
 		}
 	}
 
+	if pnode.Details.EstimatedCost != nil {
+		incrementalCost := normalizePrefixCost(*pnode.Details.EstimatedCost, nil, pnode)
+		pnode.Details.EstimatedCost = &incrementalCost
+	}
+
 	return pnode, nil
+}
+
+func parseCostInfoFloat(node []byte, field string) (*float64, error) {
+	value, err := jsonparser.GetString(node, "cost_info", field)
+	if err != nil {
+		return nil, nil
+	}
+	parsed, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse %s as float: %w", field, err)
+	}
+	return &parsed, nil
+}
+
+func sumEstimatedCosts(node database_observability.ExplainPlanNode) float64 {
+	var total float64
+	if node.Details.EstimatedCost != nil {
+		total = *node.Details.EstimatedCost
+	}
+	return total + sumEstimatedCostsOfChildren(node)
+}
+
+func sumEstimatedCostsOfChildren(node database_observability.ExplainPlanNode) float64 {
+	var total float64
+	for _, child := range node.Children {
+		total += sumEstimatedCosts(child)
+	}
+	return total
+}
+
+func normalizePrefixCost(prefixCost float64, previousPrefixCost *float64, node database_observability.ExplainPlanNode) float64 {
+	incrementalCost := prefixCost
+	if previousPrefixCost != nil {
+		incrementalCost -= *previousPrefixCost
+	}
+
+	// MySQL inconsistently accounts for materialized and attached subqueries in
+	// a table's prefix cost. Only subtract a nested query block when its cost can
+	// be contained in this prefix delta; otherwise it is independently costed.
+	childCost := sumEstimatedCostsOfChildren(node)
+	if childCost <= incrementalCost+0.01 {
+		incrementalCost -= childCost
+	}
+
+	return max(0, math.Round(incrementalCost*100)/100)
+}
+
+func mysqlAccessTypeOperation(accessType database_observability.ExplainPlanAccessType) database_observability.ExplainPlanOutputOperation {
+	switch accessType {
+	case database_observability.ExplainPlanAccessTypeSystem:
+		return database_observability.ExplainPlanOutputOperationSingleRowSystemConstant
+	case database_observability.ExplainPlanAccessTypeConst:
+		return database_observability.ExplainPlanOutputOperationSingleRowConstant
+	case database_observability.ExplainPlanAccessTypeEqRef:
+		return database_observability.ExplainPlanOutputOperationUniqueKeyLookup
+	case database_observability.ExplainPlanAccessTypeRef:
+		return database_observability.ExplainPlanOutputOperationNonUniqueKeyLookup
+	case database_observability.ExplainPlanAccessTypeFulltext:
+		return database_observability.ExplainPlanOutputOperationFulltextIndexSearch
+	case database_observability.ExplainPlanAccessTypeRefOrNull:
+		return database_observability.ExplainPlanOutputOperationKeyLookupWithNullValues
+	case database_observability.ExplainPlanAccessTypeIndexMerge:
+		return database_observability.ExplainPlanOutputOperationIndexMerge
+	case database_observability.ExplainPlanAccessTypeUniqueSubquery:
+		return database_observability.ExplainPlanOutputOperationUniqueKeyLookupSubquery
+	case database_observability.ExplainPlanAccessTypeIndexSubquery:
+		return database_observability.ExplainPlanOutputOperationNonUniqueKeyLookupSubquery
+	case database_observability.ExplainPlanAccessTypeRange:
+		return database_observability.ExplainPlanOutputOperationIndexRangeScan
+	case database_observability.ExplainPlanAccessTypeIndex:
+		return database_observability.ExplainPlanOutputOperationFullIndexScan
+	case database_observability.ExplainPlanAccessTypeAll:
+		return database_observability.ExplainPlanOutputOperationFullTableScan
+	default:
+		return database_observability.ExplainPlanOutputOperationUnknown
+	}
 }
 
 func parseNestedLoopJoinNode(logger *slog.Logger, nestedLoopJoinNode []byte) (database_observability.ExplainPlanNode, error) {
 	algo := database_observability.ExplainPlanJoinAlgorithmNestedLoop
-	pnode := database_observability.ExplainPlanNode{
-		Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-		Details: database_observability.ExplainPlanNodeDetails{
-			JoinAlgorithm: &algo,
-		},
-		Children: make([]database_observability.ExplainPlanNode, 0),
-	}
 	var previousChild *database_observability.ExplainPlanNode
+	var previousPrefixCost *float64
 	_, err := jsonparser.ArrayEach(nestedLoopJoinNode, func(value []byte, dataType jsonparser.ValueType, offset int, inerr error) {
 		tableNode, _, _, err := jsonparser.Get(value, "table")
 		if err != nil {
@@ -215,15 +315,25 @@ func parseNestedLoopJoinNode(logger *slog.Logger, nestedLoopJoinNode []byte) (da
 			logger.Error("failed to parse table node in nested loop join", "error", err)
 			return
 		}
+
+		prefixCost, err := parseCostInfoFloat(tableNode, "prefix_cost")
+		if err != nil {
+			logger.Error("failed to parse prefix cost in nested loop join", "error", err)
+			return
+		}
+		if prefixCost != nil {
+			incrementalCost := normalizePrefixCost(*prefixCost, previousPrefixCost, childDetails)
+			childDetails.Details.EstimatedCost = &incrementalCost
+			previousPrefixCost = prefixCost
+		}
+
 		if previousChild != nil {
-			thisLoop := database_observability.ExplainPlanNode{
-				Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
-				Details: database_observability.ExplainPlanNodeDetails{
-					JoinAlgorithm: &algo,
-				},
-			}
 			if childDetails.Details.JoinAlgorithm != nil && *childDetails.Details.JoinAlgorithm != algo {
-				thisLoop.Details.JoinAlgorithm = childDetails.Details.JoinAlgorithm
+				thisLoop := database_observability.ExplainPlanNode{
+					Details: database_observability.ExplainPlanNodeDetails{
+						JoinAlgorithm: childDetails.Details.JoinAlgorithm,
+					},
+				}
 				switch *childDetails.Details.JoinAlgorithm {
 				case database_observability.ExplainPlanJoinAlgorithmHash:
 					thisLoop.Operation = database_observability.ExplainPlanOutputOperationHashJoin
@@ -234,34 +344,44 @@ func parseNestedLoopJoinNode(logger *slog.Logger, nestedLoopJoinNode []byte) (da
 				}
 				// Remove join algorithm from child details since we've set it in the parent
 				childDetails.Details.JoinAlgorithm = nil
+				thisLoop.Children = []database_observability.ExplainPlanNode{
+					*previousChild,
+					childDetails,
+				}
+				previousChild = &thisLoop
+			} else {
+				childDetails.Details.JoinAlgorithm = &algo
+				childDetails.Children = append(
+					[]database_observability.ExplainPlanNode{*previousChild},
+					childDetails.Children...,
+				)
+				previousChild = &childDetails
 			}
-
-			thisLoop.Children = []database_observability.ExplainPlanNode{
-				*previousChild,
-				childDetails,
-			}
-			previousChild = &thisLoop
 		} else {
 			previousChild = &childDetails
 		}
 	})
 	if err != nil {
-		return pnode, err
+		return database_observability.ExplainPlanNode{}, err
 	}
 	if previousChild != nil {
-		if previousChild.Operation != database_observability.ExplainPlanOutputOperationNestedLoopJoin && previousChild.Operation != database_observability.ExplainPlanOutputOperationHashJoin {
-			pnode.Children = append(pnode.Children, *previousChild)
-		} else {
-			return *previousChild, nil
-		}
+		return *previousChild, nil
 	}
-	return pnode, nil
+	return database_observability.ExplainPlanNode{
+		Operation: database_observability.ExplainPlanOutputOperationUnknown,
+	}, nil
 }
 
 func parseGroupingOperationNode(logger *slog.Logger, groupingOperationNode []byte) (database_observability.ExplainPlanNode, error) {
 	pnode := database_observability.ExplainPlanNode{
 		Operation: database_observability.ExplainPlanOutputOperationGroupingOperation,
 	}
+
+	sortCost, err := parseCostInfoFloat(groupingOperationNode, "sort_cost")
+	if err != nil {
+		return pnode, err
+	}
+	pnode.Details.EstimatedCost = sortCost
 
 	children, err := parseTopLevelPlanNode(logger, groupingOperationNode)
 	if err != nil {
@@ -277,6 +397,12 @@ func parseOrderingOperationNode(logger *slog.Logger, orderingOperationNode []byt
 		Operation: database_observability.ExplainPlanOutputOperationOrderingOperation,
 	}
 
+	sortCost, err := parseCostInfoFloat(orderingOperationNode, "sort_cost")
+	if err != nil {
+		return pnode, err
+	}
+	pnode.Details.EstimatedCost = sortCost
+
 	children, err := parseTopLevelPlanNode(logger, orderingOperationNode)
 	if err != nil {
 		return pnode, err
@@ -290,6 +416,12 @@ func parseDuplicatesRemovalNode(logger *slog.Logger, duplicatesRemovalNode []byt
 	pnode := database_observability.ExplainPlanNode{
 		Operation: database_observability.ExplainPlanOutputOperationDuplicatesRemoval,
 	}
+
+	sortCost, err := parseCostInfoFloat(duplicatesRemovalNode, "sort_cost")
+	if err != nil {
+		return pnode, err
+	}
+	pnode.Details.EstimatedCost = sortCost
 
 	children, err := parseTopLevelPlanNode(logger, duplicatesRemovalNode)
 	if err != nil {
@@ -372,12 +504,16 @@ type queryInfo struct {
 	uniqueKey  string
 }
 
+func explainPlanQueryKey(schemaName, digest string) string {
+	return fmt.Sprintf("%s:%s", schemaName, digest)
+}
+
 func newQueryInfo(schemaName, digest, queryText string) *queryInfo {
 	return &queryInfo{
 		schemaName: schemaName,
 		digest:     digest,
 		queryText:  queryText,
-		uniqueKey:  schemaName + digest,
+		uniqueKey:  explainPlanQueryKey(schemaName, digest),
 	}
 }
 
@@ -398,14 +534,12 @@ type ExplainPlansArguments struct {
 	InitialLookback time.Time
 	ExcludeSchemas  []string
 	EntryHandler    loki.EntryHandler
-	DBVersion       string
 
 	Logger *slog.Logger
 }
 
 type ExplainPlans struct {
 	dbConnection     *sql.DB
-	dbVersion        string
 	scrapeInterval   time.Duration
 	queryCache       map[string]*queryInfo
 	queryDenylist    map[string]struct{}
@@ -414,6 +548,8 @@ type ExplainPlans struct {
 	currentBatchSize int
 	entryHandler     loki.EntryHandler
 	lastSeen         time.Time
+	lastEmittedAt    map[string]time.Time
+	now              func() time.Time
 	logger           *slog.Logger
 	running          *atomic.Bool
 	ctx              context.Context
@@ -424,24 +560,51 @@ type ExplainPlans struct {
 func NewExplainPlans(args ExplainPlansArguments) (*ExplainPlans, error) {
 	return &ExplainPlans{
 		dbConnection:   args.DB,
-		dbVersion:      args.DBVersion,
 		scrapeInterval: args.ScrapeInterval,
 		perScrapeRatio: args.PerScrapeRatio,
 		excludeSchemas: args.ExcludeSchemas,
 		lastSeen:       args.InitialLookback,
 		queryCache:     make(map[string]*queryInfo),
 		queryDenylist:  make(map[string]struct{}),
+		lastEmittedAt:  make(map[string]time.Time),
+		now:            time.Now,
 		entryHandler:   args.EntryHandler,
 		logger:         args.Logger.With("collector", ExplainPlansCollector),
 		running:        atomic.NewBool(false),
 	}, nil
 }
 
+func (c *ExplainPlans) currentTime() time.Time {
+	if c.now != nil {
+		return c.now()
+	}
+	return time.Now()
+}
+
+func (c *ExplainPlans) isThrottled(key string) bool {
+	last, ok := c.lastEmittedAt[key]
+	return ok && c.currentTime().Sub(last) < database_observability.EmitInterval
+}
+
+func (c *ExplainPlans) recordEmission(key string) {
+	if c.lastEmittedAt == nil {
+		c.lastEmittedAt = make(map[string]time.Time)
+	}
+	c.lastEmittedAt[key] = c.currentTime()
+}
+
+func (c *ExplainPlans) pruneExpiredThrottle() {
+	now := c.currentTime()
+	for key, last := range c.lastEmittedAt {
+		if now.Sub(last) >= database_observability.EmitInterval {
+			delete(c.lastEmittedAt, key)
+		}
+	}
+}
+
 func (c *ExplainPlans) sendExplainPlansOutput(schemaName string, digest string, generatedAt string, result database_observability.ExplainProcessingResult, reason string, plan *database_observability.ExplainPlanNode) error {
 	output := &database_observability.ExplainPlanOutput{
 		Metadata: database_observability.ExplainPlanMetadataInfo{
-			DatabaseEngine:         "MySQL",
-			DatabaseVersion:        c.dbVersion,
 			QueryIdentifier:        digest,
 			GeneratedAt:            generatedAt,
 			ProcessingResult:       result,
@@ -458,7 +621,7 @@ func (c *ExplainPlans) sendExplainPlansOutput(schemaName string, digest string, 
 	}
 
 	logMessage := fmt.Sprintf(
-		`schema="%s" digest="%s" explain_plan_output="%s"`,
+		`schema=%q digest=%q explain_plan_output=%q`,
 		schemaName,
 		digest,
 		base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
@@ -466,9 +629,10 @@ func (c *ExplainPlans) sendExplainPlansOutput(schemaName string, digest string, 
 
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 		logging.LevelInfo,
-		OP_EXPLAIN_PLAN_OUTPUT,
+		database_observability.OP_EXPLAIN_PLAN_OUTPUT,
 		logMessage,
 	)
+	c.recordEmission(explainPlanQueryKey(schemaName, digest))
 
 	return nil
 }
@@ -520,6 +684,8 @@ func (c *ExplainPlans) Stop() {
 }
 
 func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
+	c.pruneExpiredThrottle()
+
 	query := fmt.Sprintf(selectDigestsForExplainPlan, buildExcludedSchemasClause(c.excludeSchemas))
 	rs, err := c.dbConnection.QueryContext(ctx, query, c.lastSeen)
 	if err != nil {
@@ -539,25 +705,31 @@ func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 		}
 
 		qi := newQueryInfo(schemaName, digest, queryText)
-		if _, ok := c.queryDenylist[qi.uniqueKey]; !ok {
-			c.queryCache[qi.uniqueKey] = qi
-		} else {
-			err := c.sendExplainPlansOutput(
-				schemaName,
-				digest,
-				generatedAt,
-				database_observability.ExplainProcessingResultSkipped,
-				"query denylisted",
-				nil,
-			)
-			if err != nil {
-				c.logger.Error("failed to send denylisted query skip explain plan output", "err", err)
-			}
-			continue
-		}
 		if ls.After(c.lastSeen) {
 			c.lastSeen = ls
 		}
+
+		if _, ok := c.queryDenylist[qi.uniqueKey]; ok {
+			if !c.isThrottled(qi.uniqueKey) {
+				err := c.sendExplainPlansOutput(
+					schemaName,
+					digest,
+					generatedAt,
+					database_observability.ExplainProcessingResultSkipped,
+					"query denylisted",
+					nil,
+				)
+				if err != nil {
+					c.logger.Error("failed to send denylisted query skip explain plan output", "err", err)
+				}
+			}
+			continue
+		}
+
+		if c.isThrottled(qi.uniqueKey) {
+			continue
+		}
+		c.queryCache[qi.uniqueKey] = qi
 	}
 
 	if err := rs.Err(); err != nil {
@@ -580,6 +752,10 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 
 	processedCount := 0
 	for _, qi := range c.queryCache {
+		if c.isThrottled(qi.uniqueKey) {
+			delete(c.queryCache, qi.uniqueKey)
+			continue
+		}
 		if processedCount >= c.currentBatchSize {
 			break
 		}

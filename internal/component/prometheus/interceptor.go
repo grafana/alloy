@@ -2,12 +2,15 @@ package prometheus
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/storage"
+
+	"github.com/grafana/alloy/internal/component/prometheus/appenders/adapter"
 )
 
 // Interceptor is a storage.Appendable which invokes callback functions upon
@@ -20,17 +23,23 @@ type Interceptor struct {
 	onAppendHistogram    func(ref storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error)
 	onAppendSTZeroSample func(ref storage.SeriesRef, l labels.Labels, t, st int64, next storage.Appender) (storage.SeriesRef, error)
 
+	// onAppendV2 is the only hook used by AppenderV2.
+	onAppendV2 func(ref storage.SeriesRef, l labels.Labels, st, t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, opts storage.AppendV2Options, next storage.AppenderV2) (storage.SeriesRef, error)
+
 	// next is the next appendable to pass in the chain.
-	next storage.Appendable
+	next storage.AppendableV2
 
 	componentID string
 }
 
-var _ storage.Appendable = (*Interceptor)(nil)
+var (
+	_ storage.Appendable   = (*Interceptor)(nil)
+	_ storage.AppendableV2 = (*Interceptor)(nil)
+)
 
 // NewInterceptor creates a new Interceptor storage.Appendable. Options can be
 // provided to NewInterceptor to install custom hooks for different methods.
-func NewInterceptor(next storage.Appendable, opts ...InterceptorOption) *Interceptor {
+func NewInterceptor(next storage.AppendableV2, opts ...InterceptorOption) *Interceptor {
 	i := &Interceptor{
 		next: next,
 	}
@@ -83,6 +92,15 @@ func WithSTZeroSampleHook(f func(ref storage.SeriesRef, l labels.Labels, t, st i
 	}
 }
 
+// WithAppendV2Hook returns an InterceptorOption which hooks into calls to
+// AppenderV2's Append. It is only used by AppenderV2; the V1 hooks are only
+// used by Appender. next is nil if the Interceptor has no next appendable.
+func WithAppendV2Hook(f func(ref storage.SeriesRef, l labels.Labels, st, t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, opts storage.AppendV2Options, next storage.AppenderV2) (storage.SeriesRef, error)) InterceptorOption {
+	return func(i *Interceptor) {
+		i.onAppendV2 = f
+	}
+}
+
 // WithComponentID returns an InterceptorOptions which is used to set the componentID of the Interceptor.
 // This is useful for debugging
 func WithComponentID(id string) InterceptorOption {
@@ -97,9 +115,42 @@ func (i *Interceptor) Appender(ctx context.Context) storage.Appender {
 		interceptor: i,
 	}
 	if i.next != nil {
-		app.child = i.next.Appender(ctx)
+		// NOTE(appenderv2 migration): see the equivalent comment in Fanout.Appender.
+		v1, ok := i.next.(storage.Appendable)
+		if !ok {
+			panic(fmt.Sprintf("interceptor next %T does not implement storage.Appendable", i.next))
+		}
+		app.child = v1.Appender(ctx)
 	}
 	return app
+}
+
+// AppenderV2 satisfies the AppendableV2 interface.
+//
+// If the Interceptor has V1 hooks but no V2 hook, AppenderV2 falls back to
+// adapting the V1 appender, so that those hooks still run. This keeps
+// Interceptors whose owners haven't added a V2 hook yet working on the V2
+// path.
+func (i *Interceptor) AppenderV2(ctx context.Context) storage.AppenderV2 {
+	if i.onAppendV2 == nil && i.hasV1Hooks() {
+		return adapter.AppenderV1AsV2(i.Appender(ctx))
+	}
+
+	app := &interceptappenderV2{
+		interceptor: i,
+	}
+	if i.next != nil {
+		app.child = i.next.AppenderV2(ctx)
+	}
+	return app
+}
+
+func (i *Interceptor) hasV1Hooks() bool {
+	return i.onAppend != nil ||
+		i.onAppendExemplar != nil ||
+		i.onUpdateMetadata != nil ||
+		i.onAppendHistogram != nil ||
+		i.onAppendSTZeroSample != nil
 }
 
 func (i *Interceptor) String() string {
@@ -222,4 +273,38 @@ func (a *interceptappender) AppendHistogramSTZeroSample(
 		return 0, nil
 	}
 	return a.child.AppendHistogramSTZeroSample(ref, l, t, st, h, fh)
+}
+
+type interceptappenderV2 struct {
+	interceptor *Interceptor
+	child       storage.AppenderV2
+}
+
+var _ storage.AppenderV2 = (*interceptappenderV2)(nil)
+
+// Append satisfies the AppenderV2 interface.
+func (a *interceptappenderV2) Append(ref storage.SeriesRef, l labels.Labels, st, t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, opts storage.AppendV2Options) (storage.SeriesRef, error) {
+	if a.interceptor.onAppendV2 != nil {
+		return a.interceptor.onAppendV2(ref, l, st, t, v, h, fh, opts, a.child)
+	}
+	if a.child == nil {
+		return 0, nil
+	}
+	return a.child.Append(ref, l, st, t, v, h, fh, opts)
+}
+
+// Commit satisfies the AppenderV2 interface.
+func (a *interceptappenderV2) Commit() error {
+	if a.child == nil {
+		return nil
+	}
+	return a.child.Commit()
+}
+
+// Rollback satisfies the AppenderV2 interface.
+func (a *interceptappenderV2) Rollback() error {
+	if a.child == nil {
+		return nil
+	}
+	return a.child.Rollback()
 }

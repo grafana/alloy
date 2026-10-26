@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alecthomas/units"
 	promopv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus-operator/prometheus-operator/pkg/namespacelabeler"
 	commonConfig "github.com/prometheus/common/config"
@@ -123,6 +124,10 @@ func (cg *ConfigGenerator) generateHTTPScrapeConfigConfig(m *promopv1alpha1.Scra
 
 func (cg *ConfigGenerator) commonScrapeConfigConfig(m *promopv1alpha1.ScrapeConfig, _ int, relabels *relabeler, metricRelabels *relabeler) (cfg *config.ScrapeConfig, err error) {
 	cfg = cg.generateDefaultScrapeConfig()
+	scrapeClass, err := cg.ScrapeClasses.Get(m.Spec.ScrapeClassName)
+	if err != nil {
+		return nil, err
+	}
 	if m.Spec.HonorLabels != nil {
 		cfg.HonorLabels = *m.Spec.HonorLabels
 	}
@@ -158,6 +163,14 @@ func (cg *ConfigGenerator) commonScrapeConfigConfig(m *promopv1alpha1.ScrapeConf
 		// have to lowercase the schema.
 		cfg.Scheme = strings.ToLower(string(*m.Spec.Scheme))
 	}
+	if m.Spec.EnableCompression != nil {
+		cfg.EnableCompression = *m.Spec.EnableCompression
+	}
+	if m.Spec.BodySizeLimit != nil {
+		if cfg.BodySizeLimit, err = units.ParseBase2Bytes(string(*m.Spec.BodySizeLimit)); err != nil {
+			return nil, fmt.Errorf("parsing bodySizeLimit from scrapeConfig: %w", err)
+		}
+	}
 	if m.Spec.TLSConfig != nil {
 		if cfg.HTTPClientConfig.TLSConfig, err = cg.generateSafeTLS(*m.Spec.TLSConfig, m.Namespace); err != nil {
 			return nil, err
@@ -175,6 +188,10 @@ func (cg *ConfigGenerator) commonScrapeConfigConfig(m *promopv1alpha1.ScrapeConf
 			return nil, err
 		}
 	}
+	epHasTLS := m.Spec.TLSConfig != nil
+	epHasAuth := m.Spec.BasicAuth != nil || m.Spec.Authorization != nil
+	applyScrapeClassHTTPClientConfig(&cfg.HTTPClientConfig, scrapeClass, epHasTLS, epHasAuth)
+
 	relabels.add(&relabel.Config{
 		Replacement: m.Namespace,
 		TargetLabel: "__meta_kubernetes_scrapeconfig_namespace",
@@ -183,9 +200,13 @@ func (cg *ConfigGenerator) commonScrapeConfigConfig(m *promopv1alpha1.ScrapeConf
 		TargetLabel: "__meta_kubernetes_scrapeconfig_name",
 	})
 	labeler := namespacelabeler.New("", nil, false)
+	// Scrape class relabelings are prepended to the resource's own.
+	relabels.addScrapeClassRelabelings(scrapeClass)
 	if err = relabels.addFromV1(labeler.GetRelabelingConfigs(m.TypeMeta, m.ObjectMeta, m.Spec.RelabelConfigs)...); err != nil {
 		return nil, fmt.Errorf("parsing relabel configs: %w", err)
 	}
+	// Scrape class metric relabelings are prepended to the resource's own.
+	metricRelabels.addScrapeClassMetricRelabelings(scrapeClass)
 	if err = metricRelabels.addFromV1(labeler.GetRelabelingConfigs(m.TypeMeta, m.ObjectMeta, m.Spec.MetricRelabelConfigs)...); err != nil {
 		return nil, fmt.Errorf("parsing metric relabel configs: %w", err)
 	}

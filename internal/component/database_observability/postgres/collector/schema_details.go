@@ -21,24 +21,9 @@ import (
 
 const (
 	SchemaDetailsCollector = "schema_details"
-	OP_TABLE_DETECTION     = "table_detection"
-	OP_CREATE_STATEMENT    = "create_statement"
 )
 
-// emitInterval is the minimum amount of time that must elapse between
-// successive OP_CREATE_STATEMENT emissions for the same table, regardless of
-// the configured collect_interval.
-const emitInterval = 30 * time.Minute
-
 const (
-	// selectAllDatabases makes use of the initial DB connection to discover other databases on the same Postgres instance
-	selectAllDatabases = `
-		SELECT datname
-		FROM pg_database
-		WHERE datistemplate = false
-			AND has_database_privilege(datname, 'CONNECT')
-			AND datname NOT IN %s`
-
 	// selectSchemaNames gets all user-defined schemas, excluding system schemas
 	selectSchemaNames = `
 	SELECT
@@ -231,20 +216,55 @@ func NewTableRegistry() *TableRegistry {
 }
 
 func (tr *TableRegistry) SetTablesForDatabase(database database, tablesInfo []*tableInfo) {
+	var schemas map[schema]map[table]struct{}
+	if len(tablesInfo) > 0 {
+		schemas = make(map[schema]map[table]struct{})
+		for _, tblInfo := range tablesInfo {
+			if schemas[tblInfo.schema] == nil {
+				schemas[tblInfo.schema] = make(map[table]struct{})
+			}
+			schemas[tblInfo.schema][tblInfo.tableName] = struct{}{}
+		}
+	}
+
 	tr.mu.Lock()
 	defer tr.mu.Unlock()
 
-	delete(tr.tables, database)
+	if schemas == nil {
+		delete(tr.tables, database)
+		return
+	}
+	tr.tables[database] = schemas
+}
 
-	if len(tablesInfo) > 0 {
-		tr.tables[database] = make(map[schema]map[table]struct{})
-		for _, tblInfo := range tablesInfo {
-			if tr.tables[database][tblInfo.schema] == nil {
-				tr.tables[database][tblInfo.schema] = make(map[table]struct{})
-			}
-			tr.tables[database][tblInfo.schema][tblInfo.tableName] = struct{}{}
+// PruneDatabases removes databases that are no longer returned by discovery.
+func (tr *TableRegistry) PruneDatabases(discovered map[database]struct{}) {
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+
+	for db := range tr.tables {
+		if _, ok := discovered[db]; !ok {
+			delete(tr.tables, db)
 		}
 	}
+}
+
+// SchemasForDatabase returns the known schema names for a database, or nil if the
+// database is unknown to the registry.
+func (tr *TableRegistry) SchemasForDatabase(database database) []string {
+	tr.mu.RLock()
+	defer tr.mu.RUnlock()
+
+	schemas, ok := tr.tables[database]
+	if !ok {
+		return nil
+	}
+
+	out := make([]string, 0, len(schemas))
+	for s := range schemas {
+		out = append(out, string(s))
+	}
+	return out
 }
 
 // IsValid returns whether or not a given database and parsed table name exists in the source-of-truth table registry.
@@ -266,11 +286,13 @@ func (tr *TableRegistry) IsValid(database database, parsedTableName string) (str
 			if _, ok := tables[tableName]; ok {
 				return string(tableName), true
 			}
+		}
 
-			// The sqllexer library doesn't preserve quote information for non-schema-qualified names,
-			// so we try exact match first, then fall back to lowercase for PostgreSQL's identifier folding.
-			lowercaseName := table(strings.ToLower(string(tableName)))
-			if lowercaseName != tableName {
+		// The sqllexer library doesn't preserve quote information for non-schema-qualified names,
+		// so we try exact match first, then fall back to lowercase for PostgreSQL's identifier folding.
+		lowercaseName := table(strings.ToLower(string(tableName)))
+		if lowercaseName != tableName {
+			for _, tables := range schemas {
 				if _, ok := tables[lowercaseName]; ok {
 					return string(lowercaseName), true
 				}
@@ -331,7 +353,7 @@ type SchemaDetails struct {
 	// lastEmittedAt records the wall-clock time at which OP_CREATE_STATEMENT
 	// was last emitted for a table. The outer key is the database name and
 	// the inner key is "schema.table". Used to throttle logging to at most
-	// one per emitInterval per table.
+	// one per EmitInterval per table.
 	lastEmittedAt map[database]map[string]time.Time
 
 	// now allows overriding time.Now() in tests
@@ -420,29 +442,11 @@ func (c *SchemaDetails) Stop() {
 }
 
 func (c *SchemaDetails) getAllDatabases(ctx context.Context) ([]string, error) {
-	query := fmt.Sprintf(selectAllDatabases, buildExcludedDatabasesClause(c.excludeDatabases))
-	rows, err := c.initialConnection.QueryContext(ctx, query)
+	databases, err := discoverDatabases(ctx, c.initialConnection, c.excludeDatabases)
 	if err != nil {
 		c.logger.Error("failed to discover databases", "err", err)
-		return nil, fmt.Errorf("failed to discover databases: %w", err)
+		return nil, err
 	}
-	defer rows.Close()
-
-	var databases []string
-	for rows.Next() {
-		var datname string
-		if err := rows.Scan(&datname); err != nil {
-			c.logger.Error("failed to scan database name", "err", err)
-			continue
-		}
-		databases = append(databases, datname)
-	}
-
-	if err := rows.Err(); err != nil {
-		c.logger.Error("error iterating database rows", "err", err)
-		return nil, fmt.Errorf("error iterating database rows: %w", err)
-	}
-
 	return databases, nil
 }
 
@@ -457,10 +461,12 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 	defer schemaRs.Close()
 
 	var schemas []string
+	schemaScanComplete := true
 	for schemaRs.Next() {
 		var schema string
 		if err := schemaRs.Scan(&schema); err != nil {
 			c.logger.Error("failed to scan pg_namespace", "datname", dbName, "err", err)
+			schemaScanComplete = false
 			break
 		}
 		schemas = append(schemas, schema)
@@ -470,8 +476,13 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 		return fmt.Errorf("error during iterating over pg_namespace result set for database %s: %w", dbName, err)
 	}
 
+	if !schemaScanComplete {
+		return nil
+	}
+
 	if len(schemas) == 0 {
 		c.logger.Info("no schema detected from pg_namespace", "datname", dbName)
+		c.tableRegistry.SetTablesForDatabase(db, nil)
 		c.pruneDatabaseThrottle(db, nil)
 		return nil
 	}
@@ -506,8 +517,8 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 
 				c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 					logging.LevelInfo,
-					OP_TABLE_DETECTION,
-					fmt.Sprintf(`datname="%s" schema="%s" table="%s"`, dbName, schemaName, tableName),
+					database_observability.OP_TABLE_DETECTION,
+					fmt.Sprintf(`datname=%q schema=%q table=%q`, dbName, schemaName, tableName),
 				)
 			}
 
@@ -539,7 +550,7 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 	for _, table := range tables {
 		key := schemaTableKey(table.schema, table.tableName)
 		if inner := c.lastEmittedAt[db]; inner != nil {
-			if last, ok := inner[key]; ok && now.Sub(last) < emitInterval {
+			if last, ok := inner[key]; ok && now.Sub(last) < database_observability.EmitInterval {
 				continue
 			}
 		}
@@ -552,9 +563,9 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
-			OP_CREATE_STATEMENT,
+			database_observability.OP_CREATE_STATEMENT,
 			fmt.Sprintf(
-				`datname="%s" schema="%s" table="%s" table_spec="%s"`,
+				`datname=%q schema=%q table=%q table_spec=%q`,
 				dbName, table.schema, table.tableName, table.b64TableSpec,
 			),
 		)
@@ -602,36 +613,25 @@ func (c *SchemaDetails) extractNames(ctx context.Context) error {
 	}
 
 	for _, dbName := range databases {
-		databaseDSN, err := replaceDatabaseNameInDSN(c.dbDSN, dbName)
+		conn, closeConn, err := connectToDatabase(c.dbDSN, dbName, c.dbConnectionFactory, c.initialConnection)
 		if err != nil {
-			c.logger.Error("failed to create DSN for database", "datname", dbName, "err", err)
-			continue
-		}
-
-		conn, err := c.dbConnectionFactory(databaseDSN)
-		if err != nil {
-			c.logger.Error("failed to create connection to database", "datname", dbName, "err", err)
+			c.logger.Error("failed to connect to database", "datname", dbName, "err", err)
 			continue
 		}
 
 		if err := c.extractSchemas(ctx, dbName, conn); err != nil {
 			c.logger.Error("failed to collect schema from database", "datname", dbName, "err", err)
-			if conn != c.initialConnection {
-				conn.Close()
-			}
+			closeConn()
 			continue
 		}
 
-		if conn != c.initialConnection {
-			if err := conn.Close(); err != nil {
-				c.logger.Warn("failed to close database connection", "datname", dbName, "err", err)
-			}
-		}
+		closeConn()
 	}
 
-	// Drop throttle entries for databases that getAllDatabases no longer
-	// returns (dropped, CONNECT revoked, added to exclude list). Per-table
-	// cleanup within a still-present database is handled by extractSchemas.
+	// Drop throttle and table registry entries for databases that
+	// getAllDatabases no longer returns (dropped, CONNECT revoked, added to
+	// exclude list). Per-table cleanup within a still-present database is
+	// handled by extractSchemas.
 	seenDatabases := make(map[database]struct{}, len(databases))
 	for _, dbName := range databases {
 		seenDatabases[database(dbName)] = struct{}{}
@@ -641,6 +641,7 @@ func (c *SchemaDetails) extractNames(ctx context.Context) error {
 			delete(c.lastEmittedAt, db)
 		}
 	}
+	c.tableRegistry.PruneDatabases(seenDatabases)
 
 	return nil
 }

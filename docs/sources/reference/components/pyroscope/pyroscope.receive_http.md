@@ -5,6 +5,7 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-10-01
 title: pyroscope.receive_http
 ---
 
@@ -12,8 +13,13 @@ title: pyroscope.receive_http
 
 `pyroscope.receive_http` receives profiles over HTTP and forwards them to `pyroscope.*` components capable of receiving profiles.
 
-The HTTP API exposed is compatible with both the Pyroscope [HTTP ingest API](https://grafana.com/docs/pyroscope/latest/reference-server-api/) and the [pushv1.PusherService](https://github.com/grafana/pyroscope/blob/main/api/push/v1/push.proto) Connect API.
+The HTTP API exposed is compatible with both the Pyroscope [HTTP ingest API][ingest-api] and the [pushv1.PusherService][pusher-service] Connect API.
 This allows `pyroscope.receive_http` to act as a proxy for Pyroscope profiles, enabling flexible routing and distribution of profile data.
+
+You can specify multiple `pyroscope.receive_http` components by giving them different labels.
+
+[ingest-api]: https://grafana.com/docs/pyroscope/latest/reference-server-api/
+[pusher-service]: https://github.com/grafana/pyroscope/blob/main/api/push/v1/push.proto
 
 ## Usage
 
@@ -48,20 +54,19 @@ You can use the following blocks with `pyroscope.receive_http`:
 
 {{< docs/alloy-config >}}
 
-| Name                  | Description                                        | Required |
+| Block                 | Description                                        | Required |
 | --------------------- | -------------------------------------------------- | -------- |
 | [`http`][http]        | Configures the HTTP server that receives requests. | no       |
 | `http` > [`tls`][tls] | Configures TLS for the HTTP server.                | no       |
 
 [http]: #http
+[tls]: #tls
 
 {{< /docs/alloy-config >}}
 
 ### `http`
 
 {{< docs/shared lookup="reference/components/server-http.md" source="alloy" version="<ALLOY_VERSION>" >}}
-
-[tls]: #tls
 
 ### `tls`
 
@@ -75,12 +80,21 @@ The `tls` block configures TLS for the HTTP server.
 
 ## Component health
 
-`pyroscope.receive_http` is reported as unhealthy if it's given an invalid configuration.
+`pyroscope.receive_http` is only reported as unhealthy if given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
+
+## Debug information
+
+`pyroscope.receive_http` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`pyroscope_receive_http_tcp_connections` (gauge): Current number of accepted TCP connections.
-`pyroscope_receive_http_tcp_connections_limit` (gauge): The maximum number of TCP connections that the component can accept. A value of 0 means no limit.
+The following Prometheus metrics are exposed:
+
+| Name                                           | Type    | Description                                                                                         |
+| ---------------------------------------------- | ------- | --------------------------------------------------------------------------------------------------- |
+| `pyroscope_receive_http_tcp_connections`       | `gauge` | Current number of accepted TCP connections.                                                         |
+| `pyroscope_receive_http_tcp_connections_limit` | `gauge` | The maximum number of TCP connections that the component can accept. A value of `0` means no limit. |
 
 ## Troubleshoot
 

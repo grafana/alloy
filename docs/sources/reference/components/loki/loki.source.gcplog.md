@@ -90,7 +90,7 @@ The following blocks can be used to configure the `pull` block:
 | ----------------- | ----------------------------------------------------------------------------- | -------- |
 | [`limit`](#limit)  | Configures Pub/Sub flow-control limits for in-flight message processing.      | no       |
 
-To make use of the `pull` strategy, the GCP project must have been [configured](/docs/loki/next/clients/promtail/gcplog-cloud/) to forward its cloud resource logs onto a Pub/Sub topic for `loki.source.gcplog` to consume.
+To make use of the `pull` strategy, the GCP project must have been configured to forward its cloud resource logs onto a Pub/Sub topic for `loki.source.gcplog` to consume.
 
 Typically, the host system also needs to have its GCP [credentials](https://cloud.google.com/docs/authentication/application-default-credentials) configured.
 One way to do it, is to point the `GOOGLE_APPLICATION_CREDENTIALS` environment variable to the location of a credential configuration JSON file or a service account key.

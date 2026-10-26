@@ -51,15 +51,18 @@ func toVcenterReceiver(state *State, id componentstatus.InstanceID, cfg *vcenter
 		Endpoint: cfg.Endpoint,
 		Username: cfg.Username,
 		Password: alloytypes.Secret(cfg.Password),
+		ProxyURL: cfg.ProxyURL,
+
+		MaxQueryMetrics: cfg.MaxQueryMetrics,
 
 		DebugMetrics: common.DefaultValue[vcenter.Arguments]().DebugMetrics,
 
 		MetricsBuilderConfig: toMetricsBuildConfig(encodeMapstruct(cfg.MetricsBuilderConfig)),
 
 		ScraperControllerArguments: otelcol.ScraperControllerArguments{
-			CollectionInterval: cfg.CollectionInterval,
-			InitialDelay:       cfg.InitialDelay,
-			Timeout:            cfg.Timeout,
+			CollectionInterval: cfg.ControllerConfig.CollectionInterval,
+			InitialDelay:       cfg.ControllerConfig.InitialDelay,
+			Timeout:            cfg.ControllerConfig.Timeout,
 		},
 
 		TLS: toTLSClientArguments(cfg.ClientConfig),
@@ -113,7 +116,10 @@ func toVcenterMetricsConfig(cfg map[string]any) vcenter.MetricsConfig {
 		VcenterHostDiskLatencyAvg:           toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.host.disk.latency.avg"])),
 		VcenterHostDiskLatencyMax:           toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.host.disk.latency.max"])),
 		VcenterHostDiskThroughput:           toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.host.disk.throughput"])),
+		VcenterHostMemoryActive:             toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.host.memory.active"])),
+		VcenterHostMemoryBallooned:          toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.host.memory.ballooned"])),
 		VcenterHostMemoryCapacity:           toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.host.memory.capacity"])),
+		VcenterHostMemoryGranted:            toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.host.memory.granted"])),
 		VcenterHostMemoryUsage:              toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.host.memory.usage"])),
 		VcenterHostMemoryUtilization:        toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.host.memory.utilization"])),
 		VcenterHostNetworkPacketRate:        toVcenterMetricConfig(encodeMapstruct(cfg["vcenter.host.network.packet.rate"])),

@@ -10,6 +10,7 @@ import (
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promopv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus/common/model"
+	promconfig "github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -169,6 +170,11 @@ func (f *FakeInformer) AddEventHandlerWithResyncPeriod(handler toolscache.Resour
 	return f.AddEventHandler(handler)
 }
 
+// AddEventHandlerWithOptions implements cache.Informer.
+func (f *FakeInformer) AddEventHandlerWithOptions(handler toolscache.ResourceEventHandler, options toolscache.HandlerOptions) (toolscache.ResourceEventHandlerRegistration, error) {
+	return f.AddEventHandler(handler)
+}
+
 // RemoveEventHandler implements cache.Informer.
 func (f *FakeInformer) RemoveEventHandler(handle toolscache.ResourceEventHandlerRegistration) error {
 	return nil
@@ -184,9 +190,32 @@ func (f *FakeInformer) HasSynced() bool {
 	return f.Synced
 }
 
+// HasSyncedChecker implements cache.Informer.
+func (f *FakeInformer) HasSyncedChecker() toolscache.DoneChecker {
+	return fakeDoneChecker{synced: f.Synced}
+}
+
 // IsStopped implements cache.Informer.
 func (f *FakeInformer) IsStopped() bool {
 	return false
+}
+
+// fakeDoneChecker is a toolscache.DoneChecker that's immediately done when synced is true,
+// and never done otherwise, matching FakeInformer's static Synced flag.
+type fakeDoneChecker struct {
+	synced bool
+}
+
+func (c fakeDoneChecker) Name() string {
+	return "fakeDoneChecker"
+}
+
+func (c fakeDoneChecker) Done() <-chan struct{} {
+	ch := make(chan struct{})
+	if c.synced {
+		close(ch)
+	}
+	return ch
 }
 
 // Add triggers an Add event for the given object.
@@ -229,8 +258,9 @@ type TestCrdManagerFactory struct {
 }
 
 // New implements crdManagerFactory.
-func (f *TestCrdManagerFactory) New(opts component.Options, cluster cluster.Cluster, logger *slog.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore) crdManagerInterface {
+func (f *TestCrdManagerFactory) New(opts component.Options, cluster cluster.Cluster, logger *slog.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore, serviceMonitorSettings *ServiceMonitorSettings) crdManagerInterface {
 	m := newCrdManager(opts, cluster, logger, args, kind, ls)
+	m.serviceMonitorSettings = serviceMonitorSettings
 
 	// Create and inject the FakeK8sFactory
 	f.mu.Lock()
@@ -275,6 +305,19 @@ func (f *TestCrdManagerFactory) GetScrapeConfigJobNames() []string {
 		names = append(names, name)
 	}
 	return names
+}
+
+// GetScrapeConfigForJob returns the scrape config for a specific job name, or nil if not found.
+func (f *TestCrdManagerFactory) GetScrapeConfigForJob(jobName string) *promconfig.ScrapeConfig {
+	f.mu.RLock()
+	m := f.manager
+	f.mu.RUnlock()
+	if m == nil {
+		return nil
+	}
+	m.mut.Lock()
+	defer m.mut.Unlock()
+	return m.scrapeConfigs[jobName]
 }
 
 // InjectStaticTargets injects static targets for a job, replacing k8s service discovery.

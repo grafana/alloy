@@ -56,11 +56,11 @@ func toCumulativetodeltaProcessor(state *State, id componentstatus.InstanceID, c
 		InitialValue: cfg.InitialValue.String(),
 		Include: cumulativetodelta.MatchArgs{
 			Metrics:   cfg.Include.Metrics,
-			MatchType: string(cfg.Include.MatchType),
+			MatchType: string(cfg.Include.Config.MatchType),
 		},
 		Exclude: cumulativetodelta.MatchArgs{
 			Metrics:   cfg.Exclude.Metrics,
-			MatchType: string(cfg.Exclude.MatchType),
+			MatchType: string(cfg.Exclude.Config.MatchType),
 		},
 		Output: &otelcol.ConsumerArguments{
 			Metrics: ToTokenizedConsumers(nextMetrics),

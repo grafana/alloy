@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/google/go-github/v57/github"
 	"golang.org/x/oauth2"
@@ -45,9 +44,8 @@ type CreateBranchParams struct {
 
 // CreateTagParams holds parameters for CreateTag.
 type CreateTagParams struct {
-	Tag     string
-	SHA     string
-	Message string
+	Tag string
+	SHA string
 }
 
 // FindCherryPickedCommitParams holds parameters for FindCherryPickedCommit.
@@ -174,59 +172,27 @@ func (c *Client) GetRefSHA(ctx context.Context, ref string) (string, error) {
 
 // CreateBranch creates a new branch from the given SHA.
 func (c *Client) CreateBranch(ctx context.Context, p CreateBranchParams) error {
+	return c.createRef(ctx, "refs/heads/"+p.Branch, p.SHA)
+}
+
+// CreateTag creates a lightweight tag ref pointing at the given commit SHA,
+// matching release-please force-tag-creation.
+func (c *Client) CreateTag(ctx context.Context, p CreateTagParams) error {
+	return c.createRef(ctx, "refs/tags/"+p.Tag, p.SHA)
+}
+
+func (c *Client) createRef(ctx context.Context, refName, sha string) error {
 	ref := &github.Reference{
-		Ref: github.String("refs/heads/" + p.Branch),
+		Ref: github.String(refName),
 		Object: &github.GitObject{
-			SHA: github.String(p.SHA),
+			SHA: github.String(sha),
 		},
 	}
 
 	_, _, err := c.api.Git.CreateRef(ctx, c.owner, c.repo, ref)
 	if err != nil {
-		return fmt.Errorf("creating branch ref: %w", err)
+		return fmt.Errorf("creating ref %s: %w", refName, err)
 	}
-
-	return nil
-}
-
-// CreateTag creates an annotated tag ref for the given SHA.
-func (c *Client) CreateTag(ctx context.Context, p CreateTagParams) error {
-	identity, err := c.GetAppIdentity(ctx)
-	if err != nil {
-		return fmt.Errorf("getting app identity for tagger: %w", err)
-	}
-
-	tagObj := &github.Tag{
-		Tag:     github.String(p.Tag),
-		Message: github.String(p.Message),
-		Tagger: &github.CommitAuthor{
-			Name:  github.String(identity.Name),
-			Email: github.String(identity.Email),
-			Date:  &github.Timestamp{Time: time.Now().UTC()},
-		},
-		Object: &github.GitObject{
-			SHA:  github.String(p.SHA),
-			Type: github.String("commit"),
-		},
-	}
-
-	created, _, err := c.api.Git.CreateTag(ctx, c.owner, c.repo, tagObj)
-	if err != nil {
-		return fmt.Errorf("creating tag object: %w", err)
-	}
-
-	ref := &github.Reference{
-		Ref: github.String("refs/tags/" + p.Tag),
-		Object: &github.GitObject{
-			SHA: github.String(created.GetSHA()),
-		},
-	}
-
-	_, _, err = c.api.Git.CreateRef(ctx, c.owner, c.repo, ref)
-	if err != nil {
-		return fmt.Errorf("creating tag ref: %w", err)
-	}
-
 	return nil
 }
 

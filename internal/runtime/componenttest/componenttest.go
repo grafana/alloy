@@ -17,11 +17,12 @@ import (
 	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
+	"github.com/grafana/alloy/internal/service/lokipipelinev2"
 )
 
 // A Controller is a testing controller which controls a single component.
 type Controller struct {
-	PromRegistry prometheus.Registerer
+	PromRegistry *prometheus.Registry
 
 	reg component.Registration
 	log *slog.Logger
@@ -188,6 +189,8 @@ func (c *Controller) buildComponent(dataPath string, args component.Arguments, o
 				return labelstore.New(nil, prometheus.DefaultRegisterer), nil
 			case livedebugging.ServiceName:
 				return livedebugging.NewLiveDebugging(), nil
+			case lokipipelinev2.ServiceName:
+				return lokipipelinev2.New(lokipipelinev2.Options{}), nil
 			default:
 				return nil, fmt.Errorf("no service named %s defined", name)
 			}

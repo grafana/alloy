@@ -103,16 +103,17 @@ func toTLSServerArguments(cfg *configtls.ServerConfig) *otelcol.TLSServerArgumen
 
 func toTLSSetting(cfg configtls.Config) otelcol.TLSSetting {
 	return otelcol.TLSSetting{
-		CA:                       string(cfg.CAPem),
-		CAFile:                   cfg.CAFile,
-		Cert:                     string(cfg.CertPem),
-		CertFile:                 cfg.CertFile,
-		Key:                      alloytypes.Secret(cfg.KeyPem),
-		KeyFile:                  cfg.KeyFile,
-		MinVersion:               cfg.MinVersion,
-		MaxVersion:               cfg.MaxVersion,
-		ReloadInterval:           cfg.ReloadInterval,
-		IncludeSystemCACertsPool: cfg.IncludeSystemCACertsPool,
+		CA:                          string(cfg.CAPem),
+		CAFile:                      cfg.CAFile,
+		Cert:                        string(cfg.CertPem),
+		CertFile:                    cfg.CertFile,
+		Key:                         alloytypes.Secret(cfg.KeyPem),
+		KeyFile:                     cfg.KeyFile,
+		MinVersion:                  cfg.MinVersion,
+		MaxVersion:                  cfg.MaxVersion,
+		ReloadInterval:              cfg.ReloadInterval,
+		IncludeSystemCACertsPool:    cfg.IncludeSystemCACertsPool,
+		IncludeInsecureCipherSuites: cfg.IncludeInsecureCipherSuites,
 		//TODO(ptodev): Do we need to copy this slice?
 		CipherSuites: cfg.CipherSuites,
 	}
@@ -181,6 +182,15 @@ func toHTTPServerArguments(cfg *confighttp.ServerConfig) *otelcol.HTTPServerArgu
 		compressionAlgorithms = append([]string{}, otelcol.DefaultCompressionAlgorithms...)
 	}
 
+	// Upstream keeps the idle timeout in the keepalive section when the
+	// pkg.confighttp.PrioritizeNewKeepalive feature gate is enabled, and in the
+	// deprecated idle_timeout field otherwise.
+	//nolint:staticcheck
+	idleTimeout := cfg.IdleTimeout
+	if ka := cfg.Keepalive.Get(); ka != nil {
+		idleTimeout = ka.IdleTimeout
+	}
+
 	return &otelcol.HTTPServerArguments{
 		Endpoint: cfg.NetAddr.Endpoint,
 
@@ -193,7 +203,7 @@ func toHTTPServerArguments(cfg *confighttp.ServerConfig) *otelcol.HTTPServerArgu
 
 		CompressionAlgorithms: compressionAlgorithms,
 
-		IdleTimeout:       cfg.IdleTimeout,
+		IdleTimeout:       idleTimeout,
 		ReadTimeout:       cfg.ReadTimeout,
 		ReadHeaderTimeout: cfg.ReadHeaderTimeout,
 		WriteTimeout:      cfg.WriteTimeout,
@@ -208,6 +218,7 @@ func toCORSArguments(cfg *confighttp.CORSConfig) *otelcol.CORSArguments {
 	return &otelcol.CORSArguments{
 		AllowedOrigins: cfg.AllowedOrigins,
 		AllowedHeaders: cfg.AllowedHeaders,
+		ExposedHeaders: cfg.ExposedHeaders,
 
 		MaxAge: cfg.MaxAge,
 	}

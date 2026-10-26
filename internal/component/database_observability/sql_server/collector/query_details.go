@@ -1,0 +1,511 @@
+package collector
+
+import (
+	"context"
+	"database/sql"
+	"encoding/hex"
+	"fmt"
+	"log/slog"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/DataDog/go-sqllexer"
+	"go.uber.org/atomic"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
+	"github.com/grafana/alloy/internal/runtime/logging"
+)
+
+const (
+	QueryDetailsCollector = "query_details"
+)
+
+// QueryTracker reports which (database, query_hash) pairs are currently tracked
+// by the query_metrics collector.
+type QueryTracker interface {
+	GetQueryHashes(database string) []string
+}
+
+type QueryDetailsArguments struct {
+	DB                 *sql.DB
+	CollectInterval    time.Duration
+	QueryTimeout       time.Duration
+	Tracker            QueryTracker
+	ExcludeCurrentUser bool
+	EntryHandler       loki.EntryHandler
+	TableRegistry      *TableRegistry
+
+	Logger *slog.Logger
+}
+
+type QueryDetails struct {
+	dbConnection       *sql.DB
+	collectInterval    time.Duration
+	queryTimeout       time.Duration
+	excludeCurrentUser bool
+	entryHandler       loki.EntryHandler
+	tracker            QueryTracker
+	obfuscator         *sqllexer.Obfuscator
+	normalizer         *sqllexer.Normalizer
+	tableRegistry      *TableRegistry
+
+	// lastEmittedAt records the wall-clock time at which OP_QUERY_ASSOCIATION
+	// was last emitted for a (database, query_hash), used to throttle logging
+	// to at most one emission per EmitInterval per query.
+	lastEmittedAt map[queryMetricsKey]time.Time
+	// unvalidated tracks queries whose parsed tables were emitted before schema
+	// collection populated the database in tableRegistry, so they can be
+	// re-emitted once when the database schema becomes available.
+	unvalidated map[queryMetricsKey]struct{}
+
+	// now allows overriding time.Now() in tests.
+	now func() time.Time
+
+	logger  *slog.Logger
+	running *atomic.Bool
+	ctx     context.Context
+	cancel  context.CancelFunc
+	wg      sync.WaitGroup
+}
+
+func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
+	return &QueryDetails{
+		dbConnection:       args.DB,
+		collectInterval:    args.CollectInterval,
+		queryTimeout:       queryTimeoutOrDefault(args.QueryTimeout),
+		excludeCurrentUser: args.ExcludeCurrentUser,
+		entryHandler:       args.EntryHandler,
+		tracker:            args.Tracker,
+		obfuscator:         sqllexer.NewObfuscator(),
+		tableRegistry:      args.TableRegistry,
+		normalizer: sqllexer.NewNormalizer(
+			sqllexer.WithCollectTables(true),
+			sqllexer.WithKeepIdentifierQuotation(true),
+		),
+		lastEmittedAt: map[queryMetricsKey]time.Time{},
+		unvalidated:   map[queryMetricsKey]struct{}{},
+		now:           time.Now,
+		logger:        args.Logger.With("collector", QueryDetailsCollector),
+		running:       &atomic.Bool{},
+	}, nil
+}
+
+func (c *QueryDetails) Name() string {
+	return QueryDetailsCollector
+}
+
+func (c *QueryDetails) Start(ctx context.Context) error {
+	c.logger.Debug("collector started")
+
+	c.running.Store(true)
+	ctx, cancel := context.WithCancel(ctx)
+	c.ctx = ctx
+	c.cancel = cancel
+
+	c.wg.Go(func() {
+		defer c.running.Store(false)
+
+		ticker := time.NewTicker(c.collectInterval)
+		defer ticker.Stop()
+
+		for {
+			if err := c.collect(c.ctx); err != nil {
+				c.logger.Error("collector error", "err", err)
+			}
+
+			select {
+			case <-c.ctx.Done():
+				return
+			case <-ticker.C:
+				// continue loop
+			}
+		}
+	})
+
+	return nil
+}
+
+func (c *QueryDetails) Stopped() bool {
+	return !c.running.Load()
+}
+
+func (c *QueryDetails) Stop() {
+	if c.cancel != nil {
+		c.cancel()
+	}
+	c.wg.Wait()
+}
+
+func (c *QueryDetails) collect(ctx context.Context) error {
+	if c.tracker == nil {
+		c.logger.Error("no query tracker available, skipping collection")
+		return nil
+	}
+
+	database, ok := checkQueryStoreState(ctx, c.dbConnection, c.queryTimeout, c.logger)
+	if !ok {
+		return nil
+	}
+
+	hashes := c.tracker.GetQueryHashes(database)
+	if len(hashes) == 0 {
+		// query_metrics is enabled but nothing is tracked yet: emit nothing.
+		c.pruneThrottle(nil)
+		return nil
+	}
+
+	query, args, err := buildQueryTextStatement(hashes, c.excludeCurrentUser)
+	if err != nil {
+		return err
+	}
+
+	now := c.now()
+
+	// seen collects every (database, query_hash) returned this cycle, including
+	// throttled ones, so pruneThrottle only drops queries that truly left Query
+	// Store rather than those merely skipped by the throttle.
+	seen := map[queryMetricsKey]struct{}{}
+
+	err = withQueryTimeout(ctx, c.queryTimeout, func(queryCtx context.Context) error {
+		rs, err := c.dbConnection.QueryContext(queryCtx, query, args...)
+		if err != nil {
+			return fmt.Errorf("failed to fetch query text: %w", err)
+		}
+		defer rs.Close()
+
+		for rs.Next() {
+			var hash []byte
+			var queryText string
+			if err := rs.Scan(&hash, &queryText); err != nil {
+				c.logger.Error("failed to scan query text row", "err", err)
+				continue
+			}
+
+			queryHash, err := formatQueryHash(hash)
+			if err != nil {
+				c.logger.Error("failed to format query hash", "err", err)
+				continue
+			}
+
+			key := queryMetricsKey{database: database, queryHash: queryHash}
+			if _, ok := seen[key]; ok {
+				// A query_hash can map to multiple query_text_id rows; emit once.
+				continue
+			}
+			seen[key] = struct{}{}
+
+			if last, ok := c.lastEmittedAt[key]; ok && now.Sub(last) < database_observability.EmitInterval {
+				if _, pending := c.unvalidated[key]; !pending || !c.tableRegistry.HasDatabase(database) {
+					continue
+				}
+			}
+
+			pendingValidation := c.emit(database, queryHash, queryText)
+			c.lastEmittedAt[key] = now
+			if pendingValidation {
+				c.unvalidated[key] = struct{}{}
+			} else {
+				delete(c.unvalidated, key)
+			}
+		}
+
+		if err := rs.Err(); err != nil {
+			return fmt.Errorf("failed to iterate over query text result set: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	c.pruneThrottle(seen)
+	return nil
+}
+
+// emit strips comments and obfuscates literals while preserving the query's
+// structure, then emits the query_association and query_parsed_table_name logs.
+// It returns true when parsed tables were emitted without schema data for the
+// database, indicating the query should be re-emitted once schema collection
+// populates tableRegistry.
+func (c *QueryDetails) emit(database, queryHash, queryText string) bool {
+	commentFree, err := stripSQLServerComments(queryText)
+	if err != nil {
+		c.logger.Warn("failed to sanitize query text", "database", database, "query_hash", queryHash, "err", err)
+		return false
+	}
+	statementText := strings.TrimSpace(stripSQLServerParameterDeclarations(commentFree))
+
+	obfuscated := c.obfuscator.Obfuscate(statementText, sqllexer.WithDBMS(sqllexer.DBMSSQLServer))
+	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+		logging.LevelInfo,
+		database_observability.OP_QUERY_ASSOCIATION,
+		fmt.Sprintf(`database=%q query_hash=%q querytext=%q`, database, queryHash, obfuscated),
+	)
+
+	_, metadata, err := c.normalizer.Normalize(statementText, sqllexer.WithDBMS(sqllexer.DBMSSQLServer))
+	if err != nil {
+		c.logger.Warn("failed to extract tables from query text", "database", database, "query_hash", queryHash, "err", err)
+		return false
+	}
+	if len(metadata.Tables) == 0 {
+		return false
+	}
+
+	hasDatabase := c.tableRegistry != nil && c.tableRegistry.HasDatabase(database)
+	for _, table := range metadata.Tables {
+		validated := false
+		resolvedTable := table
+		if hasDatabase {
+			resolvedTable, validated = c.tableRegistry.IsValid(database, table)
+		}
+
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+			logging.LevelInfo,
+			database_observability.OP_QUERY_PARSED_TABLE_NAME,
+			fmt.Sprintf(`database=%q query_hash=%q table=%q validated="%t"`, database, queryHash, resolvedTable, validated),
+		)
+	}
+
+	return c.tableRegistry != nil && !hasDatabase
+}
+
+func stripSQLServerComments(queryText string) (string, error) {
+	var commentFree strings.Builder
+	commentFree.Grow(len(queryText))
+
+	for i := 0; i < len(queryText); {
+		switch {
+		case queryText[i] == '\'' || queryText[i] == '"' || queryText[i] == '[':
+			closing := queryText[i]
+			if closing == '[' {
+				closing = ']'
+			}
+			start := i
+			i = scanSQLServerQuoted(queryText, i, closing)
+			commentFree.WriteString(queryText[start:i])
+		case i+1 < len(queryText) && queryText[i:i+2] == "--":
+			commentFree.WriteByte(' ')
+			i += 2
+			for i < len(queryText) && queryText[i] != '\n' && queryText[i] != '\r' {
+				i++
+			}
+		case i+1 < len(queryText) && queryText[i:i+2] == "/*":
+			commentFree.WriteByte(' ')
+			i += 2
+			depth := 1
+			for i < len(queryText) && depth > 0 {
+				switch {
+				case i+1 < len(queryText) && queryText[i:i+2] == "/*":
+					depth++
+					i += 2
+				case i+1 < len(queryText) && queryText[i:i+2] == "*/":
+					depth--
+					i += 2
+				default:
+					i++
+				}
+			}
+			if depth > 0 {
+				return "", fmt.Errorf("unterminated block comment")
+			}
+		default:
+			commentFree.WriteByte(queryText[i])
+			i++
+		}
+	}
+
+	return commentFree.String(), nil
+}
+
+func stripSQLServerParameterDeclarations(queryText string) string {
+	start := 0
+	for start < len(queryText) && isSQLServerSpace(queryText[start]) {
+		start++
+	}
+	if start == len(queryText) || queryText[start] != '(' {
+		return queryText
+	}
+
+	depth := 1
+	end := start + 1
+	for end < len(queryText) && depth > 0 {
+		switch queryText[end] {
+		case '\'', '"':
+			end = scanSQLServerQuoted(queryText, end, queryText[end])
+		case '[':
+			end = scanSQLServerQuoted(queryText, end, ']')
+		case '(':
+			depth++
+			end++
+		case ')':
+			depth--
+			end++
+		default:
+			end++
+		}
+	}
+	if depth != 0 || !isSQLServerParameterDeclarationList(queryText[start+1:end-1]) {
+		return queryText
+	}
+
+	bodyStart := end
+	for bodyStart < len(queryText) && isSQLServerSpace(queryText[bodyStart]) {
+		bodyStart++
+	}
+	if bodyStart == len(queryText) {
+		return queryText
+	}
+	return queryText[end:]
+}
+
+func isSQLServerParameterDeclarationList(declarations string) bool {
+	index := 0
+	for {
+		for index < len(declarations) && isSQLServerSpace(declarations[index]) {
+			index++
+		}
+		if index == len(declarations) {
+			return false
+		}
+		if declarations[index] != '@' || index+1 == len(declarations) || declarations[index+1] == '@' {
+			return false
+		}
+		index++
+
+		parameterStart := index
+		for index < len(declarations) && isSQLServerParameterIdentifierPart(declarations[index]) {
+			index++
+		}
+		if index == parameterStart || index == len(declarations) || !isSQLServerSpace(declarations[index]) {
+			return false
+		}
+		for index < len(declarations) && isSQLServerSpace(declarations[index]) {
+			index++
+		}
+		if index == len(declarations) || !isSQLServerTypeStart(declarations[index]) {
+			return false
+		}
+
+		typeStart := index
+		depth := 0
+		for index < len(declarations) {
+			switch declarations[index] {
+			case '\'', '"':
+				index = scanSQLServerQuoted(declarations, index, declarations[index])
+			case '[':
+				index = scanSQLServerQuoted(declarations, index, ']')
+			case '(':
+				depth++
+				index++
+			case ')':
+				if depth == 0 {
+					return false
+				}
+				depth--
+				index++
+			case ',':
+				if depth == 0 {
+					if !validSQLServerParameterType(declarations[typeStart:index]) {
+						return false
+					}
+					index++
+					goto nextDeclaration
+				}
+				index++
+			case '=', '+', '-', '*', '/', '<', '>':
+				if depth == 0 {
+					return false
+				}
+				index++
+			default:
+				index++
+			}
+		}
+
+		return depth == 0 && validSQLServerParameterType(declarations[typeStart:index])
+
+	nextDeclaration:
+	}
+}
+
+func validSQLServerParameterType(parameterType string) bool {
+	parameterType = strings.TrimSpace(parameterType)
+	return parameterType != "" && isSQLServerTypeStart(parameterType[0])
+}
+
+func scanSQLServerQuoted(sqlText string, start int, closing byte) int {
+	index := start + 1
+	for index < len(sqlText) {
+		if sqlText[index] != closing {
+			index++
+			continue
+		}
+		index++
+		if index < len(sqlText) && sqlText[index] == closing {
+			index++
+			continue
+		}
+		break
+	}
+	return index
+}
+
+func isSQLServerSpace(char byte) bool {
+	switch char {
+	case ' ', '\t', '\n', '\r', '\f':
+		return true
+	default:
+		return false
+	}
+}
+
+func isSQLServerParameterIdentifierPart(char byte) bool {
+	return char >= 0x80 ||
+		char >= 'a' && char <= 'z' ||
+		char >= 'A' && char <= 'Z' ||
+		char >= '0' && char <= '9' ||
+		char == '_' ||
+		char == '#' ||
+		char == '$'
+}
+
+func isSQLServerTypeStart(char byte) bool {
+	return char == '[' ||
+		char >= 0x80 ||
+		char >= 'a' && char <= 'z' ||
+		char >= 'A' && char <= 'Z' ||
+		char == '_'
+}
+
+// pruneThrottle drops throttle entries whose (database, query_hash) was not
+// observed this cycle so the map stays bounded as queries leave Query Store.
+func (c *QueryDetails) pruneThrottle(seen map[queryMetricsKey]struct{}) {
+	for key := range c.lastEmittedAt {
+		if _, ok := seen[key]; !ok {
+			delete(c.lastEmittedAt, key)
+			delete(c.unvalidated, key)
+		}
+	}
+}
+
+// buildQueryTextStatement returns the query text statement plus its named
+// parameters, binding each 16-char hex hash back to its binary(8) form.
+func buildQueryTextStatement(hashes []string, excludeCurrentUser bool) (string, []any, error) {
+	placeholders := make([]string, 0, len(hashes))
+	args := make([]any, 0, len(hashes))
+	for i, h := range hashes {
+		raw, err := hex.DecodeString(h)
+		if err != nil {
+			return "", nil, fmt.Errorf("failed to decode tracked query hash %q: %w", h, err)
+		}
+		name := fmt.Sprintf("h%d", i)
+		placeholders = append(placeholders, "@"+name)
+		args = append(args, sql.Named(name, raw))
+	}
+
+	args = append(args, sql.Named("exclude_current_user", excludeCurrentUser), sql.Named("collector_marker", QueryMarker))
+
+	return fmt.Sprintf(selectQueryTextTemplate, strings.Join(placeholders, ", ")), args, nil
+}

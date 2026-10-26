@@ -14,6 +14,7 @@ type LogsConfig struct {
 	MaxEventsPerRequest int           `alloy:"max_events_per_request,attr,optional"`
 	Groups              GroupConfig   `alloy:"groups,block,optional"`
 	StartFrom           string        `alloy:"start_from,attr,optional"`
+	InitialLookback     time.Duration `alloy:"initial_lookback,attr,optional"`
 }
 
 func (args LogsConfig) Convert() awscloudwatchreceiver.LogsConfig {
@@ -22,6 +23,7 @@ func (args LogsConfig) Convert() awscloudwatchreceiver.LogsConfig {
 		MaxEventsPerRequest: args.MaxEventsPerRequest,
 		Groups:              args.Groups.Convert(),
 		StartFrom:           args.StartFrom,
+		InitialLookback:     args.InitialLookback,
 	}
 }
 

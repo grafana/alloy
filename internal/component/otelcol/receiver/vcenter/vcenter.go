@@ -73,7 +73,10 @@ type MetricsConfig struct {
 	VcenterHostDiskLatencyAvg           MetricConfig `alloy:"vcenter.host.disk.latency.avg,block,optional"`
 	VcenterHostDiskLatencyMax           MetricConfig `alloy:"vcenter.host.disk.latency.max,block,optional"`
 	VcenterHostDiskThroughput           MetricConfig `alloy:"vcenter.host.disk.throughput,block,optional"`
+	VcenterHostMemoryActive             MetricConfig `alloy:"vcenter.host.memory.active,block,optional"`
+	VcenterHostMemoryBallooned          MetricConfig `alloy:"vcenter.host.memory.ballooned,block,optional"`
 	VcenterHostMemoryCapacity           MetricConfig `alloy:"vcenter.host.memory.capacity,block,optional"`
+	VcenterHostMemoryGranted            MetricConfig `alloy:"vcenter.host.memory.granted,block,optional"`
 	VcenterHostMemoryUsage              MetricConfig `alloy:"vcenter.host.memory.usage,block,optional"`
 	VcenterHostMemoryUtilization        MetricConfig `alloy:"vcenter.host.memory.utilization,block,optional"`
 	VcenterHostNetworkPacketRate        MetricConfig `alloy:"vcenter.host.network.packet.rate,block,optional"`
@@ -148,7 +151,10 @@ func (args *MetricsConfig) SetToDefault() {
 		VcenterHostDiskLatencyAvg:           MetricConfig{Enabled: true},
 		VcenterHostDiskLatencyMax:           MetricConfig{Enabled: true},
 		VcenterHostDiskThroughput:           MetricConfig{Enabled: true},
+		VcenterHostMemoryActive:             MetricConfig{Enabled: false},
+		VcenterHostMemoryBallooned:          MetricConfig{Enabled: false},
 		VcenterHostMemoryCapacity:           MetricConfig{Enabled: false},
+		VcenterHostMemoryGranted:            MetricConfig{Enabled: false},
 		VcenterHostMemoryUsage:              MetricConfig{Enabled: true},
 		VcenterHostMemoryUtilization:        MetricConfig{Enabled: true},
 		VcenterHostNetworkPacketRate:        MetricConfig{Enabled: true},
@@ -228,7 +234,10 @@ func (args *MetricsConfig) Convert() map[string]any {
 		"vcenter.host.disk.latency.avg":            args.VcenterHostDiskLatencyAvg.Convert(),
 		"vcenter.host.disk.latency.max":            args.VcenterHostDiskLatencyMax.Convert(),
 		"vcenter.host.disk.throughput":             args.VcenterHostDiskThroughput.Convert(),
+		"vcenter.host.memory.active":               args.VcenterHostMemoryActive.Convert(),
+		"vcenter.host.memory.ballooned":            args.VcenterHostMemoryBallooned.Convert(),
 		"vcenter.host.memory.capacity":             args.VcenterHostMemoryCapacity.Convert(),
+		"vcenter.host.memory.granted":              args.VcenterHostMemoryGranted.Convert(),
 		"vcenter.host.memory.usage":                args.VcenterHostMemoryUsage.Convert(),
 		"vcenter.host.memory.utilization":          args.VcenterHostMemoryUtilization.Convert(),
 		"vcenter.host.network.packet.rate":         args.VcenterHostNetworkPacketRate.Convert(),
@@ -373,6 +382,10 @@ type Arguments struct {
 	Username string            `alloy:"username,attr"`
 	Password alloytypes.Secret `alloy:"password,attr"`
 
+	// ProxyURL is the URL of the proxy to use for the connection to the vCenter
+	// SDK endpoint. Optional.
+	ProxyURL string `alloy:"proxy_url,attr,optional"`
+
 	MetricsBuilderConfig MetricsBuilderConfig `alloy:",squash"`
 
 	ScraperControllerArguments otelcol.ScraperControllerArguments `alloy:",squash"`
@@ -404,21 +417,21 @@ func (args *Arguments) SetToDefault() {
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 	cfg := args.MetricsBuilderConfig.Convert()
 
-	var result vcenterreceiver.Config
-	err := mapstructure.Decode(cfg, &result)
+	result := vcenterreceiver.NewFactory().CreateDefaultConfig().(*vcenterreceiver.Config)
 
-	if err != nil {
+	if err := mapstructure.Decode(cfg, result); err != nil {
 		return nil, err
 	}
 
 	result.Endpoint = args.Endpoint
 	result.Username = args.Username
 	result.Password = configopaque.String(args.Password)
+	result.ProxyURL = args.ProxyURL
 	result.ClientConfig = *args.TLS.Convert()
 	result.ControllerConfig = *args.ScraperControllerArguments.Convert()
 	result.MaxQueryMetrics = args.MaxQueryMetrics
 
-	return &result, nil
+	return result, nil
 }
 
 // Validate checks to see if the supplied config will work for the receiver
@@ -430,6 +443,19 @@ func (args Arguments) Validate() error {
 
 	if res.Scheme != "http" && res.Scheme != "https" {
 		return fmt.Errorf("url scheme must be http or https")
+	}
+
+	if args.ProxyURL != "" {
+		proxyURL, err := url.Parse(args.ProxyURL)
+		switch {
+		case err != nil:
+			return fmt.Errorf("unable to parse proxy_url %s: %w", args.ProxyURL, err)
+		case proxyURL.Scheme != "http" && proxyURL.Scheme != "https" &&
+			proxyURL.Scheme != "socks5" && proxyURL.Scheme != "socks5h":
+			return fmt.Errorf("proxy_url scheme must be http, https, socks5 or socks5h")
+		case proxyURL.Host == "":
+			return fmt.Errorf("proxy_url must include a host")
+		}
 	}
 	return nil
 }

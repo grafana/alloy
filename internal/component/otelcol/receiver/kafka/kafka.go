@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
+	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka"
@@ -26,10 +27,8 @@ func init() {
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			a := args.(Arguments)
-			a.logDeprecations(opts.Logger)
 			fact := kafkareceiver.NewFactory()
-			return receiver.New(opts, fact, a)
+			return receiver.New(opts, fact, args.(Arguments))
 		},
 	})
 }
@@ -49,24 +48,26 @@ type Arguments struct {
 	Metrics KafkaReceiverTopicEncodingConfig `alloy:"metrics,block,optional"`
 	Traces  KafkaReceiverTopicEncodingConfig `alloy:"traces,block,optional"`
 
-	ResolveCanonicalBootstrapServersOnly bool `alloy:"resolve_canonical_bootstrap_servers_only,attr,optional"`
+	ResolveCanonicalBootstrapServersOnly bool `alloy:"resolve_canonical_bootstrap_servers_only,attr,optional"` // Deprecated: no-op upstream after the franz-go migration.
 
-	Authentication   otelcol.KafkaAuthenticationArguments `alloy:"authentication,block,optional"`
-	Metadata         otelcol.KafkaMetadataArguments       `alloy:"metadata,block,optional"`
-	AutoCommit       AutoCommitArguments                  `alloy:"autocommit,block,optional"`
-	MessageMarking   MessageMarkingArguments              `alloy:"message_marking,block,optional"`
-	HeaderExtraction HeaderExtraction                     `alloy:"header_extraction,block,optional"`
-	TLS              *otelcol.TLSClientArguments          `alloy:"tls,block,optional"`
+	Authentication      otelcol.KafkaAuthenticationArguments `alloy:"authentication,block,optional"`
+	Metadata            otelcol.KafkaMetadataArguments       `alloy:"metadata,block,optional"`
+	AutoCommit          AutoCommitArguments                  `alloy:"autocommit,block,optional"`
+	MessageMarking      MessageMarkingArguments              `alloy:"message_marking,block,optional"`
+	HeaderExtraction    HeaderExtraction                     `alloy:"header_extraction,block,optional"`
+	PartitionProcessing PartitionProcessingArguments         `alloy:"partition_processing,block,optional"`
+	TLS                 *otelcol.TLSClientArguments          `alloy:"tls,block,optional"`
 
-	MinFetchSize           int32         `alloy:"min_fetch_size,attr,optional"`
-	MaxFetchSize           int32         `alloy:"max_fetch_size,attr,optional"`
-	MaxPartitionFetchSize  int32         `alloy:"max_partition_fetch_size,attr,optional"`
-	MaxFetchWait           time.Duration `alloy:"max_fetch_wait,attr,optional"`
-	GroupRebalanceStrategy string        `alloy:"group_rebalance_strategy,attr,optional"`
-	GroupInstanceID        string        `alloy:"group_instance_id,attr,optional"`
-	RackID                 string        `alloy:"rack_id,attr,optional"`
-	UseLeaderEpoch         bool          `alloy:"use_leader_epoch,attr,optional"`
-	ConnIdleTimeout        time.Duration `alloy:"conn_idle_timeout,attr,optional"`
+	MinFetchSize             int32         `alloy:"min_fetch_size,attr,optional"`
+	MaxFetchSize             int32         `alloy:"max_fetch_size,attr,optional"`
+	MaxPartitionFetchSize    int32         `alloy:"max_partition_fetch_size,attr,optional"`
+	MaxFetchWait             time.Duration `alloy:"max_fetch_wait,attr,optional"`
+	GroupRebalanceStrategy   string        `alloy:"group_rebalance_strategy,attr,optional"`
+	GroupRebalanceStrategies []string      `alloy:"group_rebalance_strategies,attr,optional"`
+	GroupInstanceID          string        `alloy:"group_instance_id,attr,optional"`
+	RackID                   string        `alloy:"rack_id,attr,optional"`
+	UseLeaderEpoch           bool          `alloy:"use_leader_epoch,attr,optional"`
+	ConnIdleTimeout          time.Duration `alloy:"conn_idle_timeout,attr,optional"`
 
 	ErrorBackOff ErrorBackOffArguments `alloy:"error_backoff,block,optional"`
 
@@ -85,37 +86,36 @@ func (args *Arguments) SetToDefault() {
 		// We use the defaults from the upstream OpenTelemetry Collector component
 		// for compatibility, even though that means using a client and group ID of
 		// "otel-collector".
-		Brokers:                []string{"localhost:9092"},
-		ClientID:               "otel-collector",
-		GroupID:                "otel-collector",
-		InitialOffset:          "latest",
-		SessionTimeout:         10 * time.Second,
-		HeartbeatInterval:      3 * time.Second,
-		MinFetchSize:           1,
-		MaxFetchSize:           1048576,
-		MaxPartitionFetchSize:  1048576,
-		MaxFetchWait:           250 * time.Millisecond,
-		GroupRebalanceStrategy: "range",
-		RackID:                 "",
-		UseLeaderEpoch:         true,
-		ConnIdleTimeout:        9 * time.Minute,
+		Brokers:               []string{"localhost:9092"},
+		ClientID:              "otel-collector",
+		GroupID:               "otel-collector",
+		InitialOffset:         "latest",
+		SessionTimeout:        10 * time.Second,
+		HeartbeatInterval:     3 * time.Second,
+		MinFetchSize:          1,
+		MaxFetchSize:          1048576,
+		MaxPartitionFetchSize: 1048576,
+		MaxFetchWait:          250 * time.Millisecond,
+		RackID:                "",
+		UseLeaderEpoch:        true,
+		ConnIdleTimeout:       9 * time.Minute,
+		// Encoding is left unset so that it can be told apart from an explicit
+		// value. Convert falls back to the upstream default.
 		Logs: KafkaReceiverTopicEncodingConfig{
-			Topics:   []string{"otlp_logs"},
-			Encoding: "otlp_proto",
+			Topics: []string{"otlp_logs"},
 		},
 		Metrics: KafkaReceiverTopicEncodingConfig{
-			Topics:   []string{"otlp_metrics"},
-			Encoding: "otlp_proto",
+			Topics: []string{"otlp_metrics"},
 		},
 		Traces: KafkaReceiverTopicEncodingConfig{
-			Topics:   []string{"otlp_spans"},
-			Encoding: "otlp_proto",
+			Topics: []string{"otlp_spans"},
 		},
 	}
 	args.Metadata.SetToDefault()
 	args.AutoCommit.SetToDefault()
 	args.MessageMarking.SetToDefault()
 	args.HeaderExtraction.SetToDefault()
+	args.PartitionProcessing.SetToDefault()
 	args.DebugMetrics.SetToDefault()
 }
 
@@ -131,31 +131,82 @@ func (args *Arguments) Validate() error {
 		}
 	}
 
-	switch args.GroupRebalanceStrategy {
-	case "range", "roundrobin", "sticky", "cooperative-sticky":
-	default:
-		return fmt.Errorf("group_rebalance_strategy must be one of 'range', 'roundrobin', 'sticky', or 'cooperative-sticky'")
+	// Upstream rejects setting both forms, whatever their values.
+	if len(args.GroupRebalanceStrategies) > 0 && args.GroupRebalanceStrategy != "" {
+		return fmt.Errorf("group_rebalance_strategy and group_rebalance_strategies are mutually exclusive; group_rebalance_strategy is deprecated, prefer group_rebalance_strategies")
+	}
+
+	// Upstream rejects configuring both sasl and kerberos authentication. plaintext also
+	// converts to upstream's sasl field (see KafkaAuthenticationArguments.Convert), so it
+	// counts as sasl here too.
+	if (args.Authentication.SASL != nil || args.Authentication.Plaintext != nil) && args.Authentication.Kerberos != nil {
+		return fmt.Errorf("authentication.sasl (or authentication.plaintext) and authentication.kerberos are mutually exclusive")
+	}
+
+	for _, signal := range args.signals() {
+		if signal.cfg.Encoding != nil && signal.cfg.EncodingExtension != nil {
+			return fmt.Errorf("%s: encoding and encoding_extension are mutually exclusive", signal.name)
+		}
+	}
+
+	for _, strategy := range args.GroupRebalanceStrategies {
+		if err := validateGroupRebalanceStrategy(strategy); err != nil {
+			return err
+		}
+	}
+
+	// An empty singular means unset; Convert applies the default.
+	if args.GroupRebalanceStrategy != "" {
+		if err := validateGroupRebalanceStrategy(args.GroupRebalanceStrategy); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-type KafkaReceiverTopicEncodingConfig struct {
-	Topic         string   `alloy:"topic,attr,optional"`
-	Topics        []string `alloy:"topics,attr,optional"`
-	Encoding      string   `alloy:"encoding,attr,optional"`
-	ExcludeTopics []string `alloy:"exclude_topics,attr,optional"`
+const defaultGroupRebalanceStrategy = "range"
+
+func validateGroupRebalanceStrategy(strategy string) error {
+	switch strategy {
+	case "range", "roundrobin", "sticky", "cooperative-sticky":
+		return nil
+	default:
+		return fmt.Errorf("group_rebalance_strategy must be one of 'range', 'roundrobin', 'sticky', or 'cooperative-sticky'")
+	}
 }
 
-func (args Arguments) logDeprecations(logger *slog.Logger) {
-	for _, signal := range []struct {
-		name string
-		cfg  KafkaReceiverTopicEncodingConfig
-	}{
+type KafkaReceiverTopicEncodingConfig struct {
+	Topic  string   `alloy:"topic,attr,optional"`
+	Topics []string `alloy:"topics,attr,optional"`
+	// Encoding is a pointer to distinguish an unset value from an explicit one.
+	// When unset, the upstream default is used.
+	Encoding          *string                     `alloy:"encoding,attr,optional"`
+	EncodingExtension *extension.ExtensionHandler `alloy:"encoding_extension,attr,optional"`
+	ExcludeTopics     []string                    `alloy:"exclude_topics,attr,optional"`
+}
+
+type signalTopicEncodingConfig struct {
+	name string
+	cfg  KafkaReceiverTopicEncodingConfig
+}
+
+func (args Arguments) signals() []signalTopicEncodingConfig {
+	return []signalTopicEncodingConfig{
 		{"logs", args.Logs},
 		{"metrics", args.Metrics},
 		{"traces", args.Traces},
-	} {
+	}
+}
+
+var _ otelcol.DeprecationLogger = Arguments{}
+
+// LogDeprecations implements otelcol.DeprecationLogger.
+func (args Arguments) LogDeprecations(logger *slog.Logger) {
+	if logger == nil {
+		return
+	}
+	for _, signal := range args.signals() {
 		if signal.cfg.Topic != "" {
 			logger.Warn(
 				"the topic attribute is deprecated and will be removed in a future release, use topics instead",
@@ -163,17 +214,47 @@ func (args Arguments) logDeprecations(logger *slog.Logger) {
 				"topic", signal.cfg.Topic,
 			)
 		}
+		if signal.cfg.Encoding != nil && *signal.cfg.Encoding == "azure_resource_logs" {
+			logger.Warn(
+				"the azure_resource_logs encoding is deprecated, use encoding_extension with otelcol.encoding.azure instead",
+				"signal", signal.name,
+			)
+		}
 	}
+
+	if args.ResolveCanonicalBootstrapServersOnly {
+		logger.Warn("resolve_canonical_bootstrap_servers_only is deprecated and is a no-op upstream")
+	}
+	if args.GroupRebalanceStrategy != "" {
+		logger.Warn(
+			"group_rebalance_strategy is deprecated, use group_rebalance_strategies instead",
+			"group_rebalance_strategy", args.GroupRebalanceStrategy,
+		)
+	}
+	args.Authentication.LogDeprecations(logger)
 }
 
-func (c KafkaReceiverTopicEncodingConfig) convert() kafkareceiver.TopicEncodingConfig {
+// convert converts c into the upstream type. defaults supplies the upstream
+// encoding when neither encoding nor encoding_extension is set.
+func (c KafkaReceiverTopicEncodingConfig) convert(defaults kafkareceiver.TopicEncodingConfig) kafkareceiver.TopicEncodingConfig {
 	topics := c.Topics
 	if c.Topic != "" {
 		topics = []string{c.Topic}
 	}
+
+	// Upstream resolves the encoding as an extension ID first, then falls back
+	// to built-in encodings.
+	encoding := defaults.Encoding
+	switch {
+	case c.EncodingExtension != nil:
+		encoding = c.EncodingExtension.ID.String()
+	case c.Encoding != nil:
+		encoding = *c.Encoding
+	}
+
 	return kafkareceiver.TopicEncodingConfig{
 		Topics:        topics,
-		Encoding:      c.Encoding,
+		Encoding:      encoding,
 		ExcludeTopics: c.ExcludeTopics,
 	}
 }
@@ -208,44 +289,57 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	input := make(map[string]any)
 	input["auth"] = args.Authentication.Convert()
 
-	var result kafkareceiver.Config
+	result := *kafkareceiver.NewFactory().CreateDefaultConfig().(*kafkareceiver.Config)
 	err := mapstructure.Decode(input, &result)
 	if err != nil {
 		return nil, err
 	}
 
-	result.Brokers = args.Brokers
-	result.ProtocolVersion = args.ProtocolVersion
-	result.SessionTimeout = args.SessionTimeout
-	result.HeartbeatInterval = args.HeartbeatInterval
+	result.ClientConfig.Brokers = args.Brokers
+	result.ClientConfig.ProtocolVersion = args.ProtocolVersion
+	result.ConsumerConfig.SessionTimeout = args.SessionTimeout
+	result.ConsumerConfig.HeartbeatInterval = args.HeartbeatInterval
 	// Do not set the encoding argument - it is deprecated.
 	// result.Encoding = args.Encoding
-	result.GroupID = args.GroupID
-	result.ClientID = args.ClientID
-	result.InitialOffset = args.InitialOffset
-	result.ResolveCanonicalBootstrapServersOnly = args.ResolveCanonicalBootstrapServersOnly
-	result.Metadata = args.Metadata.Convert()
-	result.AutoCommit = args.AutoCommit.Convert()
+	result.ConsumerConfig.GroupID = args.GroupID
+	result.ClientConfig.ClientID = args.ClientID
+	result.ConsumerConfig.InitialOffset = args.InitialOffset
+	// Do not set ResolveCanonicalBootstrapServersOnly - it is deprecated and no longer exists upstream.
+	result.ClientConfig.Metadata = args.Metadata.Convert()
+	result.ConsumerConfig.AutoCommit = args.AutoCommit.Convert()
 	result.MessageMarking = args.MessageMarking.Convert()
 	result.HeaderExtraction = args.HeaderExtraction.Convert()
-	result.MinFetchSize = args.MinFetchSize
-	result.MaxFetchSize = args.MaxFetchSize
-	result.MaxPartitionFetchSize = args.MaxPartitionFetchSize
-	result.MaxFetchWait = args.MaxFetchWait
-	result.GroupRebalanceStrategy = configkafka.GroupRebalanceStrategy(args.GroupRebalanceStrategy)
-	result.GroupInstanceID = args.GroupInstanceID
-	result.RackID = args.RackID
-	result.UseLeaderEpoch = args.UseLeaderEpoch
-	result.ConnIdleTimeout = args.ConnIdleTimeout
+	result.PartitionProcessing = args.PartitionProcessing.Convert()
+	result.ConsumerConfig.MinFetchSize = args.MinFetchSize
+	result.ConsumerConfig.MaxFetchSize = args.MaxFetchSize
+	result.ConsumerConfig.MaxPartitionFetchSize = args.MaxPartitionFetchSize
+	result.ConsumerConfig.MaxFetchWait = args.MaxFetchWait
+	// Upstream removed the singular GroupRebalanceStrategy field.
+	switch {
+	case len(args.GroupRebalanceStrategies) > 0:
+		strategies := make([]configkafka.GroupRebalanceStrategy, 0, len(args.GroupRebalanceStrategies))
+		for _, strategy := range args.GroupRebalanceStrategies {
+			strategies = append(strategies, configkafka.GroupRebalanceStrategy(strategy))
+		}
+		result.ConsumerConfig.GroupRebalanceStrategies = strategies
+	case args.GroupRebalanceStrategy != "":
+		result.ConsumerConfig.GroupRebalanceStrategies = []configkafka.GroupRebalanceStrategy{configkafka.GroupRebalanceStrategy(args.GroupRebalanceStrategy)}
+	default:
+		result.ConsumerConfig.GroupRebalanceStrategies = []configkafka.GroupRebalanceStrategy{defaultGroupRebalanceStrategy}
+	}
+	result.ConsumerConfig.GroupInstanceID = args.GroupInstanceID
+	result.ClientConfig.RackID = args.RackID
+	result.ClientConfig.UseLeaderEpoch = args.UseLeaderEpoch
+	result.ClientConfig.ConnIdleTimeout = args.ConnIdleTimeout
 	result.ErrorBackOff = *args.ErrorBackOff.Convert()
 
-	result.Logs = args.Logs.convert()
-	result.Metrics = args.Metrics.convert()
-	result.Traces = args.Traces.convert()
+	result.Logs = args.Logs.convert(result.Logs)
+	result.Metrics = args.Metrics.convert(result.Metrics)
+	result.Traces = args.Traces.convert(result.Traces)
 
 	if args.TLS != nil {
 		tlsCfg := args.TLS.Convert()
-		result.TLS = tlsCfg
+		result.ClientConfig.TLS = tlsCfg
 	}
 
 	if err := result.Validate(); err != nil {
@@ -257,7 +351,18 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 // Extensions implements receiver.Arguments.
 func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
-	return nil
+	var out map[otelcomponent.ID]otelcomponent.Component
+	for _, signal := range args.signals() {
+		handler := signal.cfg.EncodingExtension
+		if handler == nil || handler.Extension == nil {
+			continue
+		}
+		if out == nil {
+			out = make(map[otelcomponent.ID]otelcomponent.Component)
+		}
+		out[handler.ID] = handler.Extension
+	}
+	return out
 }
 
 // Exporters implements receiver.Arguments.
@@ -310,6 +415,32 @@ func (args MessageMarkingArguments) Convert() kafkareceiver.MessageMarking {
 	return kafkareceiver.MessageMarking{
 		After:   args.AfterExecution,
 		OnError: args.IncludeUnsuccessful,
+	}
+}
+
+// PartitionProcessingArguments controls optional ordered, independent
+// processing of assigned Kafka partitions.
+type PartitionProcessingArguments struct {
+	// Independent enables ordered processing by independent partition workers.
+	Independent bool `alloy:"independent,attr,optional"`
+
+	// MaxBufferedBatches bounds the number of fetched batches waiting for each
+	// partition worker.
+	MaxBufferedBatches int `alloy:"max_buffered_batches,attr,optional"`
+}
+
+func (args *PartitionProcessingArguments) SetToDefault() {
+	*args = PartitionProcessingArguments{
+		Independent:        false,
+		MaxBufferedBatches: 1,
+	}
+}
+
+// Convert converts args into the upstream type.
+func (args PartitionProcessingArguments) Convert() kafkareceiver.PartitionProcessing {
+	return kafkareceiver.PartitionProcessing{
+		Independent:        args.Independent,
+		MaxBufferedBatches: args.MaxBufferedBatches,
 	}
 }
 

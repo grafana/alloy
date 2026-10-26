@@ -9,8 +9,6 @@ import (
 )
 
 type Batch struct {
-	// created is a unix timestamp in micro seconds.
-	created  int64
 	entryLen int
 	streams  []Stream
 }
@@ -20,74 +18,86 @@ func NewBatch() Batch {
 	return Batch{}
 }
 
-// NewBatchWithCreatedUnixMicro creates an empty Batch with created.
-func NewBatchWithCreatedUnixMicro(created int64) Batch {
-	return Batch{created: created}
-}
-
 // Add adds a stream to the batch.
 // Ownership of the stream data is transferred to the batch and it must not be
 // mutated or retained after calling Add.
 func (b *Batch) Add(stream Stream) {
-	if b.created == 0 {
-		b.created = time.Now().UnixMicro()
-	}
-	b.add(stream.Labels, stream.Entries...)
+	b.add(stream)
 	b.entryLen += len(stream.Entries)
 }
 
-func (b *Batch) add(labels model.LabelSet, entries ...push.Entry) {
-	i := slices.IndexFunc(b.streams, func(s Stream) bool {
-		return s.Labels.Equal(labels)
-	})
-
+func (b *Batch) add(stream Stream) {
+	i := b.streamIndex(stream.Labels)
 	if i >= 0 {
-		b.streams[i].Entries = append(b.streams[i].Entries, entries...)
+		s := &b.streams[i]
+		s.Entries = append(s.Entries, stream.Entries...)
+		s.updateCreated(stream.created)
+		return
+	}
+	b.streams = append(b.streams, stream)
+}
+
+// AddEntry adds a single entry to the stream matching labels, creating it if it
+// does not exist yet. created is used to update the stream's oldest created
+// timestamp.
+func (b *Batch) AddEntry(labels model.LabelSet, created int64, entry push.Entry) {
+	b.addEntry(labels, created, entry)
+	b.entryLen += 1
+}
+
+func (b *Batch) addEntry(labels model.LabelSet, created int64, entry push.Entry) {
+	i := b.streamIndex(labels)
+	if i >= 0 {
+		s := &b.streams[i]
+		s.Entries = append(s.Entries, entry)
+		s.updateCreated(created)
 		return
 	}
 
-	b.streams = append(b.streams, NewStream(labels, entries...))
+	stream := NewStreamWithCreatedUnixMicro(labels, created, entry)
+	b.streams = append(b.streams, stream)
 }
 
-// FilterMap calls fn for each entry in the batch. If fn returns true the
-// entry is kept, if fn returns false the entry is dropped. Kept entries are
-// written back, and entries whose labels change are moved to a different stream.
-func (b *Batch) FilterMap(fn func(entry *Entry) (keep bool)) {
-	type movedEntry struct {
-		labels model.LabelSet
-		entry  push.Entry
-	}
+func (b *Batch) streamIndex(labels model.LabelSet) int {
+	// FIXME(kalleep): With https://github.com/grafana/alloy/issues/6835 the equality checks will be
+	// much more efficient. If this still shows up in profiles as expensive after
+	// that change we should consider alternative representations for streams.
+	return slices.IndexFunc(b.streams, func(s Stream) bool {
+		return s.Labels.Equal(labels)
+	})
+}
 
+// FilterMap calls fn for each entry in the batch. fn returns the entry to keep
+// and whether to keep it. If keep is false the entry is dropped. Kept entries
+// are written back, and entries whose labels change are moved to a different stream.
+func (b *Batch) FilterMap(fn func(entry Entry) (Entry, bool)) {
 	var (
 		newLen int
-		moves  []movedEntry
+		moves  []Entry
 	)
 
 	// Process each entry and compact each stream in place.
-	// The callback mutates a temporary Entry view. Kept entries are written back,
-	// dropped entries are skipped, and moved entries are deferred
-	// so we do not mutate the stream set while iterating it.
+	// Kept entries are written back, dropped entries are skipped, and moved
+	// entries are deferred so we do not mutate the stream set while iterating it.
 	for i := range b.streams {
 		var (
+			// dst is where the next kept entry is written. It only moves forward
+			// when an entry is kept, so it never gets ahead of the entry being read
+			// and we only write to slots the loop has already read.
 			dst    = 0
 			stream = &b.streams[i]
 		)
 
 		for _, e := range stream.Entries {
-			// FIXME(kalleep): This clone protects stream.Labels from in-place mutation
-			// through Entry.Labels, which is a map. Most FilterMap callbacks do not change
-			// labels, so once the new batched pipeline owns this path, consider replacing
-			// direct label access with copy-on-write label mutation methods.
-			entry := NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), b.created, e)
-			if !fn(&entry) {
+			// FIXME(kalleep): When we implement https://github.com/grafana/alloy/issues/6835
+			// we no longer need to clone stream labels here.
+			entry, keep := fn(NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), stream.created, e))
+			if !keep {
 				continue
 			}
 
 			if !stream.Labels.Equal(entry.Labels) {
-				moves = append(moves, movedEntry{
-					labels: entry.Labels,
-					entry:  entry.Entry,
-				})
+				moves = append(moves, entry)
 				newLen++
 
 				continue
@@ -98,12 +108,14 @@ func (b *Batch) FilterMap(fn func(entry *Entry) (keep bool)) {
 			newLen++
 		}
 
+		// Entries from dst onwards were either dropped or saved in moves, so it is
+		// safe to cut them here and let add reuse that spare capacity.
 		stream.Entries = stream.Entries[:dst]
 	}
 
 	// Reinsert entries whose labels changed into their destination streams.
 	for _, moved := range moves {
-		b.add(moved.labels, moved.entry)
+		b.addEntry(moved.Labels, moved.Created(), moved.Entry)
 	}
 	b.entryLen = newLen
 
@@ -119,6 +131,58 @@ func (b *Batch) FilterMap(fn func(entry *Entry) (keep bool)) {
 	b.streams = b.streams[:streamDst]
 }
 
+// FilterMapStreams calls fn once for each stream in the batch. fn returns the
+// stream to keep and whether to keep it. If keep is false the stream and all of
+// its entries are dropped.
+func (b *Batch) FilterMapStreams(fn func(stream Stream) (Stream, bool)) {
+	var (
+		newLen int
+		// dst is where the next kept stream is written. It only moves forward when
+		// a stream is kept, so it never gets ahead of i and we only write to slots
+		// the loop has already read.
+		dst   int
+		moves []Stream
+	)
+
+	// Process each stream and compact the stream slice in place. Dropped streams
+	// are skipped, and streams whose labels changed are deferred into moves so we
+	// do not mutate the stream set while iterating it. They are reinserted below
+	// and may merge into an existing stream.
+	for i := range b.streams {
+		stream, keep := fn(Stream{
+			// FIXME(kalleep): When we implement https://github.com/grafana/alloy/issues/6835
+			// we no longer need to clone stream labels here.
+			Labels:  b.streams[i].Labels.Clone(),
+			Entries: b.streams[i].Entries,
+			created: b.streams[i].created,
+		})
+		if !keep {
+			continue
+		}
+
+		newLen += len(stream.Entries)
+
+		if !b.streams[i].Labels.Equal(stream.Labels) {
+			moves = append(moves, stream)
+			continue
+		}
+
+		b.streams[dst] = stream
+		dst++
+	}
+
+	// Streams from dst onwards were either dropped or saved in moves, so it is
+	// safe to cut them here and let add reuse those slots.
+	b.streams = b.streams[:dst]
+
+	// Reinsert streams whose labels changed into their destination streams.
+	for _, moved := range moves {
+		b.add(moved)
+	}
+
+	b.entryLen = newLen
+}
+
 // StreamLen returns the number of streams in the batch.
 func (b *Batch) StreamLen() int {
 	return len(b.streams)
@@ -129,42 +193,29 @@ func (b *Batch) EntryLen() int {
 	return b.entryLen
 }
 
-func (b *Batch) Created() int64 {
-	return b.created
-}
-
 // Clone returns a clone of the batch.
 func (b *Batch) Clone() Batch {
 	clone := Batch{
-		created:  b.created,
 		streams:  make([]Stream, 0, len(b.streams)),
 		entryLen: b.entryLen,
 	}
 
 	for _, stream := range b.streams {
-		clonedStream := stream.Clone()
+		clonedStream := stream.clone()
 		clone.streams = append(clone.streams, clonedStream)
 	}
 
 	return clone
 }
 
-// ConsumeStreams calls fn for each stream in the batch and then resets the batch.
-// The callback receives ownership of the stream.
-// If callback returns errors interation will stop
-func (b *Batch) ConsumeStreams(fn func(stream Stream, created int64) error) error {
-	defer b.Reset()
-	for _, s := range b.streams {
-		if err := fn(s, b.created); err != nil {
-			return err
-		}
-	}
-	return nil
+// Streams returns all streams in the batch.
+// The streams are still owned by the batch and must not be mutated.
+func (b *Batch) Streams() []Stream {
+	return b.streams
 }
 
 // Reset clears the batch so it can be reused.
 func (b *Batch) Reset() {
-	b.created = 0
 	b.entryLen = 0
 	b.streams = b.streams[:0]
 }
@@ -174,6 +225,15 @@ func NewStream(labels model.LabelSet, entries ...push.Entry) Stream {
 	return Stream{
 		Labels:  labels,
 		Entries: entries,
+		created: time.Now().UnixMicro(),
+	}
+}
+
+func NewStreamWithCreatedUnixMicro(labels model.LabelSet, created int64, entries ...push.Entry) Stream {
+	return Stream{
+		Labels:  labels,
+		Entries: entries,
+		created: created,
 	}
 }
 
@@ -181,12 +241,30 @@ func NewStream(labels model.LabelSet, entries ...push.Entry) Stream {
 type Stream struct {
 	Labels  model.LabelSet
 	Entries []push.Entry
+
+	// created is a unix timestamp in micro seconds.
+	// This is used to track how long it takes for a stream
+	// from it's source to being sent over the wire.
+	created int64
 }
 
-// Clone returns a clone of the stream.
-func (s Stream) Clone() Stream {
+func (s Stream) Created() int64 {
+	return s.created
+}
+
+// updateCreated keeps the oldest non-zero created timestamp.
+func (s *Stream) updateCreated(created int64) {
+	if created != 0 && (s.created == 0 || created < s.created) {
+		s.created = created
+	}
+}
+
+// clone returns a clone of the stream that shares its labels. This is safe
+// because a Batch only changes labels by replacing them.
+func (s Stream) clone() Stream {
 	cloned := Stream{
-		Labels:  s.Labels.Clone(),
+		Labels:  s.Labels,
+		created: s.created,
 		Entries: make([]push.Entry, 0, len(s.Entries)),
 	}
 	for _, entry := range s.Entries {

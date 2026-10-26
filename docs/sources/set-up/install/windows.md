@@ -79,6 +79,13 @@ To do a silent install of {{< param "PRODUCT_NAME" >}} on Windows, perform the f
 - `/STABILITY="generally-available|public-preview|experimental"` Set the stability level of {{< param "PRODUCT_NAME" >}}. Default: `generally-available`
 - `/USERNAME="<username>"` Set the fully qualified user that Windows uses to run the service. Default: `NT AUTHORITY\LocalSystem`
 - `/PASSWORD="<password>"` Set the password of the user that Windows uses to run the service. This isn't required for standard Windows Service Accounts like LocalSystem. Default: ``
+- `/D=<path>` Set the installation directory. It must be the last argument on the command line and must not be quoted. Default: `%PROGRAMFILES%\GrafanaLabs\Alloy`
+
+Example:
+
+```cmd
+<PATH>\alloy-installer-windows-amd64.exe /S /CONFIG=C:\alloy\config.alloy /D=C:\GrafanaLabs\Alloy
+```
 
 {{< admonition type="note" >}}
 The `--windows.priority` flag is in [public preview][stability] and isn't covered by {{< param "FULL_PRODUCT_NAME" >}} [backward compatibility][] guarantees.
@@ -95,6 +102,8 @@ The `/RUNTIMEPRIORITY` installation option sets this flag, and if {{< param "PRO
 
 - `Arguments`: Type `REG_MULTI_SZ`. Each value represents a binary argument for the {{< param "PRODUCT_NAME" >}} binary.
 - `Environment`: Type `REG_MULTI_SZ`. Each value represents an environment value `KEY=VALUE` for the {{< param "PRODUCT_NAME" >}} binary.
+- `ALLOY_OTEL_MODE`: Type `REG_SZ`. Set this value to `1` or `true` (case-insensitive) to run the {{< param "OTEL_ENGINE" >}} instead of the {{< param "DEFAULT_ENGINE" >}}. Refer to [Run the {{< param "OTEL_ENGINE" >}} with service installations][OTelEngine] for more information.
+- `OTelArguments`: Type `REG_MULTI_SZ`. Each value represents an additional binary argument for the {{< param "PRODUCT_NAME" >}} binary when it runs the {{< param "OTEL_ENGINE" >}}. {{< param "PRODUCT_NAME" >}} ignores this value when it runs the {{< param "DEFAULT_ENGINE" >}}.
 
 ## Uninstall
 
@@ -156,5 +165,6 @@ To silently uninstall {{< param "PRODUCT_NAME" >}}, run the following command as
 
 [releases]: https://github.com/grafana/alloy/releases/latest
 [data collection]: ../../../data-collection/
+[OTelEngine]: ../../otel_engine/service-installations/
 [Run]: ../../run/windows/
 [Configure]: ../../../configure/windows/

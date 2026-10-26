@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alecthomas/units"
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promopv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	commonConfig "github.com/prometheus/common/config"
@@ -215,6 +216,65 @@ func TestGenerateStaticScrapeConfigConfig(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "body size limit and compression",
+			m: &promopv1alpha1.ScrapeConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "operator",
+					Name:      "scrapeconfig",
+				},
+				Spec: promopv1alpha1.ScrapeConfigSpec{
+					EnableCompression: ptr.To(false),
+					BodySizeLimit:     ptr.To(promopv1.ByteSize("15MiB")),
+				},
+			},
+			ep: promopv1alpha1.StaticConfig{
+				Targets: []promopv1alpha1.Target{"foo", "bar"},
+			},
+			expectedRelabels: util.Untab(`
+				- target_label: __meta_foo
+				  replacement: bar
+				- source_labels: [job]
+				  target_label: __tmp_prometheus_job_name
+				- replacement: operator
+				  target_label: __meta_kubernetes_scrapeconfig_namespace
+				- replacement: scrapeconfig
+				  target_label: __meta_kubernetes_scrapeconfig_name
+				- source_labels: [__address__]
+				  target_label: instance
+			`),
+			expected: &config.ScrapeConfig{
+				JobName:                        "scrapeConfig/operator/scrapeconfig/static/1",
+				HonorTimestamps:                true,
+				ScrapeInterval:                 model.Duration(time.Hour),
+				ScrapeTimeout:                  model.Duration(42 * time.Second),
+				ScrapeProtocols:                config.DefaultScrapeProtocols,
+				ScrapeFallbackProtocol:         config.PrometheusText0_0_4,
+				ExtraScrapeMetrics:             falsePtr,
+				ScrapeNativeHistograms:         falsePtr,
+				AlwaysScrapeClassicHistograms:  falsePtr,
+				ConvertClassicHistogramsToNHCB: falsePtr,
+				EnableCompression:              false,
+				BodySizeLimit:                  15 * units.MiB,
+				MetricsPath:                    "/metrics",
+				Scheme:                         "http",
+				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
+				HTTPClientConfig: commonConfig.HTTPClientConfig{
+					FollowRedirects: true,
+					EnableHTTP2:     true,
+				},
+				ServiceDiscoveryConfigs: discovery.Configs{
+					discovery.StaticConfig{
+						&targetgroup.Group{
+							Targets: []model.LabelSet{{model.AddressLabel: model.LabelValue("foo")}, {model.AddressLabel: model.LabelValue("bar")}},
+							Labels:  model.LabelSet{},
+							Source:  "scrapeConfig/operator/scrapeconfig/static/1",
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range suite {
 		t.Run(tc.name, func(t *testing.T) {
@@ -336,4 +396,28 @@ func TestGenerateHTTPScrapeConfigConfig(t *testing.T) {
 			assert.Equal(t, model.Duration(15*time.Second), httpSD.RefreshInterval)
 		})
 	}
+}
+
+func TestGenerateScrapeConfigConfigScrapeClass(t *testing.T) {
+	cg := scrapeClassTestGenerator()
+	m := &promopv1alpha1.ScrapeConfig{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sc"},
+		Spec: promopv1alpha1.ScrapeConfigSpec{
+			StaticConfigs:        []promopv1alpha1.StaticConfig{{Targets: []promopv1alpha1.Target{"1.2.3.4:9090"}}},
+			RelabelConfigs:       []promopv1.RelabelConfig{{TargetLabel: "from_endpoint", Replacement: ptr.To("yes")}},
+			MetricRelabelConfigs: []promopv1.RelabelConfig{{TargetLabel: "metric_from_endpoint", Replacement: ptr.To("yes")}},
+		},
+	}
+
+	cfgs, errs := cg.GenerateScrapeConfigConfigs(m)
+	require.Empty(t, errs)
+	require.Len(t, cfgs, 1)
+	cfg := cfgs[0]
+
+	assert.True(t, cfg.HTTPClientConfig.TLSConfig.InsecureSkipVerify)
+	require.NotNil(t, cfg.HTTPClientConfig.Authorization)
+	assert.Equal(t, "class-token", string(cfg.HTTPClientConfig.Authorization.Credentials))
+
+	requireRuleOrder(t, cfg.RelabelConfigs, "from_class", "from_endpoint")
+	requireRuleOrder(t, cfg.MetricRelabelConfigs, "metric_from_class", "metric_from_endpoint")
 }

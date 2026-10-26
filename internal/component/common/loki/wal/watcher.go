@@ -1,6 +1,7 @@
 package wal
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -53,18 +54,17 @@ type WriteTo interface {
 	// found in.
 	StoreSeries(series []record.RefSeries, segmentNum int)
 
-	AppendEntries(entries RefEntries, segmentNum int) error
+	// AppendEntries is called with the entries read from a segment. ctx is tied to the lifetime of the Watcher and is
+	// canceled when it stops, so an implementation that blocks must honour it or it will hold up shutdown.
+	AppendEntries(ctx context.Context, entries RefEntries, segmentNum int) error
 }
 
-// Marker allows the Watcher to start from a specific segment in the WAL.
-// Implementers can use this interface to save and restore save points.
-type Marker interface {
-	// LastMarkedSegment should return the last segment stored in the marker.
-	// Must return -1 if there is no mark.
-	//
-	// The Watcher will start reading the first segment whose value is greater
-	// than the return value.
-	LastMarkedSegment() int
+// Savepoint allows the Watcher to start from a specific segment in the WAL.
+type Savepoint interface {
+	// LastStoredSegment returns the last segment stored for the consumer, or
+	// -1 if there is none. The Watcher starts reading the first segment whose
+	// number is greater than the returned value.
+	LastStoredSegment() int
 }
 
 type Watcher struct {
@@ -84,12 +84,12 @@ type Watcher struct {
 	minReadFreq  time.Duration
 	maxReadFreq  time.Duration
 	drainTimeout time.Duration
-	marker       Marker
+	savepoint    Savepoint
 	savedSegment int
 }
 
 // NewWatcher creates a new Watcher.
-func NewWatcher(walDir, id string, metrics *WatcherMetrics, writeTo WriteTo, logger *slog.Logger, config WatchConfig, marker Marker) *Watcher {
+func NewWatcher(walDir, id string, metrics *WatcherMetrics, writeTo WriteTo, logger *slog.Logger, config WatchConfig, savepoint Savepoint) *Watcher {
 	return &Watcher{
 		walDir:       walDir,
 		id:           id,
@@ -98,7 +98,7 @@ func NewWatcher(walDir, id string, metrics *WatcherMetrics, writeTo WriteTo, log
 		state:        internal.NewWatcherState(logger),
 		done:         make(chan struct{}),
 		MaxSegment:   -1,
-		marker:       marker,
+		savepoint:    savepoint,
 		savedSegment: -1,
 		logger:       logger,
 		metrics:      metrics,
@@ -119,8 +119,8 @@ func (w *Watcher) Start() {
 func (w *Watcher) mainLoop() {
 	defer close(w.done)
 	for !w.state.IsStopping() {
-		if w.marker != nil {
-			w.savedSegment = w.marker.LastMarkedSegment()
+		if w.savepoint != nil {
+			w.savedSegment = w.savepoint.LastStoredSegment()
 			w.logger.Debug("last saved segment", "segment", w.savedSegment)
 		}
 
@@ -132,12 +132,12 @@ func (w *Watcher) mainLoop() {
 		if w.state.IsDraining() && errors.Is(err, os.ErrNotExist) {
 			w.logger.Info("reached non existing segment while draining, assuming end of WAL")
 			// since we've reached the end of the WAL, and the Watcher is draining, promptly transition to stopping state
-			// so the watcher can stoppingSignal early
+			// so the watcher can stop early
 			w.state.Transition(internal.StateStopping)
 		}
 
 		select {
-		case <-w.state.WaitForStopping():
+		case <-w.state.StoppingContext().Done():
 			return
 		case <-time.After(5 * time.Second):
 		}
@@ -153,11 +153,11 @@ func (w *Watcher) run() error {
 
 	currentSegment := lastSegment
 
-	// if the marker contains a valid segment number stored, and we correctly find the segment that follows that one,
+	// if the savepoint contains a valid segment number stored, and we correctly find the segment that follows that one,
 	// start tailing from there.
 	if nextToMarkedSegment, err := w.findNextSegmentFor(w.savedSegment); w.savedSegment != -1 && err == nil {
 		currentSegment = nextToMarkedSegment
-		// keep a separate metric that will help us track when the segment in the marker is used. This should be considered
+		// keep a separate metric that will help us track when the segment in the savepoint is used. This should be considered
 		// a replay event
 		w.metrics.replaySegment.WithLabelValues(w.id).Set(float64(currentSegment))
 	} else {
@@ -199,7 +199,8 @@ func (w *Watcher) watch(segmentNum int, tail bool) error {
 	}
 	defer segment.Close()
 
-	reader := wlog.NewLiveReader(w.logger, nil, segment)
+	// Metrics must be non-nil (built with a nil registerer), the LiveReader panics otherwise.
+	reader := wlog.NewLiveReader(w.logger, wlog.NewLiveReaderMetrics(nil), segment)
 
 	readTimer := newBackoffTimer(w.minReadFreq, w.maxReadFreq)
 
@@ -221,7 +222,7 @@ func (w *Watcher) watch(segmentNum int, tail bool) error {
 
 	for {
 		select {
-		case <-w.state.WaitForStopping():
+		case <-w.state.StoppingContext().Done():
 			return nil
 
 		case <-segmentTicker.C:
@@ -243,7 +244,13 @@ func (w *Watcher) watch(segmentNum int, tail bool) error {
 
 			// We know that there's either a new segment (last > segmentNum), or we are draining the WAL. Either case, read
 			// the remaining data from the segmentNum and return from `watch` to read the next one.
+
 			_, err = w.readSegment(reader, segmentNum)
+
+			// context.Canceled means the Watcher is stopping.
+			if errors.Is(err, context.Canceled) {
+				return nil
+			}
 
 			// io.EOF error are non-fatal since we are consuming the segment till the end
 			if !errors.Is(err, io.EOF) {
@@ -263,6 +270,12 @@ func (w *Watcher) watch(segmentNum int, tail bool) error {
 
 		// read from open segment routine
 		ok, err := w.readSegment(reader, segmentNum)
+
+		// context.Canceled means the Watcher is stopping.
+		if errors.Is(err, context.Canceled) {
+			return nil
+		}
+
 		// Ignore all errors reading to end of segment whilst replaying the WAL. This is because when replaying not the
 		// last segment, we assume that segment is not written anymore (closed), and the call to readSegment will read
 		// to the end of it. If error, log a warning accordingly. After, error or no error, nil is returned so that the
@@ -314,7 +327,7 @@ func (w *Watcher) readSegment(r *wlog.LiveReader, segmentNum int) (bool, error) 
 }
 
 // decodeAndDispatch first decodes a WAL record. Upon reading either Series or Entries from the WAL record, call the
-// appropriate callbacks in the writeTo.
+// appropriate function in the writeTo.
 func (w *Watcher) decodeAndDispatch(b []byte, segmentNum int) (bool, error) {
 	var readData bool
 
@@ -332,7 +345,15 @@ func (w *Watcher) decodeAndDispatch(b []byte, segmentNum int) (bool, error) {
 	readData = true
 
 	for _, entries := range rec.RefEntries {
-		if err := w.actions.AppendEntries(entries, segmentNum); err != nil && firstErr == nil {
+		err := w.actions.AppendEntries(w.state.StoppingContext(), entries, segmentNum)
+
+		// The WriteTo gave up because the Watcher is stopping, so there is no point handing it
+		// the rest of the record. The caller turns this into a quiet exit.
+		if errors.Is(err, context.Canceled) {
+			return readData, err
+		}
+
+		if err != nil && firstErr == nil {
 			firstErr = err
 		}
 	}
@@ -350,12 +371,14 @@ func (w *Watcher) Drain() {
 	select {
 	case <-time.NewTimer(w.drainTimeout).C:
 		w.logger.Warn("watcher drain timeout occurred, transitioning to Stopping")
-	case <-w.state.WaitForStopping():
+	case <-w.state.StoppingContext().Done():
 	}
 }
 
 // Stop stops the Watcher, shutting down the main routine.
 func (w *Watcher) Stop() {
+	// Transitioning cancels the state's context, which releases a WriteTo blocked in
+	// AppendEntries so the wait below can return.
 	w.state.Transition(internal.StateStopping)
 
 	// upon calling stop, wait for main mainLoop execution to stop

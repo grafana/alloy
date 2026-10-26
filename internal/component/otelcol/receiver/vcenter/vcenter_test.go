@@ -107,8 +107,17 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			vcenter.host.disk.throughput {
 				enabled = true
 			}
+			vcenter.host.memory.active {
+				enabled = true
+			}
+			vcenter.host.memory.ballooned {
+				enabled = true
+			}
 			vcenter.host.memory.capacity {
 				enabled = false
+			}
+			vcenter.host.memory.granted {
+				enabled = true
 			}
 			vcenter.host.memory.usage {
 				enabled = true
@@ -248,71 +257,136 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 	require.Equal(t, 128, otelArgs.MaxQueryMetrics)
 
 	// Verify ResourceAttributesConfig fields
-	require.True(t, otelArgs.ResourceAttributes.VcenterClusterName.Enabled)
-	require.True(t, otelArgs.ResourceAttributes.VcenterDatastoreName.Enabled)
-	require.True(t, otelArgs.ResourceAttributes.VcenterHostName.Enabled)
-	require.False(t, otelArgs.ResourceAttributes.VcenterResourcePoolInventoryPath.Enabled)
-	require.True(t, otelArgs.ResourceAttributes.VcenterResourcePoolName.Enabled)
-	require.True(t, otelArgs.ResourceAttributes.VcenterVMName.Enabled)
-	require.True(t, otelArgs.ResourceAttributes.VcenterVMID.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.ResourceAttributes.VcenterClusterName.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.ResourceAttributes.VcenterDatastoreName.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.ResourceAttributes.VcenterHostName.Enabled)
+	require.False(t, otelArgs.MetricsBuilderConfig.ResourceAttributes.VcenterResourcePoolInventoryPath.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.ResourceAttributes.VcenterResourcePoolName.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.ResourceAttributes.VcenterVMName.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.ResourceAttributes.VcenterVMID.Enabled)
 
 	// Verify MetricsConfig fields
-	require.False(t, otelArgs.Metrics.VcenterClusterCPUEffective.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterClusterCPULimit.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterClusterHostCount.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterClusterMemoryEffective.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterClusterMemoryLimit.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterClusterVMCount.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterClusterVsanCongestions.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterClusterVsanLatencyAvg.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterClusterVsanOperations.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterClusterVsanThroughput.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterDatastoreDiskUsage.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterDatastoreDiskUtilization.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterHostCPUUsage.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterHostCPUUtilization.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterHostDiskLatencyAvg.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterHostDiskLatencyMax.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterHostDiskThroughput.Enabled)
-	require.False(t, otelArgs.Metrics.VcenterHostMemoryCapacity.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterHostMemoryUsage.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterHostMemoryUtilization.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterHostNetworkPacketRate.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterHostNetworkPacketErrorRate.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterHostNetworkThroughput.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterHostNetworkUsage.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterHostVsanCacheHitRate.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterHostVsanCongestions.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterHostVsanLatencyAvg.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterHostVsanOperations.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterHostVsanThroughput.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterResourcePoolCPUShares.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterResourcePoolCPUUsage.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterResourcePoolMemoryShares.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterResourcePoolMemoryUsage.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterVMCPUTime.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterVMCPUUsage.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterVMCPUUtilization.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterVMDiskLatencyAvg.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterVMDiskLatencyMax.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterVMDiskThroughput.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterVMDiskUsage.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterVMDiskUtilization.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterVMMemoryBallooned.Enabled)
-	require.False(t, otelArgs.Metrics.VcenterVMMemoryGranted.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterVMMemorySwapped.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterVMMemorySwappedSsd.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterVMMemoryUsage.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterVMMemoryUtilization.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterVMNetworkBroadcastPacketRate.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterVMNetworkMulticastPacketRate.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterVMNetworkPacketRate.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterVMNetworkPacketDropRate.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterVMNetworkThroughput.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterVMNetworkUsage.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterVMVsanLatencyAvg.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterVMVsanOperations.Enabled)
-	require.True(t, otelArgs.Metrics.VcenterVMVsanThroughput.Enabled)
+	require.False(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterClusterCPUEffective.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterClusterCPULimit.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterClusterHostCount.Enabled)
+	require.Equal(t, "sum", otelArgs.MetricsBuilderConfig.Metrics.VcenterClusterHostCount.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterClusterHostCount.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterClusterMemoryEffective.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterClusterMemoryLimit.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterClusterVMCount.Enabled)
+	require.Equal(t, "sum", otelArgs.MetricsBuilderConfig.Metrics.VcenterClusterVMCount.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterClusterVMCount.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterClusterVsanCongestions.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterClusterVsanLatencyAvg.Enabled)
+	require.Equal(t, "avg", otelArgs.MetricsBuilderConfig.Metrics.VcenterClusterVsanLatencyAvg.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterClusterVsanLatencyAvg.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterClusterVsanOperations.Enabled)
+	require.Equal(t, "avg", otelArgs.MetricsBuilderConfig.Metrics.VcenterClusterVsanOperations.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterClusterVsanOperations.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterClusterVsanThroughput.Enabled)
+	require.Equal(t, "avg", otelArgs.MetricsBuilderConfig.Metrics.VcenterClusterVsanThroughput.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterClusterVsanThroughput.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterDatastoreDiskUsage.Enabled)
+	require.Equal(t, "sum", otelArgs.MetricsBuilderConfig.Metrics.VcenterDatastoreDiskUsage.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterDatastoreDiskUsage.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterDatastoreDiskUtilization.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostCPUUsage.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostCPUUtilization.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostDiskLatencyAvg.Enabled)
+	require.Equal(t, "avg", otelArgs.MetricsBuilderConfig.Metrics.VcenterHostDiskLatencyAvg.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostDiskLatencyAvg.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostDiskLatencyMax.Enabled)
+	require.Equal(t, "avg", otelArgs.MetricsBuilderConfig.Metrics.VcenterHostDiskLatencyMax.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostDiskLatencyMax.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostDiskThroughput.Enabled)
+	require.Equal(t, "sum", otelArgs.MetricsBuilderConfig.Metrics.VcenterHostDiskThroughput.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostDiskThroughput.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostMemoryActive.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostMemoryBallooned.Enabled)
+	require.False(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostMemoryCapacity.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostMemoryGranted.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostMemoryUsage.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostMemoryUtilization.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostNetworkPacketRate.Enabled)
+	require.Equal(t, "avg", otelArgs.MetricsBuilderConfig.Metrics.VcenterHostNetworkPacketRate.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostNetworkPacketRate.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostNetworkPacketErrorRate.Enabled)
+	require.Equal(t, "avg", otelArgs.MetricsBuilderConfig.Metrics.VcenterHostNetworkPacketErrorRate.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostNetworkPacketErrorRate.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostNetworkThroughput.Enabled)
+	require.Equal(t, "sum", otelArgs.MetricsBuilderConfig.Metrics.VcenterHostNetworkThroughput.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostNetworkThroughput.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostNetworkUsage.Enabled)
+	require.Equal(t, "sum", otelArgs.MetricsBuilderConfig.Metrics.VcenterHostNetworkUsage.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostNetworkUsage.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostVsanCacheHitRate.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostVsanCongestions.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostVsanLatencyAvg.Enabled)
+	require.Equal(t, "avg", otelArgs.MetricsBuilderConfig.Metrics.VcenterHostVsanLatencyAvg.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostVsanLatencyAvg.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostVsanOperations.Enabled)
+	require.Equal(t, "avg", otelArgs.MetricsBuilderConfig.Metrics.VcenterHostVsanOperations.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostVsanOperations.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostVsanThroughput.Enabled)
+	require.Equal(t, "avg", otelArgs.MetricsBuilderConfig.Metrics.VcenterHostVsanThroughput.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterHostVsanThroughput.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterResourcePoolCPUShares.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterResourcePoolCPUUsage.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterResourcePoolMemoryShares.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterResourcePoolMemoryUsage.Enabled)
+	require.Equal(t, "sum", otelArgs.MetricsBuilderConfig.Metrics.VcenterResourcePoolMemoryUsage.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterResourcePoolMemoryUsage.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMCPUTime.Enabled)
+	require.Equal(t, "avg", otelArgs.MetricsBuilderConfig.Metrics.VcenterVMCPUTime.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMCPUTime.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMCPUUsage.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMCPUUtilization.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMDiskLatencyAvg.Enabled)
+	require.Equal(t, "avg", otelArgs.MetricsBuilderConfig.Metrics.VcenterVMDiskLatencyAvg.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMDiskLatencyAvg.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMDiskLatencyMax.Enabled)
+	require.Equal(t, "avg", otelArgs.MetricsBuilderConfig.Metrics.VcenterVMDiskLatencyMax.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMDiskLatencyMax.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMDiskThroughput.Enabled)
+	require.Equal(t, "avg", otelArgs.MetricsBuilderConfig.Metrics.VcenterVMDiskThroughput.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMDiskThroughput.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMDiskUsage.Enabled)
+	require.Equal(t, "sum", otelArgs.MetricsBuilderConfig.Metrics.VcenterVMDiskUsage.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMDiskUsage.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMDiskUtilization.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMMemoryBallooned.Enabled)
+	require.False(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMMemoryGranted.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMMemorySwapped.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMMemorySwappedSsd.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMMemoryUsage.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMMemoryUtilization.Enabled)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMNetworkBroadcastPacketRate.Enabled)
+	require.Equal(t, "avg", otelArgs.MetricsBuilderConfig.Metrics.VcenterVMNetworkBroadcastPacketRate.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMNetworkBroadcastPacketRate.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMNetworkMulticastPacketRate.Enabled)
+	require.Equal(t, "avg", otelArgs.MetricsBuilderConfig.Metrics.VcenterVMNetworkMulticastPacketRate.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMNetworkMulticastPacketRate.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMNetworkPacketRate.Enabled)
+	require.Equal(t, "avg", otelArgs.MetricsBuilderConfig.Metrics.VcenterVMNetworkPacketRate.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMNetworkPacketRate.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMNetworkPacketDropRate.Enabled)
+	require.Equal(t, "avg", otelArgs.MetricsBuilderConfig.Metrics.VcenterVMNetworkPacketDropRate.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMNetworkPacketDropRate.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMNetworkThroughput.Enabled)
+	require.Equal(t, "sum", otelArgs.MetricsBuilderConfig.Metrics.VcenterVMNetworkThroughput.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMNetworkThroughput.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMNetworkUsage.Enabled)
+	require.Equal(t, "sum", otelArgs.MetricsBuilderConfig.Metrics.VcenterVMNetworkUsage.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMNetworkUsage.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMVsanLatencyAvg.Enabled)
+	require.Equal(t, "avg", otelArgs.MetricsBuilderConfig.Metrics.VcenterVMVsanLatencyAvg.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMVsanLatencyAvg.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMVsanOperations.Enabled)
+	require.Equal(t, "avg", otelArgs.MetricsBuilderConfig.Metrics.VcenterVMVsanOperations.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMVsanOperations.EnabledAttributes)
+	require.True(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMVsanThroughput.Enabled)
+	require.Equal(t, "avg", otelArgs.MetricsBuilderConfig.Metrics.VcenterVMVsanThroughput.AggregationStrategy)
+	require.NotEmpty(t, otelArgs.MetricsBuilderConfig.Metrics.VcenterVMVsanThroughput.EnabledAttributes)
 }
 
 func TestDebugMetricsConfig(t *testing.T) {
@@ -332,7 +406,6 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
-				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 		{
@@ -350,7 +423,6 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: false,
-				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 		{
@@ -368,7 +440,6 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
-				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 	}
@@ -381,6 +452,59 @@ func TestDebugMetricsConfig(t *testing.T) {
 			require.NoError(t, err)
 
 			require.Equal(t, tc.expected, args.DebugMetricsConfig())
+		})
+	}
+}
+
+func TestProxyURL(t *testing.T) {
+	const base = `
+		endpoint = "http://localhost:1234"
+		username = "user"
+		password = "pass"
+	`
+
+	t.Run("not set by default", func(t *testing.T) {
+		var args vcenter.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(base+`output {}`), &args))
+
+		cfg, err := args.Convert()
+		require.NoError(t, err)
+		require.Empty(t, cfg.(*vcenterreceiver.Config).ProxyURL)
+	})
+
+	for _, proxyURL := range []string{
+		"http://proxy.hostname.localnet:3128",
+		"https://proxy.hostname.localnet:3128",
+		"socks5://proxy.hostname.localnet:1080",
+		"socks5h://proxy.hostname.localnet:1080",
+	} {
+		t.Run("valid "+proxyURL, func(t *testing.T) {
+			var args vcenter.Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(base+`proxy_url = "`+proxyURL+`"
+				output {}`), &args))
+
+			cfg, err := args.Convert()
+			require.NoError(t, err)
+			require.Equal(t, proxyURL, cfg.(*vcenterreceiver.Config).ProxyURL)
+			// The converted config must also be accepted by upstream.
+			require.NoError(t, cfg.(*vcenterreceiver.Config).Validate())
+		})
+	}
+
+	invalid := map[string]struct {
+		proxyURL string
+		errMsg   string
+	}{
+		"unsupported scheme": {"ftp://proxy.hostname.localnet:21", "proxy_url scheme must be http, https, socks5 or socks5h"},
+		"missing host":       {"socks5://", "proxy_url must include a host"},
+		"unparseable":        {"http://[::1", "unable to parse proxy_url"},
+	}
+	for name, tc := range invalid {
+		t.Run("invalid "+name, func(t *testing.T) {
+			var args vcenter.Arguments
+			err := syntax.Unmarshal([]byte(base+`proxy_url = "`+tc.proxyURL+`"
+				output {}`), &args)
+			require.ErrorContains(t, err, tc.errMsg)
 		})
 	}
 }

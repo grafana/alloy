@@ -1,0 +1,514 @@
+package collector
+
+import (
+	"encoding/xml"
+	"fmt"
+	"math"
+	"regexp"
+	"strings"
+
+	"github.com/grafana/alloy/internal/component/database_observability"
+)
+
+// This file parses SQL Server's "showplan" XML (the format captured by Query
+// Store in sys.query_store_plan.query_plan) into the shared
+// database_observability.ExplainPlanNode model. Unlike mysql/postgres's JSON
+// plan formats, showplan nests each operator's children inside a wrapper
+// element named after its physical operator category (e.g. <NestedLoops>,
+// <Hash>, <IndexScan>) rather than under a uniform key, so the RelOp struct
+// below declares one optional field per wrapper category we understand.
+// Anything not modeled here falls back to ExplainPlanOutputOperationUnknown
+// rather than being silently misclassified, with the engine-native operator
+// name preserved in Details.UnrecognizedOperator for diagnosis.
+
+type xmlShowPlan struct {
+	XMLName       xml.Name    `xml:"ShowPlanXML"`
+	BatchSequence xmlBatchSeq `xml:"BatchSequence"`
+}
+
+type xmlBatchSeq struct {
+	Batch []xmlBatch `xml:"Batch"`
+}
+
+type xmlBatch struct {
+	Statements xmlStatements `xml:"Statements"`
+}
+
+type xmlStatements struct {
+	StmtSimple []xmlStmtSimple `xml:"StmtSimple"`
+}
+
+type xmlStmtSimple struct {
+	QueryPlan xmlQueryPlan `xml:"QueryPlan"`
+}
+
+type xmlQueryPlan struct {
+	RelOp *xmlRelOp `xml:"RelOp"`
+}
+
+type xmlRelOp struct {
+	PhysicalOp                string `xml:"PhysicalOp,attr"`
+	LogicalOp                 string `xml:"LogicalOp,attr"`
+	EstimateRows              string `xml:"EstimateRows,attr"`
+	EstimatedTotalSubtreeCost string `xml:"EstimatedTotalSubtreeCost,attr"`
+
+	Warnings *xmlWarnings `xml:"Warnings"`
+
+	// One of the following is populated, depending on PhysicalOp. Each wrapper
+	// element is named for its operator category, not for the specific
+	// PhysicalOp string, so IndexScan covers Table Scan/Index Scan/Clustered
+	// Index Scan/Index Seek/Clustered Index Seek/RID Lookup/Key Lookup alike.
+	IndexScan       *xmlIndexScan  `xml:"IndexScan"`
+	TableScan       *xmlIndexScan  `xml:"TableScan"`
+	NestedLoops     *xmlOpChildren `xml:"NestedLoops"`
+	Hash            *xmlHash       `xml:"Hash"`
+	Merge           *xmlOpChildren `xml:"Merge"`
+	StreamAggregate *xmlOpChildren `xml:"StreamAggregate"`
+	Sort            *xmlSort       `xml:"Sort"`
+	TopSort         *xmlSort       `xml:"TopSort"`
+	ComputeScalar   *xmlOpChildren `xml:"ComputeScalar"`
+	Filter          *xmlFilter     `xml:"Filter"`
+	Top             *xmlOpChildren `xml:"Top"`
+	Concat          *xmlOpChildren `xml:"Concat"`
+	Parallelism     *xmlOpChildren `xml:"Parallelism"`
+	Spool           *xmlOpChildren `xml:"Spool"`
+	TableSpool      *xmlOpChildren `xml:"TableSpool"`
+	IndexSpool      *xmlOpChildren `xml:"IndexSpool"`
+	Update          *xmlUpdate     `xml:"Update"`
+	Assert          *xmlOpChildren `xml:"Assert"`
+
+	// Unmatched collects every child element not claimed by a field above:
+	// non-operator metadata (OutputList, RunTimeInformation, etc.) as well as
+	// wrapper elements for operators this package does not model (Bitmap,
+	// Segment, Sequence, Split, ...). Only nested RelOps are read from it, so
+	// the subtree beneath an unmodeled operator is preserved.
+	Unmatched []xmlUnmatched `xml:",any"`
+}
+
+// xmlUnmatched is a catch-all for an element with an unknown name; only its
+// direct RelOp children are retained.
+type xmlUnmatched struct {
+	RelOp []xmlRelOp `xml:"RelOp"`
+}
+
+// xmlOpChildren is reused by wrapper elements whose only content we care
+// about is their nested RelOp children (join build/probe sides, the single
+// child of a unary operator like Sort/Filter/Top, etc.).
+type xmlOpChildren struct {
+	RelOp []xmlRelOp `xml:"RelOp"`
+}
+
+type xmlIndexScan struct {
+	Lookup    string        `xml:"Lookup,attr"`
+	Object    xmlObject     `xml:"Object"`
+	Predicate *xmlPredicate `xml:"Predicate"`
+}
+
+type xmlObject struct {
+	Table string `xml:"Table,attr"`
+	Index string `xml:"Index,attr"`
+}
+
+type xmlHash struct {
+	xmlOpChildren
+	GroupBy *xmlGroupBy `xml:"GroupBy"`
+}
+
+type xmlSort struct {
+	xmlOpChildren
+	OrderBy *xmlOrderBy `xml:"OrderBy"`
+}
+
+type xmlFilter struct {
+	xmlOpChildren
+	Predicate *xmlPredicate `xml:"Predicate"`
+}
+
+// xmlUpdate models SQL Server's DML wrapper element, used for every
+// INSERT/UPDATE/DELETE/MERGE physical operator (Table/Index/Clustered Index
+// Insert, Update, Delete, and Merge alike) regardless of statement type -
+// the enclosing RelOp's LogicalOp, not PhysicalOp, is what distinguishes
+// them. Object can repeat once per index the operator maintains alongside
+// the primary one (e.g. nonclustered indexes updated together with the
+// clustered index); only the first is surfaced as the target table/key.
+type xmlUpdate struct {
+	xmlOpChildren
+	Object    []xmlObject   `xml:"Object"`
+	Predicate *xmlPredicate `xml:"Predicate"`
+}
+
+type xmlPredicate struct {
+	ScalarOperator xmlScalarOperator `xml:"ScalarOperator"`
+}
+
+type xmlScalarOperator struct {
+	ScalarString string `xml:"ScalarString,attr"`
+}
+
+type xmlGroupBy struct {
+	ColumnReference []xmlColumnReference `xml:"ColumnReference"`
+}
+
+type xmlOrderBy struct {
+	OrderByColumn []xmlOrderByColumn `xml:"OrderByColumn"`
+}
+
+type xmlOrderByColumn struct {
+	ColumnReference xmlColumnReference `xml:"ColumnReference"`
+}
+
+type xmlColumnReference struct {
+	Column string `xml:"Column,attr"`
+}
+
+type xmlWarnings struct {
+	NoJoinPredicate         *struct{} `xml:"NoJoinPredicate"`
+	ColumnsWithNoStatistics *struct{} `xml:"ColumnsWithNoStatistics"`
+	SpillToTempDb           *struct{} `xml:"SpillToTempDb"`
+}
+
+// newExplainPlanOutputFromShowPlanXML parses a single StmtSimple's showplan
+// XML (as captured by sys.query_store_plan.query_plan) into the shared
+// ExplainPlanNode model. It does not execute or re-plan anything - this is
+// the plan SQL Server already compiled and cached in Query Store.
+func newExplainPlanOutputFromShowPlanXML(showPlanXML []byte) (*database_observability.ExplainPlanNode, error) {
+	var plan xmlShowPlan
+	if err := xml.Unmarshal(showPlanXML, &plan); err != nil {
+		return nil, fmt.Errorf("failed to parse showplan xml: %w", err)
+	}
+
+	if len(plan.BatchSequence.Batch) == 0 || len(plan.BatchSequence.Batch[0].Statements.StmtSimple) == 0 {
+		return nil, fmt.Errorf("showplan xml has no statements")
+	}
+
+	rootRelOp := plan.BatchSequence.Batch[0].Statements.StmtSimple[0].QueryPlan.RelOp
+	if rootRelOp == nil {
+		return nil, fmt.Errorf("showplan xml has no root RelOp")
+	}
+
+	node := relOpToExplainPlanNode(*rootRelOp)
+	return &node, nil
+}
+
+func relOpToExplainPlanNode(op xmlRelOp) database_observability.ExplainPlanNode {
+	subtreeCost := parseFloatPtrOrNil(op.EstimatedTotalSubtreeCost)
+	node := database_observability.ExplainPlanNode{
+		Details: database_observability.ExplainPlanNodeDetails{
+			EstimatedRows: parseInt64OrZero(op.EstimateRows),
+		},
+	}
+	var childSubtreeCost float64
+
+	if op.Warnings != nil {
+		node.Details.Warnings = op.Warnings.strings()
+	}
+
+	switch {
+	case op.IndexScan != nil:
+		node.Operation = database_observability.ExplainPlanOutputOperationIndexScan
+		populateScanDetails(&node, *op.IndexScan)
+	case op.TableScan != nil:
+		node.Operation = database_observability.ExplainPlanOutputOperationTableScan
+		populateScanDetails(&node, *op.TableScan)
+	case op.NestedLoops != nil:
+		node.Operation = database_observability.ExplainPlanOutputOperationNestedLoopJoin
+		algo := database_observability.ExplainPlanJoinAlgorithmNestedLoop
+		node.Details.JoinAlgorithm = &algo
+		if op.LogicalOp != "" {
+			node.Details.JoinType = &op.LogicalOp
+		}
+		node.Children, childSubtreeCost = childrenOf(op.NestedLoops.RelOp)
+	case op.Hash != nil:
+		populateHashDetails(&node, op)
+		node.Children, childSubtreeCost = childrenOf(op.Hash.RelOp)
+	case op.Merge != nil:
+		node.Operation = database_observability.ExplainPlanOutputOperationMergeJoin
+		algo := database_observability.ExplainPlanJoinAlgorithmMerge
+		node.Details.JoinAlgorithm = &algo
+		if op.LogicalOp != "" {
+			node.Details.JoinType = &op.LogicalOp
+		}
+		node.Children, childSubtreeCost = childrenOf(op.Merge.RelOp)
+	case op.StreamAggregate != nil:
+		node.Operation = database_observability.ExplainPlanOutputOperationGroupingOperation
+		node.Children, childSubtreeCost = childrenOf(op.StreamAggregate.RelOp)
+	case op.Sort != nil:
+		populateSortDetails(&node, op, op.Sort)
+		node.Children, childSubtreeCost = childrenOf(op.Sort.RelOp)
+	case op.TopSort != nil:
+		populateSortDetails(&node, op, op.TopSort)
+		node.Children, childSubtreeCost = childrenOf(op.TopSort.RelOp)
+	case op.ComputeScalar != nil:
+		node.Operation = database_observability.ExplainPlanOutputOperationComputeScalar
+		node.Children, childSubtreeCost = childrenOf(op.ComputeScalar.RelOp)
+	case op.Filter != nil:
+		node.Operation = database_observability.ExplainPlanOutputOperationFilter
+		if op.Filter.Predicate != nil {
+			node.Details.Condition = redactedCondition(op.Filter.Predicate)
+		}
+		node.Children, childSubtreeCost = childrenOf(op.Filter.RelOp)
+	case op.Top != nil:
+		node.Operation = database_observability.ExplainPlanOutputOperationTop
+		node.Children, childSubtreeCost = childrenOf(op.Top.RelOp)
+	case op.Concat != nil:
+		node.Operation = database_observability.ExplainPlanOutputOperationUnion
+		node.Children, childSubtreeCost = childrenOf(op.Concat.RelOp)
+	case op.Parallelism != nil:
+		node.Operation = database_observability.ExplainPlanOutputOperationParallelism
+		node.Children, childSubtreeCost = childrenOf(op.Parallelism.RelOp)
+	case op.Spool != nil:
+		node.Operation = database_observability.ExplainPlanOutputOperationSpool
+		node.Children, childSubtreeCost = childrenOf(op.Spool.RelOp)
+	case op.TableSpool != nil:
+		node.Operation = database_observability.ExplainPlanOutputOperationSpool
+		node.Children, childSubtreeCost = childrenOf(op.TableSpool.RelOp)
+	case op.IndexSpool != nil:
+		node.Operation = database_observability.ExplainPlanOutputOperationSpool
+		node.Children, childSubtreeCost = childrenOf(op.IndexSpool.RelOp)
+	case op.Update != nil:
+		populateUpdateDetails(&node, op)
+		node.Children, childSubtreeCost = childrenOf(op.Update.RelOp)
+	case op.Assert != nil:
+		node.Operation = database_observability.ExplainPlanOutputOperationAssert
+		node.Children, childSubtreeCost = childrenOf(op.Assert.RelOp)
+	default:
+		node.Operation = database_observability.ExplainPlanOutputOperationUnknown
+		node.Details.UnrecognizedOperator = &op.PhysicalOp
+		var nested []xmlRelOp
+		for _, other := range op.Unmatched {
+			nested = append(nested, other.RelOp...)
+		}
+		node.Children, childSubtreeCost = childrenOf(nested)
+	}
+
+	if subtreeCost != nil {
+		incrementalCost := max(0, *subtreeCost-childSubtreeCost)
+		incrementalCost = math.Round(incrementalCost*1e12) / 1e12
+		node.Details.EstimatedCost = &incrementalCost
+	}
+
+	return node
+}
+
+// populateSortDetails fills in a node for both the <Sort> wrapper and the
+// <TopSort> wrapper SQL Server uses for "TopN Sort"; the two share the same
+// OrderBy structure. LogicalOp distinguishes a Distinct Sort from a plain one.
+func populateSortDetails(node *database_observability.ExplainPlanNode, op xmlRelOp, sort *xmlSort) {
+	if strings.EqualFold(op.LogicalOp, "Distinct Sort") {
+		node.Operation = database_observability.ExplainPlanOutputOperationDuplicatesRemoval
+	} else {
+		node.Operation = database_observability.ExplainPlanOutputOperationOrderingOperation
+	}
+	if sort.OrderBy != nil {
+		node.Details.SortKeys = orderByColumns(sort.OrderBy)
+	}
+}
+
+// populateHashDetails disambiguates SQL Server's "Hash Match" operator, which
+// serves as a join, an aggregate, or a set operation depending on LogicalOp -
+// PhysicalOp alone is not enough to classify it.
+func populateHashDetails(node *database_observability.ExplainPlanNode, op xmlRelOp) {
+	switch {
+	case strings.Contains(op.LogicalOp, "Join") || strings.Contains(op.LogicalOp, "Semi"):
+		node.Operation = database_observability.ExplainPlanOutputOperationHashJoin
+		algo := database_observability.ExplainPlanJoinAlgorithmHash
+		node.Details.JoinAlgorithm = &algo
+		joinType := op.LogicalOp
+		node.Details.JoinType = &joinType
+	case strings.EqualFold(op.LogicalOp, "Aggregate"):
+		node.Operation = database_observability.ExplainPlanOutputOperationGroupingOperation
+		if op.Hash.GroupBy != nil {
+			node.Details.GroupByKeys = columnReferences(op.Hash.GroupBy.ColumnReference)
+		}
+	case strings.EqualFold(op.LogicalOp, "Union"):
+		node.Operation = database_observability.ExplainPlanOutputOperationUnion
+	case strings.EqualFold(op.LogicalOp, "Distinct"):
+		node.Operation = database_observability.ExplainPlanOutputOperationDuplicatesRemoval
+	default:
+		node.Operation = database_observability.ExplainPlanOutputOperationUnknown
+		unrecognized := fmt.Sprintf("Hash Match (%s)", op.LogicalOp)
+		node.Details.UnrecognizedOperator = &unrecognized
+	}
+}
+
+// populateUpdateDetails disambiguates SQL Server's <Update> DML wrapper,
+// which represents INSERT, UPDATE, DELETE, and MERGE alike - LogicalOp (not
+// PhysicalOp, which varies by storage structure: Table Insert, Clustered
+// Index Update, Index Delete, etc.) is what tells them apart.
+func populateUpdateDetails(node *database_observability.ExplainPlanNode, op xmlRelOp) {
+	switch {
+	case strings.EqualFold(op.LogicalOp, "Insert"):
+		node.Operation = database_observability.ExplainPlanOutputOperationInsert
+	case strings.EqualFold(op.LogicalOp, "Update"):
+		node.Operation = database_observability.ExplainPlanOutputOperationUpdate
+	case strings.EqualFold(op.LogicalOp, "Delete"):
+		node.Operation = database_observability.ExplainPlanOutputOperationDelete
+	case strings.EqualFold(op.LogicalOp, "Merge"):
+		node.Operation = database_observability.ExplainPlanOutputOperationMerge
+	default:
+		node.Operation = database_observability.ExplainPlanOutputOperationUnknown
+		unrecognized := fmt.Sprintf("%s (%s)", op.PhysicalOp, op.LogicalOp)
+		node.Details.UnrecognizedOperator = &unrecognized
+	}
+
+	if len(op.Update.Object) > 0 {
+		if table := stripBrackets(op.Update.Object[0].Table); table != "" {
+			node.Details.TableName = &table
+		}
+		if index := stripBrackets(op.Update.Object[0].Index); index != "" {
+			node.Details.KeyUsed = &index
+		}
+	}
+	if op.Update.Predicate != nil {
+		node.Details.Condition = redactedCondition(op.Update.Predicate)
+	}
+}
+
+func populateScanDetails(node *database_observability.ExplainPlanNode, scan xmlIndexScan) {
+	if table := stripBrackets(scan.Object.Table); table != "" {
+		node.Details.TableName = &table
+	}
+	if index := stripBrackets(scan.Object.Index); index != "" {
+		node.Details.KeyUsed = &index
+	}
+
+	accessType := scanAccessType(node.Operation, scan)
+	node.Details.AccessType = &accessType
+
+	if scan.Predicate != nil {
+		node.Details.Condition = redactedCondition(scan.Predicate)
+	}
+}
+
+func scanAccessType(operation database_observability.ExplainPlanOutputOperation, scan xmlIndexScan) database_observability.ExplainPlanAccessType {
+	switch {
+	case scan.Lookup == "true" || scan.Lookup == "1":
+		return database_observability.ExplainPlanAccessTypeEqRef
+	case operation == database_observability.ExplainPlanOutputOperationTableScan:
+		return database_observability.ExplainPlanAccessTypeAll
+	case scan.Object.Index != "":
+		return database_observability.ExplainPlanAccessTypeIndex
+	default:
+		return database_observability.ExplainPlanAccessTypeAll
+	}
+}
+
+func redactedCondition(predicate *xmlPredicate) *string {
+	if predicate.ScalarOperator.ScalarString == "" {
+		return nil
+	}
+	redacted := database_observability.RedactSql(predicate.ScalarOperator.ScalarString)
+	return &redacted
+}
+
+// nativeShowPlanLiteralAttrs matches the raw Showplan XML attributes known to
+// carry literal customer data: predicate constants (ScalarString) and
+// compiled/runtime parameter values (ParameterCompiledValue,
+// ParameterRuntimeValue).
+var nativeShowPlanLiteralAttrs = regexp.MustCompile(`(ScalarString|ParameterCompiledValue|ParameterRuntimeValue)="([^"]*)"`)
+
+// xmlAttrEscaper and xmlAttrUnescaper cover the five entities XML predefines
+// for attribute values - the only escaping SQL Server's own XML serializer
+// produces here, so a full encoding/xml round-trip isn't needed just to edit
+// one attribute value in place.
+var xmlAttrEscaper = strings.NewReplacer(`&`, "&amp;", `<`, "&lt;", `>`, "&gt;", `"`, "&quot;", `'`, "&apos;")
+var xmlAttrUnescaper = strings.NewReplacer(`&lt;`, "<", `&gt;`, ">", `&quot;`, `"`, `&apos;`, "'", `&amp;`, "&")
+
+// redactNativeShowPlanXML redacts literal values out of the raw Showplan XML
+// bytes fetched from sys.query_store_plan, for the debug-only native-plan log
+// line. It edits known literal-bearing attribute values in place by regex
+// rather than unmarshaling and remarshaling through the xml* structs above:
+// those structs only model the operators this package understands, so a
+// remarshal would silently drop every other attribute (warnings, memory
+// grants, etc.) that this log line exists to preserve for troubleshooting.
+func redactNativeShowPlanXML(planXML []byte) []byte {
+	return nativeShowPlanLiteralAttrs.ReplaceAllFunc(planXML, func(match []byte) []byte {
+		groups := nativeShowPlanLiteralAttrs.FindSubmatch(match)
+		attr, value := string(groups[1]), string(groups[2])
+		redacted := database_observability.RedactSql(xmlAttrUnescaper.Replace(value))
+		return fmt.Appendf(nil, `%s="%s"`, attr, xmlAttrEscaper.Replace(redacted))
+	})
+}
+
+func childrenOf(relOps []xmlRelOp) ([]database_observability.ExplainPlanNode, float64) {
+	if len(relOps) == 0 {
+		return nil, 0
+	}
+	children := make([]database_observability.ExplainPlanNode, 0, len(relOps))
+	var subtreeCost float64
+	for _, child := range relOps {
+		children = append(children, relOpToExplainPlanNode(child))
+		if cost := parseFloatPtrOrNil(child.EstimatedTotalSubtreeCost); cost != nil {
+			subtreeCost += *cost
+		}
+	}
+	return children, subtreeCost
+}
+
+func columnReferences(refs []xmlColumnReference) []string {
+	if len(refs) == 0 {
+		return nil
+	}
+	cols := make([]string, 0, len(refs))
+	for _, ref := range refs {
+		if col := stripBrackets(ref.Column); col != "" {
+			cols = append(cols, col)
+		}
+	}
+	return cols
+}
+
+func orderByColumns(orderBy *xmlOrderBy) []string {
+	if orderBy == nil || len(orderBy.OrderByColumn) == 0 {
+		return nil
+	}
+	cols := make([]string, 0, len(orderBy.OrderByColumn))
+	for _, col := range orderBy.OrderByColumn {
+		if name := stripBrackets(col.ColumnReference.Column); name != "" {
+			cols = append(cols, name)
+		}
+	}
+	return cols
+}
+
+func (w *xmlWarnings) strings() []string {
+	var warnings []string
+	if w.NoJoinPredicate != nil {
+		warnings = append(warnings, "no join predicate (cartesian product)")
+	}
+	if w.ColumnsWithNoStatistics != nil {
+		warnings = append(warnings, "columns with no statistics")
+	}
+	if w.SpillToTempDb != nil {
+		warnings = append(warnings, "spilled to tempdb")
+	}
+	return warnings
+}
+
+// stripBrackets removes the [schema]/[object] bracket-quoting SQL Server uses
+// for identifiers in showplan XML attributes (e.g. "[dbo].[Orders]").
+func stripBrackets(identifier string) string {
+	return strings.NewReplacer("[", "", "]", "").Replace(identifier)
+}
+
+func parseInt64OrZero(s string) int64 {
+	var v int64
+	if s == "" {
+		return 0
+	}
+	if _, err := fmt.Sscanf(s, "%d", &v); err != nil {
+		return 0
+	}
+	return v
+}
+
+func parseFloatPtrOrNil(s string) *float64 {
+	if s == "" {
+		return nil
+	}
+	var v float64
+	if _, err := fmt.Sscanf(s, "%g", &v); err != nil {
+		return nil
+	}
+	return &v
+}

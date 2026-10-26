@@ -7,6 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-10-19
 title: prometheus.exporter.self
 ---
 
@@ -27,6 +28,9 @@ prometheus.exporter.self "<LABEL>" {
 
 The `prometheus.exporter.self` component doesn't support any arguments.
 
+The component sets the `instance` label on its exported targets to the `HOSTNAME` environment variable.
+If `HOSTNAME` isn't set, the component uses the operating system hostname, or `unknown` if it can't determine one.
+
 ## Blocks
 
 The `prometheus.exporter.self` component doesn't support any blocks.
@@ -38,6 +42,7 @@ The `prometheus.exporter.self` component doesn't support any blocks.
 ## Component health
 
 `prometheus.exporter.self` is only reported as unhealthy if given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
@@ -74,9 +79,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
 

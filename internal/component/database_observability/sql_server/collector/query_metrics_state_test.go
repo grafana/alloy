@@ -137,6 +137,41 @@ func TestQueryMetricsState_FlappingHashKeepsBaselineWithinTTL(t *testing.T) {
 	require.InDelta(t, 8.0, counterValue(t, duration), 1e-9)
 }
 
+func TestQueryMetricsState_GetQueryHashes(t *testing.T) {
+	t.Parallel()
+
+	const (
+		otherHash = "aabbccddeeff0011"
+		otherDB   = "other_db"
+		otherKey  = "1122334455667788"
+	)
+
+	executions, errCounter, duration := newTestCounterVecs()
+	state := newQueryMetricsState(executions, errCounter, duration, 5*time.Minute)
+
+	now := time.Now()
+	state.now = func() time.Time { return now }
+
+	require.Empty(t, state.GetQueryHashes(testDatabase))
+
+	state.update([]queryMetricSource{
+		{database: testDatabase, queryHash: testHash, executions: 10},
+		{database: testDatabase, queryHash: otherHash, executions: 5},
+		{database: otherDB, queryHash: otherKey, executions: 3},
+	})
+
+	require.ElementsMatch(t, []string{testHash, otherHash}, state.GetQueryHashes(testDatabase))
+	require.ElementsMatch(t, []string{otherKey}, state.GetQueryHashes(otherDB))
+	require.Empty(t, state.GetQueryHashes("missing_db"))
+
+	// After the TTL elapses without re-observation, the hashes are pruned and no
+	// longer reported as tracked.
+	now = now.Add(6 * time.Minute)
+	state.update(nil)
+	require.Empty(t, state.GetQueryHashes(testDatabase))
+	require.Empty(t, state.GetQueryHashes(otherDB))
+}
+
 func TestQueryMetricsState_Reset(t *testing.T) {
 	t.Parallel()
 

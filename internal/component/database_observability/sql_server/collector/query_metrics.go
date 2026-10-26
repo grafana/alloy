@@ -4,10 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"log/slog"
-	"strings"
 	"sync"
 	"time"
 
@@ -17,81 +15,26 @@ import (
 
 const QueryMetricsCollector = "query_metrics"
 
-// selectQueryStoreState reads the connected database's Query Store state
-const selectQueryStoreState = `
-SELECT
-	DB_NAME(),
-	actual_state_desc,
-	query_capture_mode_desc,
-	readonly_reason
-FROM sys.database_query_store_options`
-
-// selectQueryMetrics ranks the top-N queries by duration within the recent lookback
-// window, then sums their full retained Query Store history so the emitted
-// counters stay monotonic across interval rollover.
-//
-// Note: the final SELECT sums the full retained history per ranked hash
-// (no lookback filter on the aggregation), while the lookback window only
-// constrains the top-N ranking/eligibility in the eligible/ranked CTEs.
-// In internal state, on a Query Store bucket rollover (when interval ends),
-// the cumulative totals keep growing → deltas stay non-negative → the
-// Prometheus counters remain monotonic. The only time totals decrease
-// is when Query Store is cleared, or when retention/cleanup drops an old
-// interval: in that case the state re-baselines rather than emitting a spike.
-const selectQueryMetrics = `
-WITH eligible AS (
-	SELECT DISTINCT q.query_hash
-	FROM sys.query_store_query q
-	WHERE q.is_internal_query = 0
-		AND q.query_hash IS NOT NULL
-		AND q.last_execution_time >= DATEADD(SECOND, -CONVERT(int, @lookback_window), SYSUTCDATETIME())
-),
-ranked AS (
-	SELECT TOP (@limit) q.query_hash
-	FROM sys.query_store_query q
-	JOIN eligible e ON e.query_hash = q.query_hash
-	JOIN sys.query_store_plan p ON p.query_id = q.query_id
-	JOIN sys.query_store_runtime_stats rs ON rs.plan_id = p.plan_id
-	JOIN sys.query_store_runtime_stats_interval i
-		ON i.runtime_stats_interval_id = rs.runtime_stats_interval_id
-	WHERE q.is_internal_query = 0
-		AND i.end_time >= DATEADD(SECOND, -CONVERT(int, @lookback_window), SYSUTCDATETIME())
-	GROUP BY q.query_hash
-	ORDER BY SUM(CONVERT(float, rs.avg_duration) * CONVERT(float, rs.count_executions)) DESC,
-		q.query_hash ASC
-)
-SELECT
-	q.query_hash,
-	SUM(CONVERT(bigint, rs.count_executions)) AS executions,
-	SUM(CASE
-		WHEN rs.execution_type IN (3, 4)
-		THEN CONVERT(bigint, rs.count_executions)
-		ELSE 0 END) AS errors,
-	SUM(CONVERT(float, rs.avg_duration) * CONVERT(float, rs.count_executions)) AS total_duration_us
-FROM sys.query_store_query q
-JOIN ranked r ON r.query_hash = q.query_hash
-JOIN sys.query_store_plan p ON p.query_id = q.query_id
-JOIN sys.query_store_runtime_stats rs ON rs.plan_id = p.plan_id
-WHERE q.is_internal_query = 0
-GROUP BY q.query_hash
-ORDER BY q.query_hash ASC`
-
 type QueryMetricsArguments struct {
-	DB              *sql.DB
-	Registry        *prometheus.Registry
-	CollectInterval time.Duration
-	Limit           int
-	Lookback        time.Duration
-	Logger          *slog.Logger
+	DB                 *sql.DB
+	Registry           *prometheus.Registry
+	CollectInterval    time.Duration
+	QueryTimeout       time.Duration
+	Limit              int
+	Lookback           time.Duration
+	ExcludeCurrentUser bool
+	Logger             *slog.Logger
 }
 
 type QueryMetrics struct {
-	dbConnection    *sql.DB
-	registry        *prometheus.Registry
-	collectInterval time.Duration
-	limit           int
-	lookback        time.Duration
-	logger          *slog.Logger
+	dbConnection       *sql.DB
+	registry           *prometheus.Registry
+	queryTimeout       time.Duration
+	collectInterval    time.Duration
+	limit              int
+	lookback           time.Duration
+	excludeCurrentUser bool
+	logger             *slog.Logger
 
 	executionsMetric *prometheus.CounterVec
 	errorsMetric     *prometheus.CounterVec
@@ -130,23 +73,33 @@ func NewQueryMetrics(args QueryMetricsArguments) (*QueryMetrics, error) {
 	}
 
 	return &QueryMetrics{
-		dbConnection:     args.DB,
-		registry:         args.Registry,
-		collectInterval:  args.CollectInterval,
-		limit:            args.Limit,
-		lookback:         args.Lookback,
-		logger:           args.Logger.With("collector", QueryMetricsCollector),
-		executionsMetric: executionsMetric,
-		errorsMetric:     errorsMetric,
-		durationMetric:   durationMetric,
-		metrics:          []prometheus.Collector{executionsMetric, errorsMetric, durationMetric},
-		state:            newQueryMetricsState(executionsMetric, errorsMetric, durationMetric, ttl),
-		running:          atomic.NewBool(false),
+		dbConnection:       args.DB,
+		registry:           args.Registry,
+		collectInterval:    args.CollectInterval,
+		queryTimeout:       queryTimeoutOrDefault(args.QueryTimeout),
+		limit:              args.Limit,
+		lookback:           args.Lookback,
+		excludeCurrentUser: args.ExcludeCurrentUser,
+		logger:             args.Logger.With("collector", QueryMetricsCollector),
+		executionsMetric:   executionsMetric,
+		errorsMetric:       errorsMetric,
+		durationMetric:     durationMetric,
+		metrics:            []prometheus.Collector{executionsMetric, errorsMetric, durationMetric},
+		state:              newQueryMetricsState(executionsMetric, errorsMetric, durationMetric, ttl),
+		running:            atomic.NewBool(false),
 	}, nil
 }
 
 func (c *QueryMetrics) Name() string {
 	return QueryMetricsCollector
+}
+
+// Tracker exposes the collector's query-tracking state so other collectors
+// (e.g. query_details) can restrict their work to the query_hashes that are
+// currently tracked here. The returned value is safe for concurrent use and
+// remains valid across collector restarts.
+func (c *QueryMetrics) Tracker() QueryTracker {
+	return c.state
 }
 
 func (c *QueryMetrics) Start(ctx context.Context) error {
@@ -174,7 +127,7 @@ func (c *QueryMetrics) Start(ctx context.Context) error {
 		defer ticker.Stop()
 
 		for {
-			if err := c.collectWithTimeout(c.ctx); err != nil {
+			if err := c.collect(c.ctx); err != nil {
 				c.logger.Error("collector error", "err", err)
 			}
 
@@ -208,14 +161,8 @@ func (c *QueryMetrics) Stop() {
 	c.state.reset()
 }
 
-func (c *QueryMetrics) collectWithTimeout(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	return c.collect(ctx)
-}
-
 func (c *QueryMetrics) collect(ctx context.Context) error {
-	database, ok := c.checkQueryStoreState(ctx)
+	database, ok := checkQueryStoreState(ctx, c.dbConnection, c.queryTimeout, c.logger)
 	if !ok {
 		// Query Store is unavailable on the connected database, skip this cycle.
 		// Existing counters and baselines are preserved if this is a transient error.
@@ -231,69 +178,49 @@ func (c *QueryMetrics) collect(ctx context.Context) error {
 	return nil
 }
 
-// checkQueryStoreState reports whether Query Store is available on the connected database
-// and returns that database's name.
-func (c *QueryMetrics) checkQueryStoreState(ctx context.Context) (string, bool) {
-	var database, actualState, captureMode sql.NullString
-	var readonlyReason sql.NullInt64
-
-	err := c.dbConnection.QueryRowContext(ctx, selectQueryStoreState).
-		Scan(&database, &actualState, &captureMode, &readonlyReason)
-
-	if errors.Is(err, sql.ErrNoRows) {
-		c.logger.Warn("Query Store options are unavailable: the login may lack VIEW DATABASE STATE, or the connected database has no Query Store")
-		return "", false
-	}
-	if err != nil {
-		c.logger.Warn("failed to inspect Query Store state; skipping collection", "err", err)
-		return "", false
-	}
-
-	if state := strings.ToUpper(strings.TrimSpace(actualState.String)); state != "READ_WRITE" {
-		c.logger.Warn("Query Store is not READ_WRITE; skipping collection",
-			"actual_state", actualState.String,
-			"capture_mode", captureMode.String,
-			"readonly_reason", readonlyReason.Int64)
-		return "", false
-	}
-
-	return database.String, true
-}
-
 func (c *QueryMetrics) fetchQueryStoreMetrics(ctx context.Context, database string) ([]queryMetricSource, error) {
-	rows, err := c.dbConnection.QueryContext(ctx, selectQueryMetrics,
-		sql.Named("limit", c.limit),
-		sql.Named("lookback_window", int(c.lookback/time.Second)),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query Query Store metrics: %w", err)
-	}
-	defer rows.Close()
-
 	var sources []queryMetricSource
-	for rows.Next() {
-		var hash []byte
-		var executions, errorExecutions int64
-		var durationMicroseconds float64
-		if err := rows.Scan(&hash, &executions, &errorExecutions, &durationMicroseconds); err != nil {
-			return nil, fmt.Errorf("failed to scan Query Store metrics: %w", err)
-		}
-
-		queryHash, err := formatQueryHash(hash)
+	err := withQueryTimeout(ctx, c.queryTimeout, func(queryCtx context.Context) error {
+		rows, err := c.dbConnection.QueryContext(
+			queryCtx, selectQueryMetrics,
+			sql.Named("limit", c.limit),
+			sql.Named("lookback_window", int(c.lookback/time.Second)),
+			sql.Named("exclude_current_user", c.excludeCurrentUser),
+			sql.Named("collector_marker", QueryMarker),
+		)
 		if err != nil {
-			return nil, err
+			return fmt.Errorf("failed to query Query Store metrics: %w", err)
 		}
+		defer rows.Close()
 
-		sources = append(sources, queryMetricSource{
-			database:        database,
-			queryHash:       queryHash,
-			executions:      executions,
-			errors:          errorExecutions,
-			durationSeconds: durationMicroseconds / 1e6,
-		})
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("failed to read Query Store metrics: %w", err)
+		for rows.Next() {
+			var hash []byte
+			var executions, errorExecutions int64
+			var durationMicroseconds float64
+			if err := rows.Scan(&hash, &executions, &errorExecutions, &durationMicroseconds); err != nil {
+				return fmt.Errorf("failed to scan Query Store metrics: %w", err)
+			}
+
+			queryHash, err := formatQueryHash(hash)
+			if err != nil {
+				return err
+			}
+
+			sources = append(sources, queryMetricSource{
+				database:        database,
+				queryHash:       queryHash,
+				executions:      executions,
+				errors:          errorExecutions,
+				durationSeconds: durationMicroseconds / 1e6,
+			})
+		}
+		if err := rows.Err(); err != nil {
+			return fmt.Errorf("failed to read Query Store metrics: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return sources, nil
