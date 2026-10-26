@@ -11,7 +11,6 @@ import (
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/atomic"
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,9 +27,9 @@ import (
 )
 
 type fakeMimirClient struct {
-	rulesMut     sync.RWMutex
+	mut          sync.RWMutex
 	rules        map[string][]client.MimirRuleGroup
-	listFailures atomic.Int32
+	listFailures int
 }
 
 var _ client.RulerInterface = &fakeMimirClient{}
@@ -42,16 +41,16 @@ func newFakeMimirClient() *fakeMimirClient {
 }
 
 func (m *fakeMimirClient) CreateRuleGroup(_ context.Context, namespace string, rule client.MimirRuleGroup) error {
-	m.rulesMut.Lock()
-	defer m.rulesMut.Unlock()
+	m.mut.Lock()
+	defer m.mut.Unlock()
 	m.deleteLocked(namespace, rule.Name)
 	m.rules[namespace] = append(m.rules[namespace], rule)
 	return nil
 }
 
 func (m *fakeMimirClient) DeleteRuleGroup(_ context.Context, namespace, group string) error {
-	m.rulesMut.Lock()
-	defer m.rulesMut.Unlock()
+	m.mut.Lock()
+	defer m.mut.Unlock()
 	m.deleteLocked(namespace, group)
 	return nil
 }
@@ -76,11 +75,12 @@ func (m *fakeMimirClient) deleteLocked(namespace, group string) {
 }
 
 func (m *fakeMimirClient) ListRules(_ context.Context, namespace string) (map[string][]client.MimirRuleGroup, error) {
-	if remaining := m.listFailures.Load(); remaining > 0 && m.listFailures.CompareAndSwap(remaining, remaining-1) {
+	m.mut.Lock()
+	defer m.mut.Unlock()
+	if m.listFailures > 0 {
+		m.listFailures--
 		return nil, errors.New("connection refused")
 	}
-	m.rulesMut.RLock()
-	defer m.rulesMut.RUnlock()
 	output := make(map[string][]client.MimirRuleGroup)
 	for ns, v := range m.rules {
 		if namespace != "" && namespace != ns {
@@ -89,6 +89,12 @@ func (m *fakeMimirClient) ListRules(_ context.Context, namespace string) (map[st
 		output[ns] = v
 	}
 	return output, nil
+}
+
+func (m *fakeMimirClient) remainingListFailures() int {
+	m.mut.RLock()
+	defer m.mut.RUnlock()
+	return m.listFailures
 }
 
 func TestEventLoop(t *testing.T) {
