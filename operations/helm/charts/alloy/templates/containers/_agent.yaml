@@ -79,6 +79,10 @@
   resources:
     {{- toYaml . | nindent 4 }}
   {{- end }}
+  {{- with $values.resizePolicy }}
+  resizePolicy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   {{- with $values.lifecycle }}
   lifecycle:
   {{- toYaml . | nindent 4 }}

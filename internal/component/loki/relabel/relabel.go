@@ -119,7 +119,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 			c.metrics.entriesProcessed.Add(float64(batch.EntryLen()))
 
-			batch.FilterMapStreams(func(stream *loki.Stream) bool {
+			batch.FilterMapStreams(func(stream loki.Stream) (loki.Stream, bool) {
 				relabeled, ok := c.relabel(stream.Labels)
 
 				var count uint64
@@ -140,7 +140,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 				))
 
 				stream.Labels = relabeled
-				return ok
+				return stream, ok
 			})
 
 			c.metrics.entriesOutgoing.Add(float64(batch.EntryLen()))

@@ -80,9 +80,9 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 				return loki.Batch{}, loki.ErrConsumerStopped
 			}
 
-			batch.FilterMapStreams(func(stream *loki.Stream) (keep bool) {
+			batch.FilterMapStreams(func(stream loki.Stream) (loki.Stream, bool) {
 				stream.Labels = c.process(stream.Labels, false)
-				return true
+				return stream, true
 			})
 
 			return batch, nil

@@ -47,7 +47,7 @@ func TestNewExplainPlanOutputFromShowPlanXML(t *testing.T) {
 				Operation: database_observability.ExplainPlanOutputOperationNestedLoopJoin,
 				Details: database_observability.ExplainPlanNodeDetails{
 					EstimatedRows: 12,
-					EstimatedCost: floatPtr(0.045),
+					EstimatedCost: floatPtr(0.03),
 					JoinAlgorithm: joinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmNestedLoop),
 					JoinType:      stringPtr("Inner Join"),
 				},
@@ -82,7 +82,7 @@ func TestNewExplainPlanOutputFromShowPlanXML(t *testing.T) {
 				Operation: database_observability.ExplainPlanOutputOperationHashJoin,
 				Details: database_observability.ExplainPlanNodeDetails{
 					EstimatedRows: 500,
-					EstimatedCost: floatPtr(1.2),
+					EstimatedCost: floatPtr(0.1),
 					JoinAlgorithm: joinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmHash),
 					JoinType:      stringPtr("Inner Join"),
 				},
@@ -114,7 +114,7 @@ func TestNewExplainPlanOutputFromShowPlanXML(t *testing.T) {
 				Operation: database_observability.ExplainPlanOutputOperationGroupingOperation,
 				Details: database_observability.ExplainPlanNodeDetails{
 					EstimatedRows: 300,
-					EstimatedCost: floatPtr(0.9),
+					EstimatedCost: floatPtr(0.3),
 					GroupByKeys:   []string{"CustomerId"},
 				},
 				Children: []database_observability.ExplainPlanNode{
@@ -136,14 +136,14 @@ func TestNewExplainPlanOutputFromShowPlanXML(t *testing.T) {
 				Operation: database_observability.ExplainPlanOutputOperationTop,
 				Details: database_observability.ExplainPlanNodeDetails{
 					EstimatedRows: 10,
-					EstimatedCost: floatPtr(0.7),
+					EstimatedCost: floatPtr(0.05),
 				},
 				Children: []database_observability.ExplainPlanNode{
 					{
 						Operation: database_observability.ExplainPlanOutputOperationOrderingOperation,
 						Details: database_observability.ExplainPlanNodeDetails{
 							EstimatedRows: 2000,
-							EstimatedCost: floatPtr(0.65),
+							EstimatedCost: floatPtr(0.05),
 							SortKeys:      []string{"OrderDate"},
 						},
 						Children: []database_observability.ExplainPlanNode{
@@ -167,14 +167,14 @@ func TestNewExplainPlanOutputFromShowPlanXML(t *testing.T) {
 				Operation: database_observability.ExplainPlanOutputOperationComputeScalar,
 				Details: database_observability.ExplainPlanNodeDetails{
 					EstimatedRows: 80,
-					EstimatedCost: floatPtr(0.55),
+					EstimatedCost: floatPtr(0.01),
 				},
 				Children: []database_observability.ExplainPlanNode{
 					{
 						Operation: database_observability.ExplainPlanOutputOperationFilter,
 						Details: database_observability.ExplainPlanNodeDetails{
 							EstimatedRows: 80,
-							EstimatedCost: floatPtr(0.54),
+							EstimatedCost: floatPtr(0.04),
 							Condition:     stringPtr("[dbo].[Orders].[Total]>(?)"),
 						},
 						Children: []database_observability.ExplainPlanNode{
@@ -198,7 +198,7 @@ func TestNewExplainPlanOutputFromShowPlanXML(t *testing.T) {
 				Operation: database_observability.ExplainPlanOutputOperationUnion,
 				Details: database_observability.ExplainPlanNodeDetails{
 					EstimatedRows: 1500,
-					EstimatedCost: floatPtr(1.1),
+					EstimatedCost: floatPtr(0.2),
 				},
 				Children: []database_observability.ExplainPlanNode{
 					{
@@ -228,7 +228,7 @@ func TestNewExplainPlanOutputFromShowPlanXML(t *testing.T) {
 				Operation: database_observability.ExplainPlanOutputOperationHashJoin,
 				Details: database_observability.ExplainPlanNodeDetails{
 					EstimatedRows: 2000000,
-					EstimatedCost: floatPtr(45.2),
+					EstimatedCost: floatPtr(44.1),
 					JoinAlgorithm: joinAlgorithmPtr(database_observability.ExplainPlanJoinAlgorithmHash),
 					JoinType:      stringPtr("Inner Join"),
 					Warnings:      []string{"no join predicate (cartesian product)", "spilled to tempdb"},
@@ -265,8 +265,17 @@ func TestNewExplainPlanOutputFromShowPlanXML(t *testing.T) {
 					EstimatedCost:        floatPtr(0.03),
 					UnrecognizedOperator: stringPtr("Bitmap"),
 				},
-				// No children: the default branch never calls childrenOf, so the
-				// Table Scan nested inside <Bitmap> is unreachable.
+				Children: []database_observability.ExplainPlanNode{
+					{
+						Operation: database_observability.ExplainPlanOutputOperationTableScan,
+						Details: database_observability.ExplainPlanNodeDetails{
+							EstimatedRows: 2000,
+							EstimatedCost: floatPtr(0.1),
+							TableName:     stringPtr("Orders"),
+							AccessType:    accessTypePtr(database_observability.ExplainPlanAccessTypeAll),
+						},
+					},
+				},
 			},
 		},
 		{
@@ -275,7 +284,7 @@ func TestNewExplainPlanOutputFromShowPlanXML(t *testing.T) {
 				Operation: database_observability.ExplainPlanOutputOperationInsert,
 				Details: database_observability.ExplainPlanNodeDetails{
 					EstimatedRows: 500,
-					EstimatedCost: floatPtr(0.8),
+					EstimatedCost: floatPtr(0.3),
 					TableName:     stringPtr("Orders"),
 					KeyUsed:       stringPtr("PK_Orders"),
 				},
@@ -298,7 +307,7 @@ func TestNewExplainPlanOutputFromShowPlanXML(t *testing.T) {
 				Operation: database_observability.ExplainPlanOutputOperationUpdate,
 				Details: database_observability.ExplainPlanNodeDetails{
 					EstimatedRows: 1,
-					EstimatedCost: floatPtr(0.15),
+					EstimatedCost: floatPtr(0.05),
 					TableName:     stringPtr("Orders"),
 					Condition:     stringPtr("[dbo].[Orders].[OrderId]=(?)"),
 				},
@@ -321,14 +330,14 @@ func TestNewExplainPlanOutputFromShowPlanXML(t *testing.T) {
 				Operation: database_observability.ExplainPlanOutputOperationAssert,
 				Details: database_observability.ExplainPlanNodeDetails{
 					EstimatedRows: 1,
-					EstimatedCost: floatPtr(10.75),
+					EstimatedCost: floatPtr(0.01),
 				},
 				Children: []database_observability.ExplainPlanNode{
 					{
 						Operation: database_observability.ExplainPlanOutputOperationInsert,
 						Details: database_observability.ExplainPlanNodeDetails{
 							EstimatedRows: 1,
-							EstimatedCost: floatPtr(10.74),
+							EstimatedCost: floatPtr(10.24),
 							TableName:     stringPtr("ReadingListBooks"),
 							KeyUsed:       stringPtr("PK_ReadingListBooks"),
 						},
@@ -353,12 +362,9 @@ func TestNewExplainPlanOutputFromShowPlanXML(t *testing.T) {
 				Operation: database_observability.ExplainPlanOutputOperationUnknown,
 				Details: database_observability.ExplainPlanNodeDetails{
 					EstimatedRows:        300,
-					EstimatedCost:        floatPtr(0.9),
+					EstimatedCost:        floatPtr(0.3),
 					UnrecognizedOperator: stringPtr("Hash Match (Flow Distinct)"),
 				},
-				// Unlike the main switch's default branch, the Hash case always
-				// calls childrenOf before populateHashDetails's own default runs,
-				// so the child is preserved even though the node is Unknown.
 				Children: []database_observability.ExplainPlanNode{
 					{
 						Operation: database_observability.ExplainPlanOutputOperationTableScan,
@@ -367,6 +373,102 @@ func TestNewExplainPlanOutputFromShowPlanXML(t *testing.T) {
 							EstimatedCost: floatPtr(0.6),
 							TableName:     stringPtr("Orders"),
 							AccessType:    accessTypePtr(database_observability.ExplainPlanAccessTypeAll),
+						},
+					},
+				},
+			},
+		},
+		{
+			fixture: "top_sort",
+			want: database_observability.ExplainPlanNode{
+				Operation: database_observability.ExplainPlanOutputOperationOrderingOperation,
+				Details: database_observability.ExplainPlanNodeDetails{
+					EstimatedRows: 10,
+					EstimatedCost: floatPtr(0.05),
+					SortKeys:      []string{"c1"},
+				},
+				Children: []database_observability.ExplainPlanNode{
+					{
+						Operation: database_observability.ExplainPlanOutputOperationTableScan,
+						Details: database_observability.ExplainPlanNodeDetails{
+							EstimatedRows: 2000,
+							EstimatedCost: floatPtr(0.1),
+							TableName:     stringPtr("t1"),
+							AccessType:    accessTypePtr(database_observability.ExplainPlanAccessTypeAll),
+						},
+					},
+				},
+			},
+		},
+		{
+			fixture: "eager_spool",
+			want: database_observability.ExplainPlanNode{
+				Operation: database_observability.ExplainPlanOutputOperationSpool,
+				Details: database_observability.ExplainPlanNodeDetails{
+					EstimatedRows: 2000,
+					EstimatedCost: floatPtr(0.1),
+				},
+				Children: []database_observability.ExplainPlanNode{
+					{
+						Operation: database_observability.ExplainPlanOutputOperationTableScan,
+						Details: database_observability.ExplainPlanNodeDetails{
+							EstimatedRows: 2000,
+							EstimatedCost: floatPtr(0.1),
+							TableName:     stringPtr("t1"),
+							AccessType:    accessTypePtr(database_observability.ExplainPlanAccessTypeAll),
+						},
+					},
+				},
+			},
+		},
+		{
+			fixture: "lazy_spool",
+			want: database_observability.ExplainPlanNode{
+				Operation: database_observability.ExplainPlanOutputOperationSpool,
+				Details: database_observability.ExplainPlanNodeDetails{
+					EstimatedRows: 2000,
+					EstimatedCost: floatPtr(0.1),
+				},
+				Children: []database_observability.ExplainPlanNode{
+					{
+						Operation: database_observability.ExplainPlanOutputOperationTableScan,
+						Details: database_observability.ExplainPlanNodeDetails{
+							EstimatedRows: 2000,
+							EstimatedCost: floatPtr(0.1),
+							TableName:     stringPtr("t1"),
+							AccessType:    accessTypePtr(database_observability.ExplainPlanAccessTypeAll),
+						},
+					},
+				},
+			},
+		},
+		{
+			fixture: "unmodeled_wrapper_nested",
+			want: database_observability.ExplainPlanNode{
+				Operation: database_observability.ExplainPlanOutputOperationUnknown,
+				Details: database_observability.ExplainPlanNodeDetails{
+					EstimatedRows:        2000,
+					EstimatedCost:        floatPtr(0.1),
+					UnrecognizedOperator: stringPtr("Segment"),
+				},
+				Children: []database_observability.ExplainPlanNode{
+					{
+						Operation: database_observability.ExplainPlanOutputOperationUnknown,
+						Details: database_observability.ExplainPlanNodeDetails{
+							EstimatedRows:        2000,
+							EstimatedCost:        floatPtr(0.1),
+							UnrecognizedOperator: stringPtr("Bitmap"),
+						},
+						Children: []database_observability.ExplainPlanNode{
+							{
+								Operation: database_observability.ExplainPlanOutputOperationTableScan,
+								Details: database_observability.ExplainPlanNodeDetails{
+									EstimatedRows: 2000,
+									EstimatedCost: floatPtr(0.1),
+									TableName:     stringPtr("t1"),
+									AccessType:    accessTypePtr(database_observability.ExplainPlanAccessTypeAll),
+								},
+							},
 						},
 					},
 				},
@@ -394,4 +496,28 @@ func TestNewExplainPlanOutputFromShowPlanXML_Errors(t *testing.T) {
 		_, err := newExplainPlanOutputFromShowPlanXML([]byte(`<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan"><BatchSequence><Batch><Statements></Statements></Batch></BatchSequence></ShowPlanXML>`))
 		require.Error(t, err)
 	})
+}
+
+func TestRelOpToExplainPlanNodeClampsNegativeIncrementalCost(t *testing.T) {
+	node := relOpToExplainPlanNode(xmlRelOp{
+		PhysicalOp:                "Nested Loops",
+		LogicalOp:                 "Inner Join",
+		EstimateRows:              "1",
+		EstimatedTotalSubtreeCost: "0.5",
+		NestedLoops: &xmlOpChildren{
+			RelOp: []xmlRelOp{
+				{
+					PhysicalOp:                "Table Scan",
+					EstimateRows:              "1",
+					EstimatedTotalSubtreeCost: "0.6",
+					TableScan:                 &xmlIndexScan{},
+				},
+			},
+		},
+	})
+
+	require.NotNil(t, node.Details.EstimatedCost)
+	require.Zero(t, *node.Details.EstimatedCost)
+	require.Len(t, node.Children, 1)
+	require.InDelta(t, 0.6, *node.Children[0].Details.EstimatedCost, 0.000001)
 }

@@ -1,0 +1,38 @@
+SQL Server showplan XML with a Segment operator wrapping a Bitmap operator
+wrapping a Table Scan. Neither wrapper is modeled, so both are Unknown, but
+the subtree beneath them is preserved. Non-operator siblings (OutputList,
+SegmentColumn, HashKeys) must not produce nodes.
+
+-- unmodeled_wrapper_nested.xml --
+<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan">
+  <BatchSequence>
+    <Batch>
+      <Statements>
+        <StmtSimple>
+          <QueryPlan>
+            <RelOp PhysicalOp="Segment" LogicalOp="Segment" EstimateRows="2000" EstimatedTotalSubtreeCost="0.3">
+              <OutputList />
+              <Segment>
+                <GroupBy>
+                  <ColumnReference Column="c1" />
+                </GroupBy>
+                <SegmentColumn>
+                  <ColumnReference Column="Segment1001" />
+                </SegmentColumn>
+                <RelOp PhysicalOp="Bitmap" LogicalOp="Bitmap Create" EstimateRows="2000" EstimatedTotalSubtreeCost="0.2">
+                  <OutputList />
+                  <Bitmap>
+                    <HashKeys>
+                      <ColumnReference Column="c1" />
+                    </HashKeys>
+                    <RelOp PhysicalOp="Table Scan" LogicalOp="Table Scan" EstimateRows="2000" EstimatedTotalSubtreeCost="0.1"><OutputList /><TableScan><Object Database="[MyDb]" Schema="[dbo]" Table="[t1]" /></TableScan></RelOp>
+                  </Bitmap>
+                </RelOp>
+              </Segment>
+            </RelOp>
+          </QueryPlan>
+        </StmtSimple>
+      </Statements>
+    </Batch>
+  </BatchSequence>
+</ShowPlanXML>

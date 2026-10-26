@@ -910,7 +910,7 @@ The `lambda` block supports the following blocks:
 
 | Block                                                | Description                                  | Required |
 | ---------------------------------------------------- | -------------------------------------------- | -------- |
-| [resource_attri`butes](#lambda--resource_attributes) | Configures which resource attributes to add. | no       |
+| [`resource_attributes`](#lambda--resource_attributes) | Configures which resource attributes to add. | no       |
 
 #### `lambda` > `resource_attributes`
 
@@ -1092,7 +1092,7 @@ The `openshift` block supports the following attributes:
 | Attribute | Type     | Description                                              | Default     | Required |
 | --------- | -------- | -------------------------------------------------------- | ----------- | -------- |
 | `address` | `string` | Address of the OpenShift API server.                     | _See below_ | no       |
-| `token`   | `string` | Token used to identify against the OpenShift API server. | ""          | no       |
+| `token`   | `secret` | Token used to identify against the OpenShift API server. | ""          | no       |
 
 The "get", "watch", and "list" permissions are required:
 

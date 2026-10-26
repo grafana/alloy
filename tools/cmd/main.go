@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/grafana/alloy/tools/aireview"
+	"github.com/grafana/alloy/tools/benchdiff"
 	"github.com/grafana/alloy/tools/goversion"
 	"github.com/grafana/alloy/tools/govulncheck"
 	"github.com/grafana/alloy/tools/lint"
@@ -30,6 +31,7 @@ func newRootCommand() *cobra.Command {
 	}
 	cmd.AddCommand(
 		aireview.Command(),
+		benchdiff.Command(),
 		goversion.Command(),
 		govulncheck.Command(),
 		release.Command(),

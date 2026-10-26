@@ -25,9 +25,14 @@ const (
 )
 
 func TestLokiKafka(t *testing.T) {
-	producer, err := newProducer()
+	config := sarama.NewConfig()
+	config.Producer.Return.Successes = true
+
+	producer, err := newProducer(config)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, producer.Close()) }()
+
+	common.CreateKafkaTopics(t, []string{broker}, config, 3, topics...)
 
 	var (
 		wg   sync.WaitGroup
@@ -64,10 +69,7 @@ func TestLokiKafka(t *testing.T) {
 	)
 }
 
-func newProducer() (sarama.SyncProducer, error) {
-	config := sarama.NewConfig()
-	config.Producer.Return.Successes = true
-
+func newProducer(config *sarama.Config) (sarama.SyncProducer, error) {
 	backoff := backoff.New(context.Background(), backoff.Config{
 		MinBackoff: 50 * time.Millisecond,
 		MaxBackoff: 5 * time.Second,

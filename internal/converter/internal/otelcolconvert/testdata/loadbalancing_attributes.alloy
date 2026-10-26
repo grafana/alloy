@@ -1,0 +1,27 @@
+otelcol.receiver.otlp "default" {
+	grpc {
+		endpoint = "localhost:4317"
+	}
+
+	output {
+		traces = [otelcol.exporter.loadbalancing.default.input]
+	}
+}
+
+otelcol.exporter.loadbalancing "default" {
+	protocol {
+		otlp {
+			client { }
+		}
+	}
+
+	resolver {
+		static {
+			hostnames = ["backend-1:4317", "backend-2:4317"]
+		}
+	}
+	routing_key        = "attributes"
+	routing_attributes = ["service.name", "span.kind"]
+
+	sending_queue { }
+}

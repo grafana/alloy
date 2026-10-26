@@ -120,6 +120,9 @@ func (e EBPF) Convert() map[string]any {
 	if v := e.ForceBpfMapReader; v != "" {
 		m["force_bpf_map_reader"] = v
 	}
+	if v := e.GoHTTPClientBufferTimeout; v != nil {
+		m["go_http_client_buffer_timeout"] = v.String()
+	}
 	if e.HeuristicSQLDetect {
 		m["heuristic_sql_detect"] = true
 	}
@@ -131,6 +134,12 @@ func (e EBPF) Convert() map[string]any {
 	}
 	if v := e.InstrumentCuda; v != 0 {
 		m["instrument_cuda"] = v
+	}
+	if v := e.KafkaConsumerGroupCacheSize; v != 0 {
+		m["kafka_consumer_group_cache_size"] = v
+	}
+	if v := e.KafkaConsumerGroupTTL; v != 0 {
+		m["kafka_consumer_group_ttl"] = v.String()
 	}
 	if v := e.KafkaTopicUuidCacheSize; v != 0 {
 		m["kafka_topic_uuid_cache_size"] = v
@@ -411,6 +420,9 @@ func (e EBPF) Convert() map[string]any {
 			m["payload_extraction"] = m1
 		}
 	}
+	if e.PopulateTraceContext {
+		m["populate_trace_context"] = true
+	}
 	if v := e.PostgresPreparedStatementsCacheSize; v != 0 {
 		m["postgres_prepared_statements_cache_size"] = v
 	}
@@ -554,6 +566,48 @@ func (j JVMRuntimeMetrics) Convert() map[string]any {
 	m := make(map[string]any)
 	if v := j.SamplingInterval; v != 0 {
 		m["sampling_interval"] = v.String()
+	}
+	return m
+}
+
+// Convert builds the dotnet_runtime_metrics configuration.
+func (d DotnetRuntimeMetrics) Convert() map[string]any {
+	m := make(map[string]any)
+	if v := d.SamplingInterval; v != 0 {
+		m["sampling_interval"] = v.String()
+	}
+	if v := d.Timeout; v != 0 {
+		m["timeout"] = v.String()
+	}
+	return m
+}
+
+// Convert builds the cloud_metadata configuration.
+func (c CloudMetadata) Convert() map[string]any {
+	m := make(map[string]any)
+	if v := c.ClusterName; v != "" {
+		m["cluster_name"] = v
+	}
+	if v := c.Region; v != "" {
+		m["region"] = v
+	}
+	return m
+}
+
+// Convert builds the name_resolver configuration.
+func (n NameResolver) Convert() map[string]any {
+	m := make(map[string]any)
+	if v := n.Sources; len(v) > 0 {
+		m["sources"] = v
+	}
+	if v := n.CacheLen; v != 0 {
+		m["cache_len"] = v
+	}
+	if v := n.CacheExpiry; v != 0 {
+		m["cache_expiry"] = v.String()
+	}
+	if v := n.ECS.RefreshInterval; v != 0 {
+		m["ecs"] = map[string]any{"refresh_interval": v.String()}
 	}
 	return m
 }
