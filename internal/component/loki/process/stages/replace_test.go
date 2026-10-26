@@ -198,6 +198,13 @@ func TestUnmarshalReplaceConfig(t *testing.T) {
 			`,
 		},
 		{
+			name: "empty expression",
+			cfg: `
+				expression = ""
+			`,
+			expectErr: true,
+		},
+		{
 			name: "missing expression",
 			cfg: `
 				replace = "test"
