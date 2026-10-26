@@ -365,9 +365,6 @@ func TestNewExplainPlanOutputFromShowPlanXML(t *testing.T) {
 					EstimatedCost:        floatPtr(0.3),
 					UnrecognizedOperator: stringPtr("Hash Match (Flow Distinct)"),
 				},
-				// Unlike the main switch's default branch, the Hash case always
-				// calls childrenOf before populateHashDetails's own default runs,
-				// so the child is preserved even though the node is Unknown.
 				Children: []database_observability.ExplainPlanNode{
 					{
 						Operation: database_observability.ExplainPlanOutputOperationTableScan,
