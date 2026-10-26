@@ -81,3 +81,53 @@ func TestQueryCollectorsExcludeCurrentUser(t *testing.T) {
 		})
 	}
 }
+
+func TestServerMetricsExcludeCurrentUser(t *testing.T) {
+	t.Run("sql server user sessions", func(t *testing.T) {
+		raw, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer raw.Close()
+
+		c, err := NewServerMetrics(ServerMetricsArguments{
+			DB:                 raw,
+			Registry:           prometheus.NewRegistry(),
+			Logger:             util.TestAlloyLogger(t).Slog(),
+			EngineEdition:      3,
+			ExcludeCurrentUser: true,
+		})
+		require.NoError(t, err)
+
+		mock.ExpectQuery(selectUserSessions).
+			WithArgs(sql.Named("exclude_current_user", true), sql.Named("collector_app_name", AppName)).
+			WillReturnRows(sqlmock.NewRows(userSessionColumns).AddRow(1, 2, 0, 0, 0)).
+			RowsWillBeClosed()
+
+		ch := make(chan prometheus.Metric, 8)
+		c.collectUserSessions(context.Background(), 3, ch)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("azure sql database user sessions", func(t *testing.T) {
+		raw, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer raw.Close()
+
+		c, err := NewServerMetrics(ServerMetricsArguments{
+			DB:                 raw,
+			Registry:           prometheus.NewRegistry(),
+			Logger:             util.TestAlloyLogger(t).Slog(),
+			EngineEdition:      azureSQLDatabaseEngineEdition,
+			ExcludeCurrentUser: true,
+		})
+		require.NoError(t, err)
+
+		mock.ExpectQuery(selectAzureSQLDatabaseUserSessions).
+			WithArgs(sql.Named("exclude_current_user", true), sql.Named("collector_app_name", AppName)).
+			WillReturnRows(sqlmock.NewRows(azureSQLDatabaseUserSessionColumns).AddRow(1, 2, 0, 0)).
+			RowsWillBeClosed()
+
+		ch := make(chan prometheus.Metric, 8)
+		c.collectAzureSQLDatabaseUserSessions(context.Background(), ch)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+}
