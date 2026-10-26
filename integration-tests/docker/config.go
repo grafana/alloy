@@ -14,9 +14,6 @@ type ContainerConfig struct {
 	// Path is relative to the test directory.
 	// When set, the runner builds and runs alloy-integration-tests-<test_dir>:latest.
 	Dockerfile string `yaml:"dockerfile"`
-	// UseMount when set to true will create "mount" directory inside test
-	// folder that will be mounted into the container.
-	UseMount bool `yaml:"use_mount"`
 	// UseDockerSock when set to true will mount the host Docker socket into the container.
 	UseDockerSock bool `yaml:"use_docker_sock"`
 	// Ports are all the port mappings required by the test.

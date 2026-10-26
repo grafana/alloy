@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"net/url"
 	"regexp"
 	"slices"
 	"strings"
@@ -721,7 +722,12 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 		inst.dbConnection = nil
 	}
 
-	dbConnection, err := c.openSQL("sqlserver", string(inst.cfg.dsn))
+	formattedDSN, err := formatDSN(string(inst.cfg.dsn))
+	if err != nil {
+		return fmt.Errorf("failed to format DSN: %w", err)
+	}
+
+	dbConnection, err := c.openSQL("sqlserver", formattedDSN)
 	if err != nil {
 		return fmt.Errorf("failed to open database connection: %w", err)
 	}
@@ -740,8 +746,8 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	inst.dbConnection = dbConnection
 
 	queryCtx, cancelQuery := context.WithTimeout(ctx, c.args.QueryTimeout)
-	var serverName, machineName, engineVersion sql.NullString
-	err = inst.dbConnection.QueryRowContext(queryCtx, collector.SelectServerInfo).Scan(&serverName, &machineName, &engineVersion)
+	var serverName, machineName, instanceName, engineVersion sql.NullString
+	err = inst.dbConnection.QueryRowContext(queryCtx, collector.SelectServerInfo).Scan(&serverName, &machineName, &instanceName, &engineVersion)
 	cancelQuery()
 	if err != nil {
 		return fmt.Errorf("failed to query server information: %w", err)
@@ -753,7 +759,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 		return fmt.Errorf("failed to resolve current login for query_samples user exclusion: %w", err)
 	}
 
-	generatedServerID := fmt.Sprintf("%x", sha256.Sum256(fmt.Appendf(nil, "%s:%s", serverName.String, machineName.String)))
+	generatedServerID := generateServerID(serverName.String, machineName.String, instanceName.String)
 
 	var cp *database_observability.CloudProvider
 	if inst.cfg.cloudProvider != nil {
@@ -798,6 +804,14 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	}
 
 	return nil
+}
+
+func generateServerID(serverName, machineName, instanceName string) string {
+	identity := fmt.Appendf(nil, "%s:%s", serverName, machineName)
+	if instanceName != "" {
+		identity = fmt.Appendf(identity, ":%s", instanceName)
+	}
+	return fmt.Sprintf("%x", sha256.Sum256(identity))
 }
 
 func enableOrDisableCollectors(a Arguments) map[string]bool {
@@ -1110,4 +1124,39 @@ func addLokiLabels(entryHandler loki.EntryHandler, instanceKey string, serverID 
 	}, rules).Wrap(entryHandler)
 
 	return entryHandler
+}
+
+// formatDSN sets the connection's application name to collector.AppName when
+// the DSN does not already specify a non-empty application name.
+func formatDSN(dsn string) (string, error) {
+	cfg, err := msdsn.Parse(dsn)
+	if err != nil {
+		return "", err
+	}
+	if cfg.Parameters[msdsn.AppName] != "" {
+		return dsn, nil
+	}
+
+	if strings.HasPrefix(dsn, "sqlserver://") {
+		u, err := url.Parse(dsn)
+		if err != nil {
+			return "", err
+		}
+		q := u.Query()
+		for k := range q {
+			if strings.EqualFold(k, msdsn.AppName) {
+				q.Del(k)
+			}
+		}
+		q.Set(msdsn.AppName, collector.AppName)
+		u.RawQuery = q.Encode()
+		return u.String(), nil
+	}
+
+	param := msdsn.AppName + "=" + collector.AppName
+	trimmed := strings.TrimRight(dsn, "; ")
+	if trimmed == "" || strings.EqualFold(trimmed, "odbc:") {
+		return trimmed + param, nil
+	}
+	return trimmed + ";" + param, nil
 }

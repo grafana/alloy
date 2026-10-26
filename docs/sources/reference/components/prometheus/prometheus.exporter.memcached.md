@@ -7,12 +7,17 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-10-06
 title: prometheus.exporter.memcached
 ---
 
 # `prometheus.exporter.memcached`
 
-The `prometheus.exporter.memcached` component embeds the [`memcached_exporter`](https://github.com/prometheus/memcached_exporter) for collecting metrics from a Memcached server.
+The `prometheus.exporter.memcached` component embeds the [`memcached_exporter`][memcached-exporter] to collect metrics from a Memcached server.
+
+You can specify multiple `prometheus.exporter.memcached` components by giving them different labels.
+
+[memcached-exporter]: https://github.com/prometheus/memcached_exporter
 
 ## Usage
 
@@ -25,10 +30,12 @@ prometheus.exporter.memcached "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.memcached`:
 
-| Name      | Type       | Description                                         | Default             | Required |
-| --------- | ---------- | --------------------------------------------------- | ------------------- | -------- |
-| `address` | `string`   | The Memcached server address.                       | `"localhost:11211"` | no       |
-| `timeout` | `duration` | The timeout for connecting to the Memcached server. | `"1s"`              | no       |
+| Name      | Type       | Description                                      | Default             | Required |
+| --------- | ---------- | ------------------------------------------------ | ------------------- | -------- |
+| `address` | `string`   | Address of the Memcached server.                 | `"localhost:11211"` | no       |
+| `timeout` | `duration` | Timeout for connections to the Memcached server. | `"1s"`              | no       |
+
+The component sets the `instance` label on its exported targets to the value of `address`.
 
 ## Blocks
 
@@ -36,9 +43,9 @@ You can use the following block with `prometheus.exporter.memcached`:
 
 {{< docs/alloy-config >}}
 
-| Block                      | Description                                             | Required |
-| -------------------------- | ------------------------------------------------------- | -------- |
-| [`tls_config`][tls_config] | TLS configuration for requests to the Memcached server. | no       |
+| Block                      | Description                                          | Required |
+| -------------------------- | ---------------------------------------------------- | -------- |
+| [`tls_config`][tls_config] | Configures TLS for requests to the Memcached server. | no       |
 
 [tls_config]: #tls_config
 
