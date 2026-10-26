@@ -2,7 +2,6 @@ package collector
 
 import (
 	"context"
-	"database/sql"
 	"strings"
 
 	"github.com/microsoft/go-mssqldb/msdsn"
@@ -18,29 +17,6 @@ const ConnectionInfoName = "connection_info"
 // wherever an engine identifier is needed, e.g. the connection_info metric's
 // "engine" label and the "engine" Loki label added to every log line.
 const EngineName = "sql_server"
-
-// SERVERPROPERTY('EngineEdition') values for the Azure SQL offerings whose
-// ProductVersion is a fixed placeholder (12.0.2000.8) rather than a real version.
-const (
-	engineEditionAzureSQLDatabase        = 5
-	engineEditionAzureSQLManagedInstance = 8
-)
-
-// ResolveEngineVersion returns the value for the engine_version label. Azure
-// SQL Database and Managed Instance are evergreen and expose no real version,
-// so they are identified by name. Everything else keeps the numeric
-// ProductVersion.
-func ResolveEngineVersion(engineEdition sql.NullInt64, productVersion sql.NullString) string {
-	if engineEdition.Valid {
-		switch engineEdition.Int64 {
-		case engineEditionAzureSQLDatabase:
-			return "Azure SQL Database"
-		case engineEditionAzureSQLManagedInstance:
-			return "Azure SQL Managed Instance"
-		}
-	}
-	return productVersion.String
-}
 
 type ConnectionInfoArguments struct {
 	DSN           string
