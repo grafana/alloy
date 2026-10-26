@@ -1,9 +1,11 @@
 package postgres
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -86,6 +88,12 @@ func newTestComponent(t *testing.T, openSQL func(string, string) (*sql.DB, error
 		logsReceiver: loki.NewLogsReceiver(),
 	}})
 	return c
+}
+
+// testServerInfoRows returns a selectServerInfo result set
+func testServerInfoRows(systemID string) *sqlmock.Rows {
+	return sqlmock.NewRows([]string{"system_identifier", "inet_server_addr", "inet_server_port", "version"}).
+		AddRow(systemID, "127.0.0.1", "5432", "14.0")
 }
 
 func Test_defaultExclusions(t *testing.T) {
@@ -439,8 +447,7 @@ func TestPostgres_ExcludeCurrentUser_Runtime(t *testing.T) {
 
 		mock.ExpectPing()
 		mock.ExpectQuery(selectServerInfo).
-			WillReturnRows(sqlmock.NewRows([]string{"system_identifier", "inet_server_addr", "inet_server_port", "version"}).
-				AddRow("1234567890", "127.0.0.1", "5432", "14.0"))
+			WillReturnRows(testServerInfoRows("1234567890"))
 		mock.ExpectQuery(`SELECT current_user`).
 			WillReturnRows(sqlmock.NewRows([]string{"current_user"}).AddRow("alloy_monitor"))
 
@@ -459,8 +466,7 @@ func TestPostgres_ExcludeCurrentUser_Runtime(t *testing.T) {
 
 		mock.ExpectPing()
 		mock.ExpectQuery(selectServerInfo).
-			WillReturnRows(sqlmock.NewRows([]string{"system_identifier", "inet_server_addr", "inet_server_port", "version"}).
-				AddRow("1234567890", "127.0.0.1", "5432", "14.0"))
+			WillReturnRows(testServerInfoRows("1234567890"))
 
 		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) { return db, nil })
 		c.args.ExcludeCurrentUser = false
@@ -476,8 +482,7 @@ func TestPostgres_ExcludeCurrentUser_Runtime(t *testing.T) {
 
 		mock.ExpectPing()
 		mock.ExpectQuery(selectServerInfo).
-			WillReturnRows(sqlmock.NewRows([]string{"system_identifier", "inet_server_addr", "inet_server_port", "version"}).
-				AddRow("1234567890", "127.0.0.1", "5432", "14.0"))
+			WillReturnRows(testServerInfoRows("1234567890"))
 		mock.ExpectQuery(`SELECT current_user`).WillReturnError(assert.AnError)
 
 		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) { return db, nil })
@@ -489,13 +494,52 @@ func TestPostgres_ExcludeCurrentUser_Runtime(t *testing.T) {
 	})
 }
 
+func TestPostgres_ServerID(t *testing.T) {
+	// A read replica is a physical copy of its primary, so the two always
+	// report the same system identifier, and where the server address is
+	// unavailable or shared they report the same address and port too.
+	const sharedSystemID = "7693168143673385005"
+
+	// serverIDFor connects one server reached at endpoint and returns the
+	// server_id the component derived for it.
+	serverIDFor := func(t *testing.T, endpoint string) string {
+		t.Helper()
+
+		db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true), sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		t.Cleanup(func() { db.Close() })
+
+		mock.ExpectPing()
+		mock.ExpectQuery(selectServerInfo).WillReturnRows(testServerInfoRows(sharedSystemID))
+
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) { return db, nil })
+		inst := c.loadInstances()[0]
+		inst.instanceKey = endpoint
+
+		require.NoError(t, c.connectAndStartCollectors(context.Background(), inst))
+		require.NoError(t, mock.ExpectationsWereMet())
+		require.NotEmpty(t, inst.exportedTargets)
+
+		serverID, ok := inst.exportedTargets[0].Get("server_id")
+		require.True(t, ok, "exported target carries no server_id label")
+		return serverID
+	}
+
+	const primaryEndpoint = "postgresql://db.abc.us-east-1.rds.amazonaws.com:5432/app"
+	primary := serverIDFor(t, primaryEndpoint)
+	replica1 := serverIDFor(t, "postgresql://db-replica-1.abc.us-east-1.rds.amazonaws.com:5432/app")
+	replica2 := serverIDFor(t, "postgresql://db-replica-2.abc.us-east-1.rds.amazonaws.com:5432/app")
+
+	assert.NotEqual(t, primary, replica1, "a primary and its replica share a server_id")
+	assert.NotEqual(t, replica1, replica2, "two read replicas of one primary share a server_id")
+
+	// The same server keeps its server_id across reconnects.
+	assert.Equal(t, primary, serverIDFor(t, primaryEndpoint))
+}
+
 func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
 	ptrBool := func(b bool) *bool { return &b }
 
-	serverInfoRows := func() *sqlmock.Rows {
-		return sqlmock.NewRows([]string{"system_identifier", "inet_server_addr", "inet_server_port", "version"}).
-			AddRow("1234567890", "127.0.0.1", "5432", "14.0")
-	}
 	currentUserRows := func() *sqlmock.Rows {
 		return sqlmock.NewRows([]string{"current_user"}).AddRow("alloy_monitor")
 	}
@@ -528,7 +572,7 @@ func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
 
 	expectPrelude := func(mock sqlmock.Sqlmock, mockSelectCurrentUser bool) {
 		mock.ExpectPing()
-		mock.ExpectQuery(regexp.QuoteMeta(selectServerInfo)).WillReturnRows(serverInfoRows())
+		mock.ExpectQuery(regexp.QuoteMeta(selectServerInfo)).WillReturnRows(testServerInfoRows("1234567890"))
 		if mockSelectCurrentUser {
 			mock.ExpectQuery(regexp.QuoteMeta("SELECT current_user")).WillReturnRows(currentUserRows())
 		}
@@ -1197,8 +1241,7 @@ func TestPostgres_Reconnection(t *testing.T) {
 		defer db2.Close()
 		mock2.ExpectPing()
 		mock2.ExpectQuery(selectServerInfo).
-			WillReturnRows(sqlmock.NewRows([]string{"system_identifier", "inet_server_addr", "inet_server_port", "version"}).
-				AddRow("1234567890", "127.0.0.1", "5432", "14.0"))
+			WillReturnRows(testServerInfoRows("1234567890"))
 		c.openSQL = func(_ string, _ string) (*sql.DB, error) { return db2, nil }
 
 		// Second attempt: connection succeeds and clears error
@@ -1516,8 +1559,7 @@ func multiDatabaseTestMockDB(t *testing.T, systemID string) *sql.DB {
 	mock.ExpectPing()
 	mock.ExpectPing()
 	mock.ExpectQuery(regexp.QuoteMeta(selectServerInfo)).
-		WillReturnRows(sqlmock.NewRows([]string{"system_identifier", "inet_server_addr", "inet_server_port", "version"}).
-			AddRow(systemID, "127.0.0.1", "5432", "14.0"))
+		WillReturnRows(testServerInfoRows(systemID))
 	return db
 }
 
@@ -1778,8 +1820,7 @@ func TestPostgres_ExportedReceiversStableAcrossUpdates(t *testing.T) {
 	for range 2 {
 		mock.ExpectPing()
 		mock.ExpectQuery(regexp.QuoteMeta(selectServerInfo)).
-			WillReturnRows(sqlmock.NewRows([]string{"system_identifier", "inet_server_addr", "inet_server_port", "version"}).
-				AddRow("system-1", "127.0.0.1", "5432", "14.0"))
+			WillReturnRows(testServerInfoRows("system-1"))
 	}
 
 	c, err := new(opts, args, func(_ string, _ string) (*sql.DB, error) { return db, nil })
@@ -2160,7 +2201,7 @@ func TestPostgres_Clustering_NonOwnedReceiverDiscards(t *testing.T) {
 }
 
 func Test_resolveExporterArgs(t *testing.T) {
-	t.Run("no block at all defaults to stat_statements only", func(t *testing.T) {
+	t.Run("no block at all defaults to stat_statements only with default stat_statements limit", func(t *testing.T) {
 		cfg := `
 			data_source_name = "postgresql://user:pass@localhost:5432/db"
 			forward_to = []
@@ -2169,6 +2210,8 @@ func Test_resolveExporterArgs(t *testing.T) {
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
 		assert.Equal(t, []string{"stat_statements"}, exporterArgs.EnabledCollectors)
+		require.NotNil(t, exporterArgs.StatStatementFlags)
+		assert.Equal(t, uint(100), exporterArgs.StatStatementFlags.Limit)
 	})
 
 	t.Run("block present with sub-block settings but enabled_collectors untouched", func(t *testing.T) {
@@ -2245,5 +2288,120 @@ func Test_resolveExporterArgs(t *testing.T) {
 		var args Arguments
 		err := syntax.Unmarshal([]byte(cfg), &args)
 		require.ErrorContains(t, err, "enabled_collectors cannot be set when disable_default_metrics is true")
+	})
+}
+
+func Test_query_details_stat_statements_different_limits_warning(t *testing.T) {
+	t.Run("logs warning when query_details enabled, stat_statements enabled, and limits differ", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, fmt.Errorf("connection skipped for limit warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		defer c.stopPumps()
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 200},
+			PrometheusExporter:    &PrometheusExporterArguments{StatStatementFlags: &exporter_postgres.StatStatementFlags{Limit: 50}},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.Contains(t, logs.String(), "query_details and prometheus_exporter stat_statements limits differ")
+		assert.Contains(t, logs.String(), "query_details_limit=200")
+		assert.Contains(t, logs.String(), "stat_statements_limit=50")
+	})
+
+	t.Run("does not log warning when query_details is disabled", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, fmt.Errorf("connection skipped for limit warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		defer c.stopPumps()
+		args := Arguments{
+			DataSourceName:     alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			DisableCollectors:  []string{collector.QueryDetailsCollector},
+			PrometheusExporter: &PrometheusExporterArguments{StatStatementFlags: &exporter_postgres.StatStatementFlags{Limit: 50}},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "query_details and prometheus_exporter stat_statements limits differ")
+	})
+
+	t.Run("does not log warning when embedded postgres exporter not used", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, fmt.Errorf("connection skipped for limit warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		defer c.stopPumps()
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			Targets:               []discovery.Target{discovery.NewTargetFromMap(map[string]string{"job": "external"})},
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 200},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "query_details and prometheus_exporter stat_statements limits differ")
+	})
+
+	t.Run("does not log warning when stat_statements is disabled", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, fmt.Errorf("connection skipped for limit warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		defer c.stopPumps()
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 200},
+			PrometheusExporter:    &PrometheusExporterArguments{DisableDefaultMetrics: true, CustomQueriesConfigPath: "/etc/custom-queries.yml"},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "query_details and prometheus_exporter stat_statements limits differ")
+	})
+
+	t.Run("does not log warning when enabled_collectors excludes stat_statements", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, fmt.Errorf("connection skipped for limit warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		defer c.stopPumps()
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 200},
+			PrometheusExporter: &PrometheusExporterArguments{
+				EnabledCollectors:  []string{"wal"},
+				StatStatementFlags: &exporter_postgres.StatStatementFlags{Limit: 50},
+			},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "query_details and prometheus_exporter stat_statements limits differ")
+	})
+
+	t.Run("does not log warning when limits match", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, fmt.Errorf("connection skipped for limit warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		defer c.stopPumps()
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 100},
+			// PrometheusExporter falls to default 100
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "query_details and prometheus_exporter stat_statements limits differ")
 	})
 }

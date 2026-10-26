@@ -215,6 +215,16 @@ func resolveExporterArgs(userBlock *PrometheusExporterArguments) exporter_postgr
 	if !exporterArgs.DisableDefaultMetrics && len(exporterArgs.EnabledCollectors) == 0 {
 		exporterArgs.EnabledCollectors = defaultEnabledCollectors
 	}
+
+	statStatementsFlags := exporter_postgres.StatStatementFlags{}
+	if exporterArgs.StatStatementFlags != nil {
+		statStatementsFlags = *exporterArgs.StatStatementFlags
+	}
+	if statStatementsFlags.Limit == 0 {
+		statStatementsFlags.Limit = 100
+	}
+	exporterArgs.StatStatementFlags = &statStatementsFlags
+
 	return exporterArgs
 }
 
@@ -648,7 +658,8 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 		return fmt.Errorf("failed to scan engine version: %w", err)
 	}
 
-	generatedSystemID := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", systemID.String, systemIP.String, systemPort.String))))
+	generatedSystemID := fmt.Sprintf("%x", sha256.Sum256(fmt.Appendf(nil, "%s:%s:%s:%s",
+		systemID.String, systemIP.String, systemPort.String, inst.instanceKey)))
 
 	// Get the current user and compute the effective exclude users list.
 	var currentUser sql.NullString
@@ -774,6 +785,9 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 
 	c.args = newArgs
+
+	c.warnOnStatementLimitMismatch()
+
 	c.fanout.UpdateChildren(c.args.ForwardTo)
 	// Every configured database gets a pump, owned or not: non-owned
 	// databases still export a receiver that discards entries, so upstream
@@ -783,6 +797,39 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.replaceInstances(instances)
 	return nil
+}
+
+func (c *Component) warnOnStatementLimitMismatch() {
+	queryDetailsEnabled := enableOrDisableCollectors(c.args)[collector.QueryDetailsCollector]
+	if !queryDetailsEnabled {
+		return
+	}
+
+	usesEmbeddedPostgresExporter := len(c.args.Targets) == 0
+	if !usesEmbeddedPostgresExporter {
+		return
+	}
+
+	exporterArgs := resolveExporterArgs(c.args.PrometheusExporter)
+	statStatementsEnabled := !exporterArgs.DisableDefaultMetrics && slices.Contains(exporterArgs.EnabledCollectors, "stat_statements")
+
+	if !statStatementsEnabled {
+		return
+	}
+
+	if exporterArgs.StatStatementFlags != nil {
+		queryDetailsLimit := c.args.QueryDetailsArguments.StatementsLimit
+		statStatementsLimit := exporterArgs.StatStatementFlags.Limit
+		limitsDiffer := queryDetailsLimit != int(statStatementsLimit)
+		if !limitsDiffer {
+			return
+		}
+		c.opts.Logger.Warn(
+			"query_details and prometheus_exporter stat_statements limits differ",
+			"query_details_limit", queryDetailsLimit,
+			"stat_statements_limit", exporterArgs.StatStatementFlags.Limit,
+		)
+	}
 }
 
 // buildInstances constructs, but doesn't connect, one dbInstance per config.

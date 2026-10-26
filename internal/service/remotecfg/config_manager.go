@@ -262,6 +262,7 @@ func (cm *configManager) fetchLoadRemoteConfig(getAPIConfig func() (*collectorv1
 		loaded := cm.getLastLoadedCfgHash()
 		received := cm.getLastReceivedCfgHash()
 		if loaded != "" && received != "" && loaded == received {
+			cm.metrics.lastLoadSuccess.Set(1)
 			cm.setRemoteConfigStatus(collectorv1.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED, "")
 		} else {
 			cm.logger.Debug("not modified but loaded config does not match last received; retaining status", "loaded_hash", loaded, "received_hash", received)

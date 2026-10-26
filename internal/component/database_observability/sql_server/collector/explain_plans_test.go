@@ -21,8 +21,7 @@ import (
 )
 
 // decodedExplainPlanPayload extracts and base64-decodes the explain_plan_output
-// field's raw JSON from a log line, so tests can assert on absent keys
-// (json.Marshal's omitempty) rather than just zero-valued struct fields.
+// field's raw JSON from a log line.
 func decodedExplainPlanPayload(t *testing.T, line string) string {
 	t.Helper()
 	_, rest, ok := strings.Cut(line, `explain_plan_output="`)
@@ -46,7 +45,7 @@ func mockExplainPlanRows(rows ...[]driver.Value) *sqlmock.Rows {
 func expectExplainPlans(t *testing.T, mock sqlmock.Sqlmock, hashes []string, rows ...[]driver.Value) {
 	t.Helper()
 
-	query, args, err := buildExplainPlansStatement(hashes)
+	query, args, err := buildExplainPlansStatement(hashes, false)
 	require.NoError(t, err)
 
 	mockSelectQueryStoreState(mock, "READ_WRITE")
@@ -168,13 +167,9 @@ func TestExplainPlans_EmitsOnFirstSighting(t *testing.T) {
 	require.Contains(t, entries[0].Line, `database="books_store"`)
 	require.Contains(t, entries[0].Line, `query_hash="0011223344556677"`)
 
-	// Engine identity is carried as a Loki label (added by addLokiLabels at
-	// the component level, not exercised by this collector-level test) - the
-	// metadata payload itself must not carry databaseEngine/databaseVersion
-	// at all now that they're omitempty and sql_server no longer sets them.
 	payload := decodedExplainPlanPayload(t, entries[0].Line)
-	require.NotContains(t, payload, "databaseEngine")
-	require.NotContains(t, payload, "databaseVersion")
+	require.Contains(t, payload, `"processingResult":"success"`)
+	require.Contains(t, payload, `"operation":"Table Scan"`)
 }
 
 func TestExplainPlans_SkipsTrackedHashWithNoPlanYet(t *testing.T) {
@@ -196,7 +191,8 @@ func TestExplainPlans_SkipsTrackedHashWithNoPlanYet(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 
 	require.Eventually(t, func() bool { return len(lokiClient.Received()) == 1 }, 5*time.Second, 20*time.Millisecond)
-	require.Contains(t, lokiClient.Received()[0].Line, `explain_plan_output=`)
+	payload := decodedExplainPlanPayload(t, lokiClient.Received()[0].Line)
+	require.Contains(t, payload, `"processingResult":"skipped"`)
 }
 
 func TestExplainPlans_EmissionGate(t *testing.T) {
@@ -262,12 +258,10 @@ func TestExplainPlans_EmissionGate(t *testing.T) {
 	require.Len(t, lokiClient.Received(), 3)
 }
 
-// TestRedactNativeShowPlanXML guards against regressing the unredacted debug
-// log this collector used to emit: the raw Showplan XML from
-// sys.query_store_plan can embed literal predicate values directly in
-// ScalarString attributes (e.g. "[dbo].[Orders].[Total]&gt;(100)"), so the
-// native-plan debug log line must redact those in place before it's ever
-// logged, while preserving everything else in the raw XML.
+// TestRedactNativeShowPlanXML verifies that literal predicate values embedded in
+// ScalarString attributes (e.g. "[dbo].[Orders].[Total]&gt;(100)") are redacted
+// in place for the native-plan debug log line while preserving everything else
+// in the raw XML.
 func TestRedactNativeShowPlanXML(t *testing.T) {
 	planXML := loadShowPlanFixture(t, "compute_scalar_with_filter")
 	require.Contains(t, string(planXML), `ScalarString="[dbo].[Orders].[Total]&gt;(100)"`,

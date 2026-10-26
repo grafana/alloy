@@ -1,0 +1,35 @@
+flags:
+  feature.loki.pipeline-v2.enabled: true
+
+config: |
+  loki.echo "e" {}
+
+inputs:
+  loki:
+    - components:
+        - pipelinetest.sink.out.loki_receiver
+        - loki.echo.e.receiver
+      entries:
+        - labels:
+            service_name: app
+          line: 'ts=2026-10-15T12:00:00Z level=info msg="first line"'
+          timestamp: "2026-10-15T12:00:00Z"
+        - labels:
+            service_name: app
+          line: 'ts=2026-10-15T12:00:01Z level=warn msg="second line"'
+          timestamp: "2026-10-15T12:00:01Z"
+        - labels:
+            service_name: app
+          line: 'ts=2026-10-15T12:00:02Z level=error msg="third line"'
+          timestamp: "2026-10-15T12:00:02Z"
+
+assert:
+  loki:
+    - type: count
+      count: 3
+    - type: contains
+      match:
+        labels:
+          values:
+            service_name: app
+        line: 'ts=2026-10-15T12:00:01Z level=warn msg="second line"'

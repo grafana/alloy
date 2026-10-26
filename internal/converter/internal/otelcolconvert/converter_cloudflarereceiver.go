@@ -13,6 +13,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/cloudflare"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func init() {
@@ -54,7 +55,7 @@ func toCloudflareReceiver(state *State, id componentstatus.InstanceID, cfg *clou
 
 	return &cloudflare.Arguments{
 		Endpoint:           cfg.Logs.Endpoint,
-		Secret:             cfg.Logs.Secret,
+		Secret:             alloytypes.Secret(cfg.Logs.Secret),
 		TLS:                toTLSServerArguments(cfg.Logs.TLS),
 		Attributes:         cfg.Logs.Attributes,
 		TimestampField:     cfg.Logs.TimestampField,
