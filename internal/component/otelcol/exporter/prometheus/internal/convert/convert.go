@@ -919,13 +919,13 @@ func (conv *Converter) GC(staleTime time.Duration) {
 	})
 
 	conv.metadataCache.Range(func(key, value any) bool {
-		series := value.(*memoryMetadata)
-		if !series.TryLock() {
+		md := value.(*memoryMetadata)
+		if !md.TryLock() {
 			return true
 		}
-		defer series.Unlock()
+		defer md.Unlock()
 
-		if now.Sub(series.lastSeen) > staleTime {
+		if now.Sub(md.lastSeen) > staleTime {
 			conv.metadataCache.Delete(key)
 		}
 		return true
