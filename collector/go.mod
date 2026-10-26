@@ -254,7 +254,7 @@ require (
 	github.com/DataDog/datadog-agent/pkg/util/sort v0.83.1 // indirect
 	github.com/DataDog/datadog-agent/pkg/util/startstop v0.83.1 // indirect
 	github.com/DataDog/datadog-agent/pkg/util/statstracker v0.83.1 // indirect
-	github.com/DataDog/datadog-agent/pkg/util/system v0.83.2 // indirect
+	github.com/DataDog/datadog-agent/pkg/util/system v0.84.5 // indirect
 	github.com/DataDog/datadog-agent/pkg/util/system/socket v0.76.0-rc.2 // indirect
 	github.com/DataDog/datadog-agent/pkg/util/winutil v0.83.2 // indirect
 	github.com/DataDog/datadog-agent/pkg/version v0.83.2 // indirect
@@ -1147,7 +1147,7 @@ replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.3.6
 
 replace github.com/hashicorp/vault/api/auth/aws => github.com/DataDog/vault/api/auth/aws v0.0.0-20250716193101-44fb30472101
 
-replace github.com/DataDog/datadog-agent/pkg/util/system => github.com/DataDog/datadog-agent/pkg/util/system v0.76.0-rc.2
+replace github.com/DataDog/datadog-agent/pkg/util/system => github.com/DataDog/datadog-agent/pkg/util/system v0.84.5
 
 replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20260917201616-6ac45be9754c
 
