@@ -21,6 +21,7 @@ const PingQuery = "SELECT " + QueryMarker + " 1"
 const SelectServerInfo = `SELECT ` + QueryMarker + `
     CONVERT(NVARCHAR(128), SERVERPROPERTY('ServerName')) AS server_name,
     CONVERT(NVARCHAR(128), SERVERPROPERTY('MachineName')) AS machine_name,
+    CONVERT(NVARCHAR(128), SERVERPROPERTY('InstanceName')) AS instance_name,
     CONVERT(NVARCHAR(128), SERVERPROPERTY('ProductVersion')) AS product_version`
 
 const SelectOriginalLogin = `SELECT ` + QueryMarker + ` ORIGINAL_LOGIN()`
