@@ -182,9 +182,9 @@ func (a *PrometheusExporterArguments) Validate() error {
 	return args.Validate()
 }
 
-var defaultEnabledCollectors = []string{eventsStatementsCollector}
-
 const eventsStatementsCollector = "perf_schema.eventsstatements"
+
+var defaultEnabledCollectors = []string{eventsStatementsCollector}
 
 func defaultArguments() Arguments {
 	return Arguments{
