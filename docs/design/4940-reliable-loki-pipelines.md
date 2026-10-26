@@ -271,6 +271,12 @@ We have an option to mitigate this in the future:
 
 ### Future improvement
 
+#### Parallel Consume() within a source
+
+Some sources read many streams but only have one goroutine to call Consume() from, so their throughput is limited to what one goroutine can process. If that turns out to be a bottleneck, the source can split each batch by stream and call Consume() for the parts in parallel. This can be done in several ways, for example with a fixed pool of workers chosen by stream hash, or with one goroutine per part and a semaphore to bound concurrency. The source waits for all parts before it commits.
+
+Each stream must stay in order, so the parts of one stream are not processed in parallel. If the destination endpoint accepts out-of-order writes within a stream, this can be relaxed so that a single busy stream is also processed in parallel.
+
 #### Position file update lag
 
 Automatically tune the position file update lag based on a total pipeline latency estimate (e.g. from loki.write metrics).
