@@ -102,6 +102,7 @@ var _ entryProcessor = (*templateStage)(nil)
 
 // newTemplateStage creates a new templateStage
 func newTemplateStage(config TemplateConfig, opts stageOpts) *templateStage {
+	// Template is validated during unmarshal.
 	templ, _ := config.Template.parse()
 	return &templateStage{
 		next:     opts.next,
