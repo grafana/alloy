@@ -170,7 +170,7 @@ Every component in the pipeline follows these rules. Together they keep config r
    - A source restarts its workers only when the relevant config changed. It cancels their context first, then waits for them to exit.
 3. **Sources handle Consume() errors.** Only when Consume() returns an error does a source check `ctx.Err() != nil` to tell a context error apart, instead of inspecting the returned error. A `nil` return is a success, even if the context was cancelled after it.
    - On a context error the entries may not have been delivered. The source does not advance its position and sends them again when the worker restarts. A push source returns the error to its client, so the client retries. A source that can't replay, such as UDP syslog, drops the entries and logs it.
-   - On `ErrConsumerStopped` a component in the pipeline has stopped, usually during a config reload. The source does not advance its position and retries with backoff until Consume() succeeds or the context is cancelled. It rebuilds the batch from its own data, since downstream components may have modified it. A push source returns a retryable error to its client instead. A source that can't replay drops the entries and logs it.
+   - On `ErrConsumerStopped` a component in the pipeline has stopped, usually during a config reload. The source does not advance its position and retries with backoff until Consume() succeeds or the context is cancelled. It rebuilds the batch from its own data, since downstream components may have modified it. A push source returns a retryable error to its client instead. A source that can't replay, such as UDP syslog, keeps the batch in memory and retries the same way. While it retries, new messages wait in its bounded queue and are only dropped when that queue is full.
    - Any other error is most likely a bug in the pipeline. The source logs it clearly, drops the entries to unblock the pipeline, and advances.
 4. **`FanoutV2` delivers to the current downstream and returns its errors**, as described in [FanoutV2](#fanoutv2).
 
@@ -246,6 +246,7 @@ Entries can still be lost in these cases:
 
 - A source gets an unexpected error from Consume(). It logs it, drops the entries and advances (see [Component rules](#component-rules)).
 - A source that can't replay, such as UDP syslog, gets a context error. It drops the entries and logs it.
+- A source that can't replay falls behind, for example because downstream is too slow or retries take too long, and its bounded queue fills up.
 - loki.write has not sent entries from its in-memory queue before an unclean shutdown, or before the drain timeout on shutdown (see [Position file update lag](#position-file-update-lag-optional)).
 
 Entries dropped on purpose, by `block_on_overflow = false` or stages such as `drop`, are counted and are not considered lost.
