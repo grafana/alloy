@@ -101,18 +101,14 @@ func (t Template) parse() (*template.Template, error) {
 var _ entryProcessor = (*templateStage)(nil)
 
 // newTemplateStage creates a new templateStage
-func newTemplateStage(config TemplateConfig, opts stageOpts) (*templateStage, error) {
-	templ, err := config.Template.parse()
-	// We should not get an error here when built from alloy syntax.
-	if err != nil {
-		return nil, err
-	}
+func newTemplateStage(config TemplateConfig, opts stageOpts) *templateStage {
+	templ, _ := config.Template.parse()
 	return &templateStage{
 		next:     opts.next,
 		cfg:      config,
 		template: templ,
 		logger:   opts.slogger.With("stage", "template"),
-	}, nil
+	}
 }
 
 // templateStage will mutate the incoming entry and set it from extracted data
