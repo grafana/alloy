@@ -247,7 +247,8 @@ Entries can still be lost in these cases:
 - A source gets an unexpected error from Consume(). It logs it, drops the entries and advances (see [Component rules](#component-rules)).
 - A source that can't replay, such as UDP syslog, gets a context error. It drops the entries and logs it.
 - A source that can't replay falls behind, for example because downstream is too slow or retries take too long, and its bounded queue fills up.
-- loki.write has not sent entries from its in-memory queue before an unclean shutdown, or before the drain timeout on shutdown (see [Position file update lag](#position-file-update-lag-optional)).
+- loki.write has not sent entries from its in-memory queue before the drain timeout on shutdown and WAL is not used.
+- Alloy crashes or is killed. Entries that a source has already committed are lost if they are still held in memory, such as in loki.write's in-memory queue or a multiline buffer in loki.process. A source that can't replay, such as UDP syslog, also loses the entries in flight or in its queue. `loki.source.file` and `loki.source.api` don't lose entries in flight since the position is not advanced and the client is not answered until the pipeline accepts them, so they are read or sent again after the restart.
 
 Entries dropped on purpose, by `block_on_overflow = false` or stages such as `drop`, are counted and are not considered lost.
 
