@@ -102,7 +102,7 @@ func TestTailer(t *testing.T) {
 	require.Equal(t, `{"EdgeStartTimestamp":1, "EdgeRequestHost":"foo.com"}`, received[3].Line)
 	require.Equal(t, time.Unix(0, 1), received[3].Timestamp)
 	cfClient.AssertExpectations(t)
-	ta.stop()
+	ta.Stop()
 	ps.Stop()
 	// Make sure we save the last position.
 	newPos, _ := ps.Get(positions.CursorKey(cfg.ZoneID), cfg.Labels.String())
@@ -236,7 +236,7 @@ func TestTailer_CloudflareTargetError(t *testing.T) {
 	require.Len(t, handler.Received(), 0)
 	require.GreaterOrEqual(t, cfClient.CallCount(), 5)
 	require.NotEmpty(t, ta.details()["error"])
-	ta.stop()
+	ta.Stop()
 	ps.Stop()
 
 	// Make sure we save the last position.
@@ -286,7 +286,7 @@ func TestTailer_CloudflareTargetError168h(t *testing.T) {
 
 	require.Len(t, handler.Received(), 0)
 	require.GreaterOrEqual(t, cfClient.CallCount(), 5)
-	ta.stop()
+	ta.Stop()
 	ps.Stop()
 
 	// Make sure we move on from the save the last position.

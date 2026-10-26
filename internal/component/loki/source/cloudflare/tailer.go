@@ -65,6 +65,7 @@ type tailer struct {
 	to      time.Time // the end of the next pull interval
 	running *atomic.Bool
 	err     error
+	exited  chan error // Receives the error the pull loop gave up on.
 }
 
 // newTailer creates and runs a Cloudflare target.
@@ -98,6 +99,7 @@ func newTailer(metrics *metrics, logger *slog.Logger, handler loki.LogsReceiver,
 		client:  client,
 		to:      to,
 		running: atomic.NewBool(false),
+		exited:  make(chan error, 1),
 	}
 
 	t.start()
@@ -127,6 +129,7 @@ func (t *tailer) start() {
 			}); err != nil {
 				t.logger.Error("failed to pull logs", "err", err, "start", start, "end", end)
 				t.err = err
+				t.exited <- err
 				return
 			}
 
@@ -205,8 +208,8 @@ func (t *tailer) pull(ctx context.Context, start, end time.Time) error {
 	return errs.Err()
 }
 
-// stop shuts down the target.
-func (t *tailer) stop() {
+// Stop shuts down the target.
+func (t *tailer) Stop() {
 	t.cancel()
 	t.wg.Wait()
 }

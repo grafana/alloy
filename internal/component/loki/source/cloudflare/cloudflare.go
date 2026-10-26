@@ -78,6 +78,12 @@ func (c *Arguments) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (c *Arguments) Validate() error {
+	if c.APIToken == "" {
+		return fmt.Errorf("api_token must not be empty")
+	}
+	if _, err := fieldsForType(c.FieldsType, c.AdditionalFields); err != nil {
+		return err
+	}
 	if c.PullRange < 0 {
 		return fmt.Errorf("pull_range must be a positive duration")
 	}
@@ -95,15 +101,19 @@ func (c *Arguments) Validate() error {
 type Component struct {
 	opts    component.Options
 	posFile positions.Positions
-	handler loki.LogsReceiver
 	metrics *metrics
+	runner  *loki.SourceRunner[*tailerConfig]
 
-	// mut is used to protect access to tailer.
+	// mut protects tailer, the most recently started tailer.
 	mut    sync.RWMutex
 	tailer *tailer
-
-	fanout *loki.Fanout
 }
+
+var (
+	_ component.Component       = (*Component)(nil)
+	_ component.HealthComponent = (*Component)(nil)
+	_ component.DebugComponent  = (*Component)(nil)
+)
 
 // New creates a new loki.source.cloudflare component.
 func New(o component.Options, args Arguments) (*Component, error) {
@@ -124,58 +134,61 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:    o,
 		metrics: newMetrics(o.Registerer),
-		handler: loki.NewLogsReceiver(),
-		fanout:  loki.NewFanout(args.ForwardTo),
 		posFile: positionsFile,
 	}
+	c.runner = loki.NewSourceRunner(loki.SourceRunnerOptions[*tailerConfig]{
+		Logger: o.Logger,
+		Start:  c.startTailer,
+		// Stop positions first so entries that are still being drained don't
+		// advance them.
+		OnShutdown: c.posFile.Stop,
+	})
 
-	// Call to Update() to start readers and set receivers once at the start.
 	if err := c.Update(args); err != nil {
 		return nil, err
 	}
-
 	return c, nil
+}
+
+func (c *Component) startTailer(_ context.Context, cfg *tailerConfig) (loki.Producer[*tailerConfig], error) {
+	t, err := newTailer(c.metrics, c.opts.Logger, c.runner.Entries(), c.posFile, cfg)
+	if err != nil {
+		return loki.Producer[*tailerConfig]{}, fmt.Errorf("failed to create cloudflare target with provided config: %w", err)
+	}
+	c.mut.Lock()
+	c.tailer = t
+	c.mut.Unlock()
+
+	return loki.Producer[*tailerConfig]{
+		Stop: func() {
+			t.Stop()
+			// Stop reporting debug info for a tailer that no longer runs.
+			c.mut.Lock()
+			defer c.mut.Unlock()
+			if c.tailer == t {
+				c.tailer = nil
+			}
+		},
+		Exited: t.exited,
+	}, nil
 }
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
-	defer func() {
-		c.opts.Logger.Info("loki.source.cloudflare component shutting down")
-
-		// NOTE: We need to stop posFile first so we don't record entries we are draining.
-		c.posFile.Stop()
-		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
-			c.mut.Lock()
-			defer c.mut.Unlock()
-			c.tailer.stop()
-		})
-	}()
-
-	loki.Consume(ctx, c.handler, c.fanout)
+	c.runner.Run(ctx)
 	return nil
 }
 
 // Update implements component.Component.
 func (c *Component) Update(args component.Arguments) error {
-	c.mut.Lock()
-	defer c.mut.Unlock()
-
 	newArgs := args.(Arguments)
-
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
-
-	if c.tailer != nil {
-		c.tailer.stop()
-	}
-
-	t, err := newTailer(c.metrics, c.opts.Logger, c.handler, c.posFile, newArgs.tailerConfig())
-	if err != nil {
-		c.opts.Logger.Error("failed to create cloudflare target with provided config", "err", err)
-		return err
-	}
-	c.tailer = t
-
+	c.runner.Update(newArgs.ForwardTo, newArgs.tailerConfig())
 	return nil
+}
+
+// CurrentHealth implements component.HealthComponent.
+func (c *Component) CurrentHealth() component.Health {
+	return c.runner.CurrentHealth()
 }
 
 // DebugInfo returns information about the status of targets.
@@ -183,6 +196,9 @@ func (c *Component) DebugInfo() any {
 	c.mut.RLock()
 	defer c.mut.RUnlock()
 
+	if c.tailer == nil {
+		return targetDebugInfo{}
+	}
 	return targetDebugInfo{
 		Ready:   c.tailer.ready(),
 		Details: c.tailer.details(),
