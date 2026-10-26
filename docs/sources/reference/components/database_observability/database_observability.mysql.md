@@ -288,7 +288,7 @@ The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they
 
 ### `prometheus_exporter`
 
-The `prometheus_exporter` block configures the embedded mysqld_exporter scrapers.
+The `prometheus_exporter` block configures the embedded `mysqld_exporter` scrapers.
 The `data_source_name` is inherited from the parent block.
 Only the `stat_statements` collector is enabled by default with a `limit` defaulting to `100`.
 

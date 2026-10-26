@@ -293,7 +293,7 @@ The `logs` collector is always enabled and counts server errors from the Postgre
 
 ### `prometheus_exporter`
 
-The `prometheus_exporter` block configures the embedded postgres_exporter scrapers.
+The `prometheus_exporter` block configures the embedded `postgres_exporter` scrapers.
 The `data_source_name` is inherited from the parent block.
 Only the `stat_statements` collector is enabled by default.
 
