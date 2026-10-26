@@ -163,7 +163,7 @@ Every component in the pipeline follows these rules. Together they keep config r
    - It works from the moment the component is created until it stops. During a config reload, upstream components are pointed at new components before those are started, so a Consume() that waited for the component to start would block the upstream component.
    - It only waits on downstream backpressure. Cancelling the context or stopping the component ends the wait.
    - It returns `nil`, a context error or `ErrConsumerStopped`. The component retries its own failures. Entries it drops on purpose are counted in its metrics, and Consume() returns `nil`. An `ErrConsumerStopped` from downstream is returned to the caller unchanged.
-   - After the component stops, new and in-flight calls return `ErrConsumerStopped`. A component that buffers entries stops in this order: mark itself stopped, wait for in-flight calls to return, then flush the buffer.
+   - Once the component has stopped, it returns `ErrConsumerStopped` for any call it is still handling itself. A call it has already passed downstream returns whatever the downstream returns. A component that buffers entries stops in this order: mark itself stopped, wait for in-flight calls to return, then flush the buffers.
    - It never holds a lock while calling downstream, so an Update() of the component is never stuck behind a blocked downstream call.
 2. **Update() never waits on data.**
    - It switches `FanoutV2` to the new downstream first, before anything that can fail.
