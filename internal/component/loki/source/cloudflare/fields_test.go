@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/exp/slices"
 )
 
 func TestFieldsForType(t *testing.T) {
@@ -49,6 +50,32 @@ func TestFieldsForType(t *testing.T) {
 			result, err := fieldsForType(test.fieldsType, test.additionalFields)
 			assert.NoError(t, err)
 			assert.ElementsMatch(t, test.expected, result)
+		})
+	}
+}
+
+func TestFieldsForTypeKeepsPresets(t *testing.T) {
+	presets := map[FieldsType][]string{
+		FieldsTypeDefault:  defaultFields,
+		FieldsTypeMinimal:  minimalFields,
+		FieldsTypeExtended: extendedFields,
+		FieldsTypeAll:      allFields,
+	}
+	additionalFields := []string{"ClientRegionCode", "ClientTCPRttMs", "EdgeTimeToFirstByteMs", "LeakedCredentialCheckResult"}
+
+	for fieldsType, preset := range presets {
+		t.Run(string(fieldsType), func(t *testing.T) {
+			expected := append(slices.Clone(preset), additionalFields...)
+
+			first, err := fieldsForType(fieldsType, additionalFields)
+			assert.NoError(t, err)
+			firstCopy := slices.Clone(first)
+			second, err := fieldsForType(fieldsType, additionalFields)
+			assert.NoError(t, err)
+
+			assert.ElementsMatch(t, expected, first)
+			assert.ElementsMatch(t, expected, second)
+			assert.Equal(t, firstCopy, first, "the second call changed the slice returned by the first")
 		})
 	}
 }
