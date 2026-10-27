@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -49,6 +48,9 @@ func TestFileRotation(t *testing.T) {
 		maxLost int
 		// skip, when set, is why the strategy is skipped.
 		skip string
+		// syncPeriod overrides the file-match interval. Zero keeps the short
+		// default used to notice new files quickly.
+		syncPeriod time.Duration
 	}{
 		{
 			// Move the file aside and start a new one at the same path.
@@ -64,18 +66,21 @@ func TestFileRotation(t *testing.T) {
 			},
 		},
 		{
-			// Delete the file and recreate it after a short gap, as a log
-			// rotator would.
-			name: "delete",
-			// FIXME(https://github.com/grafana/alloy/issues/7510): on ext4 the
-			// recreated file often gets the old inode back, so the tailer
-			// treats it as unchanged and whole generations are lost. Unskip
-			// once fixed.
-			skip: "loses whole generations of lines when the inode is reused",
+			// Delete the file and recreate it once the tailer has closed it,
+			// as a log rotator would. That is when the new file can reuse
+			// the inode. File matching stays quiet so the tailer is not
+			// stopped while the path is absent. Every line must arrive
+			// (issue 7510).
+			name:       "delete",
+			syncPeriod: time.Minute,
 			rotate: func(t *testing.T, w *rotationWriter) (*os.File, string) {
 				require.NoError(t, w.file.Close())
 				require.NoError(t, os.Remove(w.path))
-				time.Sleep(time.Duration(5+rand.IntN(46)) * time.Millisecond)
+				// Recreate only after the tailer closes the deleted file.
+				// That is the moment a new file can reuse the inode.
+				require.Eventually(t, func() bool {
+					return !processHoldsPath(w.path)
+				}, 2*time.Second, 5*time.Millisecond)
 				return openForAppend(t, w.path), w.path
 			},
 		},
@@ -116,15 +121,27 @@ func TestFileRotation(t *testing.T) {
 			if s.skip != "" {
 				t.Skip(s.skip)
 			}
-			runRotationTest(t, s.rotate, s.maxLost)
+			runRotationTest(t, s.rotate, s.maxLost, s.syncPeriod)
 		})
 	}
 }
 
-func runRotationTest(t *testing.T, rotate rotateFunc, maxLost int) {
+func runRotationTest(t *testing.T, rotate rotateFunc, maxLost int, syncPeriod time.Duration) {
 	dir := t.TempDir()
 	ctx, cancel := context.WithCancel(componenttest.TestContext(t))
 	defer cancel()
+
+	// A long sync period would miss files created after startup. Create the
+	// first generation up front so the initial schedule tails them.
+	if syncPeriod > 0 {
+		for i := range rotationWriters {
+			f, err := os.OpenFile(filepath.Join(dir, fmt.Sprintf("%d.log", i)), os.O_CREATE|os.O_WRONLY, 0o644)
+			require.NoError(t, err)
+			require.NoError(t, f.Close())
+		}
+	} else {
+		syncPeriod = 100 * time.Millisecond
+	}
 
 	ctrl, err := componenttest.NewControllerFromID(nil, "loki.source.file")
 	require.NoError(t, err)
@@ -140,9 +157,10 @@ func runRotationTest(t *testing.T, rotate rotateFunc, maxLost int) {
 				"__path__": filepath.Join(dir, "*.log"),
 			})},
 			ForwardTo: []loki.LogsReceiver{receiver},
-			// The new file strategy relies on matching new files, so sync
-			// often to keep the test fast.
-			FileMatch: FileMatch{Enabled: true, SyncPeriod: 100 * time.Millisecond},
+			// The new-file strategy needs a short period to notice new paths.
+			// Delete passes a long period so the tailer stays up while the
+			// path is missing.
+			FileMatch: FileMatch{Enabled: true, SyncPeriod: syncPeriod},
 			FileWatch: FileWatch{MinPollFrequency: 10 * time.Millisecond, MaxPollFrequency: 50 * time.Millisecond},
 		})
 	}()
@@ -305,6 +323,27 @@ func (c *rotationCollector) snapshot() map[string][]string {
 		out[line] = append([]string(nil), paths...)
 	}
 	return out
+}
+
+// processHoldsPath reports whether this process still has path open.
+// A deleted path shows up with a " (deleted)" suffix. On systems without
+// /proc, it reports false so callers do not wait forever.
+func processHoldsPath(path string) bool {
+	entries, err := os.ReadDir("/proc/self/fd")
+	if err != nil {
+		return false
+	}
+	deleted := path + " (deleted)"
+	for _, entry := range entries {
+		target, err := os.Readlink(filepath.Join("/proc/self/fd", entry.Name()))
+		if err != nil {
+			continue
+		}
+		if target == path || target == deleted {
+			return true
+		}
+	}
+	return false
 }
 
 func openForAppend(t *testing.T, path string) *os.File {

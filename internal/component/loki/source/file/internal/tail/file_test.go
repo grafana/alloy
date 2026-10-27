@@ -663,6 +663,28 @@ func createCompressedFile(t *testing.T, name, compression string, reader io.Read
 	return path
 }
 
+func TestInodeReused(t *testing.T) {
+	mod := time.Unix(1_700_000_000, 0)
+	tests := []struct {
+		name           string
+		offset, size   int64
+		oldMod, newMod time.Time
+		want           bool
+	}{
+		{name: "same size and mtime", offset: 100, size: 100, oldMod: mod, newMod: mod, want: false},
+		{name: "grew with the same mtime", offset: 100, size: 150, oldMod: mod, newMod: mod, want: false},
+		{name: "shrunk below the consumed offset", offset: 100, size: 40, oldMod: mod, newMod: mod, want: true},
+		{name: "empty replacement", offset: 10, size: 0, oldMod: mod, newMod: mod, want: true},
+		{name: "mtime moved forward", offset: 100, size: 180, oldMod: mod, newMod: mod.Add(time.Second), want: true},
+		{name: "mtime moved backward", offset: 100, size: 100, oldMod: mod, newMod: mod.Add(-time.Second), want: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, inodeReused(tt.offset, tt.size, tt.oldMod, tt.newMod))
+		})
+	}
+}
+
 func verifyResult(t *testing.T, f *File, expectedLine *Line, expectedErr error) {
 	t.Helper()
 	line, err := f.Next()

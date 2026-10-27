@@ -232,7 +232,9 @@ func (f *File) drain() {
 // reopen handles the case where a file is reopened so quickly it's still the same file,
 // which could cause the poller to hang on an open file handle to a file no longer being
 // written to. It saves the current file handle info to ensure we only start tailing a
-// different file instance.
+// different file instance. os.SameFile is not sufficient on its own: after this handle
+// is closed, a file created at the same path can reuse the inode (common on ext4), and
+// SameFile then reports that the new file is the one we were already tailing.
 func (f *File) reopen(ctx context.Context, truncated bool) error {
 	cf, err := f.file.Stat()
 	if !truncated && err != nil {
@@ -272,10 +274,18 @@ func (f *File) reopen(ctx context.Context, truncated bool) error {
 		}
 
 		// Check to see if we are trying to reopen and tail the exact same file (and it was not truncated).
+		// A matching inode can also be a file recreated at this path after the previous
+		// handle was closed. That file is smaller than the offset already consumed, or
+		// its modification time has changed; read it from the start instead of waiting
+		// until the retry budget is exhausted.
+		readFromStart := false
 		if !truncated && cf != nil && os.SameFile(cf, nf) {
-			file.Close()
-			backoff.Wait()
-			continue
+			readFromStart = inodeReused(f.reader.position(), nf.Size(), cf.ModTime(), nf.ModTime())
+			if !readFromStart {
+				file.Close()
+				backoff.Wait()
+				continue
+			}
 		}
 
 		// Compute a new signature and compare it with the previous one to detect atomic writes.
@@ -283,6 +293,8 @@ func (f *File) reopen(ctx context.Context, truncated bool) error {
 		// initial content may be the same. If signatures match, it's the same file content,
 		// so we continue from the previous offset. If they differ, it's a different
 		// file, so we start from the beginning.
+		// A reused inode is not an atomic append of the same content: start at 0 even
+		// when the new bytes share a prefix with the file we were tailing.
 		sig, err := newSignatureFromFile(file)
 		if err != nil {
 			file.Close()
@@ -290,7 +302,7 @@ func (f *File) reopen(ctx context.Context, truncated bool) error {
 		}
 
 		var offset int64
-		if !f.signature.equal(sig) {
+		if readFromStart || !f.signature.equal(sig) {
 			offset = 0
 		} else {
 			offset = min(f.reader.position(), nf.Size())
@@ -307,4 +319,12 @@ func (f *File) reopen(ctx context.Context, truncated bool) error {
 	}
 
 	return backoff.Err()
+}
+
+// inodeReused reports whether a file that has the same inode as the one previously
+// tailed was deleted and created again. os.SameFile cannot tell those apart once
+// the inode number has been recycled. A recreated file has shrunk below the offset
+// already read, or its modification time differs from the file we closed.
+func inodeReused(offset, size int64, oldMod, newMod time.Time) bool {
+	return size < offset || !oldMod.Equal(newMod)
 }
