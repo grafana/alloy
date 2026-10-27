@@ -24,7 +24,7 @@ func init() {
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			f := googlecloudpubsubexporter.NewFactory()
-			return exporter.New(opts, f, args.(Arguments), exporter.TypeSignalConstFunc(exporter.TypeAll))
+			return exporter.New(opts, f, args.(Arguments), exporter.TypeSignalConstFunc(exporter.TypeStable))
 		},
 	})
 }

@@ -480,7 +480,7 @@ func TestGetSignalType(t *testing.T) {
 			case "jaeger_proto", "jaeger_json", "zipkin_proto", "zipkin_json":
 				require.Equal(t, exporter.TypeTraces, signalType)
 			default:
-				require.Equal(t, exporter.TypeAll, signalType)
+				require.Equal(t, exporter.TypeStable, signalType)
 			}
 		})
 	}
@@ -547,7 +547,7 @@ func TestGetSignalType(t *testing.T) {
 				case "jaeger_proto", "jaeger_json", "zipkin_proto", "zipkin_json":
 					expected |= exporter.TypeTraces
 				default:
-					expected |= exporter.TypeAll
+					expected |= exporter.TypeStable
 				}
 
 				require.Equal(t, expected, signalType)

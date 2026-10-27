@@ -114,7 +114,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	// remain the same throughout the component's lifetime, so we do this during
 	// component construction.
 	export := lazyconsumer.New(context.Background(), o.ID)
-	export.SetConsumers(nil, converter, nil)
+	export.SetConsumers(nil, converter, nil, nil)
 	o.OnStateChange(otelcol.ConsumerExports{Input: export})
 
 	return res, nil
