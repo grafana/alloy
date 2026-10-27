@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"database/sql"
 	"fmt"
 	"strings"
 	"testing"
@@ -106,7 +107,7 @@ func TestConnectionInfo(t *testing.T) {
 				Registry:      reg,
 				EngineVersion: tc.engineVersion,
 				CloudProvider: tc.cloudProvider,
-				DB:            nil, // no DB in tests: goroutine not started, metric stays set
+				Pinger:        nil, // no pinger in tests: goroutine not started, metric stays set
 			})
 			require.NoError(t, err)
 			require.NotNil(t, collector)
@@ -116,6 +117,41 @@ func TestConnectionInfo(t *testing.T) {
 
 			err = testutil.GatherAndCompare(reg, strings.NewReader(tc.expectedMetrics))
 			require.NoError(t, err)
+		})
+	}
+}
+
+func TestResolveEngineVersion(t *testing.T) {
+	for name, tc := range map[string]struct {
+		edition        sql.NullInt64
+		productVersion sql.NullString
+		expected       string
+	}{
+		"boxed enterprise keeps product version": {
+			edition:        sql.NullInt64{Int64: 3, Valid: true},
+			productVersion: sql.NullString{String: "16.0.4135.4", Valid: true},
+			expected:       "16.0.4135.4",
+		},
+		"azure sql database ignores placeholder product version": {
+			edition:        sql.NullInt64{Int64: 5, Valid: true},
+			productVersion: sql.NullString{String: "12.0.2000.8", Valid: true},
+			expected:       "Azure SQL Database",
+		},
+		"azure sql managed instance ignores placeholder product version": {
+			edition:        sql.NullInt64{Int64: 8, Valid: true},
+			productVersion: sql.NullString{String: "12.0.2000.8", Valid: true},
+			expected:       "Azure SQL Managed Instance",
+		},
+		"null edition falls back to product version": {
+			productVersion: sql.NullString{String: "15.0.2000.5", Valid: true},
+			expected:       "15.0.2000.5",
+		},
+		"null edition and product version is empty": {
+			expected: "",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			require.Equal(t, tc.expected, ResolveEngineVersion(tc.edition, tc.productVersion))
 		})
 	}
 }

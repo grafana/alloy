@@ -9,15 +9,6 @@ import (
 	"time"
 )
 
-// selectQueryStoreState reads the connected database's Query Store state
-const selectQueryStoreState = `
-	SELECT
-		DB_NAME(),
-		actual_state_desc,
-		query_capture_mode_desc,
-		readonly_reason
-	FROM sys.database_query_store_options`
-
 // queryRowContexter is satisfied by both *sql.DB and *sql.Conn, so
 // queryStoreState can run against either a pooled connection or one pinned
 // by a prior USE statement.
