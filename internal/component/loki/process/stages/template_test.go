@@ -349,6 +349,36 @@ func TestTemplateStage(t *testing.T) {
 			},
 		},
 		{
+			name: "constant template with comment",
+			config: `
+			stage.template {
+				source   = "some"
+				template = "{{/* comment */}}constant"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"some": "value"}, model.LabelSet{}, "not important for this test", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"some": "constant"}, model.LabelSet{}, "not important for this test", now),
+			},
+		},
+		{
+			name: "constant template with non string extracted value",
+			config: `
+			stage.template {
+				source   = "some"
+				template = "constant"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"other": []string{"not", "a", "string"}}, model.LabelSet{}, "not important for this test", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"other": []string{"not", "a", "string"}, "some": "constant"}, model.LabelSet{}, "not important for this test", now),
+			},
+		},
+		{
 			name: "Remove label empty value",
 			config: `
 			stage.template {
@@ -488,6 +518,33 @@ func TestTemplateStage(t *testing.T) {
 			t.Parallel()
 
 			runPipelineTest(t, loadConfig(tt.config), tt.entries, tt.expected)
+		})
+	}
+}
+
+func TestConstantTemplate(t *testing.T) {
+	tests := []struct {
+		template string
+		want     string
+		constant bool
+	}{
+		{template: "", want: "", constant: true},
+		{template: "game_logs", want: "game_logs", constant: true},
+		{template: "{{/* comment */}}a{{/* comment */}}b", want: "ab", constant: true},
+		{template: "{{ .Value }}", constant: false},
+		{template: "prefix {{ .Value }}", constant: false},
+		{template: `{{ "literal" }}`, constant: false},
+		{template: "{{ if .Value }}a{{ end }}", constant: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.template, func(t *testing.T) {
+			templ, err := Template(tt.template).parse()
+			require.NoError(t, err)
+
+			got, constant := constantTemplate(templ)
+			require.Equal(t, tt.constant, constant)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }

@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"text/template"
+	"text/template/parse"
 
 	"github.com/Masterminds/sprig/v3"
 
@@ -107,12 +108,33 @@ func newTemplateStage(config TemplateConfig, opts stageOpts) (*templateStage, er
 	if err != nil {
 		return nil, err
 	}
-	return &templateStage{
+	stage := &templateStage{
 		next:     opts.next,
 		cfg:      config,
 		template: templ,
 		logger:   opts.slogger.With("stage", "template"),
-	}, nil
+	}
+	if text, ok := constantTemplate(templ); ok {
+		stage.constant = &text
+	}
+	return stage, nil
+}
+
+// constantTemplate returns the output of a template that contains only static text
+func constantTemplate(t *template.Template) (string, bool) {
+	if t.Tree == nil || t.Root == nil {
+		return "", false
+	}
+
+	var sb strings.Builder
+	for _, n := range t.Root.Nodes {
+		text, ok := n.(*parse.TextNode)
+		if !ok {
+			return "", false
+		}
+		sb.Write(text.Text)
+	}
+	return sb.String(), true
 }
 
 // templateStage will mutate the incoming entry and set it from extracted data
@@ -120,6 +142,8 @@ type templateStage struct {
 	next     nextFn
 	cfg      TemplateConfig
 	template *template.Template
+	// constant is the output of template when it does not depend on the entry.
+	constant *string
 	logger   *slog.Logger
 }
 
@@ -137,6 +161,10 @@ var bufPool = sync.Pool{
 }
 
 func (o *templateStage) processEntry(e Entry) Entry {
+	if o.constant != nil {
+		return o.setValue(e, *o.constant)
+	}
+
 	// We allocate space for all extracted values + Value and Entry
 	td := make(map[string]any, len(e.Extracted)+2)
 	for k, v := range e.Extracted {
@@ -167,12 +195,16 @@ func (o *templateStage) processEntry(e Entry) Entry {
 		}
 		return e
 	}
-	st := buf.String()
+	return o.setValue(e, buf.String())
+}
+
+// setValue stores the template output in the extracted map
+func (o *templateStage) setValue(e Entry, value string) Entry {
 	// If the template evaluates to an empty string, remove the key from the map
-	if st == "" {
+	if value == "" {
 		delete(e.Extracted, o.cfg.Source)
 	} else {
-		e.Extracted[o.cfg.Source] = st
+		e.Extracted[o.cfg.Source] = value
 	}
 
 	return e
