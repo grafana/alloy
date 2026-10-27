@@ -1,0 +1,7 @@
+controller:
+  type: deployment
+  extraLabels:
+    custom: "true"
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
