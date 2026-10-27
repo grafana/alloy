@@ -4,6 +4,9 @@ import (
 	_ "embed"
 	"fmt"
 	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/grafana/alloy/integration-tests/k8s/harness"
 	"github.com/grafana/alloy/integration-tests/k8s/util"
@@ -63,4 +66,33 @@ func (o *OtelGen) Cleanup() {
 		return
 	}
 	_ = harness.DeleteManifest(o.opts.Namespace, o.manifest)
+}
+
+// AssertOtelGenMetrics asserts that every metric otel-gen sends reached mimir
+// under testName, each as the right kind of sample: floats with real data, and
+// the exponential histograms as native histograms.
+func AssertOtelGenMetrics(t *testing.T, mimir *Mimir, testName string) {
+	t.Helper()
+	floatMetrics := []string{
+		"example_counter",
+		"example_float_counter",
+		"example_float_updowncounter",
+		"example_histogram_bucket",
+		"example_float_histogram_bucket",
+	}
+	// otel-gen only ever subtracts from this one, so its samples are negative
+	// and it can't go through QueryPositive.
+	negativeMetrics := []string{"example_updowncounter"}
+	histogramMetrics := []string{
+		"example_exponential_histogram",
+		"example_exponential_float_histogram",
+	}
+
+	mimir.QueryMetrics(t, testName, append(append(append([]string{}, floatMetrics...), negativeMetrics...), histogramMetrics...))
+	mimir.QueryPositive(t, testName, floatMetrics)
+	mimir.QueryHistograms(t, testName, histogramMetrics, func(c *assert.CollectT, sample HistogramSample) {
+		assert.Greaterf(c, sample.Count, 10.0, "%s: count", sample.Name())
+		assert.Greaterf(c, sample.Sum, 10.0, "%s: sum", sample.Name())
+		assert.NotEmptyf(c, sample.Buckets, "%s: buckets", sample.Name())
+	})
 }
