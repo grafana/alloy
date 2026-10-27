@@ -515,49 +515,6 @@ func TestStructuredMetadataConfigValidateLabelNames(t *testing.T) {
 	}
 }
 
-func TestMapEmptyLabelSrc(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name     string
-		values   map[string]*string
-		expected map[string]string
-	}{
-		{
-			name:     "nil values",
-			values:   nil,
-			expected: map[string]string{},
-		},
-		{
-			name:     "source is used as given",
-			values:   map[string]*string{"pod_name": new("pod")},
-			expected: map[string]string{"pod_name": "pod"},
-		},
-		{
-			name:     "empty source falls back to the label name",
-			values:   map[string]*string{"app": new("")},
-			expected: map[string]string{"app": "app"},
-		},
-		{
-			name:     "nil source falls back to the label name",
-			values:   map[string]*string{"app": nil},
-			expected: map[string]string{"app": "app"},
-		},
-		{
-			name:     "mixed values",
-			values:   map[string]*string{"pod_name": new("pod"), "app": new(""), "stream": nil},
-			expected: map[string]string{"pod_name": "pod", "app": "app", "stream": "stream"},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			require.Equal(t, tt.expected, mapEmptyLabelSrc(tt.values))
-		})
-	}
-}
-
 // TestStructuredMetadataStageDoesNotMutateConfig guards against filling in
 // default sources on the caller's config. loki.process compares stored stage
 // configs with reflect.DeepEqual on update, so mutating them would cause the

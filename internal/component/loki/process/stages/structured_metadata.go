@@ -31,27 +31,12 @@ func (c *StructuredMetadataConfig) Validate() error {
 	return nil
 }
 
-// mapEmptyLabelSrc maps the labelName to a map entry if the src is empty
-// otherwise derefernces labelSrc value and assigns it
-func mapEmptyLabelSrc(m map[string]*string) map[string]string {
-	ret := make(map[string]string, len(m))
-	for labelName, labelSrc := range m {
-		// If no label source was specified, use the key name
-		if labelSrc == nil || *labelSrc == "" {
-			ret[labelName] = labelName
-		} else {
-			ret[labelName] = *labelSrc
-		}
-	}
-	return ret
-}
-
 var _ entryProcessor = (*structuredMetadataStage)(nil)
 
 func newStructuredMetadataStage(configs StructuredMetadataConfig, opts stageOpts) *structuredMetadataStage {
 	return &structuredMetadataStage{
 		next:         opts.next,
-		labelsConfig: mapEmptyLabelSrc(configs.Values),
+		labelsConfig: resolveLabelSources(configs.Values),
 		regex:        configs.Regex,
 		logger:       opts.slogger.With("stage", "structured_metadata"),
 	}
