@@ -46,7 +46,7 @@ func GetSignalType(opts component.Options, args component.Arguments) exporter.Ty
 	case "jaeger_proto", "jaeger_json", "zipkin_proto", "zipkin_json":
 		signal = exporter.TypeTraces
 	case "otlp_proto", "otlp_json":
-		signal = exporter.TypeAll
+		signal = exporter.TypeStable
 	}
 
 	if arguments.Logs != nil {
