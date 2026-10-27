@@ -18,7 +18,14 @@ type RemoteWriteConfig struct {
 func (r *MimirClient) CreateRuleGroup(ctx context.Context, namespace string, rg MimirRuleGroup) error {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
-	// With the default indent of 4, block scalars inside the rules list get a wrong indentation indicator.
+	// Workaround for a go-yaml encoder bug (https://github.com/yaml/go-yaml/issues/399):
+	// block scalars get the configured indent as their indentation indicator, but
+	// items in a block sequence only add 2 columns. At any indent other than 2, values
+	// with leading spaces or blank lines produce YAML that Mimir can't parse
+	// (https://github.com/grafana/alloy/issues/7500). go.yaml.in/yaml/v3 is used
+	// because gopkg.in/yaml.v3 also drops leading blank lines.
+	// TODO: Go back to yaml.Marshal once a go-yaml release includes
+	// https://github.com/yaml/go-yaml/pull/414.
 	enc.SetIndent(2)
 	if err := enc.Encode(&rg); err != nil {
 		return err
