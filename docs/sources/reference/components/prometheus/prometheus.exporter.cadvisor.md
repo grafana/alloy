@@ -157,7 +157,8 @@ Set `housekeeping_interval` at or below the scrape interval of the component tha
 When `allow_dynamic_housekeeping` is `true`, the interval doubles after each collection where the container stats don't change, up to `max_housekeeping_interval`.
 When the stats change, the interval resets to `housekeeping_interval`.
 When `allow_dynamic_housekeeping` is `false`, the interval stays at `housekeeping_interval` and `max_housekeeping_interval` has no effect.
-`housekeeping_interval` must be greater than `0`, and `max_housekeeping_interval` must be greater than or equal to `housekeeping_interval`.
+`housekeeping_interval` must be greater than `0`.
+When `allow_dynamic_housekeeping` is `true`, `max_housekeeping_interval` must be greater than or equal to `housekeeping_interval`.
 
 If a container uses the `overlayfs` storage driver, set the `containerd_host` attribute correctly to retrieve its metrics.
 

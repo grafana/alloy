@@ -94,7 +94,8 @@ func (a *Arguments) Validate() error {
 	if a.HousekeepingInterval <= 0 {
 		return fmt.Errorf("housekeeping_interval must be greater than 0")
 	}
-	if a.MaxHousekeepingInterval < a.HousekeepingInterval {
+	// The max only limits dynamic backoff, so it has no effect otherwise.
+	if a.AllowDynamicHousekeeping && a.MaxHousekeepingInterval < a.HousekeepingInterval {
 		return fmt.Errorf("max_housekeeping_interval (%s) must be greater than or equal to housekeeping_interval (%s)", a.MaxHousekeepingInterval, a.HousekeepingInterval)
 	}
 	return nil

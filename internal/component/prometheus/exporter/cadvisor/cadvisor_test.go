@@ -123,6 +123,8 @@ func TestValidateHousekeeping(t *testing.T) {
 		{name: "valid", cfg: `housekeeping_interval = "15s"`},
 		{name: "zero interval", cfg: `housekeeping_interval = "0s"`, wantErr: "housekeeping_interval must be greater than 0"},
 		{name: "max below base", cfg: "housekeeping_interval = \"2m\"\nmax_housekeeping_interval = \"1m\"", wantErr: "max_housekeeping_interval (1m0s) must be greater than or equal to housekeeping_interval (2m0s)"},
+		{name: "max below base without dynamic", cfg: "housekeeping_interval = \"2m\"\nallow_dynamic_housekeeping = false"},
+		{name: "explicit max below base without dynamic", cfg: "housekeeping_interval = \"2m\"\nmax_housekeeping_interval = \"1m\"\nallow_dynamic_housekeeping = false"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
