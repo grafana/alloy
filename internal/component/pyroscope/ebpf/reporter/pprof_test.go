@@ -455,11 +455,14 @@ func TestPPROFReporter_SymbolizationFlags(t *testing.T) {
 	}
 
 	tests := []struct {
-		name     string
-		commMode args.CommMode
-		frames   []*libpf.Frame
+		name           string
+		commMode       args.CommMode
+		stubs          bool
+		noKernelFrames bool
+		frames         []*libpf.Frame
 		// keyed by function name, or by address for locations without lines
-		expected map[string]string
+		expected         map[string]string
+		expectedMappings int
 	}{
 		{
 			name: "partially symbolized native mapping",
@@ -522,11 +525,37 @@ func TestPPROFReporter_SymbolizationFlags(t *testing.T) {
 				"worker":     "[FN]",
 			},
 		},
+		{
+			name:  "unsymbolized stubs keep partially symbolized native mapping symbolized",
+			stubs: true,
+			frames: []*libpf.Frame{
+				native(libc, 0x1100, ""),
+				native(libc, 0x1200, "__libc_start_main"),
+			},
+			expected: map[string]string{
+				"$ libc.so.6 + 0x1100": "[FN]",
+				"__libc_start_main":    "[FN]",
+			},
+		},
+		{
+			name:           "disabled kernel frames do not create a fake mapping",
+			noKernelFrames: true,
+			frames: []*libpf.Frame{
+				kernel(0xffff0000, ""),
+				python("leaf_py", 3),
+			},
+			expected: map[string]string{
+				"leaf_py": "[FN][LN]",
+			},
+			expectedMappings: 1,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			rep := newReporter()
 			rep.cfg.CommMode = tt.commMode
+			rep.cfg.ReporterUnsymbolizedStubs = tt.stubs
+			rep.cfg.KernelFrames = !tt.noKernelFrames
 			frames := make(libpf.Frames, 0, len(tt.frames))
 			for _, f := range tt.frames {
 				frames.Append(f)
@@ -558,6 +587,9 @@ func TestPPROFReporter_SymbolizationFlags(t *testing.T) {
 				actual[key] = flags
 			}
 			assert.Equal(t, tt.expected, actual)
+			if tt.expectedMappings > 0 {
+				assert.Len(t, p.Mapping, tt.expectedMappings)
+			}
 		})
 	}
 }
