@@ -27,14 +27,14 @@ The component exposes metrics that can be collected by a Prometheus scrape compo
 You don't need `SETPCAP`.
 
 The required capabilities are: `BPF`, `NET_ADMIN`, `NET_RAW`, `PERFMON`, `DAC_READ_SEARCH`, `SYS_PTRACE`, and `CHECKPOINT_RESTORE`, plus `SYS_RESOURCE` on kernels earlier than 5.11.
-The tracefs probe attachment fallback can also require `DAC_OVERRIDE`.
+The `tracefs` probe attachment fallback can also require `DAC_OVERRIDE`.
 The exact set depends on your use case.
 Refer to [Beyla capabilities][] for more information.
 
 On kernels 5.8 and later, Beyla can attach uprobes without `SYS_ADMIN`.
-When access to the performance monitoring unit (PMU) is denied, Beyla falls back to attaching probes through tracefs.
-For this fallback, provide a read-write tracefs mount visible to Beyla, such as `/sys/kernel/tracing`.
-`DAC_OVERRIDE` lets Beyla bypass file permission checks when writing probe events to tracefs.
+When access to the performance monitoring unit (PMU) is denied, Beyla falls back to attaching probes through `tracefs`.
+For this fallback, provide a read-write `tracefs` mount visible to Beyla, such as `/sys/kernel/tracing`.
+`DAC_OVERRIDE` lets Beyla bypass file permission checks when writing probe events to `tracefs`.
 
 Go library-level context propagation on kernels 5.10 and later, and log injection, require `SYS_ADMIN` because they use `bpf_probe_write_user`.
 If you enable these features, add `SYS_ADMIN` to the capabilities in the following examples.
@@ -442,7 +442,7 @@ If the executable matches only one of the ports in the list, it's considered to 
 
 `exports` specifies what types of telemetry data to export for the matching service.
 You can specify `"metrics"`, `"traces"`, or both.
-If empty, the service will export both metrics and traces by default.
+If empty, the service exports both metrics and traces by default.
 
 #### `exclude_instrument`
 
@@ -460,7 +460,7 @@ Set to empty to allow Alloy to instrument itself as well as these other componen
 #### `survey`
 
 The `survey` block configures services for discovery without instrumentation using glob patterns.
-Instead of instrumenting matching services, the component will only emit a `survey_info` metric for each discovered service.
+The component emits a `survey_info` metric for each discovered service without instrumenting it.
 This can be helpful for informing external applications of the services available for instrumentation.
 
 The `survey` block uses the same configuration options as the `instrument` block and accepts a `socket_apps` block.
@@ -635,7 +635,7 @@ The `ebpf` block configures eBPF-specific settings.
 
 | Name                    | Type       | Description                                                                   | Default      | Required |
 |-------------------------|------------|-------------------------------------------------------------------------------|--------------|----------|
-| `wakeup_len`            | `int`      | Number of messages to accumulate before wakeup request.                       | `""`         | no       |
+| `wakeup_len`            | `int`      | Number of messages to accumulate before notifying the consumer.                       | `""`         | no       |
 | `track_request_headers` | `bool`     | Enable tracking of request headers for **Traceparent** fields.                | `false`      | no       |
 | `http_request_timeout`  | `duration` | Timeout for HTTP requests.                                                    | `"30s"`      | no       |
 | `context_propagation`   | `string`   | Enables injecting of the **Traceparent** header value for outgoing HTTP requests. | `"disabled"` | no       |
@@ -1116,7 +1116,7 @@ The `cloud_metadata` block configures cloud inventory refreshes and overrides au
 | `refresh_interval` | `duration` | How often Beyla refreshes cloud inventories for service name resolution. | `"30s"` | no |
 
 Empty cluster and region values use automatically detected metadata.
-An unset or zero refresh interval uses Beyla's default.
+An unset or zero refresh interval uses the default defined in Beyla.
 
 #### `route53`
 
@@ -1129,7 +1129,7 @@ Include `route53` in `name_resolver.sources` to enable it.
 | `refresh_interval` | `duration` | How often Beyla refreshes Route 53 records. | `"5m"` | no |
 
 The resolver requires `route53:ListResourceRecordSets` permission on the configured zones.
-It resolves A and AAAA records and excludes aliases, CNAMEs, and wildcard records.
+It resolves A and AAAA records and excludes aliases, `CNAME` records, and wildcard records.
 Its refresh interval is independent of `cloud_metadata.refresh_interval`.
 
 ### `name_resolver`
@@ -1211,7 +1211,7 @@ Include `azure` in `name_resolver.sources` to enable it.
 | `resource_group` | `string` | Resource group containing the scale sets. | `""` | no |
 
 Empty values use the subscription and resource group detected from Azure metadata.
-Beyla uses the Azure SDK's default credential chain for API access.
+Beyla uses the default Azure SDK credential chain for API access.
 
 ## Exported fields
 
