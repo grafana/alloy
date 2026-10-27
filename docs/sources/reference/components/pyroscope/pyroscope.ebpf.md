@@ -122,7 +122,6 @@ Several arguments carry the label "Deprecated (no-op)". These arguments once con
 
 The `load_probe` argument no longer has any effect, and no other argument replaces it.
 Remove it from your configuration.
-There is no replacement argument for loading a generic eBPF program to attach externally.
 To collect profiles from specific kernel or user-space probes, use `probe_links` as shown in [Collect profiles from probes][probes].
 You don't need to set `load_probe` to use `probe_links`.
 
