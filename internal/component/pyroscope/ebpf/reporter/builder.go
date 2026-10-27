@@ -87,25 +87,19 @@ func (b *ProfileBuilders) BuilderForSample(
 	default:
 		return nil, fmt.Errorf("unsupported profile sample type %q", b.opt.ProfileType.SampleType)
 	}
-	dummyMapping := &profile.Mapping{
-		ID: 1,
-	}
 	builder := &ProfileBuilder{
-		p:         b,
-		locations: make(map[locationsKey]*profile.Location),
-		functions: make(map[functionsKey]*profile.Function),
-		mappings:  make(map[mappingKey]*profile.Mapping),
-		Target:    target,
+		p:            b,
+		locations:    make(map[locationsKey]*profile.Location),
+		functions:    make(map[functionsKey]*profile.Function),
+		mappings:     make(map[mappingKey]*profile.Mapping),
+		fakeMappings: make(map[libpf.FrameType]*profile.Mapping),
+		Target:       target,
 		Profile: &profile.Profile{
-			Mapping: []*profile.Mapping{
-				dummyMapping,
-			},
 			SampleType: sampleType,
 			Period:     period,
 			PeriodType: periodType,
 			TimeNanos:  time.Now().UnixNano(),
 		},
-		dummyMapping: dummyMapping,
 	}
 	res = builder
 	b.Builders[k] = res
@@ -134,22 +128,41 @@ type ProfileBuilder struct {
 	locations map[locationsKey]*profile.Location
 	functions map[functionsKey]*profile.Function
 	mappings  map[mappingKey]*profile.Mapping
+	// Symbolization flags are per mapping, so frames without a real mapping are split by type
+	// to keep e.g. one unsymbolized kernel frame from clearing HasFunctions for python frames.
+	fakeMappings map[libpf.FrameType]*profile.Mapping
 
 	Profile *profile.Profile
 	Target  *discovery.Target
 
-	dummyMapping *profile.Mapping
+	commMapping *profile.Mapping
 }
 
-func (p *ProfileBuilder) FakeMapping() *profile.Mapping {
-	return p.dummyMapping
+func (p *ProfileBuilder) FakeMapping(frameType libpf.FrameType) *profile.Mapping {
+	if m, ok := p.fakeMappings[frameType]; ok {
+		return m
+	}
+	m := p.newFakeMapping()
+	p.fakeMappings[frameType] = m
+	return m
+}
+
+func (p *ProfileBuilder) newFakeMapping() *profile.Mapping {
+	m := &profile.Mapping{
+		ID: uint64(len(p.Profile.Mapping) + 1),
+	}
+	p.Profile.Mapping = append(p.Profile.Mapping, m)
+	return m
 }
 
 func (p *ProfileBuilder) CommLocation(comm string) *profile.Location {
+	if p.commMapping == nil {
+		p.commMapping = p.newFakeMapping()
+	}
 	commInterned := libpf.Intern(comm)
-	loc, fresh := p.Location(p.dummyMapping, 0, commInterned, 0)
+	loc, fresh := p.Location(p.commMapping, 0, commInterned, 0)
 	if fresh {
-		loc.Mapping = p.dummyMapping
+		loc.Mapping = p.commMapping
 		loc.Line = []profile.Line{{
 			Function: p.Function(commInterned, libpf.Intern("")),
 		}}

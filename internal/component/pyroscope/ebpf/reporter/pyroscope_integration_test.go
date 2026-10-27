@@ -1,4 +1,4 @@
-//go:build linux && (amd64 || arm64)
+//go:build linux && (amd64 || arm64) && !nodocker
 
 package reporter
 
@@ -110,10 +110,11 @@ cpu/nanoseconds[dflt]
    10309278: 1 2 3 
 Locations
      1: 0xffff0000 M=1 
-     2: 0x0 M=1 leaf_py work.py:3:0 s=0()
-     3: 0x0 M=1 main_py work.py:1:0 s=0()
+     2: 0x0 M=2 leaf_py work.py:3:0 s=0()
+     3: 0x0 M=2 main_py work.py:1:0 s=0()
 Mappings
 1: 0x0/0x0/0x0   
+2: 0x0/0x0/0x0   [FN][LN]
 `,
 		},
 		{

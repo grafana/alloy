@@ -201,7 +201,6 @@ func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, profileTy
 			p.log.Error("failed to create profile builder", "err", err)
 			return nil
 		}
-		fakeMapping := b.FakeMapping()
 
 		s := b.NewSample(len(traceInfo.Frames))
 		comm := sampleKey.Comm.String()
@@ -254,7 +253,7 @@ func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, profileTy
 					mapping.BuildID = pfMapping.GnuBuildID
 				}
 			} else {
-				mapping = fakeMapping
+				mapping = b.FakeMapping(fr.Type)
 			}
 
 			location, fresh = b.Location(mapping, fr.AddressOrLineno, fr.FunctionName, fr.SourceLine)

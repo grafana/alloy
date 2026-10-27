@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"fmt"
 	"log/slog"
 	"testing"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/google/pprof/profile"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/discovery"
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/args"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/symb/irsymcache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -150,10 +152,9 @@ Samples:
 cpu/nanoseconds
    10309278: 1 
 Locations
-     1: 0x30 M=2 myfunc /bin/bar:1234:0 s=0()
+     1: 0x30 M=1 myfunc /bin/bar:1234:0 s=0()
 Mappings
-1: 0x0/0x0/0x0   
-2: 0x0/0x0/0x0 /bin/bar  [FN][LN]
+1: 0x0/0x0/0x0 /bin/bar  [FN][LN]
 `
 	assert.Equal(t, expected, p.String())
 }
@@ -205,10 +206,9 @@ Samples:
 cpu/nanoseconds
    10309278: 1 
 Locations
-     1: 0x1000 M=2 
+     1: 0x1000 M=1 
 Mappings
-1: 0x0/0x0/0x0   
-2: 0x1000/0x2000/0x100 /usr/lib/libexample.so  
+1: 0x1000/0x2000/0x100 /usr/lib/libexample.so  
 `
 	assert.Equal(t, expected, p.String())
 }
@@ -421,13 +421,145 @@ cpu/nanoseconds
    10309278: 1 2 3 4 
 Locations
      1: 0x2000 M=1 
-     2: 0x0 M=1 f1 :42:0 s=0()
-     3: 0x0 M=1 f2 :239:0 s=0()
-     4: 0x0 M=1 f2 :240:0 s=0()
+     2: 0x0 M=2 f1 :42:0 s=0()
+     3: 0x0 M=2 f2 :239:0 s=0()
+     4: 0x0 M=2 f2 :240:0 s=0()
 Mappings
 1: 0x0/0x0/0x0   
+2: 0x0/0x0/0x0   [FN][LN]
 `
 	assert.Equal(t, expected, p.String())
+}
+
+func TestPPROFReporter_SymbolizationFlags(t *testing.T) {
+	mapping := func(name string, id uint64) libpf.FrameMapping {
+		return libpf.NewFrameMapping(libpf.FrameMappingData{
+			File: libpf.NewFrameMappingFile(libpf.FrameMappingFileData{
+				FileID:   libpf.NewFileID(id, id),
+				FileName: libpf.Intern(name),
+			}),
+			Start: libpf.Address(id << 20),
+			End:   libpf.Address(id<<20 + 0x10000),
+		})
+	}
+	libc := mapping("libc.so.6", 1)
+	exe := mapping("work_c", 2)
+	native := func(m libpf.FrameMapping, addr libpf.AddressOrLineno, name string) *libpf.Frame {
+		return &libpf.Frame{Type: libpf.NativeFrame, AddressOrLineno: addr, FunctionName: libpf.Intern(name), Mapping: m}
+	}
+	kernel := func(addr libpf.AddressOrLineno, name string) *libpf.Frame {
+		return &libpf.Frame{Type: libpf.KernelFrame, AddressOrLineno: addr, FunctionName: libpf.Intern(name)}
+	}
+	python := func(name string, line libpf.SourceLineno) *libpf.Frame {
+		return &libpf.Frame{Type: libpf.PythonFrame, FunctionName: libpf.Intern(name), SourceFile: libpf.Intern("work.py"), SourceLine: line}
+	}
+
+	tests := []struct {
+		name     string
+		commMode args.CommMode
+		frames   []*libpf.Frame
+		// keyed by function name, or by address for locations without lines
+		expected map[string]string
+	}{
+		{
+			name: "partially symbolized native mapping",
+			frames: []*libpf.Frame{
+				native(exe, 0x2000, "main"),
+				native(libc, 0x1100, ""),
+				native(libc, 0x1200, "__libc_start_main"),
+				native(exe, 0x2100, "_start"),
+			},
+			expected: map[string]string{
+				"main":              "[FN]",
+				"0x1100":            "",
+				"__libc_start_main": "",
+				"_start":            "[FN]",
+			},
+		},
+		{
+			name: "unsymbolized kernel frame does not affect python frames",
+			frames: []*libpf.Frame{
+				kernel(0xffff0000, ""),
+				python("leaf_py", 3),
+				python("main_py", 1),
+			},
+			expected: map[string]string{
+				"0xffff0000": "",
+				"leaf_py":    "[FN][LN]",
+				"main_py":    "[FN][LN]",
+			},
+		},
+		{
+			name: "python frame without line number",
+			frames: []*libpf.Frame{
+				python("leaf_py", 3),
+				python("main_py", 0),
+			},
+			expected: map[string]string{
+				"leaf_py": "[FN]",
+				"main_py": "[FN]",
+			},
+		},
+		{
+			name: "native frame without mapping does not affect kernel frames",
+			frames: []*libpf.Frame{
+				kernel(0xffff0000, "do_syscall_64"),
+				{Type: libpf.NativeFrame, AddressOrLineno: 0xface000},
+			},
+			expected: map[string]string{
+				"do_syscall_64": "[FN]",
+				"0xface000":     "",
+			},
+		},
+		{
+			name:     "comm stackframe next to unsymbolized kernel frame",
+			commMode: args.CommModeStackframe,
+			frames: []*libpf.Frame{
+				kernel(0xffff0000, ""),
+			},
+			expected: map[string]string{
+				"0xffff0000": "",
+				"worker":     "[FN]",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rep := newReporter()
+			rep.cfg.CommMode = tt.commMode
+			frames := make(libpf.Frames, 0, len(tt.frames))
+			for _, f := range tt.frames {
+				frames.Append(f)
+			}
+			events := samples.SampleToEvents{
+				{Comm: libpf.NewCommFromString("worker")}: &samples.TraceEvents{
+					Frames:     frames,
+					Timestamps: []uint64{42},
+				},
+			}
+			profiles := rep.createProfile(samples.ResourceKey{PID: 123}, profileTypeSampling, events)
+			require.Len(t, profiles, 1)
+			p, err := profile.Parse(bytes.NewReader(profiles[0].Raw))
+			require.NoError(t, err)
+
+			actual := map[string]string{}
+			for _, loc := range p.Location {
+				key := fmt.Sprintf("0x%x", loc.Address)
+				if len(loc.Line) > 0 {
+					key = loc.Line[0].Function.Name
+				}
+				flags := ""
+				if loc.Mapping.HasFunctions {
+					flags += "[FN]"
+				}
+				if loc.Mapping.HasLineNumbers {
+					flags += "[LN]"
+				}
+				actual[key] = flags
+			}
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
 }
 
 func TestPPROFReporter_Demangle(t *testing.T) {
@@ -509,12 +641,13 @@ cpu/nanoseconds
    10309278: 1 2 3 4 
 Locations
      1: 0x2000 M=1 
-     2: 0xface000 M=1 
-     3: 0xcafe00ef M=2 ConcurrentGCThread::run() :0:0 s=0()
-     4: 0xcafe00de M=2 PlatformMonitor::wait(unsigned long) :0:0 s=0()
+     2: 0xface000 M=2 
+     3: 0xcafe00ef M=3 ConcurrentGCThread::run() :0:0 s=0()
+     4: 0xcafe00de M=3 PlatformMonitor::wait(unsigned long) :0:0 s=0()
 Mappings
 1: 0x0/0x0/0x0   
-2: 0xcafe0000/0xcafe1000/0x0 libfoo.so  [FN]
+2: 0x0/0x0/0x0   
+3: 0xcafe0000/0xcafe1000/0x0 libfoo.so  [FN]
 `
 	assert.Equal(t, expected, p.String())
 }
@@ -572,11 +705,12 @@ cpu/nanoseconds
    10309278: 1 2 3 
 Locations
      1: 0x2000 M=1 
-     2: 0xface000 M=1 
-     3: 0xcafe00ef M=2 $ libfoo.so + 0xcafe00ef :0:0 s=0()
+     2: 0xface000 M=2 
+     3: 0xcafe00ef M=3 $ libfoo.so + 0xcafe00ef :0:0 s=0()
 Mappings
 1: 0x0/0x0/0x0   
-2: 0xcafe0000/0xcafe1000/0x0 libfoo.so  [FN]
+2: 0x0/0x0/0x0   
+3: 0xcafe0000/0xcafe1000/0x0 libfoo.so  [FN]
 `
 	assert.Equal(t, expected, p.String())
 }
