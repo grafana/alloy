@@ -146,7 +146,7 @@ prometheus.scrape "default" {
 }
 
 prometheus.remote_write "default" {
-  client {
+  endpoint {
     url = sys.env("PROMETHEUS_URL")
   }
 }
