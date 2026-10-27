@@ -4,22 +4,9 @@ version: "3"
 vars:
   CLOUDWATCH_DOC: ./docs/sources/shared/reference/components/prometheus-exporter-cloudwatch-supported-services.md
   CLOUDWATCH_DOC_GENERATOR: ./internal/static/integrations/cloudwatch_exporter/docs/doc.go
-  SCENARIOS_SHARED_DIR: docs/sources/shared/scenarios
-  SCENARIOS_PAGES_DIR: docs/sources/scenarios
 
 tasks:
   cloudwatch-sync:
     desc: Sync the CloudWatch exporter supported-services documentation.
     cmds:
       - go run {{.CLOUDWATCH_DOC_GENERATOR}} sync {{.CLOUDWATCH_DOC}}
-
-  scenarios-sync:
-    desc: Sync the scenario tables from the pinned alloy-scenarios commit.
-    cmds:
-      - go run -C tools ./cmd scenarios-docs sync --shared-dir ../{{.SCENARIOS_SHARED_DIR}} --pages-dir ../{{.SCENARIOS_PAGES_DIR}}
-
-  scenarios-bump:
-    desc: Pin the current alloy-scenarios main commit and sync the scenario tables.
-    cmds:
-      - go run -C tools ./cmd scenarios-docs bump
-      - task: scenarios-sync
