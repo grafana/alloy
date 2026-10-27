@@ -10,6 +10,10 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Bugfixes
+
+- Fix the ClusterRole failing to render when only one of `rbac.rules` and `rbac.clusterRules` is empty. (@TylerHelmuth)
+
 1.14.3 (2026-10-22)
 ----------
 

@@ -1,0 +1,8 @@
+# Test case for RBAC clusterRules with an empty rules array
+rbac:
+  create: true
+  rules: []
+  clusterRules:
+    - apiGroups: [""]
+      resources: ["nodes"]
+      verbs: ["get", "list", "watch"]

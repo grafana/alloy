@@ -1,0 +1,8 @@
+# Test case for RBAC rules with an empty clusterRules array
+rbac:
+  create: true
+  rules:
+    - apiGroups: [""]
+      resources: ["pods"]
+      verbs: ["get", "list", "watch"]
+  clusterRules: []
