@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -25,9 +24,7 @@ import (
 )
 
 func TestPyroscopeJavaIntegration(t *testing.T) {
-	if os.Getenv("GITHUB_ACTIONS") == "true" && os.Getenv("GITHUB_JOB") != "test_pyroscope" {
-		t.Skip("Skipping Pyroscope Java integration test in GitHub Actions (job name is not test_pyroscope)")
-	}
+	test.SkipUnlessPyroscopeJob(t)
 	wg := sync.WaitGroup{}
 	defer func() {
 		wg.Wait()
