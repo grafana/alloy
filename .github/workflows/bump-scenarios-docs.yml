@@ -57,9 +57,16 @@ jobs:
           base: ${{ github.event.repository.default_branch }}
           commit-message: "docs: update alloy-scenarios index"
           title: "docs: update alloy-scenarios index"
-          body: |
+          body: >
             Automated update of the scenario tables in the documentation.
 
-            This pins a newer `grafana/alloy-scenarios` commit in `tools/scenarios-docs/revision.go` and regenerates `docs/sources/shared/scenarios/` with `task docs:scenarios-bump`.
 
-            Review the diff of the generated files. The workflow fails instead of publishing a broken page when the generator fails, when the scenarios README structure changed, or when a new category has no page in `docs/sources/scenarios/` that imports it.
+            This pins a newer `grafana/alloy-scenarios` commit in
+            `tools/scenarios-docs/revision.go` and regenerates
+            `docs/sources/shared/scenarios/` with `task docs:scenarios-bump`.
+
+
+            Review the diff of the generated files. The workflow fails instead
+            of publishing a broken page when the generator fails, when the
+            scenarios README structure changed, or when a new category has no
+            page in `docs/sources/scenarios/` that imports it.
