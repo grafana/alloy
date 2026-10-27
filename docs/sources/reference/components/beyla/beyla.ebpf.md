@@ -26,9 +26,18 @@ The component exposes metrics that can be collected by a Prometheus scrape compo
 {{< param "PRODUCT_NAME" >}} spawns Beyla as a child process and transfers the required capabilities through the kernel's inheritable and ambient capability sets.
 You don't need `SETPCAP`.
 
-The required capabilities are: `BPF`, `NET_ADMIN`, `NET_RAW`, `PERFMON`, `DAC_READ_SEARCH`, `SYS_PTRACE`, `CHECKPOINT_RESTORE`, `SYS_RESOURCE` on kernels earlier than 5.11, and `SYS_ADMIN` for library-level instrumentation only.
+The required capabilities are: `BPF`, `NET_ADMIN`, `NET_RAW`, `PERFMON`, `DAC_READ_SEARCH`, `SYS_PTRACE`, and `CHECKPOINT_RESTORE`, plus `SYS_RESOURCE` on kernels earlier than 5.11.
+The tracefs probe attachment fallback can also require `DAC_OVERRIDE`.
 The exact set depends on your use case.
 Refer to [Beyla capabilities][] for more information.
+
+On kernels 5.8 and later, Beyla can attach uprobes without `SYS_ADMIN`.
+When access to the performance monitoring unit (PMU) is denied, Beyla falls back to attaching probes through tracefs.
+For this fallback, provide a read-write tracefs mount visible to Beyla, such as `/sys/kernel/tracing`.
+`DAC_OVERRIDE` lets Beyla bypass file permission checks when writing probe events to tracefs.
+
+Go library-level context propagation on kernels 5.10 and later, and log injection, require `SYS_ADMIN` because they use `bpf_probe_write_user`.
+If you enable these features, add `SYS_ADMIN` to the capabilities in the following examples.
 
 In Kubernetes, set `hostPID: true` in the Pod spec and configure an [Unconfined AppArmor profile][].
 
@@ -39,7 +48,7 @@ On a standard Linux system, root processes inherit all capabilities from the bou
 If systemd or another tool restricts the bounding set, grant the required capabilities explicitly:
 
 ```bash
-setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_read_search,cap_sys_ptrace,cap_checkpoint_restore,cap_sys_resource,cap_sys_admin+ep' /path/to/alloy
+setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_override,cap_dac_read_search,cap_sys_ptrace,cap_checkpoint_restore,cap_sys_resource+ep' /path/to/alloy
 ```
 
 ### Standalone: non-root
@@ -48,7 +57,7 @@ Set file capabilities on the {{< param "PRODUCT_NAME" >}} binary with the `+ip` 
 This seeds the permitted set but doesn't grant effective capabilities to {{< param "PRODUCT_NAME" >}}, so {{< param "PRODUCT_NAME" >}} holds them only to pass to Beyla:
 
 ```bash
-setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_read_search,cap_sys_ptrace,cap_checkpoint_restore,cap_sys_resource,cap_sys_admin+ip' /path/to/alloy
+setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_override,cap_dac_read_search,cap_sys_ptrace,cap_checkpoint_restore,cap_sys_resource+ip' /path/to/alloy
 ```
 
 {{< admonition type="note" >}}
@@ -80,11 +89,11 @@ spec:
             - NET_ADMIN
             - NET_RAW
             - PERFMON
+            - DAC_OVERRIDE  # tracefs probe attachment fallback
             - DAC_READ_SEARCH
             - SYS_PTRACE
             - CHECKPOINT_RESTORE
             - SYS_RESOURCE  # kernels < 5.11
-            - SYS_ADMIN  # only for library-level instrumentation
 ```
 
 Unlike `privileged: true`, this keeps `seccomp` and AppArmor profiles active.
@@ -95,7 +104,7 @@ For the most restrictive posture, run as a non-root UID.
 Add `setcap +ip` to the binary when you build a custom image:
 
 ```dockerfile
-RUN setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_read_search,cap_sys_ptrace,cap_checkpoint_restore,cap_sys_resource,cap_sys_admin+ip' /bin/alloy
+RUN setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_override,cap_dac_read_search,cap_sys_ptrace,cap_checkpoint_restore,cap_sys_resource+ip' /bin/alloy
 ```
 
 Then configure the Pod security context:
@@ -116,11 +125,11 @@ spec:
             - NET_ADMIN
             - NET_RAW
             - PERFMON
+            - DAC_OVERRIDE  # tracefs probe attachment fallback
             - DAC_READ_SEARCH
             - SYS_PTRACE
             - CHECKPOINT_RESTORE
             - SYS_RESOURCE  # kernels < 5.11
-            - SYS_ADMIN  # only for library-level instrumentation
 ```
 
 ## Usage
