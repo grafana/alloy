@@ -493,23 +493,34 @@ func TestTemplateStage(t *testing.T) {
 }
 
 func BenchmarkTemplateStage(b *testing.B) {
-	cfg := TemplateConfig{
-		Source:   "1",
-		Template: mustTemplate("{{ .Value }}"),
-	}
-
 	labels := make(model.LabelSet, 11)
 	for i := 0; i <= 10; i++ {
 		v := strconv.FormatInt(int64(i), 10)
 		labels[model.LabelName(v)] = model.LabelValue(v)
 	}
 
-	batch := loki.NewBatch()
-	batch.Add(loki.NewStream(labels, push.Entry{
-		Timestamp: time.Now(),
-	}))
+	for _, tc := range []struct {
+		name     string
+		template string
+	}{
+		{name: "value", template: "{{ .Value }}"},
+		{name: "constant", template: "game_logs"},
+		{name: "empty", template: ""},
+	} {
+		b.Run(tc.name, func(b *testing.B) {
+			cfg := TemplateConfig{
+				Source:   "1",
+				Template: mustTemplate(tc.template),
+			}
 
-	runPipelineBenchmark(b, []StageConfig{{TemplateConfig: &cfg}}, []loki.Batch{batch})
+			batch := loki.NewBatch()
+			batch.Add(loki.NewStream(labels.Clone(), push.Entry{
+				Timestamp: time.Now(),
+			}))
+
+			runPipelineBenchmark(b, []StageConfig{{TemplateConfig: &cfg}}, []loki.Batch{batch})
+		})
+	}
 }
 
 func mustTemplate(text string) Template {
