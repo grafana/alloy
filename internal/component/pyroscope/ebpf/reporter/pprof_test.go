@@ -13,6 +13,7 @@ import (
 	"github.com/google/pprof/profile"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/discovery"
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/args"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/symb/irsymcache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -150,10 +151,9 @@ Samples:
 cpu/nanoseconds
    10309278: 1 
 Locations
-     1: 0x30 M=2 myfunc /bin/bar:1234:0 s=0()
+     1: 0x30 M=1 myfunc /bin/bar:1234:0 s=0()
 Mappings
-1: 0x0/0x0/0x0   
-2: 0x0/0x0/0x0 /bin/bar  [FN][LN]
+1: 0x0/0x0/0x0 /bin/bar  [FN][LN]
 `
 	assert.Equal(t, expected, p.String())
 }
@@ -205,10 +205,9 @@ Samples:
 cpu/nanoseconds
    10309278: 1 
 Locations
-     1: 0x1000 M=2 
+     1: 0x1000 M=1 
 Mappings
-1: 0x0/0x0/0x0   
-2: 0x1000/0x2000/0x100 /usr/lib/libexample.so  
+1: 0x1000/0x2000/0x100 /usr/lib/libexample.so  
 `
 	assert.Equal(t, expected, p.String())
 }
@@ -421,13 +420,210 @@ cpu/nanoseconds
    10309278: 1 2 3 4 
 Locations
      1: 0x2000 M=1 
-     2: 0x0 M=1 f1 :42:0 s=0()
-     3: 0x0 M=1 f2 :239:0 s=0()
-     4: 0x0 M=1 f2 :240:0 s=0()
+     2: 0x0 M=2 f1 :42:0 s=0()
+     3: 0x0 M=2 f2 :239:0 s=0()
+     4: 0x0 M=2 f2 :240:0 s=0()
 Mappings
-1: 0x0/0x0/0x0   [FN][LN]
+1: 0x0/0x0/0x0   
+2: 0x0/0x0/0x0   [FN][LN]
 `
 	assert.Equal(t, expected, p.String())
+}
+
+func TestPPROFReporter_SymbolizationFlags(t *testing.T) {
+	mapping := func(name string, id uint64) libpf.FrameMapping {
+		return libpf.NewFrameMapping(libpf.FrameMappingData{
+			File: libpf.NewFrameMappingFile(libpf.FrameMappingFileData{
+				FileID:   libpf.NewFileID(id, id),
+				FileName: libpf.Intern(name),
+			}),
+			Start: libpf.Address(id << 20),
+			End:   libpf.Address(id<<20 + 0x10000),
+		})
+	}
+	libc := mapping("libc.so.6", 1)
+	exe := mapping("work_c", 2)
+	native := func(m libpf.FrameMapping, addr libpf.AddressOrLineno, name string) *libpf.Frame {
+		return &libpf.Frame{Type: libpf.NativeFrame, AddressOrLineno: addr, FunctionName: libpf.Intern(name), Mapping: m}
+	}
+	kernel := func(addr libpf.AddressOrLineno, name string) *libpf.Frame {
+		return &libpf.Frame{Type: libpf.KernelFrame, AddressOrLineno: addr, FunctionName: libpf.Intern(name)}
+	}
+	python := func(name string, line libpf.SourceLineno) *libpf.Frame {
+		return &libpf.Frame{Type: libpf.PythonFrame, FunctionName: libpf.Intern(name), SourceFile: libpf.Intern("work.py"), SourceLine: line}
+	}
+
+	tests := []struct {
+		name           string
+		commMode       args.CommMode
+		stubs          bool
+		noKernelFrames bool
+		frames         []*libpf.Frame
+		expected       string
+	}{
+		{
+			name: "partially symbolized native mapping",
+			frames: []*libpf.Frame{
+				native(exe, 0x2000, "main"),
+				native(libc, 0x1100, ""),
+				native(libc, 0x1200, "__libc_start_main"),
+				native(exe, 0x2100, "_start"),
+			},
+			expected: `PeriodType: cpu nanoseconds
+Period: 10309278
+Samples:
+cpu/nanoseconds
+   10309278: 1 2 3 4 
+Locations
+     1: 0x2000 M=1 main :0:0 s=0()
+     2: 0x1100 M=2 
+     3: 0x1200 M=2 __libc_start_main :0:0 s=0()
+     4: 0x2100 M=1 _start :0:0 s=0()
+Mappings
+1: 0x200000/0x210000/0x0 work_c  [FN]
+2: 0x100000/0x110000/0x0 libc.so.6  
+`,
+		},
+		{
+			name: "unsymbolized kernel frame does not affect python frames",
+			frames: []*libpf.Frame{
+				kernel(0xffff0000, ""),
+				python("leaf_py", 3),
+				python("main_py", 1),
+			},
+			expected: `PeriodType: cpu nanoseconds
+Period: 10309278
+Samples:
+cpu/nanoseconds
+   10309278: 1 2 3 
+Locations
+     1: 0xffff0000 M=1 
+     2: 0x0 M=2 leaf_py work.py:3:0 s=0()
+     3: 0x0 M=2 main_py work.py:1:0 s=0()
+Mappings
+1: 0x0/0x0/0x0   
+2: 0x0/0x0/0x0   [FN][LN]
+`,
+		},
+		{
+			name: "python frame without line number",
+			frames: []*libpf.Frame{
+				python("leaf_py", 3),
+				python("main_py", 0),
+			},
+			expected: `PeriodType: cpu nanoseconds
+Period: 10309278
+Samples:
+cpu/nanoseconds
+   10309278: 1 2 
+Locations
+     1: 0x0 M=1 leaf_py work.py:3:0 s=0()
+     2: 0x0 M=1 main_py work.py:0:0 s=0()
+Mappings
+1: 0x0/0x0/0x0   [FN]
+`,
+		},
+		{
+			name: "native frame without mapping does not affect kernel frames",
+			frames: []*libpf.Frame{
+				kernel(0xffff0000, "do_syscall_64"),
+				{Type: libpf.NativeFrame, AddressOrLineno: 0xface000},
+			},
+			expected: `PeriodType: cpu nanoseconds
+Period: 10309278
+Samples:
+cpu/nanoseconds
+   10309278: 1 2 
+Locations
+     1: 0xffff0000 M=1 do_syscall_64 :0:0 s=0()
+     2: 0xface000 M=2 
+Mappings
+1: 0x0/0x0/0x0   [FN]
+2: 0x0/0x0/0x0   
+`,
+		},
+		{
+			name:     "comm stackframe next to unsymbolized kernel frame",
+			commMode: args.CommModeStackframe,
+			frames: []*libpf.Frame{
+				kernel(0xffff0000, ""),
+			},
+			expected: `PeriodType: cpu nanoseconds
+Period: 10309278
+Samples:
+cpu/nanoseconds
+   10309278: 1 2 
+Locations
+     1: 0xffff0000 M=1 
+     2: 0x0 M=2 worker :0:0 s=0()
+Mappings
+1: 0x0/0x0/0x0   
+2: 0x0/0x0/0x0   [FN]
+`,
+		},
+		{
+			name:  "unsymbolized stubs keep partially symbolized native mapping symbolized",
+			stubs: true,
+			frames: []*libpf.Frame{
+				native(libc, 0x1100, ""),
+				native(libc, 0x1200, "__libc_start_main"),
+			},
+			expected: `PeriodType: cpu nanoseconds
+Period: 10309278
+Samples:
+cpu/nanoseconds
+   10309278: 1 2 
+Locations
+     1: 0x1100 M=1 $ libc.so.6 + 0x1100 :0:0 s=0()
+     2: 0x1200 M=1 __libc_start_main :0:0 s=0()
+Mappings
+1: 0x100000/0x110000/0x0 libc.so.6  [FN]
+`,
+		},
+		{
+			name:           "disabled kernel frames do not create a fake mapping",
+			noKernelFrames: true,
+			frames: []*libpf.Frame{
+				kernel(0xffff0000, ""),
+				python("leaf_py", 3),
+			},
+			expected: `PeriodType: cpu nanoseconds
+Period: 10309278
+Samples:
+cpu/nanoseconds
+   10309278: 1 
+Locations
+     1: 0x0 M=1 leaf_py work.py:3:0 s=0()
+Mappings
+1: 0x0/0x0/0x0   [FN][LN]
+`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rep := newReporter()
+			rep.cfg.CommMode = tt.commMode
+			rep.cfg.ReporterUnsymbolizedStubs = tt.stubs
+			rep.cfg.KernelFrames = !tt.noKernelFrames
+			frames := make(libpf.Frames, 0, len(tt.frames))
+			for _, f := range tt.frames {
+				frames.Append(f)
+			}
+			events := samples.SampleToEvents{
+				{Comm: libpf.NewCommFromString("worker")}: &samples.TraceEvents{
+					Frames:     frames,
+					Timestamps: []uint64{42},
+				},
+			}
+			profiles := rep.createProfile(samples.ResourceKey{PID: 123}, profileTypeSampling, events)
+			require.Len(t, profiles, 1)
+			p, err := profile.Parse(bytes.NewReader(profiles[0].Raw))
+			require.NoError(t, err)
+
+			p.TimeNanos = 0
+			assert.Equal(t, tt.expected, p.String())
+		})
+	}
 }
 
 func TestPPROFReporter_Demangle(t *testing.T) {
@@ -509,12 +705,13 @@ cpu/nanoseconds
    10309278: 1 2 3 4 
 Locations
      1: 0x2000 M=1 
-     2: 0xface000 M=1 
-     3: 0xcafe00ef M=2 ConcurrentGCThread::run() :0:0 s=0()
-     4: 0xcafe00de M=2 PlatformMonitor::wait(unsigned long) :0:0 s=0()
+     2: 0xface000 M=2 
+     3: 0xcafe00ef M=3 ConcurrentGCThread::run() :0:0 s=0()
+     4: 0xcafe00de M=3 PlatformMonitor::wait(unsigned long) :0:0 s=0()
 Mappings
 1: 0x0/0x0/0x0   
-2: 0xcafe0000/0xcafe1000/0x0 libfoo.so  [FN]
+2: 0x0/0x0/0x0   
+3: 0xcafe0000/0xcafe1000/0x0 libfoo.so  [FN]
 `
 	assert.Equal(t, expected, p.String())
 }
@@ -572,11 +769,12 @@ cpu/nanoseconds
    10309278: 1 2 3 
 Locations
      1: 0x2000 M=1 
-     2: 0xface000 M=1 
-     3: 0xcafe00ef M=2 $ libfoo.so + 0xcafe00ef :0:0 s=0()
+     2: 0xface000 M=2 
+     3: 0xcafe00ef M=3 $ libfoo.so + 0xcafe00ef :0:0 s=0()
 Mappings
 1: 0x0/0x0/0x0   
-2: 0xcafe0000/0xcafe1000/0x0 libfoo.so  [FN]
+2: 0x0/0x0/0x0   
+3: 0xcafe0000/0xcafe1000/0x0 libfoo.so  [FN]
 `
 	assert.Equal(t, expected, p.String())
 }
