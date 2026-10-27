@@ -293,7 +293,7 @@ The `logs` collector is always enabled and counts server errors from the Postgre
 
 ### `prometheus_exporter`
 
-The `prometheus_exporter` block configures the embedded postgres_exporter scrapers.
+The `prometheus_exporter` block configures the embedded `postgres_exporter` scrapers.
 The `data_source_name` is inherited from the parent block.
 Only the `stat_statements` collector is enabled by default.
 
@@ -312,7 +312,7 @@ The `logs_receiver` entry point must be fed by `loki` log source components, for
 PostgreSQL must be configured with a specific `log_line_prefix` so the collector can parse the logs.
 
 {{< admonition type="note" >}}
-Refer to the [PostgreSQL setup documentation](https://grafana.com/docs/grafana-cloud/monitor-applications/database-observability/set-up/postgres/) for the required `log_line_prefix` and detailed log configuration options.
+Refer to the [PostgreSQL setup documentation](https://grafana.com/docs/grafana-cloud/monitor-infrastructure/database-observability/set-up/postgres/) for the required `log_line_prefix` and detailed log configuration options.
 {{< /admonition >}}
 
 ## Example

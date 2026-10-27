@@ -4,21 +4,28 @@ package collector
 // queries to TestQueryMarkers in queries_test.go. For dynamic SQL, test the
 // builder output too. This is a review convention, not automatic enforcement.
 
+// AppName identifies collector-owned connections in sys.dm_exec_sessions.program_name.
+const AppName = "grafana:alloy:database_observability"
+
 // QueryMarker identifies collector-owned statements in Query Store and live requests.
 // Keep it stable across instances and versions so historical queries remain identifiable.
-const QueryMarker = "/* grafana:alloy:db-o11y */"
+const QueryMarker = "/* " + AppName + " */"
 
 // pingQuery is the connectivity check this component uses in place of the
 // driver's untagged SELECT 1, so liveness probes carry the collector marker.
 const PingQuery = "SELECT " + QueryMarker + " 1"
 
 // selectServerInfo returns a stable identifier for the server instance plus
-// its product version, used to derive a server_id label and to expose the
-// engine version on the connection_info metric.
+// its product version and engine edition, used to derive a server_id label and
+// to expose the engine version on the connection_info metric. The edition is
+// needed because Azure SQL Database and Managed Instance report a fixed
+// ProductVersion that says nothing about the running engine.
 const SelectServerInfo = `SELECT ` + QueryMarker + `
     CONVERT(NVARCHAR(128), SERVERPROPERTY('ServerName')) AS server_name,
     CONVERT(NVARCHAR(128), SERVERPROPERTY('MachineName')) AS machine_name,
-    CONVERT(NVARCHAR(128), SERVERPROPERTY('ProductVersion')) AS product_version`
+    CONVERT(NVARCHAR(128), SERVERPROPERTY('InstanceName')) AS instance_name,
+    CONVERT(NVARCHAR(128), SERVERPROPERTY('ProductVersion')) AS product_version,
+    CONVERT(INT, SERVERPROPERTY('EngineEdition')) AS engine_edition`
 
 const SelectOriginalLogin = `SELECT ` + QueryMarker + ` ORIGINAL_LOGIN()`
 
@@ -170,6 +177,7 @@ WITH tracked_requests AS (
 		AND s.is_user_process = 1
 		AND r.database_id = DB_ID()
 		AND r.query_hash IN (%s)
+		AND (@exclude_current_user = 0 OR s.program_name IS NULL OR s.program_name <> @collector_app_name)
 		%s
 ),
 current_waits AS (

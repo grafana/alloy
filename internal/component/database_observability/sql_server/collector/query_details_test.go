@@ -181,8 +181,6 @@ func TestQueryDetails_ObfuscatesAndTrimsQueryTextWithoutNormalizingStructure(t *
 	entries := lokiClient.Received()
 	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, entries[0].Labels)
 	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" querytext="SELECT *\n\tFROM [dbo].[orders] o  \n\tJOIN customers c ON c.id = o.customer_id\n\tWHERE o.total > ?"`, entries[0].Line)
-	require.NotContains(t, entries[0].Line, "pick up the big ones")
-	require.NotContains(t, entries[0].Line, "trailing comment")
 
 	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, entries[1].Labels)
 	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" table="dbo.orders" validated="true"`, entries[1].Line)
