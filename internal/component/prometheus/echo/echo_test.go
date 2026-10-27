@@ -281,10 +281,13 @@ requests_total{job="test"} 7 1000
 					require.Equal(t, tc.expectedExemplars, buf.exemplars)
 				}
 
+				// The appender must not be used after Rollback, so a rolled
+				// back appender isn't committed.
 				if tc.rollback {
 					require.NoError(t, app.Rollback())
+				} else {
+					require.NoError(t, app.Commit())
 				}
-				require.NoError(t, app.Commit())
 
 				require.Equal(t, tc.expected, printedMetrics(t, out))
 			})
@@ -311,10 +314,13 @@ func newTestComponent(t *testing.T, args Arguments) (*Component, *bytes.Buffer) 
 }
 
 // printedMetrics returns the unquoted metrics field of the log line that
-// echo writes on Commit.
+// echo writes on Commit, or an empty string if nothing was logged.
 func printedMetrics(t *testing.T, buf *bytes.Buffer) string {
 	t.Helper()
 	out := strings.TrimSpace(buf.String())
+	if out == "" {
+		return ""
+	}
 	_, quoted, found := strings.Cut(out, " metrics=")
 	require.True(t, found, "no metrics field found in %q", out)
 	metrics, err := strconv.Unquote(quoted)

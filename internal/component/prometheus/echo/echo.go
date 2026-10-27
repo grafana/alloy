@@ -305,7 +305,7 @@ func (a *echoAppenderV2) Append(ref storage.SeriesRef, l labels.Labels, st, t in
 	case h != nil:
 		a.buf.histograms[key] = seriesHistogram{
 			Labels:    l.Copy(),
-			Histogram: *h,
+			Histogram: *h.Copy(),
 		}
 	case fh != nil:
 		a.buf.histograms[key] = seriesHistogram{
