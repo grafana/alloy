@@ -10,7 +10,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 )
 
-const perlImage = "perl:5.44.0-slim@sha256:a0c68e9afd12dc9a10c0693f1dacac08e93d41a9e2f43aefc3a209c53e5147d2"
+const perlImage = "perl:5.42.3-slim@sha256:49851f8407371c3a429a72503e04c1eedef2a63d4e0dbe29b068534652e6e5e4"
 
 // StartPerlContainer runs script with perl and returns the host PID of the perl process.
 func StartPerlContainer(t *testing.T, ctx context.Context, l *slog.Logger, script string) (testcontainers.Container, int) {

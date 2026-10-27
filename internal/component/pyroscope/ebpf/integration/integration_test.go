@@ -5,7 +5,9 @@ package integration
 import (
 	"context"
 	"os"
+	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -13,6 +15,7 @@ import (
 	"github.com/google/pprof/profile"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -28,11 +31,9 @@ const perlScript = `sub leaf_perl { my $s = 0; $s += $_ * $_ for 1..200000; retu
 sub outer_perl { while (1) { leaf_perl() } }
 outer_perl();`
 
-// Reproduces https://github.com/grafana/opentelemetry-ebpf-profiler/issues/88.
+// Reproduces https://github.com/grafana/opentelemetry-ebpf-profiler/issues/92.
 func TestPyroscopeEbpfPerlIntegration(t *testing.T) {
-	if os.Getenv("GITHUB_ACTIONS") == "true" && os.Getenv("GITHUB_JOB") != "test_pyroscope" {
-		t.Skip("Skipping Pyroscope eBPF integration test in GitHub Actions (job name is not test_pyroscope)")
-	}
+	test.SkipUnlessPyroscopeJob(t)
 	if os.Geteuid() != 0 {
 		t.Skip("pyroscope.ebpf needs root")
 	}
@@ -74,32 +75,33 @@ func TestPyroscopeEbpfPerlIntegration(t *testing.T) {
 	}()
 
 	require.Eventually(t, func() bool {
-		return samplesSent(t, reg, "ebpf-perl") > 0
+		return samplesSent(reg, "ebpf-perl") > 0
 	}, 90*time.Second, time.Second, "pyroscope.ebpf sent no perl samples")
-	t.Logf("pyroscope.ebpf sent %v perl samples", samplesSent(t, reg, "ebpf-perl"))
+	t.Logf("pyroscope.ebpf sent %v perl samples", samplesSent(reg, "ebpf-perl"))
 
 	// Root first; "*" matches exactly one frame (__libc_start_call_main, unsymbolized).
 	expected := []string{"_start", "__libc_start_main", "*", "main", "perl_run", "Perl_runops_standard"}
-	var seen [][]string
-	require.Eventually(t, func() bool {
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		res, err := test.Query(pyroscopeEndpoint, &querierv1.SelectMergeProfileRequest{
 			ProfileTypeID: `process_cpu:cpu:nanoseconds:cpu:nanoseconds`,
 			LabelSelector: `{service_name="ebpf-perl"}`,
 			Start:         time.Now().Add(-time.Hour).UnixMilli(),
 			End:           time.Now().UnixMilli(),
 		})
-		if err != nil {
-			t.Logf("Error querying endpoint: %v", err)
-			return false
+		if !assert.NoError(c, err) {
+			return
 		}
-		seen = stacks(res)
-		for _, st := range seen {
-			if hasPrefix(st, expected) && len(st) > len(expected) {
-				return true
-			}
-		}
-		return false
-	}, 90*time.Second, time.Second, "no perl stack with prefix %v (perl frames on top); got %d stacks: %v", expected, len(seen), seen)
+		seen := stacks(res)
+		assert.Truef(c, slices.ContainsFunc(seen, func(st []string) bool {
+			return hasPrefix(st, expected) && hasPerlFrames(st[len(expected):])
+		}), "no stack with prefix %v followed by outer_perl and leaf_perl; got %d stacks: %v", expected, len(seen), seen)
+	}, 90*time.Second, time.Second)
+}
+
+func hasPerlFrames(st []string) bool {
+	outer := slices.IndexFunc(st, func(f string) bool { return strings.HasSuffix(f, "::outer_perl") })
+	leaf := slices.IndexFunc(st, func(f string) bool { return strings.HasSuffix(f, "::leaf_perl") })
+	return outer >= 0 && leaf > outer
 }
 
 func stacks(p *profile.Profile) [][]string {
@@ -130,9 +132,8 @@ func hasPrefix(stack, prefix []string) bool {
 	return true
 }
 
-func samplesSent(t *testing.T, reg *prometheus.Registry, serviceName string) float64 {
-	mfs, err := reg.Gather()
-	require.NoError(t, err)
+func samplesSent(reg *prometheus.Registry, serviceName string) float64 {
+	mfs, _ := reg.Gather()
 	for _, mf := range mfs {
 		if mf.GetName() != "pyroscope_ebpf_pprof_samples_total" {
 			continue
