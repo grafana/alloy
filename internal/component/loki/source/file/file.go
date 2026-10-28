@@ -23,6 +23,7 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/lokipipelinev2"
 )
 
 func init() {
@@ -205,12 +206,20 @@ type Component struct {
 
 	fanout *loki.Fanout
 
+	pipelineV2 bool
+	fanoutV2   *loki.FanoutV2
+
 	stopping atomic.Bool
 }
 
 // New creates a new loki.source.file component.
 func New(o component.Options, args Arguments) (*Component, error) {
-	err := os.MkdirAll(o.DataPath, 0750)
+	svc, err := o.GetServiceData(lokipipelinev2.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
+	err = os.MkdirAll(o.DataPath, 0750)
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}
@@ -232,13 +241,19 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 
 	c := &Component{
-		opts:      o,
-		metrics:   newMetrics(o.Registerer),
-		handler:   loki.NewLogsReceiver(),
-		fanout:    loki.NewFanout(args.ForwardTo),
-		posFile:   positionsFile,
-		scheduler: source.NewScheduler[positions.Entry](),
-		watcher:   time.NewTicker(args.FileMatch.SyncPeriod),
+		opts:       o,
+		metrics:    newMetrics(o.Registerer),
+		pipelineV2: svc.(lokipipelinev2.Data).PipelineV2Enabled(),
+		posFile:    positionsFile,
+		scheduler:  source.NewScheduler[positions.Entry](),
+		watcher:    time.NewTicker(args.FileMatch.SyncPeriod),
+	}
+
+	if c.pipelineV2 {
+		c.fanoutV2 = loki.NewFanoutV2(args.ForwardTo)
+	} else {
+		c.fanout = loki.NewFanout(args.ForwardTo)
+		c.handler = loki.NewLogsReceiver()
 	}
 
 	// Call to Update() to start sources and set receivers once at the start.
@@ -264,8 +279,10 @@ func (c *Component) Run(ctx context.Context) error {
 
 	var wg sync.WaitGroup
 
-	// Start consume and fanout loop
-	wg.Go(func() { loki.Consume(ctx, c.handler, c.fanout) })
+	if !c.pipelineV2 {
+		// Start consume and fanout loop
+		wg.Go(func() { loki.Consume(ctx, c.handler, c.fanout) })
+	}
 
 	wg.Go(func() {
 		for {
@@ -297,7 +314,11 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
+	if c.pipelineV2 {
+		c.fanoutV2.UpdateChildren(newArgs.ForwardTo)
+	} else {
+		c.fanout.UpdateChildren(newArgs.ForwardTo)
+	}
 
 	// Choose resolver on FileMatch.
 	if newArgs.FileMatch.Enabled {
@@ -402,7 +423,7 @@ func (c *Component) newSource(opts sourceOptions) (source.Source[positions.Entry
 	tailer := newTailer(
 		c.metrics,
 		c.opts.Logger,
-		c.handler,
+		c.newSend(),
 		c.posFile,
 		c.IsStopping,
 		opts,
@@ -417,6 +438,13 @@ func (c *Component) newSource(opts sourceOptions) (source.Source[positions.Entry
 		MinBackoff: 1 * time.Second,
 		MaxBackoff: 10 * time.Second,
 	}), nil
+}
+
+func (c *Component) newSend() sendFunc {
+	if c.pipelineV2 {
+		return sendToV2(c.fanoutV2)
+	}
+	return sendToV1(c.handler)
 }
 
 func (c *Component) IsStopping() bool {
