@@ -171,6 +171,8 @@ const (
 	typeCSV     = "csv"
 	typeTSV     = "tsv"
 	bodyTypeRaw = "raw"
+
+	columnTypeBoolean = "boolean"
 )
 
 var (
@@ -180,7 +182,7 @@ var (
 	supportedSources     = []string{sourceURL, "inline"}
 	supportedMethods     = []string{"GET", "POST", "PUT", "PATCH", "DELETE"}
 	supportedBodyTypes   = []string{bodyTypeRaw, "form-data", "x-www-form-urlencoded", typeGraphQL}
-	supportedColumnTypes = []string{"string", "number", "boolean", "timestamp", "timestamp_epoch", "timestamp_epoch_s"}
+	supportedColumnTypes = []string{"string", "number", columnTypeBoolean, "timestamp", "timestamp_epoch", "timestamp_epoch_s"}
 
 	metricPrefixRE = regexp.MustCompile(`^[a-zA-Z_:][a-zA-Z0-9_:]*$`)
 )

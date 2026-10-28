@@ -43,6 +43,7 @@ func buildFrame(s querySpec, body []byte) (_ *data.Frame, retErr error) {
 	if frame == nil {
 		frame = data.NewFrame(s.name)
 	}
+	toBoolColumns(frame, s.columns)
 	frame, err = postProcess(s, frame)
 	if err != nil {
 		var pe *pollError
@@ -328,7 +329,7 @@ func jsonFramerType(parser string) jsonframer.FramerType {
 func jsonColumns(cols []columnSpec) []jsonframer.ColumnSelector {
 	out := make([]jsonframer.ColumnSelector, 0, len(cols))
 	for _, c := range cols {
-		out = append(out, jsonframer.ColumnSelector{Selector: c.selector, Alias: c.alias, Type: c.typ, TimeFormat: c.timeFormat})
+		out = append(out, jsonframer.ColumnSelector{Selector: c.selector, Alias: c.alias, Type: framerType(c.typ), TimeFormat: c.timeFormat})
 	}
 	return out
 }
@@ -336,7 +337,52 @@ func jsonColumns(cols []columnSpec) []jsonframer.ColumnSelector {
 func gframerColumns(cols []columnSpec) []gframer.ColumnSelector {
 	out := make([]gframer.ColumnSelector, 0, len(cols))
 	for _, c := range cols {
-		out = append(out, gframer.ColumnSelector{Selector: c.selector, Alias: c.alias, Type: c.typ, TimeFormat: c.timeFormat})
+		out = append(out, gframer.ColumnSelector{Selector: c.selector, Alias: c.alias, Type: framerType(c.typ), TimeFormat: c.timeFormat})
 	}
 	return out
+}
+
+// framerType is the column type that the framer gets. gframer makes the
+// text "false" in a boolean column null, so boolean columns are read as
+// strings and toBoolColumns converts them.
+func framerType(typ string) string {
+	if typ == columnTypeBoolean {
+		return "string"
+	}
+	return typ
+}
+
+// toBoolColumns converts each boolean column of frame from the strings that
+// the framer made. "true" and "false" in any case become booleans. Other
+// values become null, as gframer does.
+func toBoolColumns(frame *data.Frame, cols []columnSpec) {
+	for _, c := range cols {
+		if c.typ != columnTypeBoolean {
+			continue
+		}
+		name := c.alias
+		if name == "" {
+			name = c.selector
+		}
+		for i, fld := range frame.Fields {
+			if fld.Name != name || fld.Type().NonNullableType() != data.FieldTypeString {
+				continue
+			}
+			b := data.NewFieldFromFieldType(data.FieldTypeNullableBool, fld.Len())
+			b.Name, b.Labels, b.Config = fld.Name, fld.Labels, fld.Config
+			for row := range fld.Len() {
+				v, ok := fld.ConcreteAt(row)
+				if !ok {
+					continue
+				}
+				switch strings.ToLower(v.(string)) {
+				case "true":
+					b.SetConcrete(row, true)
+				case "false":
+					b.SetConcrete(row, false)
+				}
+			}
+			frame.Fields[i] = b
+		}
+	}
 }

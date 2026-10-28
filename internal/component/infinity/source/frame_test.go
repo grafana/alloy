@@ -493,3 +493,50 @@ func TestBuildFrameSummarizeByBudget(t *testing.T) {
 		})
 	}
 }
+
+// TestBuildFrameBooleanColumn checks that "false" in a boolean column is
+// false, not null. gframer alone makes it null.
+func TestBuildFrameBooleanColumn(t *testing.T) {
+	tests := map[string]struct {
+		cfg, body string
+	}{
+		"csv": {`query "q" {
+			url  = "http://x"
+			type = "csv"
+			column {
+				selector = "ok"
+				text     = "healthy"
+				type     = "boolean"
+			}
+		}`, "ok\ntrue\nfalse\nTRUE\nFalse\nyes\n\n"},
+		"json strings": {`query "q" {
+			url = "http://x"
+			column {
+				selector = "ok"
+				text     = "healthy"
+				type     = "boolean"
+			}
+		}`, `[{"ok":"true"},{"ok":"false"},{"ok":"TRUE"},{"ok":"False"},{"ok":"yes"},{"ok":null}]`},
+		"json booleans": {`query "q" {
+			url = "http://x"
+			column {
+				selector = "ok"
+				text     = "healthy"
+				type     = "boolean"
+			}
+		}`, `[{"ok":true},{"ok":false},{"ok":true},{"ok":false},{"ok":1},{}]`},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			s, err := specFromConfig(tt.cfg)
+			require.NoError(t, err)
+			f, err := buildFrame(s, []byte(tt.body))
+			require.NoError(t, err)
+			got, ok := fieldValues(f, "healthy")
+			require.True(t, ok)
+			// Values other than true and false are null, as in gframer.
+			want := []any{true, false, true, false, nil}
+			require.Equal(t, want, got[:len(want)])
+		})
+	}
+}

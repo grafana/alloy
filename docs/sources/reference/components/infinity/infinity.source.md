@@ -175,6 +175,8 @@ Specify `column` zero or more times.
 | `type`              | `string` | Type to convert the extracted value to.            | inferred from the data | no       |
 
 The following strings are valid `type` values: `"string"`, `"number"`, `"boolean"`, `"timestamp"`, `"timestamp_epoch"`, and `"timestamp_epoch_s"`.
+A `"boolean"` column accepts JSON booleans and the strings `"true"` and `"false"` in any case.
+Other values are null.
 The `timestamp_format` argument is valid only when `type` is `"timestamp"`.
 When you don't set `type`, `infinity.source` lets the parser detect the column's type from the response.
 
