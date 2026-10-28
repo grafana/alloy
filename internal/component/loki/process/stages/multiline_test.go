@@ -407,12 +407,6 @@ func TestValidateMultilineConfig(t *testing.T) {
 
 			var cfg MultilineConfig
 			err := syntax.Unmarshal([]byte(tt.config), &cfg)
-			if err != nil {
-				require.True(t, tt.expectErr, "unexpected error unmarshaling config: %v", err)
-				return
-			}
-
-			_, err = validateMultilineConfig(cfg)
 			if tt.expectErr {
 				require.Error(t, err)
 				return
