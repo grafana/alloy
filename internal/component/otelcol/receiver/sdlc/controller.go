@@ -25,16 +25,20 @@ type controllerOptions struct {
 	logger                  *slog.Logger
 	client                  kubernetes.Interface
 	clusterName, clusterUID string
-	heartbeatInterval       time.Duration
 	emit                    func(context.Context, func() eventBatch) error
 	now                     func() time.Time
 }
 
 type rolloutState struct {
 	revision int64
-	template corev1.PodTemplateSpec
-	status   string
-	stalled  bool
+	// previousRevision is the revision this rollout replaced, or 0 if unknown.
+	previousRevision int64
+	// startedAt is when the rollout was observed; zero for rollouts already in
+	// flight when the component started.
+	startedAt time.Time
+	template  corev1.PodTemplateSpec
+	status    string
+	stalled   bool
 }
 
 type controller struct {
@@ -103,9 +107,8 @@ func (c *controller) run(ctx context.Context) error {
 	}
 	go func() { <-ctx.Done(); c.queue.ShutDown(); c.imageQueue.ShutDown() }()
 	var workers sync.WaitGroup
-	workers.Add(2)
+	workers.Add(1)
 	go func() { defer workers.Done(); c.resolveImages(ctx) }()
-	go func() { defer workers.Done(); c.heartbeats(ctx) }()
 	defer workers.Wait()
 	c.opts.logger.Info("Kubernetes Deployment rollout watcher ready")
 	for {
@@ -150,7 +153,7 @@ func (c *controller) observe(d *appsv1.Deployment, initial bool) {
 		if exists {
 			changes = templateChanges(previous.template, d.Spec.Template)
 		}
-		previous = rolloutState{revision: revision, template: *d.Spec.Template.DeepCopy(), status: rolloutStarted}
+		previous = rolloutState{revision: revision, previousRevision: previous.revision, startedAt: c.now(), template: *d.Spec.Template.DeepCopy(), status: rolloutStarted}
 		c.enqueue(d, previous, rolloutStarted, 0, changes, exists)
 		c.openImages(d, previous)
 	}

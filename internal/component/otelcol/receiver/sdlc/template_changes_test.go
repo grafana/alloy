@@ -33,7 +33,10 @@ func TestTemplateChangesValuesAndRedaction(t *testing.T) {
 	require.Nil(t, byField["resources.limits.memory"].Before)
 	require.Equal(t, "512Mi", *byField["resources.limits.memory"].After)
 	require.Equal(t, "added", byField["resources.limits.memory"].Operation)
-	for _, field := range []string{"env", "args", "metadata.annotations", "spec.volumes"} {
+	// Environment variables report which one changed, never its value.
+	require.Equal(t, "added", byField["env.TOKEN"].Operation)
+	require.Nil(t, byField["env.TOKEN"].After)
+	for _, field := range []string{"args", "metadata.annotations", "spec.volumes"} {
 		require.Contains(t, byField, field)
 		require.Nil(t, byField[field].Before)
 		require.Nil(t, byField[field].After)
@@ -83,4 +86,49 @@ func TestTemplateChangesContainers(t *testing.T) {
 	next.Spec.Containers[0], next.Spec.Containers[1] = next.Spec.Containers[1], next.Spec.Containers[0]
 	changes = templateChanges(*old, *next)
 	require.Equal(t, []templateChange{{Field: "spec.containers.order", Operation: "modified"}}, changes)
+}
+
+func TestTemplateChangesAllowlistedValues(t *testing.T) {
+	old := deploymentFixture().Spec.Template.DeepCopy()
+	old.Labels = map[string]string{"app": "web", "tier": "front"}
+	old.Spec.ServiceAccountName = "web"
+	old.Spec.NodeSelector = map[string]string{"disk": "ssd"}
+	old.Spec.Containers[0].Ports = []corev1.ContainerPort{{ContainerPort: 80}}
+	old.Spec.Containers[0].Env = []corev1.EnvVar{{Name: "KEEP", Value: "a"}, {Name: "CHANGE", Value: "old-secret"}, {Name: "DROP", Value: "x"}}
+	next := old.DeepCopy()
+	next.Labels = map[string]string{"app": "web", "version": "2"}
+	next.Spec.ServiceAccountName = "web-v2"
+	next.Spec.NodeSelector = nil
+	next.Spec.Containers[0].ImagePullPolicy = corev1.PullAlways
+	next.Spec.Containers[0].Ports = []corev1.ContainerPort{{ContainerPort: 80}, {ContainerPort: 443, Protocol: corev1.ProtocolTCP}}
+	next.Spec.Containers[0].Env = []corev1.EnvVar{{Name: "KEEP", Value: "a"}, {Name: "CHANGE", Value: "new-secret"}, {Name: "ADD", Value: "y"}}
+	byPath := map[string]templateChange{}
+	for _, change := range templateChanges(*old, *next) {
+		byPath[change.path()] = change
+	}
+	str := func(p *string) string {
+		if p == nil {
+			return "<nil>"
+		}
+		return *p
+	}
+	for path, want := range map[string][3]string{
+		"metadata.labels.tier":           {"removed", "front", "<nil>"},
+		"metadata.labels.version":        {"added", "<nil>", "2"},
+		"spec.serviceAccountName":        {"modified", "web", "web-v2"},
+		"spec.nodeSelector.disk":         {"removed", "ssd", "<nil>"},
+		"containers.app.imagePullPolicy": {"added", "<nil>", "Always"},
+		"containers.app.ports":           {"modified", "80/TCP", "443/TCP,80/TCP"},
+		"containers.app.env.CHANGE":      {"modified", "<nil>", "<nil>"},
+		"containers.app.env.ADD":         {"added", "<nil>", "<nil>"},
+		"containers.app.env.DROP":        {"removed", "<nil>", "<nil>"},
+	} {
+		got, ok := byPath[path]
+		require.True(t, ok, path)
+		require.Equal(t, want, [3]string{got.Operation, str(got.Before), str(got.After)}, path)
+	}
+	require.NotContains(t, byPath, "containers.app.env.KEEP")
+	encoded, err := json.Marshal(byPath)
+	require.NoError(t, err)
+	require.NotContains(t, string(encoded), "secret")
 }

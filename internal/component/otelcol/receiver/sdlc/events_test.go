@@ -2,7 +2,6 @@ package sdlc
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -31,21 +30,67 @@ func testController(t *testing.T) *controller {
 	t.Cleanup(c.imageQueue.ShutDown)
 	return c
 }
-func take(t *testing.T, c *controller, status string) (*eventBatch, rolloutEvent) {
+
+// decoded is a grafana.sdlc.change record flattened for assertions.
+type decoded struct {
+	record    plog.LogRecord
+	resource  map[string]any
+	attrs     map[string]any
+	diff      map[string]any
+	summary   string
+	rolloutID string
+	revision  int64
+}
+
+func (d decoded) changes() map[string]any {
+	changes, _ := d.diff["changes"].(map[string]any)
+	return changes
+}
+
+func decode(t *testing.T, logs plog.Logs) decoded {
+	t.Helper()
+	rl := logs.ResourceLogs().At(0)
+	record := rl.ScopeLogs().At(0).LogRecords().At(0)
+	require.Equal(t, eventName, record.EventName())
+	out := decoded{record: record, resource: rl.Resource().Attributes().AsRaw(), attrs: record.Attributes().AsRaw()}
+	out.diff, _ = out.attrs["grafana.sdlc.change.diff"].(map[string]any)
+	out.summary, _ = out.attrs["grafana.sdlc.change.summary"].(string)
+	out.rolloutID, _ = out.diff["rollout_id"].(string)
+	out.revision, _ = out.diff["revision"].(int64)
+	return out
+}
+
+var summaryFor = map[string]string{
+	rolloutStarted:        "Rollout started",
+	rolloutSucceeded:      "Rollout succeeded",
+	rolloutStalled:        "Rollout stalled",
+	rolloutSuperseded:     "Rollout superseded",
+	rolloutImagesResolved: "Resolved runtime images",
+}
+
+func take(t *testing.T, c *controller, status string) (*eventBatch, decoded) {
 	t.Helper()
 	require.Positive(t, c.queue.Len())
 	event, _ := c.queue.Get()
 	c.queue.Done(event)
-	record := event.logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
-	require.Equal(t, eventPrefix+status, record.EventName())
-	var fields map[string]json.RawMessage
-	require.NoError(t, json.Unmarshal([]byte(record.Body().Str()), &fields))
-	require.NotContains(t, fields, "change_types")
-	var payload rolloutEvent
-	require.NoError(t, json.Unmarshal([]byte(record.Body().Str()), &payload))
-	require.Equal(t, status, payload.Status)
-	require.NotEmpty(t, payload.RolloutID)
-	return event, payload
+	got := decode(t, event.logs)
+	require.Contains(t, got.summary, summaryFor[status])
+	require.Equal(t, "UNSET", got.attrs["grafana.sdlc.status"])
+	require.Equal(t, "1", got.attrs["grafana.sdlc.schema.version"])
+	require.Equal(t, event.id, got.attrs["grafana.sdlc.event.id"])
+	require.NotEmpty(t, got.attrs["grafana.sdlc.provider.version"])
+	require.NotEmpty(t, got.rolloutID)
+	require.False(t, got.record.TraceID().IsEmpty())
+	require.True(t, got.record.SpanID().IsEmpty())
+	// The resource names the Deployment; the summary must not.
+	require.Equal(t, map[string]any{
+		"grafana.sdlc.provider.type": "k8s",
+		"grafana.sdlc.provider.id":   "cluster-1",
+		"grafana.sdlc.resource.type": "deployment",
+		"grafana.sdlc.resource.id":   "demo/web",
+	}, got.resource)
+	require.NotContains(t, got.summary, "web")
+	return event, got
 }
 func revision(d *appsv1.Deployment, n int64) {
 	d.Generation++
@@ -78,22 +123,28 @@ func TestRolloutLifecycle(t *testing.T) {
 	d.Spec.Template.Spec.Containers[0].Image = "nginx:1.28"
 	c.observe(d, false)
 	_, started := take(t, c, "started")
-	require.Equal(t, int64(2), started.Revision)
-	require.Len(t, started.Changes, 1)
-	require.Equal(t, "image", started.Changes[0].Field)
-	require.True(t, *started.ChangesKnown)
+	require.Equal(t, int64(2), started.revision)
+	require.Equal(t, "intent", started.attrs["grafana.sdlc.type"])
+	require.Equal(t, "1", started.attrs["grafana.sdlc.change.version.before"])
+	require.Equal(t, "2", started.attrs["grafana.sdlc.change.version.after"])
+	require.Len(t, started.changes(), 1)
+	require.Equal(t, map[string]any{"operation": "modified", "before": "nginx:1.27", "after": "nginx:1.28"}, started.changes()["containers.app.image"])
+	require.Equal(t, true, started.diff["changes_known"])
 	c.observe(d, false)
 	require.Zero(t, c.queue.Len())
 	d.Status.Conditions = []appsv1.DeploymentCondition{{Type: appsv1.DeploymentProgressing, Status: corev1.ConditionFalse, Reason: "ProgressDeadlineExceeded"}}
 	c.observe(d, false)
 	_, stalled := take(t, c, "stalled")
-	require.Equal(t, started.RolloutID, stalled.RolloutID)
+	require.Equal(t, started.rolloutID, stalled.rolloutID)
 	c.observe(d, false)
 	require.Zero(t, c.queue.Len())
 	succeed(d)
 	c.observe(d, false)
 	_, completed := take(t, c, "succeeded")
-	require.Equal(t, started.RolloutID, completed.RolloutID)
+	require.Equal(t, started.rolloutID, completed.rolloutID)
+	require.Equal(t, "effect", completed.attrs["grafana.sdlc.type"])
+	// Every event of a rollout shares one trace.
+	require.Equal(t, started.record.TraceID(), completed.record.TraceID())
 	c.observe(d, false)
 	require.Zero(t, c.queue.Len())
 	// Later availability degradation isn't a failure of this completed rollout.
@@ -117,12 +168,13 @@ func TestSupersededAndRollback(t *testing.T) {
 	c.observe(d, false)
 	_, superseded := take(t, c, "superseded")
 	_, next := take(t, c, "started")
-	require.Equal(t, old.RolloutID, superseded.RolloutID)
-	require.Equal(t, next.RolloutID, superseded.SupersededBy)
-	require.Equal(t, "broken:v2", superseded.Containers[0].Image)
-	require.NotEqual(t, old.RolloutID, next.RolloutID)
-	require.Equal(t, "broken:v2", *next.Changes[0].Before)
-	require.Equal(t, "nginx:1.27", *next.Changes[0].After)
+	require.Equal(t, old.rolloutID, superseded.rolloutID)
+	require.Contains(t, superseded.summary, "revision 3")
+	require.Equal(t, next.rolloutID, superseded.diff["superseded_by"])
+	require.Equal(t, "broken:v2", superseded.diff["containers"].([]any)[0].(map[string]any)["image"])
+	require.NotEqual(t, old.rolloutID, next.rolloutID)
+	require.Equal(t, "broken:v2", next.changes()["containers.app.image"].(map[string]any)["before"])
+	require.Equal(t, "nginx:1.27", next.changes()["containers.app.image"].(map[string]any)["after"])
 	c.observe(d, false)
 	require.Zero(t, c.queue.Len())
 	revision(d, 2)
@@ -148,7 +200,7 @@ func TestPausedAndUnobservedChanges(t *testing.T) {
 	d.Status.Conditions = nil
 	c.observe(d, false)
 	_, started := take(t, c, "started")
-	require.Equal(t, "nginx:1.27", *started.Changes[0].Before)
+	require.Equal(t, "nginx:1.27", started.changes()["containers.app.image"].(map[string]any)["before"])
 	require.Zero(t, c.queue.Len())
 }
 func TestNewDeploymentAndBaseline(t *testing.T) {
@@ -157,8 +209,8 @@ func TestNewDeploymentAndBaseline(t *testing.T) {
 	c.observe(d, false)
 	_, started := take(t, c, "started")
 	take(t, c, "succeeded")
-	require.False(t, *started.ChangesKnown)
-	require.Empty(t, started.Changes)
+	require.Equal(t, false, started.diff["changes_known"])
+	require.Empty(t, started.changes())
 	restarted := testController(t)
 	restarted.observe(d, true)
 	restarted.observe(d, false)
@@ -175,24 +227,30 @@ func TestNewDeploymentAndBaseline(t *testing.T) {
 	c.observe(d, false)
 	_, recreated := take(t, c, "started")
 	take(t, c, "succeeded")
-	require.NotEqual(t, started.RolloutID, recreated.RolloutID)
+	require.NotEqual(t, started.rolloutID, recreated.rolloutID)
 }
 func TestDeliveryRetries(t *testing.T) {
 	d := deploymentFixture()
 	c := testController(t)
 	c.observe(d, false)
 	event, _ := take(t, c, "started")
-	expected := event.logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0).Body().Str()
+	const summaryKey = "grafana.sdlc.change.summary"
+	record := func(logs plog.Logs) plog.LogRecord {
+		return logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
+	}
+	expected, _ := record(event.logs).Attributes().Get(summaryKey)
+	expectedSummary := expected.Str()
 	c.opts.emit = func(_ context.Context, batch func() eventBatch) error {
 		data := batch()
-		data.logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0).Body().SetStr("mutated")
+		record(data.logs).Attributes().PutStr(summaryKey, "mutated")
 		return errors.New("retry")
 	}
 	require.False(t, c.deliver(t.Context(), event))
 	c.opts.emit = func(_ context.Context, batch func() eventBatch) error {
 		data := batch()
 		require.Equal(t, event.id, data.id)
-		require.Equal(t, expected, data.logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0).Body().Str())
+		got, _ := record(data.logs).Attributes().Get(summaryKey)
+		require.Equal(t, expectedSummary, got.Str())
 		return nil
 	}
 	require.True(t, c.deliver(t.Context(), event))
@@ -214,19 +272,15 @@ func TestWatcherUsesDeploymentReplicaSetAndPodWatches(t *testing.T) {
 		}
 		return false
 	}, time.Second, 10*time.Millisecond)
-	select {
-	case logs := <-received:
-		require.Equal(t, "grafana.sdlc.k8s.cluster.heartbeat", logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0).EventName())
-	case <-time.After(3 * time.Second):
-		t.Fatal("no initial heartbeat after cache sync")
-	}
+	require.Empty(t, received, "initial observation is a silent baseline")
 	revision(d, 2)
 	d.Spec.Template.Spec.Containers[0].Image = "nginx:1.28"
 	_, err := client.AppsV1().Deployments(d.Namespace).Update(ctx, d, metav1.UpdateOptions{})
 	require.NoError(t, err)
 	select {
 	case logs := <-received:
-		require.Equal(t, eventPrefix+"started", logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0).EventName())
+		require.Equal(t, eventName, logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0).EventName())
+		require.Contains(t, decode(t, logs).summary, "Rollout started")
 	case <-time.After(3 * time.Second):
 		t.Fatal("no rollout event")
 	}
@@ -248,4 +302,49 @@ func TestDeploymentDeletionClearsTrackingWithoutEvent(t *testing.T) {
 	c.remove(d)
 	c.remove(cache.DeletedFinalStateUnknown{Obj: "unavailable"})
 	require.Zero(t, c.queue.Len())
+}
+
+func TestTerminalEventSpansRollout(t *testing.T) {
+	d := deploymentFixture()
+	c := testController(t)
+	clock := time.Unix(100, 0)
+	c.now = func() time.Time { return clock }
+	c.observe(d, true)
+	revision(d, 2)
+	c.observe(d, false)
+	_, started := take(t, c, "started")
+	clock = clock.Add(30 * time.Second)
+	succeed(d)
+	c.observe(d, false)
+	_, completed := take(t, c, "succeeded")
+	require.EqualValues(t, time.Unix(100, 0).UnixNano(), started.attrs["grafana.sdlc.start_time_unix_nano"])
+	require.EqualValues(t, started.record.Timestamp(), time.Unix(100, 0).UnixNano())
+	require.EqualValues(t, time.Unix(100, 0).UnixNano(), completed.attrs["grafana.sdlc.start_time_unix_nano"])
+	require.EqualValues(t, time.Unix(130, 0).UnixNano(), completed.record.Timestamp())
+}
+
+func TestEventIsStableAcrossRebuilds(t *testing.T) {
+	// Retries rebuild nothing, but IDs and trace must still be deterministic so
+	// a restarted producer re-derives the same identity.
+	build := func() decoded {
+		d := deploymentFixture()
+		c := testController(t)
+		c.observe(d, false)
+		event, _ := c.queue.Get()
+		return decode(t, event.logs)
+	}
+	a, b := build(), build()
+	require.Equal(t, a.attrs["grafana.sdlc.event.id"], b.attrs["grafana.sdlc.event.id"])
+	require.Equal(t, a.record.TraceID(), b.record.TraceID())
+}
+
+func TestProviderIDFallsBackToClusterUID(t *testing.T) {
+	d := deploymentFixture()
+	c := testController(t)
+	c.opts.clusterName = "prod-eu"
+	c.observe(d, false)
+	event, _ := c.queue.Get()
+	got := decode(t, event.logs)
+	require.Equal(t, "prod-eu", got.resource["grafana.sdlc.provider.id"])
+	require.Equal(t, "prod-eu", got.diff["cluster_name"])
 }

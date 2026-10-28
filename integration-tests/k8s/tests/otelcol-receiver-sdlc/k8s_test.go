@@ -2,6 +2,7 @@ package otelcolreceiverk8sworkloads
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -16,10 +17,13 @@ const testNamespace = "test-sdlc"
 const alloyRelease = "alloy-test-sdlc"
 const workloadNamespace = "test-sdlc-rollouts"
 
+// rolloutEvent is one grafana.sdlc.change record. name is the lifecycle step,
+// recovered from the change summary; body is the change.diff map.
 type rolloutEvent struct {
-	name, namespace, pod string
-	timestamp            uint64
-	body                 map[string]any
+	name, namespace, resourceID, pod string
+	timestamp                        uint64
+	body                             map[string]any
+	attrs                            map[string]any
 }
 
 func TestK8sWorkloads(t *testing.T) {
@@ -36,55 +40,58 @@ func TestK8sWorkloads(t *testing.T) {
 	})
 	apply(t, deployment("web", nil))
 	first := waitEvent(t, func(e rolloutEvent) bool {
-		return e.namespace == workloadNamespace && e.name == "deployment.rollout.started" && e.body["name"] == "web"
+		return e.namespace == workloadNamespace && e.name == "started" && e.resourceID == workloadNamespace+"/web"
 	})
 	waitEvent(t, func(e rolloutEvent) bool {
-		return e.name == "deployment.rollout.succeeded" && e.body["rollout_id"] == first.body["rollout_id"]
+		return e.name == "succeeded" && e.body["rollout_id"] == first.body["rollout_id"]
 	})
 	images := waitEvent(t, func(e rolloutEvent) bool {
-		return e.name == "deployment.rollout.images_resolved" && e.body["rollout_id"] == first.body["rollout_id"]
+		return e.name == "images_resolved" && e.body["rollout_id"] == first.body["rollout_id"]
 	})
 	require.Equal(t, true, images.body["complete"])
-	containers := images.body["containers"].([]any)
+	containers := images.body["resolved_containers"].([]any)
 	require.NotEmpty(t, containers[0].(map[string]any)["runtime_image_ids"])
+	require.Equal(t, "UNSET", images.attrs["grafana.sdlc.status"])
+	require.Equal(t, "1", images.attrs["grafana.sdlc.schema.version"])
 	require.NoError(t, harness.RunCommand("kubectl", "-n", workloadNamespace, "scale", "deployment/web", "--replicas=2"))
 	require.NoError(t, harness.RunCommand("kubectl", "-n", workloadNamespace, "rollout", "status", "deployment/web", "--timeout=90s"))
 	require.NoError(t, harness.RunCommand("kubectl", "-n", workloadNamespace, "set", "image", "deployment/web", "app=unavailable.invalid/app:test"))
 	broken := waitEvent(t, func(e rolloutEvent) bool {
-		return e.namespace == workloadNamespace && e.name == "deployment.rollout.started" && e.body["rollout_id"] != first.body["rollout_id"]
+		return e.namespace == workloadNamespace && e.name == "started" && e.body["rollout_id"] != first.body["rollout_id"]
 	})
-	require.NotContains(t, broken.body, "change_types")
-	require.NotEmpty(t, broken.body["changes"])
+	require.Equal(t, "intent", broken.attrs["grafana.sdlc.type"])
+	require.Contains(t, broken.body["changes"], "containers.app.image")
 	waitEvent(t, func(e rolloutEvent) bool {
-		return e.name == "deployment.rollout.stalled" && e.body["rollout_id"] == broken.body["rollout_id"]
+		return e.name == "stalled" && e.body["rollout_id"] == broken.body["rollout_id"]
 	})
 	require.NoError(t, harness.RunCommand("kubectl", "-n", workloadNamespace, "rollout", "undo", "deployment/web"))
 	superseded := waitEvent(t, func(e rolloutEvent) bool {
-		return e.name == "deployment.rollout.superseded" && e.body["rollout_id"] == broken.body["rollout_id"]
+		return e.name == "superseded" && e.body["rollout_id"] == broken.body["rollout_id"]
 	})
 	waitEvent(t, func(e rolloutEvent) bool {
-		return e.name == "deployment.rollout.succeeded" && e.body["rollout_id"] == superseded.body["superseded_by"]
+		return e.name == "succeeded" && e.body["rollout_id"] == superseded.body["superseded_by"]
 	})
 	partial := waitEvent(t, func(e rolloutEvent) bool {
-		return e.name == "deployment.rollout.images_resolved" && e.body["rollout_id"] == broken.body["rollout_id"]
+		return e.name == "images_resolved" && e.body["rollout_id"] == broken.body["rollout_id"]
 	})
 	require.Equal(t, false, partial.body["complete"])
 	waitEvent(t, func(e rolloutEvent) bool {
-		return e.name == "deployment.rollout.images_resolved" && e.body["rollout_id"] == superseded.body["superseded_by"]
+		return e.name == "images_resolved" && e.body["rollout_id"] == superseded.body["superseded_by"]
 	})
 	events, err := readEvents()
 	require.NoError(t, err)
 	owners := map[string]bool{}
 	counts := map[string]int{}
 	for _, e := range events {
-		require.Contains(t, []string{"deployment.rollout.started", "deployment.rollout.succeeded", "deployment.rollout.stalled", "deployment.rollout.superseded", "deployment.rollout.images_resolved"}, e.name)
+		require.Contains(t, []string{"started", "succeeded", "stalled", "superseded", "images_resolved"}, e.name)
+		require.Equal(t, "k8s", e.attrs["grafana.sdlc.provider.type"])
 		if e.namespace == workloadNamespace {
 			owners[e.pod] = true
 			counts[e.name]++
 		}
 	}
 	require.Len(t, owners, 1)
-	require.Equal(t, map[string]int{"deployment.rollout.started": 3, "deployment.rollout.succeeded": 2, "deployment.rollout.stalled": 1, "deployment.rollout.superseded": 1, "deployment.rollout.images_resolved": 3}, counts)
+	require.Equal(t, map[string]int{"started": 3, "succeeded": 2, "stalled": 1, "superseded": 1, "images_resolved": 3}, counts)
 }
 func deployment(name string, labels map[string]string) map[string]any {
 	return map[string]any{"apiVersion": "apps/v1", "kind": "Deployment", "metadata": map[string]any{"name": name, "namespace": workloadNamespace, "labels": labels}, "spec": map[string]any{"replicas": 1, "progressDeadlineSeconds": 10, "selector": map[string]any{"matchLabels": map[string]string{"app": name}}, "template": map[string]any{"metadata": map[string]any{"labels": map[string]string{"app": name}}, "spec": map[string]any{"terminationGracePeriodSeconds": 1, "containers": []any{map[string]any{"name": "app", "image": "nginx:1.27-alpine"}}}}}}
@@ -134,22 +141,42 @@ func readEvents() ([]rolloutEvent, error) {
 			}
 			for i := 0; i < logs.ResourceLogs().Len(); i++ {
 				rl := logs.ResourceLogs().At(i)
-				ns, _ := rl.Resource().Attributes().Get("k8s.namespace.name")
+				resource := rl.Resource().Attributes().AsRaw()
+				resourceID, _ := resource["grafana.sdlc.resource.id"].(string)
+				namespace, _, _ := strings.Cut(resourceID, "/")
 				for j := 0; j < rl.ScopeLogs().Len(); j++ {
 					records := rl.ScopeLogs().At(j).LogRecords()
 					for k := 0; k < records.Len(); k++ {
 						r := records.At(k)
-						var body map[string]any
-						if err := json.Unmarshal([]byte(r.Body().Str()), &body); err != nil {
-							return nil, err
+						if r.EventName() != "grafana.sdlc.change" {
+							return nil, fmt.Errorf("unexpected event name %q", r.EventName())
 						}
-						name := strings.TrimPrefix(r.EventName(), "grafana.sdlc.k8s.")
-						name = strings.TrimPrefix(name, "grafana.sdlc.")
-						events = append(events, rolloutEvent{name: name, namespace: ns.Str(), pod: pod, timestamp: uint64(r.Timestamp()), body: body})
+						attrs := r.Attributes().AsRaw()
+						attrs["grafana.sdlc.provider.type"] = resource["grafana.sdlc.provider.type"]
+						body, _ := attrs["grafana.sdlc.change.diff"].(map[string]any)
+						summary, _ := attrs["grafana.sdlc.change.summary"].(string)
+						events = append(events, rolloutEvent{name: lifecycle(summary), namespace: namespace, resourceID: resourceID, pod: pod, timestamp: uint64(r.Timestamp()), body: body, attrs: attrs})
 					}
 				}
 			}
 		}
 	}
 	return events, nil
+}
+
+// lifecycle maps a change summary back to its rollout step.
+func lifecycle(summary string) string {
+	for prefix, name := range map[string]string{
+		"Rollout started":                   "started",
+		"Rollout succeeded":                 "succeeded",
+		"Rollout stalled":                   "stalled",
+		"Rollout superseded":                "superseded",
+		"Resolved runtime images":           "images_resolved",
+		"Partially resolved runtime images": "images_resolved",
+	} {
+		if strings.HasPrefix(summary, prefix) {
+			return name
+		}
+	}
+	return summary
 }

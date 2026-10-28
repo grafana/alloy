@@ -10,7 +10,7 @@ title: otelcol.receiver.sdlc
 
 # `otelcol.receiver.sdlc`
 
-`otelcol.receiver.sdlc` emits Kubernetes Deployment rollout and deletion events as OpenTelemetry logs.
+`otelcol.receiver.sdlc` emits Kubernetes Deployment rollouts as `grafana.sdlc.change` events, encoded as OpenTelemetry logs.
 It watches Deployments across all namespaces and reports four transitions: `started`, `succeeded`, `stalled`, and `superseded`.
 Replica-only scaling doesn't start a rollout or open image collection.
 Shared Pod and ReplicaSet watches collect runtime image identities for newly observed rollouts.
@@ -35,10 +35,13 @@ You can use the following arguments with `otelcol.receiver.sdlc`:
 
 | Name           | Type     | Description                                      | Default | Required |
 | -------------- | -------- | ------------------------------------------------ | ------- | -------- |
-| `cluster_name` | `string` | Human-readable name of the Kubernetes cluster.   | `""`    | no       |
+| `cluster_name` | `string` | Human-readable name of the Kubernetes cluster. Used as the provider ID. | `""`    | no       |
 | `cluster_uid`  | `string` | Stable identifier for the Kubernetes cluster.    | `""`    | no       |
 
-When `cluster_uid` is empty, the component uses the UID of the `kube-system` Namespace as `k8s.cluster.uid`.
+When `cluster_uid` is empty, the component uses the UID of the `kube-system` Namespace as the cluster UID.
+When `cluster_name` is empty, the component uses the cluster UID as the provider ID.
+Set `cluster_name` for a readable provider ID.
+Adding it later changes the provider ID of subsequent events.
 
 ## Blocks
 
@@ -165,70 +168,121 @@ You can omit the Namespace permission when you configure `cluster_uid`.
 
 ## Event schema
 
-Each event is one OTLP log record with a JSON string body.
-Resource attributes include `k8s.cluster.uid`, `k8s.namespace.name`, `k8s.deployment.uid`, and `k8s.deployment.name`.
-When configured, `k8s.cluster.name` is also present.
-Each record has a `grafana.sdlc.event.id` and `grafana.sdlc.schema.version` set to `1`.
-The record timestamp and body `observed_at` are the watcher's observation time, not an exact Kubernetes transition time.
+Each event is one `grafana.sdlc.change` OTLP log record, version `1` of the SDLC change contract.
+The log record has no body.
+All attributes use the `grafana.sdlc.` prefix, which the following tables omit.
+
+The component doesn't set a stack ID.
+Send events to an ingest endpoint that is specific to your Grafana Cloud stack.
+
+### Resource attributes
+
+| Attribute | Value |
+| --- | --- |
+| `provider.type` | `k8s`. |
+| `provider.id` | The `cluster_name`, or the cluster UID when `cluster_name` isn't set. |
+| `resource.type` | `deployment`. |
+| `resource.id` | `<namespace>/<name>` of the Deployment. |
+
+### Log record fields and attributes
+
+| Field or attribute | Value |
+| --- | --- |
+| `eventName` | `grafana.sdlc.change`. |
+| `timeUnixNano` | The event end time: the watcher's observation time, not an exact Kubernetes transition time. |
+| `observedTimeUnixNano` | The same observation time. |
+| `traceId` | Derived from the rollout ID, so all events of one rollout share one trace. `spanId` isn't set. |
+| `schema.version` | `"1"`. |
+| `provider.version` | The {{< param "PRODUCT_NAME" >}} version. |
+| `event.id` | A deterministic hash of the rollout ID and event kind. Retries preserve it. |
+| `status` | Always `UNSET`. The lifecycle step is in `change.summary`. |
+| `start_time_unix_nano` | The event start time. |
+| `type` | `intent` for `started`. `effect` for every other event. |
+| `change.summary` | The lifecycle step. It doesn't include the resource name. |
+| `change.version.before` | The previous Deployment revision. Omitted when unknown. |
+| `change.version.after` | The Deployment revision of this rollout. |
+| `change.diff` | A map of rollout details, described in the following sections. |
+
+The component doesn't set `service.ids`, `environment.id`, `owners`, `actor`, `tracing.enabled`, `logging.enabled`, `change.url`, or `change.git.*`.
+Because `tracing.enabled` isn't set, the backend emits a span for each event.
+Each event is a span in the rollout's trace.
 
 ### Rollout events
 
-The component emits the following lifecycle event types:
+The component emits the following lifecycle events:
 
-| Event name | Meaning |
+| `change.summary` | Meaning |
 | --- | --- |
-| `grafana.sdlc.k8s.deployment.rollout.started` | The watcher observes a new controller-assigned revision after the controller observes the current generation. |
-| `grafana.sdlc.k8s.deployment.rollout.succeeded` | The controller reports `NewReplicaSetAvailable`, all desired replicas are updated and available, and no old replicas remain in the replica count. |
-| `grafana.sdlc.k8s.deployment.rollout.stalled` | The controller reports `Progressing=False` with reason `ProgressDeadlineExceeded`. |
-| `grafana.sdlc.k8s.deployment.rollout.superseded` | A newer revision replaces an unfinished rollout. |
+| `Rollout started` | The watcher observes a new controller-assigned revision after the controller observes the current generation. |
+| `Rollout succeeded` | The controller reports `NewReplicaSetAvailable`, all desired replicas are updated and available, and no old replicas remain in the replica count. |
+| `Rollout stalled: ProgressDeadlineExceeded` | The controller reports `Progressing=False` with reason `ProgressDeadlineExceeded`. |
+| `Rollout superseded by revision <N>` | A newer revision replaces an unfinished rollout. |
 
-Every body contains `name`, `uid`, `rollout_id`, `revision`, `status`, `observed_at`, and `containers`.
+`started` is a point in time: `start_time_unix_nano` equals `timeUnixNano`.
+The other events start when the watcher observed the rollout start, so their duration covers the rollout.
+An in-progress rollout found during startup has no recorded start, and its events are points in time.
+
+Every `change.diff` contains `revision`, `rollout_id`, `namespace`, and `containers`.
+When configured, it also contains `cluster_name`.
 Container entries contain `name`, `init`, and the configured `image` from that rollout's template.
 Runtime image identities are reported separately by the image collection event.
 A `superseded` event also contains `superseded_by`, the replacement rollout ID.
 
 `rollout_id` is a deterministic hash of the cluster UID, Deployment UID, and controller-assigned revision.
-`grafana.sdlc.event.id` is a deterministic hash of the rollout ID and event status.
-Consumers can deduplicate using stack ID and event ID.
+Consumers can deduplicate using the event ID.
 A rollback receives a new revision and therefore a new rollout ID, even when it reuses an older template.
 
 A stalled rollout can subsequently succeed or be superseded.
-Each status is emitted at most once per tracked rollout.
+Each event is emitted at most once per tracked rollout.
 Success closes the rollout; later replica scaling or availability changes don't reopen it.
 Paused Deployments and generations the controller hasn't observed don't emit transitions.
 A template change while paused starts a rollout only after the controller applies it on resume.
 
-### Change summaries
+### Change details
 
-The `started` body includes `changes_known`, which indicates whether a previous template is available for comparison.
+The `started` `change.diff` includes `changes_known`, which indicates whether a previous template is available for comparison.
 When a previous template is available, `changes` describes the changed fields.
-Consumers can classify these differences according to their own requirements.
-Empty change lists are omitted.
+Empty change maps are omitted.
 The baseline is the previously observed rollout template; changes aren't reconstructed from historical ReplicaSets.
 
-Each change contains `field` and `operation` (`added`, `removed`, or `modified`).
-Container changes also contain `container`, with `init: true` for init containers.
-Image and resource request/limit changes include `before` and `after` values when present.
-For these fields, an omitted value indicates absence.
-Other configuration changes report enclosing field names without values, such as `env`, `args`, `metadata.annotations`, or `spec.volumes`.
-Container additions and removals use the `container` field; reordering uses `spec.containers.order` or `spec.initContainers.order`.
+`changes` is a map keyed by field path.
+Container fields use `containers.<name>.<field>`, or `initContainers.<name>.<field>` for init containers.
+Each value contains `operation` (`added`, `removed`, or `modified`) and, for fields that are safe to report, `before` and `after`.
+An omitted value indicates absence.
 
-For example, an image update and a CPU request increase produce these change fields:
+The following fields report values:
+
+* Container `image`, `imagePullPolicy`, `ports`, and `resources.requests.*` and `resources.limits.*`.
+* Pod `metadata.labels.<key>`, `spec.serviceAccountName`, and `spec.nodeSelector.<key>`.
+
+Environment variables report only which variable changed, as `containers.<name>.env.<NAME>`, without values.
+Other configuration changes report enclosing field names without values, such as `args`, `metadata.annotations`, or `spec.volumes`.
+Container additions and removals use the container path, such as `containers.<name>`.
+Reordering uses `spec.containers.order` or `spec.initContainers.order`.
+
+For example, an image update and a CPU request increase produce this `change.diff`:
 
 ```json
 {
+  "revision": 2,
+  "rollout_id": "<hash>",
+  "namespace": "shop",
+  "containers": [{"name": "api", "init": false, "image": "api:v2"}],
   "changes_known": true,
-  "changes": [
-    {"container": "api", "field": "image", "operation": "modified", "before": "api:v1", "after": "api:v2"},
-    {"container": "api", "field": "resources.requests.cpu", "operation": "modified", "before": "250m", "after": "500m"}
-  ]
+  "changes": {
+    "containers.api.image": {"operation": "modified", "before": "api:v1", "after": "api:v2"},
+    "containers.api.resources.requests.cpu": {"operation": "modified", "before": "250m", "after": "500m"}
+  }
 }
 ```
 
 ### Resolved container images
 
-The component emits one `grafana.sdlc.k8s.deployment.rollout.images_resolved` event
-when image collection closes for a newly observed rollout.
+The component emits one image event when image collection closes for a newly observed rollout.
+Its `change.summary` is `Resolved runtime images: <container>=<image ID>, ...`, or `Partially resolved runtime images: ...` when `complete` is false.
+Init containers are prefixed with `init:`.
+The summary is limited to 1024 bytes; `change.diff` has the complete list.
+
 Collection opens when a new revision is observed, remains open while stalled, and
 closes on success or supersession. Initial discovery and later replica scaling
 don't open collection.
@@ -239,8 +293,8 @@ and init container. At closure, bounded API reads collect available identities
 that may not yet have reached the watches. Lifecycle events don't wait for these
 reads. Pods created after the closing observation are excluded.
 
-The body contains `name`, `uid`, `rollout_id`, `revision`, `observed_at`, `complete`,
-and `containers`. Each container has `name`, `init`, `image` (the requested image),
+The `change.diff` contains the common rollout fields, `complete`, and `resolved_containers`.
+Each resolved container has `name`, `init`, `image` (the requested image),
 and `runtime_image_ids` (a sorted array of distinct Kubernetes image IDs).
 `complete` is false on supersession, failed final reads, missing identities,
 insufficient observed Pods, or a zero-replica rollout. The field describes the
@@ -248,7 +302,7 @@ closing observation, not a guarantee that every future replica uses those images
 
 Runtime image IDs are preserved as reported by Kubernetes. They aren't guaranteed
 to identify the same manifest or index as a build's provenance digest.
-The event ID is deterministic for the rollout; delivery retries preserve its body.
+The event ID is deterministic for the rollout; delivery retries preserve its content.
 Later scaling doesn't reopen collection or emit another image event.
 
 ### Delivery behavior
@@ -256,13 +310,13 @@ Later scaling doesn't reopen collection or emit another image event.
 The initial watch listing establishes an in-memory baseline without emitting events.
 An in-progress rollout found during startup can subsequently emit an outcome without a preceding `started` event.
 Restarts and ownership changes don't replay missed events, and intermediate revisions can be missed between observations.
-Deleting a Deployment emits a deletion observation and discards its tracked rollout and image collection state.
+Deleting a Deployment emits no event and discards its tracked rollout and image collection state.
 The component doesn't persist state or reconcile historical rollouts.
 
 Downstream delivery failures are logged and retried with the original event ID and timestamp.
 The queue is in memory and is lost on restart.
 Retries can arrive out of order, so consumers must use rollout IDs instead of assuming arrival order.
-The component doesn't emit reporting-error events.
+The component doesn't emit reporting-error events or heartbeats.
 
 ## Exported fields
 
@@ -344,7 +398,7 @@ otelcol.auth.basic "rollout_api" {
 For the SDLC prototype ingester, set `ROLLOUT_OTLP_ENDPOINT` to a base URL that
 includes `/workloads`, such as `http://localhost:4318/workloads` for local testing.
 Set `SDLC_STACK_ID` to the target Grafana Cloud stack ID and `SDLC_CAP_TOKEN` to a
-Grafana Cloud access policy token with `logs:write`. The policy can have one stack
+Grafana Cloud access policy token with `traces:write`. The policy can have one stack
 realm matching that stack, or one org realm for its owning organization.
 Use HTTPS when sending the token over a network.
 The exporter sends requests to `<ROLLOUT_OTLP_ENDPOINT>/v1/logs`.
@@ -419,14 +473,14 @@ Set the following environment variables:
   `otelcol.exporter.otlphttp` appends `/v1/logs`, producing `/workloads/v1/logs`.
 * `GRAFANA_CLOUD_STACK_ID`: Grafana Cloud stack ID used as the basic authentication username.
   Use the target stack ID, not a Loki tenant or instance ID.
-* `GRAFANA_CLOUD_API_KEY`: Grafana Cloud access policy token with `logs:write` and one stack realm matching `GRAFANA_CLOUD_STACK_ID`, or one org realm for the organization that owns that stack.
+* `GRAFANA_CLOUD_API_KEY`: Grafana Cloud access policy token with `traces:write` and one stack realm matching `GRAFANA_CLOUD_STACK_ID`, or one org realm for the organization that owns that stack.
 
-The prototype ingester validates the token and adds the trusted stack ID as the
-`grafana.stack.id` resource attribute before publishing events.
+The prototype ingester validates the token. Events carry no stack ID, so the endpoint
+must be specific to the target stack.
 For an org-wide token, the ingester additionally checks the target stack's ownership
 against Auth Cache. It rejects requests for a stack owned by another organization.
 The ingester needs `AUTH_CACHE_URL` configured for org-wide tokens; no additional
-CAP scopes beyond `logs:write` are required.
+CAP scopes beyond `traces:write` are required.
 Use a token from the same environment as the ingester's Auth API.
 
 This example configures retries and a persistent sending queue in the exporter.

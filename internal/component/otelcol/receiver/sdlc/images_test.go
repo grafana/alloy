@@ -2,7 +2,6 @@ package sdlc
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"testing"
@@ -28,7 +27,16 @@ func imageFixtures() (*appsv1.Deployment, *appsv1.ReplicaSet, *corev1.Pod) {
 	p := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "web-pod", Namespace: d.Namespace, UID: "pod-1", Labels: map[string]string{"app": "web"}, OwnerReferences: []metav1.OwnerReference{{Kind: "ReplicaSet", UID: rs.UID, Controller: &controller}}}, Status: corev1.PodStatus{Phase: corev1.PodRunning, ContainerStatuses: []corev1.ContainerStatus{{Name: "app", ImageID: "registry/web@sha256:amd64"}}}}
 	return d, rs, p
 }
-func finalizeTest(t *testing.T, c *controller) imagesEvent {
+
+// imagesView is the images_resolved event as the tests assert on it.
+type imagesView struct {
+	Complete   bool
+	Revision   int64
+	Summary    string
+	Containers []struct{ RuntimeImageIDs []string }
+}
+
+func finalizeTest(t *testing.T, c *controller) imagesView {
 	t.Helper()
 	require.Equal(t, 1, c.imageQueue.Len())
 	x, _ := c.imageQueue.Get()
@@ -36,12 +44,20 @@ func finalizeTest(t *testing.T, c *controller) imagesEvent {
 	c.finalizeImages(t.Context(), x)
 	batch, _ := c.queue.Get()
 	c.queue.Done(batch)
-	record := batch.logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
-	require.Equal(t, eventPrefix+rolloutImagesResolved, record.EventName())
-	var body imagesEvent
-	require.NoError(t, json.Unmarshal([]byte(record.Body().Str()), &body))
-	require.Equal(t, stableID(body.RolloutID, rolloutImagesResolved), batch.id)
-	return body
+	got := decode(t, batch.logs)
+	require.Contains(t, got.summary, "runtime images")
+	require.Equal(t, "effect", got.attrs["grafana.sdlc.type"])
+	require.Equal(t, stableID(got.rolloutID, rolloutImagesResolved), batch.id)
+	view := imagesView{Revision: got.revision, Summary: got.summary}
+	view.Complete, _ = got.diff["complete"].(bool)
+	for _, raw := range got.diff["resolved_containers"].([]any) {
+		var container struct{ RuntimeImageIDs []string }
+		for _, id := range raw.(map[string]any)["runtime_image_ids"].([]any) {
+			container.RuntimeImageIDs = append(container.RuntimeImageIDs, id.(string))
+		}
+		view.Containers = append(view.Containers, container)
+	}
+	return view
 }
 func TestImagesFinalReadAndScalingSilence(t *testing.T) {
 	d, rs, p := imageFixtures()
@@ -65,6 +81,7 @@ func TestImagesFinalReadAndScalingSilence(t *testing.T) {
 	event := finalizeTest(t, c)
 	require.True(t, event.Complete)
 	require.Equal(t, []string{"registry/web@sha256:amd64"}, event.Containers[0].RuntimeImageIDs)
+	require.Equal(t, "Resolved runtime images: app=registry/web@sha256:amd64", event.Summary)
 	*d.Spec.Replicas = 2
 	d.Generation++
 	d.Status.ObservedGeneration = d.Generation

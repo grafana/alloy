@@ -2,11 +2,12 @@ package sdlc
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -21,19 +22,10 @@ import (
 const rolloutImagesResolved = "images_resolved"
 
 type resolvedContainer struct {
-	Name            string   `json:"name"`
-	Init            bool     `json:"init"`
-	Image           string   `json:"image"`
-	RuntimeImageIDs []string `json:"runtime_image_ids"`
-}
-type imagesEvent struct {
-	Name       string              `json:"name"`
-	UID        string              `json:"uid"`
-	RolloutID  string              `json:"rollout_id"`
-	Revision   int64               `json:"revision"`
-	ObservedAt string              `json:"observed_at"`
-	Complete   bool                `json:"complete"`
-	Containers []resolvedContainer `json:"containers"`
+	name            string
+	init            bool
+	image           string
+	runtimeImageIDs []string
 }
 type imageCollection struct {
 	deployment  *appsv1.Deployment
@@ -350,21 +342,69 @@ func (c *controller) finalizeImages(ctx context.Context, x *imageCollection) {
 	if desired == 0 || readyPods < int(desired) {
 		complete = false
 	}
-	payload := imagesEvent{Name: x.deployment.Name, UID: string(x.deployment.UID), RolloutID: stableID(c.opts.clusterUID, string(x.deployment.UID), fmt.Sprint(x.state.revision)), Revision: x.state.revision, ObservedAt: x.cutoff.UTC().Format(time.RFC3339Nano), Complete: complete, Containers: []resolvedContainer{}}
-	add := func(containers []corev1.Container, init bool) {
-		for _, container := range containers {
+	rolloutID := c.rolloutID(x.deployment, x.state.revision)
+	var containers []resolvedContainer
+	add := func(list []corev1.Container, init bool) {
+		for _, container := range list {
 			ids := []string{}
 			for id := range x.ids[containerKey(container.Name, init)] {
 				ids = append(ids, id)
 			}
 			sort.Strings(ids)
 			if len(ids) == 0 {
-				payload.Complete = false
+				complete = false
 			}
-			payload.Containers = append(payload.Containers, resolvedContainer{Name: container.Name, Init: init, Image: container.Image, RuntimeImageIDs: ids})
+			containers = append(containers, resolvedContainer{name: container.Name, init: init, image: container.Image, runtimeImageIDs: ids})
 		}
 	}
 	add(x.state.template.Spec.Containers, false)
 	add(x.state.template.Spec.InitContainers, true)
-	c.enqueuePayload(x.deployment, rolloutImagesResolved, payload.RolloutID, x.cutoff, payload)
+	c.enqueueChange(changeEvent{
+		deployment:       x.deployment,
+		kind:             rolloutImagesResolved,
+		rolloutID:        rolloutID,
+		revision:         x.state.revision,
+		previousRevision: x.state.previousRevision,
+		start:            x.cutoff,
+		end:              x.cutoff,
+		changeType:       changeTypeEffect,
+		summary:          imagesSummary(containers, complete),
+		diff: func(diff pcommon.Map) {
+			c.putRolloutDiff(diff, x.deployment, x.state, rolloutID)
+			diff.PutBool("complete", complete)
+			resolved := diff.PutEmptySlice("resolved_containers")
+			for _, container := range containers {
+				m := resolved.AppendEmpty().SetEmptyMap()
+				m.PutStr("name", container.name)
+				m.PutBool("init", container.init)
+				m.PutStr("image", container.image)
+				ids := m.PutEmptySlice("runtime_image_ids")
+				for _, id := range container.runtimeImageIDs {
+					ids.AppendEmpty().SetStr(id)
+				}
+			}
+		},
+	})
+}
+
+// imagesSummary lists runtime image IDs per container, e.g.
+// "Resolved runtime images: web=sha256:abc, init:setup=sha256:def".
+func imagesSummary(containers []resolvedContainer, complete bool) string {
+	parts := make([]string, 0, len(containers))
+	for _, container := range containers {
+		name := container.name
+		if container.init {
+			name = "init:" + name
+		}
+		ids := "unresolved"
+		if len(container.runtimeImageIDs) > 0 {
+			ids = strings.Join(container.runtimeImageIDs, "|")
+		}
+		parts = append(parts, name+"="+ids)
+	}
+	summary := "Resolved runtime images: " + strings.Join(parts, ", ")
+	if !complete {
+		summary = "Partially resolved runtime images: " + strings.Join(parts, ", ")
+	}
+	return summary
 }
