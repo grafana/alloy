@@ -333,6 +333,14 @@ query "q" {
 	type = "tsv"
 	csv_options { comment = "\t" }
 }`, "csv_options.comment must not be the same as the delimiter"},
+		{"get with form body type", `query "q" {
+	url = "http://x"
+	url_options { body_type = "x-www-form-urlencoded" }
+}`, "a request body is not allowed with method GET"},
+		{"get with graphql body type", `query "q" {
+	url = "http://x"
+	url_options { body_type = "graphql" }
+}`, "a request body is not allowed with method GET"},
 		{"graphql without query", `query "q" {
 	type = "graphql"
 	url = "http://x"

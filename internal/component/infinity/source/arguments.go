@@ -449,7 +449,9 @@ func (o *URLOptions) validate(queryType, source string, clientHeaders map[string
 	if !slices.Contains(supportedBodyTypes, o.BodyType) {
 		errs = append(errs, fmt.Errorf("unknown body_type %q, must be one of %s", o.BodyType, strings.Join(supportedBodyTypes, ", ")))
 	}
-	hasBody := o.Body.Value != "" || len(o.BodyForm) > 0 || o.BodyGraphQLQuery.Value != ""
+	// Only the raw body type can send no body. The other types always
+	// encode one, also when their fields are empty.
+	hasBody := o.Body.Value != "" || len(o.BodyForm) > 0 || o.BodyGraphQLQuery.Value != "" || o.BodyType != bodyTypeRaw
 	if o.Method == http.MethodGet && hasBody {
 		errs = append(errs, errors.New("a request body is not allowed with method GET"))
 	}

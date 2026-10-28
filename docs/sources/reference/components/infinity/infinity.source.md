@@ -315,6 +315,7 @@ The following strings are valid `body_type` values:
 - `"graphql"`: Send `body_graphql_query` and `body_graphql_variables` as a JSON object, with a `Content-Type` of `application/json`.
 
 A request body with `method = "GET"` is a configuration error.
+A `body_type` other than `"raw"` always sends a body, also when its arguments are empty.
 A `type = "graphql"` query on the enclosing `query` block requires `method = "POST"` and `body_type = "graphql"`; setting either argument to a conflicting value is a configuration error.
 The `body_graphql_variables` argument must be a JSON object when set.
 A `type = "graphql"` query with `source = "url"` requires `body_graphql_query`.
