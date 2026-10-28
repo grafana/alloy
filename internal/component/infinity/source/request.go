@@ -20,11 +20,18 @@ func buildRequest(ctx context.Context, s querySpec) (*http.Request, error) {
 		return nil, err
 	}
 	if len(s.params) > 0 {
-		q := u.Query()
-		for _, k := range slices.Sorted(maps.Keys(s.params)) {
-			q.Set(k, s.params[k])
+		extra := url.Values{}
+		for k, v := range s.params {
+			extra.Set(k, v)
 		}
-		u.RawQuery = q.Encode()
+		// Keep the url query as written, because parsing and encoding it
+		// again can change it. Validation rejects a param that is also in
+		// the url query, so the two parts have no key in common.
+		if u.RawQuery == "" {
+			u.RawQuery = extra.Encode()
+		} else {
+			u.RawQuery += "&" + extra.Encode()
+		}
 	}
 
 	var (

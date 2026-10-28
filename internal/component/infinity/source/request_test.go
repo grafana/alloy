@@ -42,6 +42,22 @@ func TestBuildRequestGETWithParamsAndHeaders(t *testing.T) {
 	require.Nil(t, req.Body)
 }
 
+// TestBuildRequestKeepsURLQuery checks that params do not change the url
+// query. url.Values drops a key with ";" and sorts the keys again.
+func TestBuildRequestKeepsURLQuery(t *testing.T) {
+	s, err := specFromConfig(`query "q" {
+		url = "http://example.com/api?z=1&f=a;b&a=%41"
+		url_options {
+			params = { "key" = "v w", "b" = "2" }
+		}
+	}`)
+	require.NoError(t, err)
+
+	req, err := buildRequest(t.Context(), s)
+	require.NoError(t, err)
+	require.Equal(t, "z=1&f=a;b&a=%41&b=2&key=v+w", req.URL.RawQuery)
+}
+
 func TestBuildRequestRawBody(t *testing.T) {
 	s, err := specFromConfig(`query "q" {
 		url = "http://example.com/api"
