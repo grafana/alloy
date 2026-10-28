@@ -84,6 +84,17 @@ func TestFrameToEntriesEntryLimit(t *testing.T) {
 	require.Equal(t, reasonEntryLimit, reasonOf(err))
 }
 
+func TestFrameToEntriesRecoversPanic(t *testing.T) {
+	// The second field is shorter than the frame, so reading it panics.
+	f := data.NewFrame("q",
+		data.NewField("body", nil, []string{"a", "b"}),
+		data.NewField("k", nil, []string{"x"}),
+	)
+
+	_, err := frameToEntries(f, "j", "i", logsSpec{lineColumn: "body", labelColumns: []string{"k"}}, time.Now())
+	require.Equal(t, reasonParse, reasonOf(err))
+}
+
 // TestRowJSONNonFinite checks that NaN and Inf values do not fail the poll.
 // json.Marshal rejects them, so they are written as strings.
 func TestRowJSONNonFinite(t *testing.T) {

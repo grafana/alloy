@@ -30,14 +30,33 @@ type metricsResult struct {
 // sent, so it cannot collide with the synthetic sample.
 const upMetricName = "up"
 
+const (
+	// maxLabelValueLen limits one label value. The labels package panics
+	// on a value of 16 MiB or more, and remote write receivers reject much
+	// shorter values.
+	maxLabelValueLen = 64 << 10
+	// maxLabelBytes limits the label text of all samples of one poll. Each
+	// sample has a copy of the string labels of its row, so a row with many
+	// numeric columns repeats them. The cell budget does not bound this.
+	maxLabelBytes = 64 << 20
+)
+
 // frameToSamples maps each row to current-state samples. String columns
 // become labels. Numeric and boolean columns become samples. Time columns
 // are ignored, because samples use the poll time.
-func frameToSamples(f *data.Frame, job, instance string, m metricsSpec) (metricsResult, error) {
+func frameToSamples(f *data.Frame, job, instance string, m metricsSpec) (_ metricsResult, retErr error) {
+	defer func() {
+		if r := recover(); r != nil {
+			retErr = newLibError(reasonParse, fmt.Errorf("panic while mapping the frame to samples: %v", r))
+		}
+	}()
+
 	var res metricsResult
 	seen := map[uint64]struct{}{}
+	labelBytes := 0
 	for row := 0; row < f.Rows(); row++ {
 		b := labels.NewBuilder(labels.EmptyLabels())
+		rowBytes := len(model.JobLabel) + len(job) + len(model.InstanceLabel) + len(instance)
 		for _, fld := range f.Fields {
 			if fld.Type().NonNullableType() != data.FieldTypeString {
 				continue
@@ -46,11 +65,16 @@ func frameToSamples(f *data.Frame, job, instance string, m metricsSpec) (metrics
 			if !ok {
 				continue
 			}
+			value := v.(string)
+			if len(value) > maxLabelValueLen {
+				return metricsResult{}, newPollError(reasonTooLarge, fmt.Errorf("a label value is longer than %d bytes", maxLabelValueLen))
+			}
 			name := sanitizeName(fld.Name)
 			if name == model.JobLabel || name == model.InstanceLabel {
 				res.overridden = true
 			}
-			b.Set(name, v.(string))
+			b.Set(name, value)
+			rowBytes += len(name) + len(value)
 		}
 		b.Set(model.JobLabel, job)
 		b.Set(model.InstanceLabel, instance)
@@ -64,6 +88,11 @@ func frameToSamples(f *data.Frame, job, instance string, m metricsSpec) (metrics
 			if name == upMetricName {
 				res.reservedUp = true
 				continue
+			}
+			// Check the budget before b.Labels allocates the copy.
+			labelBytes += rowBytes + len(model.MetricNameLabel) + len(name)
+			if labelBytes > maxLabelBytes {
+				return metricsResult{}, newPollError(reasonTooLarge, fmt.Errorf("the samples have more than %d bytes of labels", maxLabelBytes))
 			}
 			b.Set(model.MetricNameLabel, name)
 			ls := b.Labels()

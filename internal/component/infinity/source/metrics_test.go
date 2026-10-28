@@ -1,6 +1,9 @@
 package source
 
 import (
+	"fmt"
+	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/grafana/grafana-plugin-sdk-go/data"
@@ -106,4 +109,44 @@ func TestTracker(t *testing.T) {
 
 	tr.reset()
 	require.Zero(t, tr.len())
+}
+
+func TestFrameToSamplesRejectsLongLabelValue(t *testing.T) {
+	// A value of 16 MiB or more makes the labels package panic.
+	f := data.NewFrame("q",
+		data.NewField("k", nil, []string{strings.Repeat("a", 17<<20)}),
+		data.NewField("v", nil, []float64{1}),
+	)
+
+	_, err := frameToSamples(f, "j", "i", metricsSpec{})
+	require.Equal(t, reasonTooLarge, reasonOf(err))
+}
+
+// TestFrameToSamplesLabelBudget checks that one row with a long label and
+// many numeric columns fails before each sample copies the label.
+func TestFrameToSamplesLabelBudget(t *testing.T) {
+	fields := []*data.Field{data.NewField("k", nil, []string{strings.Repeat("a", maxLabelValueLen)})}
+	for i := range 4_000 {
+		fields = append(fields, data.NewField(fmt.Sprintf("v%d", i), nil, []float64{1}))
+	}
+	f := data.NewFrame("q", fields...)
+
+	var before, after runtime.MemStats
+	runtime.ReadMemStats(&before)
+	_, err := frameToSamples(f, "j", "i", metricsSpec{})
+	runtime.ReadMemStats(&after)
+
+	require.Equal(t, reasonTooLarge, reasonOf(err))
+	require.Less(t, after.TotalAlloc-before.TotalAlloc, uint64(2*maxLabelBytes), "the budget must stop the copies")
+}
+
+func TestFrameToSamplesRecoversPanic(t *testing.T) {
+	// The second field is shorter than the frame, so reading it panics.
+	f := data.NewFrame("q",
+		data.NewField("v", nil, []float64{1, 2}),
+		data.NewField("k", nil, []string{"a"}),
+	)
+
+	_, err := frameToSamples(f, "j", "i", metricsSpec{})
+	require.Equal(t, reasonParse, reasonOf(err))
 }

@@ -22,7 +22,13 @@ type entry struct {
 
 // frameToEntries maps each row to one log entry. There is no dedup across
 // polls.
-func frameToEntries(f *data.Frame, job, instance string, l logsSpec, now time.Time) ([]entry, error) {
+func frameToEntries(f *data.Frame, job, instance string, l logsSpec, now time.Time) (_ []entry, retErr error) {
+	defer func() {
+		if r := recover(); r != nil {
+			retErr = newLibError(reasonParse, fmt.Errorf("panic while mapping the frame to log entries: %v", r))
+		}
+	}()
+
 	if l.entryLimit > 0 && f.Rows() > l.entryLimit {
 		return nil, newPollError(reasonEntryLimit, fmt.Errorf("query returned more than entry_limit (%d) entries", l.entryLimit))
 	}

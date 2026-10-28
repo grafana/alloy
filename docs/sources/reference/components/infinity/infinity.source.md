@@ -482,6 +482,9 @@ infinity.source "inline_csv" {
   `infinity.source` checks this before it builds the frame, and fails the poll with the `too_large` reason.
   For JSON, GraphQL, XML, and HTML, the check runs after `root_selector`.
   One poll near this budget can still use a few hundred MB of memory. Set `metrics.series_limit` or `logs.entry_limit` to limit what a query sends.
+- A metric label value can be at most 64 KiB, and the labels of all samples from one poll can be at most 64 MiB in total.
+  Each sample gets the string columns of its row as labels, so a row with many numeric columns repeats them.
+  A poll over either limit fails with the `too_large` reason.
 - `metrics.series_limit` and `logs.entry_limit` default to `0`, which means no limit. Set them for large APIs and for APIs you don't control.
 - The parser libraries can't stop a `jq` or `jsonata` expression that doesn't end.
   After `timeout`, the poll fails, but the expression keeps using CPU until {{< param "PRODUCT_NAME" >}} restarts.
