@@ -154,8 +154,6 @@ func TestLoopKickDuringPoll(t *testing.T) {
 	require.Equal(t, int32(1), maxRunning.Load(), "polls never overlap")
 }
 
-// TestLoopStopCancelsJitter checks that stop does not wait for, or run, a
-// kicked poll whose jitter has not ended.
 // TestLoopPollServesWaitingKick checks that a poll serves a kick that waits
 // in the channel. When the first poll wins the select over the kick, the
 // kick must not cause a second poll. select picks at random, so the test
@@ -166,17 +164,33 @@ func TestLoopPollServesWaitingKick(t *testing.T) {
 	for i := range loops {
 		kick := make(chan struct{}, 1)
 		kick <- struct{}{}
-		l := startLoop(t.Context(), time.Second, 0, kick, func(context.Context) { calls[i].Add(1) }, func() {})
+		l := startLoop(t.Context(), 2*time.Second, 0, kick, func(context.Context) { calls[i].Add(1) }, func() {})
 		defer l.stop()
 	}
-	// The jitter of a kick is below interval/10, and the next tick is 1s
-	// after the first poll.
-	time.Sleep(400 * time.Millisecond)
-	for i := range loops {
-		require.Equal(t, int32(1), calls[i].Load(), "loop %d", i)
+	allPolled := func() bool {
+		for i := range loops {
+			if calls[i].Load() == 0 {
+				return false
+			}
+		}
+		return true
 	}
+	anyTwice := func() bool {
+		for i := range loops {
+			if calls[i].Load() > 1 {
+				return true
+			}
+		}
+		return false
+	}
+	require.Eventually(t, allPolled, time.Second, 5*time.Millisecond)
+	// The jitter of a kick is below interval/10, so a second poll would come
+	// within 200ms. The next tick is 2s after the first poll.
+	require.Never(t, anyTwice, 500*time.Millisecond, 10*time.Millisecond)
 }
 
+// TestLoopStopCancelsJitter checks that stop does not wait for, or run, a
+// kicked poll whose jitter has not ended.
 func TestLoopStopCancelsJitter(t *testing.T) {
 	kick := make(chan struct{}, 1)
 	var calls atomic.Int32
