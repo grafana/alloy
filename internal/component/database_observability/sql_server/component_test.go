@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/ckit/peer"
 	"github.com/grafana/ckit/shard"
 	"github.com/grafana/loki/pkg/push"
+	"github.com/microsoft/go-mssqldb/msdsn"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -281,6 +282,46 @@ func TestQueryMetricsEnabledByDefault(t *testing.T) {
 	assert.False(t, collectors[collector.QueryMetricsCollector])
 }
 
+func TestServerConfiguration(t *testing.T) {
+	t.Run("defaults and enablement", func(t *testing.T) {
+		var args Arguments
+		args.SetToDefault()
+
+		assert.Equal(t, 10*time.Minute, args.ServerConfigurationArguments.CollectInterval)
+		assert.True(t, enableOrDisableCollectors(args)[collector.ServerConfigurationCollector])
+
+		args.DisableCollectors = []string{collector.ServerConfigurationCollector}
+		assert.False(t, enableOrDisableCollectors(args)[collector.ServerConfigurationCollector])
+	})
+
+	t.Run("configuration is parsed", func(t *testing.T) {
+		config := `
+			data_source_name = "sqlserver://user:pass@localhost:1433"
+			forward_to       = []
+
+			server_configuration {
+				collect_interval = "5m"
+			}
+		`
+
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(config), &args))
+		assert.Equal(t, 5*time.Minute, args.ServerConfigurationArguments.CollectInterval)
+	})
+
+	t.Run("non-positive collect interval is rejected when enabled", func(t *testing.T) {
+		var args Arguments
+		args.SetToDefault()
+		args.DataSourceName = "sqlserver://user:pass@localhost:1433"
+		args.ServerConfigurationArguments.CollectInterval = 0
+
+		require.ErrorContains(t, args.Validate(), "server_configuration.collect_interval")
+
+		args.DisableCollectors = []string{collector.ServerConfigurationCollector}
+		require.NoError(t, args.Validate())
+	})
+}
+
 func TestValidateQueryMetrics(t *testing.T) {
 	base := func() Arguments {
 		var args Arguments
@@ -507,7 +548,7 @@ func TestResolveExcludeUsers(t *testing.T) {
 		defer db.Close()
 
 		configured := []string{"app_reader"}
-		mock.ExpectQuery(selectOriginalLogin).
+		mock.ExpectQuery(collector.SelectOriginalLogin).
 			WillReturnRows(sqlmock.NewRows([]string{"original_login"}).AddRow("alloy_monitor"))
 
 		effective, err := resolveExcludeUsers(context.Background(), db, defaultQueryTimeout, configured, true)
@@ -522,7 +563,7 @@ func TestResolveExcludeUsers(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		mock.ExpectQuery(selectOriginalLogin).
+		mock.ExpectQuery(collector.SelectOriginalLogin).
 			WillReturnRows(sqlmock.NewRows([]string{"original_login"}).AddRow("Alloy_Monitor"))
 
 		effective, err := resolveExcludeUsers(context.Background(), db, defaultQueryTimeout, []string{"alloy_monitor"}, true)
@@ -547,7 +588,7 @@ func TestResolveExcludeUsers(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		mock.ExpectQuery(selectOriginalLogin).WillReturnError(errors.New("permission denied"))
+		mock.ExpectQuery(collector.SelectOriginalLogin).WillReturnError(errors.New("permission denied"))
 		_, err = resolveExcludeUsers(context.Background(), db, defaultQueryTimeout, nil, true)
 		require.ErrorContains(t, err, "failed to query original login")
 		require.NoError(t, mock.ExpectationsWereMet())
@@ -559,11 +600,11 @@ func TestConnectAndStartCollectorsFailsWhenCurrentUserCannotBeResolved(t *testin
 	require.NoError(t, err)
 	defer db.Close()
 
-	mock.ExpectPing()
-	mock.ExpectQuery(selectServerInfo).
-		WillReturnRows(sqlmock.NewRows([]string{"server_name", "machine_name", "product_version"}).
-			AddRow("server", "machine", "16.0"))
-	mock.ExpectQuery(selectOriginalLogin).WillReturnError(errors.New("permission denied"))
+	mock.ExpectQuery("SELECT " + collector.QueryMarker + " 1").WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(1))
+	mock.ExpectQuery(collector.SelectServerInfo).
+		WillReturnRows(sqlmock.NewRows([]string{"server_name", "machine_name", "instance_name", "product_version", "engine_edition"}).
+			AddRow("server", "machine", nil, "16.0", 3))
+	mock.ExpectQuery(collector.SelectOriginalLogin).WillReturnError(errors.New("permission denied"))
 
 	var args Arguments
 	args.SetToDefault()
@@ -927,7 +968,7 @@ func clusteringTestArgs() Arguments {
 			{Name: "db2", DataSourceName: "sqlserver://user:pass@127.0.0.1:1433?database=db2"},
 		},
 		QueryTimeout:         10 * time.Second,
-		DisableCollectors:    []string{"schema_details", "query_metrics", "query_samples", "query_details", "explain_plans"},
+		DisableCollectors:    []string{"schema_details", "server_configuration", "query_metrics", "query_samples", "query_details", "explain_plans"},
 		Clustering:           cluster.ComponentBlock{Enabled: true},
 		HealthCheckArguments: HealthCheckArguments{CollectInterval: 1 * time.Hour},
 	}
@@ -938,16 +979,80 @@ func clusteringTestArgs() Arguments {
 // successful ping and the server-info query. The always-on ConnectionInfo
 // collector issues no queries of its own.
 func clusteringTestMockDB(t *testing.T, serverName string) *sql.DB {
+	return componentTestMockDB(t, serverName, nil)
+}
+
+func componentTestMockDB(t *testing.T, serverName string, instanceName any) *sql.DB {
 	t.Helper()
 	db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true), sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = db.Close() })
 
-	mock.ExpectPing()
-	mock.ExpectQuery(selectServerInfo).
-		WillReturnRows(sqlmock.NewRows([]string{"server_name", "machine_name", "product_version"}).
-			AddRow(serverName, "machine", "16.0"))
+	mock.ExpectQuery("SELECT " + collector.QueryMarker + " 1").WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(1))
+	mock.ExpectQuery(collector.SelectServerInfo).
+		WillReturnRows(sqlmock.NewRows([]string{"server_name", "machine_name", "instance_name", "product_version", "engine_edition"}).
+			AddRow(serverName, "machine", instanceName, "16.0", 3))
 	return db
+}
+
+func TestGenerateServerID(t *testing.T) {
+	tests := []struct {
+		name         string
+		instanceName string
+		expected     string
+	}{
+		{
+			name:         "default instance preserves the legacy server ID",
+			instanceName: "",
+			expected:     "d2334b3fc946b6ae794406680d0dad15709fe7e70c75f5b89f2270a0f3de78f3",
+		},
+		{
+			name:         "named instance is included in the server ID",
+			instanceName: "INSTANCE",
+			expected:     "6f7b4bc17cfee580f2f4e5d098432bdab8707acefb8999920ff8779b132decae",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, generateServerID("server", "machine", tt.instanceName))
+		})
+	}
+}
+
+func TestSqlServer_NamedInstancesHaveDistinctServerIDs(t *testing.T) {
+	args := Arguments{
+		Databases: []DatabaseArguments{
+			{Name: "one", DataSourceName: "sqlserver://user:pass@same-host/INST_ONE?database=db1"},
+			{Name: "two", DataSourceName: "sqlserver://user:pass@same-host/INST_TWO?database=db1"},
+		},
+		QueryTimeout:         10 * time.Second,
+		DisableCollectors:    []string{"schema_details", "server_configuration", "query_metrics", "query_samples", "query_details", "explain_plans"},
+		HealthCheckArguments: HealthCheckArguments{CollectInterval: 1 * time.Hour},
+	}
+	require.NoError(t, args.Validate())
+
+	var gotExports cmp.Exports
+	dbOne := componentTestMockDB(t, "same-host", "INST_ONE")
+	dbTwo := componentTestMockDB(t, "same-host", "INST_TWO")
+
+	_, err := newComponent(clusteringTestOptions(t, &fakeCluster{ready: true}, &gotExports), args, func(_ string, dsn string) (*sql.DB, error) {
+		if strings.Contains(dsn, "INST_ONE") {
+			return dbOne, nil
+		}
+		return dbTwo, nil
+	})
+	require.NoError(t, err)
+
+	exported, ok := gotExports.(Exports)
+	require.True(t, ok)
+	require.Len(t, exported.Targets, 2)
+
+	serverIDOne, _ := exported.Targets[0].Get("server_id")
+	serverIDTwo, _ := exported.Targets[1].Get("server_id")
+	assert.NotEmpty(t, serverIDOne)
+	assert.NotEmpty(t, serverIDTwo)
+	assert.NotEqual(t, serverIDOne, serverIDTwo)
 }
 
 // TestSqlServer_PerInstanceRules_Targets checks that the rules of a
@@ -1028,7 +1133,7 @@ func TestSqlServer_Clustering_DistributesDatabases(t *testing.T) {
 	require.Len(t, instances, 1)
 	assert.Equal(t, "127.0.0.1:1433/db1", instances[0].instanceKey)
 	require.Len(t, connected, 1)
-	assert.Contains(t, connected[0], "database=db1")
+	assert.Equal(t, "sqlserver://user:pass@127.0.0.1:1433?app+name=grafana%3Aalloy%3Adatabase_observability&database=db1", connected[0])
 
 	// Only the owned database exports its target.
 	exported, ok := gotExports.(Exports)
@@ -1220,7 +1325,7 @@ func TestSqlServer_Clustering_SingleDatabaseStandby(t *testing.T) {
 		DataSourceName:    "sqlserver://user:pass@127.0.0.1:1433?database=db",
 		QueryTimeout:      10 * time.Second,
 		Clustering:        cluster.ComponentBlock{Enabled: true},
-		DisableCollectors: []string{"schema_details", "query_metrics", "query_samples", "query_details", "explain_plans"},
+		DisableCollectors: []string{"schema_details", "server_configuration", "query_metrics", "query_samples", "query_details", "explain_plans"},
 	}
 
 	c, err := newComponent(clusteringTestOptions(t, fake, &gotExports), args, func(_ string, _ string) (*sql.DB, error) {
@@ -1233,4 +1338,130 @@ func TestSqlServer_Clustering_SingleDatabaseStandby(t *testing.T) {
 	h := c.CurrentHealth()
 	assert.Equal(t, cmp.HealthTypeHealthy, h.Health)
 	assert.Contains(t, h.Message, "no databases are currently owned")
+}
+
+func TestTaggedPinger_PingContext(t *testing.T) {
+	for _, failure := range []bool{false, true} {
+		name := "success"
+		if failure {
+			name = "query error"
+		}
+		t.Run(name, func(t *testing.T) {
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual), sqlmock.MonitorPingsOption(true))
+			require.NoError(t, err)
+			defer db.Close()
+			queryErr := errors.New("connection unavailable")
+			// Expect tagged SQL, not a call to the driver's Ping method.
+			expectation := mock.ExpectQuery(collector.PingQuery)
+			if failure {
+				expectation.WillReturnError(queryErr)
+			} else {
+				expectation.WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(1)).RowsWillBeClosed()
+			}
+			err = taggedPinger{db: db}.PingContext(context.Background())
+			if failure {
+				require.ErrorIs(t, err, queryErr)
+			} else {
+				require.NoError(t, err)
+			}
+			require.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
+
+func TestTaggedPinger_PingContextCanceled(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	require.ErrorIs(t, taggedPinger{db: db}.PingContext(ctx), context.Canceled)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestFormatDSN(t *testing.T) {
+	tests := []struct {
+		name            string
+		dsn             string
+		expectedDSN     string
+		expectedAppName string
+	}{
+		{
+			name:            "url form without query params",
+			dsn:             "sqlserver://user:pass@products-db:1433",
+			expectedDSN:     "sqlserver://user:pass@products-db:1433?app+name=grafana%3Aalloy%3Adatabase_observability",
+			expectedAppName: collector.AppName,
+		},
+		{
+			name:            "url form with existing query params",
+			dsn:             "sqlserver://user:pass@products-db:1433?database=products&encrypt=true",
+			expectedDSN:     "sqlserver://user:pass@products-db:1433?app+name=grafana%3Aalloy%3Adatabase_observability&database=products&encrypt=true",
+			expectedAppName: collector.AppName,
+		},
+		{
+			name:            "url form with empty app name replaces it",
+			dsn:             "sqlserver://user:pass@products-db:1433?App+Name=&database=products",
+			expectedDSN:     "sqlserver://user:pass@products-db:1433?app+name=grafana%3Aalloy%3Adatabase_observability&database=products",
+			expectedAppName: collector.AppName,
+		},
+		{
+			name:            "url form preserves custom app name",
+			dsn:             "sqlserver://user:pass@products-db:1433?app+name=custom-app&database=products",
+			expectedDSN:     "sqlserver://user:pass@products-db:1433?app+name=custom-app&database=products",
+			expectedAppName: "custom-app",
+		},
+		{
+			name:            "ado form without app name",
+			dsn:             "server=products-db;port=1433;user id=user;password=pass;database=products",
+			expectedDSN:     "server=products-db;port=1433;user id=user;password=pass;database=products;app name=grafana:alloy:database_observability",
+			expectedAppName: collector.AppName,
+		},
+		{
+			name:            "ado form with trailing semicolon",
+			dsn:             "server=products-db;database=products;",
+			expectedDSN:     "server=products-db;database=products;app name=grafana:alloy:database_observability",
+			expectedAppName: collector.AppName,
+		},
+		{
+			name:            "ado form preserves custom application name synonym",
+			dsn:             "server=products-db;database=products;application name=custom-ado",
+			expectedDSN:     "server=products-db;database=products;application name=custom-ado",
+			expectedAppName: "custom-ado",
+		},
+		{
+			name:            "ado form preserves custom app synonym",
+			dsn:             "server=products-db;database=products;app=custom-short",
+			expectedDSN:     "server=products-db;database=products;app=custom-short",
+			expectedAppName: "custom-short",
+		},
+		{
+			name:            "odbc form without app name",
+			dsn:             "odbc:server=products-db;user id=user;password=pass;database=products",
+			expectedDSN:     "odbc:server=products-db;user id=user;password=pass;database=products;app name=grafana:alloy:database_observability",
+			expectedAppName: collector.AppName,
+		},
+		{
+			name:            "odbc form preserves custom app name",
+			dsn:             "odbc:server=products-db;database=products;app name=custom-odbc",
+			expectedDSN:     "odbc:server=products-db;database=products;app name=custom-odbc",
+			expectedAppName: "custom-odbc",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := formatDSN(tt.dsn)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedDSN, got)
+
+			cfg, err := msdsn.Parse(got)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedAppName, cfg.AppName)
+		})
+	}
+
+	t.Run("invalid dsn returns error", func(t *testing.T) {
+		_, err := formatDSN("sqlserver://user:pass@products-db:not-a-port")
+		require.Error(t, err)
+	})
 }

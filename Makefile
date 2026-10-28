@@ -366,6 +366,12 @@ alloy-image-distroless:
 prom-gen-image:
 	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t prom-gen:latest -f integration-tests/k8s/fixtures/prom-gen/Dockerfile .
 
+# Test fixture image used by the k8s integration tests to send OTLP metrics and
+# traces. The runner builds this alongside alloy-image, like prom-gen-image.
+.PHONY: otel-gen-image
+otel-gen-image:
+	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t otel-gen:latest -f integration-tests/k8s/fixtures/otel-gen/Dockerfile .
+
 .PHONY: images-windows alloy-image-windows
 images-windows: alloy-image-windows
 

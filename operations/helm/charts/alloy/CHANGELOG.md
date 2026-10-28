@@ -10,8 +10,33 @@ internal API changes are not present.
 Unreleased
 ----------
 
+1.14.3 (2026-10-22)
+----------
+
 ### Enhancements
 
+- Update to Grafana Alloy v1.21.2 (@jharvey10)
+
+1.14.2 (2026-10-22)
+----------
+
+### Enhancements
+
+- Update the `prometheus-config-reloader` image from v0.94.0 to v0.94.2, which rebuilds it with an updated Go toolchain and base image. (@kgeckhart)
+
+1.14.1 (2026-10-21)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.21.1 (@kgeckhart)
+
+1.14.0 (2026-10-19)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.21.0 (@thampiotr)
 - Add `alloy.resizePolicy` and `configReloader.resizePolicy` to configure in-place resource resize behavior for each container. (@younsl)
 
 1.13.1 (2026-09-28)

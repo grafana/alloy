@@ -7,11 +7,16 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/grafana/alloy/internal/alloycli/clifeature"
 	"github.com/grafana/alloy/internal/static/agentctl/waltools"
 	"github.com/olekukonko/tablewriter"
 	"github.com/olekukonko/tablewriter/tw"
 	"github.com/spf13/cobra"
 )
+
+func init() {
+	clifeature.RegisterTool(clifeature.Tool{Name: "prometheus.remote_write", Install: InstallTools})
+}
 
 // InstallTools installs command line utilities as subcommands of the provided
 // cmd.

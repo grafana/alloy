@@ -232,7 +232,7 @@ If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the blo
 | Name               | Type       | Description                                          | Default | Required |
 |--------------------|------------|------------------------------------------------------|---------|----------|
 | `collect_interval` | `duration` | How frequently to collect information from database. | `"1m"`  | no       |
-| `statements_limit` | `integer`  | Max number of recent queries to collect details for. | `250`   | no       |
+| `statements_limit` | `integer`  | Max number of recent queries to collect details for. | `100`   | no       |
 
 ### `schema_details`
 
@@ -288,8 +288,9 @@ The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they
 
 ### `prometheus_exporter`
 
-The `prometheus_exporter` block configures the embedded mysqld_exporter scrapers.
+The `prometheus_exporter` block configures the embedded `mysqld_exporter` scrapers.
 The `data_source_name` is inherited from the parent block.
+Only the `stat_statements` collector is enabled by default with a `limit` defaulting to `100`.
 
 Refer to [`prometheus.exporter.mysql`](../../prometheus/prometheus.exporter.mysql/) docs for the full list of supported arguments and sub-blocks.
 

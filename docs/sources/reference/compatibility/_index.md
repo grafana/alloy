@@ -326,6 +326,7 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 
 {{< collapse title="otelcol" >}}
 - [`otelcol.connector.count`](../components/otelcol/otelcol.connector.count)
+- [`otelcol.connector.exceptions`](../components/otelcol/otelcol.connector.exceptions)
 - [`otelcol.connector.host_info`](../components/otelcol/otelcol.connector.host_info)
 - [`otelcol.connector.servicegraph`](../components/otelcol/otelcol.connector.servicegraph)
 - [`otelcol.connector.signaltometrics`](../components/otelcol/otelcol.connector.signaltometrics)
@@ -389,6 +390,7 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 
 {{< collapse title="otelcol" >}}
 - [`otelcol.connector.count`](../components/otelcol/otelcol.connector.count)
+- [`otelcol.connector.exceptions`](../components/otelcol/otelcol.connector.exceptions)
 - [`otelcol.connector.host_info`](../components/otelcol/otelcol.connector.host_info)
 - [`otelcol.connector.servicegraph`](../components/otelcol/otelcol.connector.servicegraph)
 - [`otelcol.connector.signaltometrics`](../components/otelcol/otelcol.connector.signaltometrics)

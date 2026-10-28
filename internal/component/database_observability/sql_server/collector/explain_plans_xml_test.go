@@ -265,8 +265,17 @@ func TestNewExplainPlanOutputFromShowPlanXML(t *testing.T) {
 					EstimatedCost:        floatPtr(0.03),
 					UnrecognizedOperator: stringPtr("Bitmap"),
 				},
-				// No children: the default branch never calls childrenOf, so the
-				// Table Scan nested inside <Bitmap> is unreachable.
+				Children: []database_observability.ExplainPlanNode{
+					{
+						Operation: database_observability.ExplainPlanOutputOperationTableScan,
+						Details: database_observability.ExplainPlanNodeDetails{
+							EstimatedRows: 2000,
+							EstimatedCost: floatPtr(0.1),
+							TableName:     stringPtr("Orders"),
+							AccessType:    accessTypePtr(database_observability.ExplainPlanAccessTypeAll),
+						},
+					},
+				},
 			},
 		},
 		{
@@ -356,9 +365,6 @@ func TestNewExplainPlanOutputFromShowPlanXML(t *testing.T) {
 					EstimatedCost:        floatPtr(0.3),
 					UnrecognizedOperator: stringPtr("Hash Match (Flow Distinct)"),
 				},
-				// Unlike the main switch's default branch, the Hash case always
-				// calls childrenOf before populateHashDetails's own default runs,
-				// so the child is preserved even though the node is Unknown.
 				Children: []database_observability.ExplainPlanNode{
 					{
 						Operation: database_observability.ExplainPlanOutputOperationTableScan,
@@ -367,6 +373,102 @@ func TestNewExplainPlanOutputFromShowPlanXML(t *testing.T) {
 							EstimatedCost: floatPtr(0.6),
 							TableName:     stringPtr("Orders"),
 							AccessType:    accessTypePtr(database_observability.ExplainPlanAccessTypeAll),
+						},
+					},
+				},
+			},
+		},
+		{
+			fixture: "top_sort",
+			want: database_observability.ExplainPlanNode{
+				Operation: database_observability.ExplainPlanOutputOperationOrderingOperation,
+				Details: database_observability.ExplainPlanNodeDetails{
+					EstimatedRows: 10,
+					EstimatedCost: floatPtr(0.05),
+					SortKeys:      []string{"c1"},
+				},
+				Children: []database_observability.ExplainPlanNode{
+					{
+						Operation: database_observability.ExplainPlanOutputOperationTableScan,
+						Details: database_observability.ExplainPlanNodeDetails{
+							EstimatedRows: 2000,
+							EstimatedCost: floatPtr(0.1),
+							TableName:     stringPtr("t1"),
+							AccessType:    accessTypePtr(database_observability.ExplainPlanAccessTypeAll),
+						},
+					},
+				},
+			},
+		},
+		{
+			fixture: "eager_spool",
+			want: database_observability.ExplainPlanNode{
+				Operation: database_observability.ExplainPlanOutputOperationSpool,
+				Details: database_observability.ExplainPlanNodeDetails{
+					EstimatedRows: 2000,
+					EstimatedCost: floatPtr(0.1),
+				},
+				Children: []database_observability.ExplainPlanNode{
+					{
+						Operation: database_observability.ExplainPlanOutputOperationTableScan,
+						Details: database_observability.ExplainPlanNodeDetails{
+							EstimatedRows: 2000,
+							EstimatedCost: floatPtr(0.1),
+							TableName:     stringPtr("t1"),
+							AccessType:    accessTypePtr(database_observability.ExplainPlanAccessTypeAll),
+						},
+					},
+				},
+			},
+		},
+		{
+			fixture: "lazy_spool",
+			want: database_observability.ExplainPlanNode{
+				Operation: database_observability.ExplainPlanOutputOperationSpool,
+				Details: database_observability.ExplainPlanNodeDetails{
+					EstimatedRows: 2000,
+					EstimatedCost: floatPtr(0.1),
+				},
+				Children: []database_observability.ExplainPlanNode{
+					{
+						Operation: database_observability.ExplainPlanOutputOperationTableScan,
+						Details: database_observability.ExplainPlanNodeDetails{
+							EstimatedRows: 2000,
+							EstimatedCost: floatPtr(0.1),
+							TableName:     stringPtr("t1"),
+							AccessType:    accessTypePtr(database_observability.ExplainPlanAccessTypeAll),
+						},
+					},
+				},
+			},
+		},
+		{
+			fixture: "unmodeled_wrapper_nested",
+			want: database_observability.ExplainPlanNode{
+				Operation: database_observability.ExplainPlanOutputOperationUnknown,
+				Details: database_observability.ExplainPlanNodeDetails{
+					EstimatedRows:        2000,
+					EstimatedCost:        floatPtr(0.1),
+					UnrecognizedOperator: stringPtr("Segment"),
+				},
+				Children: []database_observability.ExplainPlanNode{
+					{
+						Operation: database_observability.ExplainPlanOutputOperationUnknown,
+						Details: database_observability.ExplainPlanNodeDetails{
+							EstimatedRows:        2000,
+							EstimatedCost:        floatPtr(0.1),
+							UnrecognizedOperator: stringPtr("Bitmap"),
+						},
+						Children: []database_observability.ExplainPlanNode{
+							{
+								Operation: database_observability.ExplainPlanOutputOperationTableScan,
+								Details: database_observability.ExplainPlanNodeDetails{
+									EstimatedRows: 2000,
+									EstimatedCost: floatPtr(0.1),
+									TableName:     stringPtr("t1"),
+									AccessType:    accessTypePtr(database_observability.ExplainPlanAccessTypeAll),
+								},
+							},
 						},
 					},
 				},

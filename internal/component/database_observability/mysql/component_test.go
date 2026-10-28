@@ -1,8 +1,11 @@
 package mysql
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -11,6 +14,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/grafana/alloy/internal/static/integrations/mysqld_exporter"
 	"github.com/grafana/ckit/peer"
 	"github.com/grafana/ckit/shard"
 	"github.com/prometheus/client_golang/prometheus"
@@ -1603,4 +1607,276 @@ func TestMySQL_Clustering_ReconcileMovesOnlyChangedDatabases(t *testing.T) {
 	first, _ := exported.Targets[0].Get("instance")
 	second, _ := exported.Targets[1].Get("instance")
 	assert.Equal(t, []string{"tcp(127.0.0.1:3306)/db1", "tcp(127.0.0.1:3306)/db3"}, []string{first, second})
+}
+
+func Test_resolveExporterArgs(t *testing.T) {
+	t.Run("no block at all defaults to eventsstatements only with default limit", func(t *testing.T) {
+		cfg := `
+			data_source_name = "user:pass@tcp(localhost:3306)/db"
+			forward_to = []
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
+		assert.Equal(t, []string{eventsStatementsCollector}, exporterArgs.SetCollectors)
+		assert.Equal(t, 100, exporterArgs.PerfSchemaEventsStatements.Limit)
+	})
+
+	t.Run("block present with sub-block settings but set collectors untouched", func(t *testing.T) {
+		cfg := `
+			data_source_name = "user:pass@tcp(localhost:3306)/db"
+			forward_to = []
+			prometheus_exporter {
+				perf_schema.eventsstatements {
+					limit = 50
+				}
+			}
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
+		assert.Equal(t, []string{eventsStatementsCollector}, exporterArgs.SetCollectors)
+		assert.Equal(t, 50, exporterArgs.PerfSchemaEventsStatements.Limit)
+	})
+
+	t.Run("explicit enabled_collectors wins outright", func(t *testing.T) {
+		cfg := `
+			data_source_name = "user:pass@tcp(localhost:3306)/db"
+			forward_to = []
+			prometheus_exporter {
+				set_collectors = ["global_status"]
+			}
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
+		assert.Equal(t, []string{"global_status"}, exporterArgs.SetCollectors)
+	})
+
+	t.Run("explicit empty enabled_collectors treated as unset", func(t *testing.T) {
+		cfg := `
+			data_source_name = "user:pass@tcp(localhost:3306)/db"
+			forward_to = []
+			prometheus_exporter {
+				set_collectors = []
+			}
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
+		assert.Equal(t, []string{eventsStatementsCollector}, exporterArgs.SetCollectors)
+	})
+
+	t.Run("disable_collectors removes the default collector", func(t *testing.T) {
+		cfg := `
+		data_source_name = "user:pass@tcp(localhost:3306)/db"
+		forward_to = []
+		prometheus_exporter {
+			disable_collectors = ["perf_schema.eventsstatements"]
+		}
+	`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
+		assert.Empty(t, mysqld_exporter.GetScrapers(exporterArgs.Convert()))
+	})
+
+	t.Run("sub-block without limit preserves default limit", func(t *testing.T) {
+		cfg := `data_source_name = "user:pass@tcp(localhost:3306)/db"
+			forward_to = []
+			prometheus_exporter {
+				perf_schema.eventsstatements {
+				}
+			}
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
+		assert.Equal(t, 100, exporterArgs.PerfSchemaEventsStatements.Limit)
+	})
+
+	t.Run("explicit empty set_collectors defaults to eventsstatements collector", func(t *testing.T) {
+		cfg := `data_source_name = "user:pass@tcp(localhost:3306)/db"
+			forward_to = []
+			prometheus_exporter {
+				set_collectors = []
+			}
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
+		assert.Equal(t, 100, exporterArgs.PerfSchemaEventsStatements.Limit)
+		assert.Equal(t, []string{eventsStatementsCollector}, exporterArgs.SetCollectors)
+	})
+
+	t.Run("collectors present in enable_collectors are added to the default eventsstatements", func(t *testing.T) {
+		cfg := `data_source_name = "user:pass@tcp(localhost:3306)/db"
+			forward_to = []
+			prometheus_exporter {
+				enable_collectors = ["global_status"]
+			}
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
+		assert.Equal(t, 100, exporterArgs.PerfSchemaEventsStatements.Limit)
+		var collectors []string
+		for _, scraper := range mysqld_exporter.GetScrapers(exporterArgs.Convert()) {
+			collectors = append(collectors, scraper.Name())
+		}
+		assert.ElementsMatch(t, []string{eventsStatementsCollector, "global_status"}, collectors)
+	})
+}
+
+func Test_query_details_eventsstatements_different_limits_warning(t *testing.T) {
+	t.Run("logs warning when query_details enabled, eventssttaements enabled, and limits differ", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, errors.New("connection skipped for limit warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("user:pass@tcp(localhost:3306)/db"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 200},
+			PrometheusExporter:    &PrometheusExporterArguments{PerfSchemaEventsStatements: exporter_mysql.PerfSchemaEventsStatements{Limit: 50}},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.Contains(t, logs.String(), "query_details and prometheus_exporter perf_schema.eventsstatements limits differ")
+		assert.Contains(t, logs.String(), "query_details_limit=200")
+		assert.Contains(t, logs.String(), "eventsstatements_limit=50")
+	})
+
+	t.Run("does not log warning when query_details is disabled", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, errors.New("connection skipped for limit warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("user:pass@tcp(localhost:3306)/db"),
+			DisableCollectors:     []string{collector.QueryDetailsCollector},
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 250},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "query_details and prometheus_exporter perf_schema.eventsstatements limits differ")
+	})
+
+	t.Run("does not log warning when embedded exporter is not used", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, errors.New("connection skipped for limit warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		args := Arguments{
+			DataSourceName: alloytypes.Secret("user:pass@tcp(localhost:3306)/db"),
+			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
+				"__address__": "localhost:9104",
+			})},
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 250},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "query_details and prometheus_exporter perf_schema.eventsstatements limits differ")
+	})
+
+	t.Run("does not log warning when eventsstatements is disabled", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, errors.New("connection skipped for limit warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("user:pass@tcp(localhost:3306)/db"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 250},
+			PrometheusExporter: &PrometheusExporterArguments{
+				DisableCollectors: []string{eventsStatementsCollector},
+			},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "query_details and prometheus_exporter perf_schema.eventsstatements limits differ")
+	})
+
+	t.Run("does not log warning when set_collectors excludes eventsstatements", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, errors.New("connection skipped for limit warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("user:pass@tcp(localhost:3306)/db"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 250},
+			PrometheusExporter: &PrometheusExporterArguments{
+				SetCollectors: []string{"global_status"},
+			},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "query_details and prometheus_exporter perf_schema.eventsstatements limits differ")
+	})
+
+	t.Run("does not log warning when limits match", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, errors.New("connection skipped for limit warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("user:pass@tcp(localhost:3306)/db"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 100},
+			// PrometheusExporter falls to default 100
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "query_details and prometheus_exporter perf_schema.eventsstatements limits differ")
+	})
+}
+
+func newTestComponent(t *testing.T, openSQL func(string, string) (*sql.DB, error)) *Component {
+	t.Helper()
+	opts := cmp.Options{
+		ID:             "test",
+		Logger:         logging.NewSlogNop(),
+		OnStateChange:  func(cmp.Exports) {},
+		GetServiceData: testGetServiceData,
+	}
+	args := Arguments{
+		DataSourceName: alloytypes.Secret("user:pass@tcp(127.0.0.1:3306)/db"),
+		ForwardTo:      []loki.LogsReceiver{},
+		Targets:        []discovery.Target{},
+		DisableCollectors: []string{
+			"query_details", "schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans", "locks",
+		},
+		HealthCheckArguments: HealthCheckArguments{
+			CollectInterval: 1 * time.Hour,
+		},
+	}
+	c := &Component{
+		opts:    opts,
+		args:    args,
+		fanout:  loki.NewFanout(args.ForwardTo),
+		handler: loki.NewLogsReceiver(),
+		openSQL: openSQL,
+	}
+	c.storeInstances([]*dbInstance{{
+		cfg:         databaseConfig{dsn: args.DataSourceName},
+		instanceKey: "test-instance",
+		baseTarget: discovery.NewTargetFromMap(map[string]string{
+			"instance": "test-instance",
+			"job":      "database_observability",
+		}),
+		registry:  prometheus.NewRegistry(),
+		healthErr: atomic.NewString(""),
+	}})
+	return c
 }

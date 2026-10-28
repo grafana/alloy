@@ -22,7 +22,7 @@ import (
 	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/client/internal/marker"
+	"github.com/grafana/alloy/internal/component/common/loki/client/internal/savepoint"
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 	"github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/alloy/internal/runtime/logging"
@@ -312,11 +312,11 @@ func TestWALEndpoint(t *testing.T) {
 			}
 
 			logger := autil.TestAlloyLogger(t).Slog()
-			marker := marker.NewNopTracker()
+			tracker := savepoint.NewNopTracker()
 
-			endpoint, err := newEndpoint(newMetrics(reg), cfg, logger, marker)
+			endpoint, err := newEndpoint(newMetrics(reg), cfg, logger, tracker)
 			require.NoError(t, err)
-			adapter := newWalEndpointAdapter(endpoint, logger, newWALEndpointMetrics(reg).CurryWithId("test"), marker)
+			adapter := newWalEndpointAdapter(endpoint, logger, newWALEndpointMetrics(reg).CurryWithId("test"), tracker)
 			adapter.start()
 
 			//labels := model.LabelSet{"app": "test"}
@@ -386,21 +386,21 @@ func BenchmarkEndpointImplementations(b *testing.B) {
 		},
 	} {
 		b.Run(name, func(b *testing.B) {
-			b.Run("implementation=wal_nil_marker_handler", func(b *testing.B) {
-				runWALEndpointBenchCase(b, bc, func(t *testing.B) marker.Tracker {
-					return marker.NewNopTracker()
+			b.Run("implementation=wal_nop_tracker", func(b *testing.B) {
+				runWALEndpointBenchCase(b, bc, func(t *testing.B) savepoint.Tracker {
+					return savepoint.NewNopTracker()
 				})
 			})
 
-			b.Run("implementation=wal_marker_handler", func(b *testing.B) {
-				runWALEndpointBenchCase(b, bc, func(t *testing.B) marker.Tracker {
+			b.Run("implementation=wal_segment_tracker", func(b *testing.B) {
+				runWALEndpointBenchCase(b, bc, func(t *testing.B) savepoint.Tracker {
 					dir := b.TempDir()
 					nopLogger := logging.NewSlogNop()
 
-					f, err := marker.NewFile(nopLogger, dir)
+					f, err := savepoint.NewFile(nopLogger, dir)
 					require.NoError(b, err)
 
-					return marker.NewSegmentTracker(f, time.Minute, nopLogger, marker.NewMetrics(nil).CurryWithId("test"))
+					return savepoint.NewSegmentTracker(f, "test", time.Minute, nopLogger, savepoint.NewMetrics(nil))
 				})
 			})
 
@@ -411,7 +411,7 @@ func BenchmarkEndpointImplementations(b *testing.B) {
 	}
 }
 
-func runWALEndpointBenchCase(b *testing.B, bc testCase, mhFactory func(t *testing.B) marker.Tracker) {
+func runWALEndpointBenchCase(b *testing.B, bc testCase, trackerFactory func(t *testing.B) savepoint.Tracker) {
 	reg := prometheus.NewRegistry()
 
 	// Create a buffer channel where we do enqueue received requests
@@ -456,11 +456,11 @@ func runWALEndpointBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 	}
 
 	logger := logging.NewSlogNop()
-	marker := mhFactory(b)
+	tracker := trackerFactory(b)
 
-	endpoint, err := newEndpoint(newMetrics(reg), cfg, logger, marker)
+	endpoint, err := newEndpoint(newMetrics(reg), cfg, logger, tracker)
 	require.NoError(b, err)
-	adapter := newWalEndpointAdapter(endpoint, logger, newWALEndpointMetrics(reg).CurryWithId("test"), marker)
+	adapter := newWalEndpointAdapter(endpoint, logger, newWALEndpointMetrics(reg).CurryWithId("test"), tracker)
 	adapter.start()
 
 	//labels := model.LabelSet{"app": "test"}
@@ -551,7 +551,7 @@ func runEndpointBenchCase(b *testing.B, bc testCase) {
 	}
 
 	m := newMetrics(reg)
-	endpoint, err := newEndpoint(m, cfg, logging.NewSlogNop(), marker.NewNopTracker())
+	endpoint, err := newEndpoint(m, cfg, logging.NewSlogNop(), savepoint.NewNopTracker())
 	require.NoError(b, err)
 	endpoint.start()
 

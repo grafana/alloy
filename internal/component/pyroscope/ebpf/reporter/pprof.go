@@ -23,7 +23,6 @@ import (
 	"go.opentelemetry.io/ebpf-profiler/libpf/xsync"
 	"go.opentelemetry.io/ebpf-profiler/process"
 	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
-	"go.opentelemetry.io/ebpf-profiler/traceutil"
 )
 
 var vdsoPathName = libpf.Intern(process.VdsoPathName)
@@ -106,7 +105,7 @@ func (p *PPROFReporter) ReportTraceEvent(trace *libpf.Trace, meta *samples.Trace
 	}
 
 	sampleKey := samples.SampleKey{
-		Hash:    traceutil.HashTrace(trace),
+		Hash:    trace.Hash(),
 		Comm:    meta.Comm,
 		TID:     int64(meta.TID),
 		CPU:     int64(meta.CPU),
