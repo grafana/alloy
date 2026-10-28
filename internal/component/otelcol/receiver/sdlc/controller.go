@@ -149,7 +149,7 @@ func (c *controller) observe(d *appsv1.Deployment, initial bool) {
 			c.enqueue(d, previous, rolloutSuperseded, revision, nil, false)
 			c.closeImages(d, false)
 		}
-		changes := []templateChange{}
+		changes := []fieldChange{}
 		if exists {
 			changes = templateChanges(previous.template, d.Spec.Template)
 		}

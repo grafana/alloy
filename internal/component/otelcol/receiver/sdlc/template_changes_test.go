@@ -2,6 +2,7 @@ package sdlc
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -22,9 +23,9 @@ func TestTemplateChangesValuesAndRedaction(t *testing.T) {
 	next.Annotations = map[string]string{"token": "secret-annotation"}
 	next.Spec.Volumes = []corev1.Volume{{Name: "private", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "secret-volume"}}}}
 	changes := templateChanges(*old, *next)
-	byField := map[string]templateChange{}
+	byField := map[string]fieldChange{}
 	for _, change := range changes {
-		byField[change.Field] = change
+		byField[strings.TrimPrefix(change.Path, "containers.app.")] = change
 	}
 	require.Equal(t, "nginx:1.27", *byField["image"].Before)
 	require.Equal(t, "nginx:1.28", *byField["image"].After)
@@ -47,7 +48,7 @@ func TestTemplateChangesValuesAndRedaction(t *testing.T) {
 	// Removing a resource preserves its previous value and absence of a new value.
 	reverse := templateChanges(*next, *old)
 	for _, change := range reverse {
-		if change.Field == "resources.limits.memory" {
+		if change.Path == "containers.app.resources.limits.memory" {
 			require.Equal(t, "removed", change.Operation)
 			require.Equal(t, "512Mi", *change.Before)
 			require.Nil(t, change.After)
@@ -68,14 +69,13 @@ func TestTemplateChangesContainers(t *testing.T) {
 	next.Spec.InitContainers[0].Image = "setup:v2"
 	next.Spec.Containers = []corev1.Container{{Name: "replacement", Image: "app:v1"}}
 	changes := templateChanges(*old, *next)
-	require.Contains(t, changes, templateChange{Container: "app", Field: "container", Operation: "removed"})
-	require.Contains(t, changes, templateChange{Container: "replacement", Field: "container", Operation: "added"})
+	require.Contains(t, changes, fieldChange{Path: "containers.app", Operation: "removed"})
+	require.Contains(t, changes, fieldChange{Path: "containers.replacement", Operation: "added"})
 	found := false
 	for _, change := range changes {
-		if change.Container == "setup" {
+		if strings.HasPrefix(change.Path, "initContainers.setup") {
 			found = true
-			require.True(t, change.Init)
-			require.Equal(t, "image", change.Field)
+			require.Equal(t, "initContainers.setup.image", change.Path)
 			require.Equal(t, "setup:v1", *change.Before)
 			require.Equal(t, "setup:v2", *change.After)
 		}
@@ -85,7 +85,7 @@ func TestTemplateChangesContainers(t *testing.T) {
 	next = old.DeepCopy()
 	next.Spec.Containers[0], next.Spec.Containers[1] = next.Spec.Containers[1], next.Spec.Containers[0]
 	changes = templateChanges(*old, *next)
-	require.Equal(t, []templateChange{{Field: "spec.containers.order", Operation: "modified"}}, changes)
+	require.Equal(t, []fieldChange{{Path: "spec.containers.order", Operation: "modified"}}, changes)
 }
 
 func TestTemplateChangesAllowlistedValues(t *testing.T) {
@@ -102,9 +102,9 @@ func TestTemplateChangesAllowlistedValues(t *testing.T) {
 	next.Spec.Containers[0].ImagePullPolicy = corev1.PullAlways
 	next.Spec.Containers[0].Ports = []corev1.ContainerPort{{ContainerPort: 80}, {ContainerPort: 443, Protocol: corev1.ProtocolTCP}}
 	next.Spec.Containers[0].Env = []corev1.EnvVar{{Name: "KEEP", Value: "a"}, {Name: "CHANGE", Value: "new-secret"}, {Name: "ADD", Value: "y"}}
-	byPath := map[string]templateChange{}
+	byPath := map[string]fieldChange{}
 	for _, change := range templateChanges(*old, *next) {
-		byPath[change.path()] = change
+		byPath[change.Path] = change
 	}
 	str := func(p *string) string {
 		if p == nil {

@@ -56,7 +56,7 @@ func (c *controller) rolloutID(d *appsv1.Deployment, revision int64) string {
 	return stableID(c.opts.clusterUID, string(d.UID), strconv.FormatInt(revision, 10))
 }
 
-func (c *controller) enqueue(d *appsv1.Deployment, state rolloutState, status string, replacement int64, changes []templateChange, known bool) {
+func (c *controller) enqueue(d *appsv1.Deployment, state rolloutState, status string, replacement int64, changes []fieldChange, known bool) {
 	now := c.now()
 	rolloutID := c.rolloutID(d, state.revision)
 	event := changeEvent{
@@ -121,10 +121,10 @@ func (c *controller) putRolloutDiff(diff pcommon.Map, d *appsv1.Deployment, stat
 }
 
 // putChanges encodes changes as a map keyed by field path. Values are present
-// only for fields templateChanges allowlists.
-func putChanges(out pcommon.Map, changes []templateChange) {
+// only for fields whose diff rule reports them.
+func putChanges(out pcommon.Map, changes []fieldChange) {
 	for _, change := range changes {
-		entry := out.PutEmptyMap(change.path())
+		entry := out.PutEmptyMap(change.Path)
 		entry.PutStr("operation", change.Operation)
 		if change.Before != nil {
 			entry.PutStr("before", *change.Before)
