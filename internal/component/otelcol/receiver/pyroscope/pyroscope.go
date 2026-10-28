@@ -135,7 +135,11 @@ func (r *profilesReceiver) Appender() alloypyroscope.Appender {
 
 // Append implements pyroscope.Appender.
 func (r *profilesReceiver) Append(ctx context.Context, lbs labels.Labels, samples []*alloypyroscope.RawSample) error {
-	profiles := pprofile.NewProfiles()
+	if len(samples) == 0 {
+		return nil
+	}
+
+	var profiles pprofile.Profiles
 	for i, sample := range samples {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -159,7 +163,11 @@ func (r *profilesReceiver) Append(ctx context.Context, lbs labels.Labels, sample
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if err := converted.MergeTo(profiles); err != nil {
+		if i == 0 {
+			// Preserve the first profile's dictionary zero entries. MergeTo
+			// doesn't initialize these when the destination dictionary is empty.
+			profiles = converted
+		} else if err := converted.MergeTo(profiles); err != nil {
 			return fmt.Errorf("merge sample %d: %w", i, err)
 		}
 	}
@@ -215,7 +223,7 @@ func validateRawPprofIngest(incoming *alloypyroscope.IncomingProfile) error {
 		if err != nil {
 			return unsupportedIngestFormatError(incoming, format, fmt.Sprintf("invalid content type: %v", err))
 		}
-		if mediaType == "multipart/form-data" {
+		if strings.HasPrefix(mediaType, "multipart/") {
 			return unsupportedIngestFormatError(incoming, format, "multipart pprof is not supported")
 		}
 	}

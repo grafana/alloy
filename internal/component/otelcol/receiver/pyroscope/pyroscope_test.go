@@ -12,6 +12,7 @@ import (
 	"github.com/google/pprof/profile"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pprofile"
 
 	"github.com/grafana/alloy/internal/component"
@@ -87,6 +88,176 @@ func TestProfilesReceiverAppendMergesSamples(t *testing.T) {
 	require.Equal(t, 2, consumed.ResourceProfiles().Len())
 	require.Equal(t, 2, consumed.ProfileCount())
 	require.Equal(t, 2, consumed.SampleCount())
+}
+
+func TestProfilesReceiverAppendPreservesDictionaryZeroEntries(t *testing.T) {
+	unmapped, err := profile.ParseData(testPprof(t, 42))
+	require.NoError(t, err)
+	unmapped.Mapping = nil
+	for _, location := range unmapped.Location {
+		location.Mapping = nil
+	}
+	unmappedRaw := marshalPprof(t, unmapped)
+	mappedRaw := testPprof(t, 42)
+
+	for _, tt := range []struct {
+		name     string
+		profiles [][]byte
+	}{
+		{"single unmapped profile", [][]byte{unmappedRaw}},
+		{"multiple unmapped profiles", [][]byte{unmappedRaw, unmappedRaw}},
+		{"unmapped then mapped", [][]byte{unmappedRaw, mappedRaw}},
+		{"mapped then unmapped", [][]byte{mappedRaw, unmappedRaw}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var consumed pprofile.Profiles
+			receiver := newTestReceiver(func(_ context.Context, profiles pprofile.Profiles) error {
+				consumed = profiles
+				return nil
+			})
+			samples := make([]*alloypyroscope.RawSample, len(tt.profiles))
+			for i, raw := range tt.profiles {
+				samples[i] = &alloypyroscope.RawSample{RawProfile: raw}
+			}
+			require.NoError(t, receiver.Append(t.Context(), labels.EmptyLabels(), samples))
+			require.Equal(t, len(samples), consumed.ProfileCount())
+			dictionary := consumed.Dictionary()
+			require.Positive(t, dictionary.MappingTable().Len())
+			require.True(t, dictionary.MappingTable().At(0).Equal(pprofile.NewMapping()))
+			require.True(t, dictionary.LocationTable().At(0).Equal(pprofile.NewLocation()))
+			require.True(t, dictionary.FunctionTable().At(0).Equal(pprofile.NewFunction()))
+			require.True(t, dictionary.LinkTable().At(0).Equal(pprofile.NewLink()))
+			require.Empty(t, dictionary.StringTable().At(0))
+			require.True(t, dictionary.AttributeTable().At(0).Equal(pprofile.NewKeyValueAndUnit()))
+			require.True(t, dictionary.StackTable().At(0).Equal(pprofile.NewStack()))
+
+			for i, raw := range tt.profiles {
+				prof := consumed.ResourceProfiles().At(i).ScopeProfiles().At(0).Profiles().At(0)
+				sample := prof.Samples().At(0)
+				require.Equal(t, int64(42), sample.Values().At(0))
+				stack := dictionary.StackTable().At(int(sample.StackIndex()))
+				location := dictionary.LocationTable().At(int(stack.LocationIndices().At(0)))
+				function := dictionary.FunctionTable().At(int(location.Lines().At(0).FunctionIndex()))
+				require.Equal(t, "main.checkout", dictionary.StringTable().At(int(function.NameStrindex())))
+				if bytes.Equal(raw, unmappedRaw) {
+					require.Zero(t, location.MappingIndex())
+				} else {
+					mapping := dictionary.MappingTable().At(int(location.MappingIndex()))
+					require.Equal(t, "checkout-api", dictionary.StringTable().At(int(mapping.FilenameStrindex())))
+				}
+			}
+		})
+	}
+}
+
+// Separate profiles have independent dictionaries. Check the data behind their
+// indices after merging, rather than only checking the number of samples.
+func TestProfilesReceiverAppendRemapsDictionaries(t *testing.T) {
+	second, err := profile.ParseData(testPprof(t, 20))
+	require.NoError(t, err)
+	second.SampleType[0] = &profile.ValueType{Type: "alloc_space", Unit: "bytes"}
+	second.Function[0].Name = "main.allocate"
+	second.Mapping[0].File = "worker"
+	second.Sample[0].Label["environment"] = []string{"staging"}
+
+	var consumed pprofile.Profiles
+	receiver := newTestReceiver(func(_ context.Context, profiles pprofile.Profiles) error {
+		consumed = profiles
+		return nil
+	})
+	require.NoError(t, receiver.Append(t.Context(), labels.EmptyLabels(), []*alloypyroscope.RawSample{
+		{RawProfile: testPprof(t, 10)},
+		{RawProfile: marshalPprof(t, second)},
+	}))
+	require.Equal(t, 2, consumed.ResourceProfiles().Len())
+	dictionary := consumed.Dictionary()
+	for i, want := range []struct {
+		sampleType, unit, function, filename, environment string
+		value                                             int64
+	}{
+		{"cpu", "nanoseconds", "main.checkout", "checkout-api", "sample-production", 10},
+		{"alloc_space", "bytes", "main.allocate", "worker", "staging", 20},
+	} {
+		prof := consumed.ResourceProfiles().At(i).ScopeProfiles().At(0).Profiles().At(0)
+		require.Equal(t, want.sampleType, dictionary.StringTable().At(int(prof.SampleType().TypeStrindex())))
+		require.Equal(t, want.unit, dictionary.StringTable().At(int(prof.SampleType().UnitStrindex())))
+		sample := prof.Samples().At(0)
+		require.Equal(t, want.value, sample.Values().At(0))
+		stack := dictionary.StackTable().At(int(sample.StackIndex()))
+		location := dictionary.LocationTable().At(int(stack.LocationIndices().At(0)))
+		function := dictionary.FunctionTable().At(int(location.Lines().At(0).FunctionIndex()))
+		require.Equal(t, want.function, dictionary.StringTable().At(int(function.NameStrindex())))
+		mapping := dictionary.MappingTable().At(int(location.MappingIndex()))
+		require.Equal(t, want.filename, dictionary.StringTable().At(int(mapping.FilenameStrindex())))
+		var environment string
+		for _, idx := range sample.AttributeIndices().All() {
+			attr := dictionary.AttributeTable().At(int(idx))
+			if dictionary.StringTable().At(int(attr.KeyStrindex())) == "environment" {
+				environment = attr.Value().Str()
+			}
+		}
+		require.Equal(t, want.environment, environment)
+	}
+}
+
+func TestConvertPprofMultipleSampleTypes(t *testing.T) {
+	prof, err := profile.ParseData(testPprof(t, 42))
+	require.NoError(t, err)
+	prof.SampleType = []*profile.ValueType{
+		{Type: "alloc_objects", Unit: "count"},
+		{Type: "alloc_space", Unit: "bytes"},
+	}
+	prof.Sample[0].Value = []int64{7, 128}
+	prof.PeriodType = nil
+
+	// Scrapers and SDKs can send either raw protobuf or gzip-compressed pprof.
+	var raw bytes.Buffer
+	require.NoError(t, prof.WriteUncompressed(&raw))
+	for _, data := range [][]byte{raw.Bytes(), marshalPprof(t, prof)} {
+		converted, err := convertPprof(data, labels.EmptyLabels())
+		require.NoError(t, err)
+		require.Equal(t, 2, converted.ProfileCount())
+		require.Equal(t, 2, converted.SampleCount())
+		got := map[string]int64{}
+		profiles := converted.ResourceProfiles().At(0).ScopeProfiles().At(0).Profiles()
+		for _, p := range profiles.All() {
+			sampleType := converted.Dictionary().StringTable().At(int(p.SampleType().TypeStrindex()))
+			got[sampleType] = p.Samples().At(0).Values().At(0)
+		}
+		require.Equal(t, map[string]int64{"alloc_objects": 7, "alloc_space": 128}, got)
+	}
+}
+
+func TestProfilesReceiverReturnsTranslationErrors(t *testing.T) {
+	prof, err := profile.ParseData(testPprof(t, 42))
+	require.NoError(t, err)
+	prof.Sample[0].Label["environment"] = []string{"production", "staging"}
+	receiver := newTestReceiver(func(context.Context, pprofile.Profiles) error {
+		t.Error("invalid profiles must not reach the consumer")
+		return nil
+	})
+	err = receiver.Append(t.Context(), labels.EmptyLabels(), []*alloypyroscope.RawSample{{RawProfile: marshalPprof(t, prof)}})
+	require.ErrorContains(t, err, "translate pprof profile: labels with multiple values")
+}
+
+func TestComponentUpdatePreservesReceiver(t *testing.T) {
+	var exports Exports
+	var firstCalls, secondCalls int
+	c, err := New(component.Options{OnStateChange: func(e component.Exports) { exports = e.(Exports) }}, Arguments{
+		Output: profilesOutput(func(context.Context, pprofile.Profiles) error { firstCalls++; return nil }),
+	})
+	require.NoError(t, err)
+	appender := exports.Receiver.Appender()
+	samples := []*alloypyroscope.RawSample{{RawProfile: testPprof(t, 42)}}
+	require.NoError(t, appender.Append(t.Context(), labels.EmptyLabels(), samples))
+	require.NoError(t, c.Update(Arguments{
+		Output: profilesOutput(func(context.Context, pprofile.Profiles) error { secondCalls++; return nil }),
+	}))
+	require.NoError(t, appender.Append(t.Context(), labels.EmptyLabels(), samples))
+	require.Error(t, c.Update(Arguments{}))
+	require.NoError(t, appender.Append(t.Context(), labels.EmptyLabels(), samples))
+	require.Equal(t, 1, firstCalls)
+	require.Equal(t, 2, secondCalls)
 }
 
 func TestProfilesReceiverAppendIngestConvertsPprof(t *testing.T) {
@@ -173,6 +344,14 @@ func TestProfilesReceiverAppendIngestRejectsUnsupportedFormats(t *testing.T) {
 			incoming: &alloypyroscope.IncomingProfile{
 				RawBody:     pprofMultipartBody,
 				ContentType: []string{pprofMultipartContentType},
+				URL:         &url.URL{Path: "/ingest", RawQuery: "format=pprof"},
+			},
+		},
+		{
+			name: "multipart mixed declared as pprof",
+			incoming: &alloypyroscope.IncomingProfile{
+				RawBody:     pprofMultipartBody,
+				ContentType: []string{"multipart/mixed; boundary=test"},
 				URL:         &url.URL{Path: "/ingest", RawQuery: "format=pprof"},
 			},
 		},
@@ -446,6 +625,23 @@ func assertConvertedProfiles(t *testing.T, profiles pprofile.Profiles) {
 
 	convertedSample := convertedProfile.Samples().At(0)
 	require.Equal(t, int64(42), convertedSample.Values().At(0))
+	require.Equal(t, uint64(time.Unix(1_700_000_000, 0).UnixNano()), uint64(convertedProfile.Time()))
+	require.Equal(t, uint64(10*time.Second), convertedProfile.DurationNano())
+	require.Equal(t, int64(10*time.Millisecond), convertedProfile.Period())
+
+	stack := dictionary.StackTable().At(int(convertedSample.StackIndex()))
+	require.Equal(t, 1, stack.LocationIndices().Len())
+	location := dictionary.LocationTable().At(int(stack.LocationIndices().At(0)))
+	require.Equal(t, uint64(0x1010), location.Address())
+	mapping := dictionary.MappingTable().At(int(location.MappingIndex()))
+	require.Equal(t, "checkout-api", dictionary.StringTable().At(int(mapping.FilenameStrindex())))
+	require.Equal(t, uint64(0x1000), mapping.MemoryStart())
+	require.Equal(t, uint64(0x2000), mapping.MemoryLimit())
+	line := location.Lines().At(0)
+	require.Equal(t, int64(12), line.Line())
+	function := dictionary.FunctionTable().At(int(line.FunctionIndex()))
+	require.Equal(t, "main.checkout", dictionary.StringTable().At(int(function.NameStrindex())))
+	require.Equal(t, "checkout.go", dictionary.StringTable().At(int(function.FilenameStrindex())))
 
 	var foundEnvironment, foundThreadID bool
 	for i := 0; i < convertedSample.AttributeIndices().Len(); i++ {
@@ -454,12 +650,12 @@ func assertConvertedProfiles(t *testing.T, profiles pprofile.Profiles) {
 		switch key {
 		case "environment":
 			foundEnvironment = true
-			require.Equal(t, 1, attribute.Value().Slice().Len())
-			require.Equal(t, "sample-production", attribute.Value().Slice().At(0).Str())
+			require.Equal(t, pcommon.ValueTypeStr, attribute.Value().Type())
+			require.Equal(t, "sample-production", attribute.Value().Str())
 		case "thread.id":
 			foundThreadID = true
-			require.Equal(t, 1, attribute.Value().Slice().Len())
-			require.Equal(t, int64(7), attribute.Value().Slice().At(0).Int())
+			require.Equal(t, pcommon.ValueTypeInt, attribute.Value().Type())
+			require.Equal(t, int64(7), attribute.Value().Int())
 			require.Equal(t, "id", dictionary.StringTable().At(int(attribute.UnitStrindex())))
 		}
 	}
@@ -521,6 +717,11 @@ func testPprof(t *testing.T, value int64) []byte {
 		Period:        int64(10 * time.Millisecond),
 	}
 
+	return marshalPprof(t, prof)
+}
+
+func marshalPprof(t *testing.T, prof *profile.Profile) []byte {
+	t.Helper()
 	var buf bytes.Buffer
 	require.NoError(t, prof.Write(&buf))
 	return buf.Bytes()

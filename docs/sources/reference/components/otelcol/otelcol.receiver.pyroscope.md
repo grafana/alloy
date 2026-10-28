@@ -55,9 +55,6 @@ You can use the following blocks with `otelcol.receiver.pyroscope`:
 `otelcol.receiver.pyroscope` only forwards data to the consumers listed in the `profiles` argument.
 The `profiles` argument must contain at least one consumer.
 Connect the `profiles` argument only to components that support the profiles signal.
-Currently, [`otelcol.exporter.otlp`][otelcol.exporter.otlp] is the only `otelcol.*` component that accepts profiles.
-
-[otelcol.exporter.otlp]: ../otelcol.exporter.otlp/
 
 The component maps the `service_name` Pyroscope label to the `service.name` OpenTelemetry resource attribute.
 It maps the `otel.scope.name` and `otel.scope.version` labels to the OpenTelemetry instrumentation scope.
@@ -65,10 +62,14 @@ It preserves the `__name__` label as an OpenTelemetry resource attribute because
 The component maps all other non-reserved Pyroscope labels to OpenTelemetry resource attributes.
 It drops other reserved labels, including `__delta__`.
 Labels embedded in individual pprof samples remain sample attributes and are separate from these external resource labels.
+The OpenTelemetry pprof translator rejects profiles that contain multiple values for a sample label or its numeric unit.
+A pprof profile with multiple sample types produces a separate OpenTelemetry profile for each sample type.
 
 The component supports pprof payloads received through the standard Pyroscope append path.
 Through the Pyroscope ingest path, the component only supports non-multipart requests that explicitly set the `format` query parameter to `pprof`.
 Multipart pprof, JFR, folded, speedscope, and other ingest formats return an unsupported-format error.
+Profile timestamps, duration, and sampling period come from the pprof payload.
+The component doesn't apply ingest query parameters such as `from`, `until`, or `sampleRate` to the profile data.
 
 ## Exported fields
 
@@ -99,26 +100,44 @@ When you use `otelcol.receiver.pyroscope`, Pyroscope components can't upload deb
 ## Example
 
 This example uses `otelcol.receiver.pyroscope` as a bridge between the Pyroscope and OpenTelemetry ecosystems.
-The component converts profiles collected by `pyroscope.ebpf` and forwards them to an OpenTelemetry Collector over OTLP gRPC:
+The example discovers local processes and uses their executable names as service names.
+The component converts profiles collected by `pyroscope.ebpf` and forwards them to an OpenTelemetry Collector over OTLP gRPC.
+Run Alloy with `--stability.level=experimental` to enable this pipeline:
 
 ```alloy
+discovery.process "all" { }
+
+discovery.relabel "profiled_processes" {
+	targets = discovery.process.all.targets
+
+	rule {
+		action        = "replace"
+		source_labels = ["__meta_process_exe"]
+		regex         = ".*/([^/]+)$"
+		replacement   = "$1"
+		target_label  = "service_name"
+	}
+}
+
 pyroscope.ebpf "default" {
-  forward_to = [otelcol.receiver.pyroscope.default.receiver]
+	targets    = discovery.relabel.profiled_processes.output
+	forward_to = [otelcol.receiver.pyroscope.default.receiver]
 }
 
 otelcol.receiver.pyroscope "default" {
-  output {
-    profiles = [otelcol.exporter.otlp.default.input]
-  }
+	output {
+		profiles = [otelcol.exporter.otlp.default.input]
+	}
 }
 
 otelcol.exporter.otlp "default" {
-  client {
-    endpoint = "otel-collector:4317"
-    tls {
-      insecure = true
-    }
-  }
+	client {
+		endpoint = "otel-collector:4317"
+
+		tls {
+			insecure = true
+		}
+	}
 }
 ```
 
