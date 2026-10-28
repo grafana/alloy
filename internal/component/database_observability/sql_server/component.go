@@ -746,12 +746,14 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	inst.dbConnection = dbConnection
 
 	queryCtx, cancelQuery := context.WithTimeout(ctx, c.args.QueryTimeout)
-	var serverName, machineName, engineVersion sql.NullString
-	err = inst.dbConnection.QueryRowContext(queryCtx, collector.SelectServerInfo).Scan(&serverName, &machineName, &engineVersion)
+	var serverName, machineName, instanceName, productVersion sql.NullString
+	var engineEdition sql.NullInt64
+	err = inst.dbConnection.QueryRowContext(queryCtx, collector.SelectServerInfo).Scan(&serverName, &machineName, &instanceName, &productVersion, &engineEdition)
 	cancelQuery()
 	if err != nil {
 		return fmt.Errorf("failed to query server information: %w", err)
 	}
+	engineVersion := collector.ResolveEngineVersion(engineEdition, productVersion)
 
 	excludeCurrentUser := c.args.ExcludeCurrentUser && enableOrDisableCollectors(c.args)[collector.QuerySamplesCollector]
 	effectiveExcludeUsers, err := resolveExcludeUsers(ctx, inst.dbConnection, c.args.QueryTimeout, c.args.ExcludeUsers, excludeCurrentUser)
@@ -759,7 +761,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 		return fmt.Errorf("failed to resolve current login for query_samples user exclusion: %w", err)
 	}
 
-	generatedServerID := fmt.Sprintf("%x", sha256.Sum256(fmt.Appendf(nil, "%s:%s", serverName.String, machineName.String)))
+	generatedServerID := generateServerID(serverName.String, machineName.String, instanceName.String)
 
 	var cp *database_observability.CloudProvider
 	if inst.cfg.cloudProvider != nil {
@@ -799,11 +801,19 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	}
 	inst.collectors = nil
 
-	if err := c.startCollectors(ctx, inst, generatedServerID, engineVersion.String, cp, effectiveExcludeUsers); err != nil {
+	if err := c.startCollectors(ctx, inst, generatedServerID, engineVersion, cp, effectiveExcludeUsers); err != nil {
 		return fmt.Errorf("failed to start collectors: %w", err)
 	}
 
 	return nil
+}
+
+func generateServerID(serverName, machineName, instanceName string) string {
+	identity := fmt.Appendf(nil, "%s:%s", serverName, machineName)
+	if instanceName != "" {
+		identity = fmt.Appendf(identity, ":%s", instanceName)
+	}
+	return fmt.Sprintf("%x", sha256.Sum256(identity))
 }
 
 func enableOrDisableCollectors(a Arguments) map[string]bool {
