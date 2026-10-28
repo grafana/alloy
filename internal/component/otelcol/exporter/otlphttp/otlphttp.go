@@ -4,6 +4,7 @@ package otlphttp
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"maps"
 	"time"
 
@@ -52,6 +53,12 @@ type Arguments struct {
 }
 
 var _ exporter.Arguments = Arguments{}
+var _ otelcol.DeprecationLogger = Arguments{}
+
+// LogDeprecations implements otelcol.DeprecationLogger.
+func (args Arguments) LogDeprecations(logger *slog.Logger) {
+	(*otelcol.HTTPClientArguments)(&args.Client).LogDeprecations(logger)
+}
 
 const (
 	EncodingProto string = "proto"
