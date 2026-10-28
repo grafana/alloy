@@ -11,13 +11,14 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"github.com/grafana/alloy/internal/converter"
+	"github.com/grafana/alloy/internal/alloycli/clifeature"
 	convert_diag "github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/syntax/diag"
 )
 
-func convertCommand() *cobra.Command {
+func convertCommand(converter *clifeature.Converter) *cobra.Command {
 	f := &alloyConvert{
+		converter:    converter,
 		output:       "",
 		sourceFormat: "",
 		bypassErrors: false,
@@ -50,6 +51,8 @@ which were used by the original format. Multiple arguments can be passed
 by separating them with a space.`,
 		Args:         cobra.RangeArgs(0, 1),
 		SilenceUsage: true,
+		// Hide the command if no converter is built into Alloy.
+		Hidden: converter == nil,
 
 		RunE: func(_ *cobra.Command, args []string) error {
 			var err error
@@ -75,13 +78,14 @@ by separating them with a space.`,
 
 	cmd.Flags().StringVarP(&f.output, "output", "o", f.output, "The filepath and filename where the output is written.")
 	cmd.Flags().StringVarP(&f.report, "report", "r", f.report, "The filepath and filename where the report is written.")
-	cmd.Flags().StringVarP(&f.sourceFormat, "source-format", "f", f.sourceFormat, fmt.Sprintf("The format of the source file. Supported formats: %s.", supportedFormatsList()))
+	cmd.Flags().StringVarP(&f.sourceFormat, "source-format", "f", f.sourceFormat, fmt.Sprintf("The format of the source file. Supported formats: %s.", supportedFormatsList(converterFormats(converter))))
 	cmd.Flags().BoolVarP(&f.bypassErrors, "bypass-errors", "b", f.bypassErrors, "Enable bypassing errors when converting")
 	cmd.Flags().StringVarP(&f.extraArgs, "extra-args", "e", f.extraArgs, "Extra arguments from the original format used by the converter. Multiple arguments can be passed by separating them with a space.")
 	return cmd
 }
 
 type alloyConvert struct {
+	converter    *clifeature.Converter
 	output       string
 	report       string
 	sourceFormat string
@@ -92,6 +96,11 @@ type alloyConvert struct {
 func (fc *alloyConvert) Run(configFile string) error {
 	if fc.sourceFormat == "" {
 		return fmt.Errorf("source-format is a required flag")
+	}
+
+	// Fail before reading the input, which would otherwise block on stdin.
+	if fc.converter == nil {
+		return errors.New("config conversion is not included in this build of Alloy")
 	}
 
 	if configFile == "-" {
@@ -125,7 +134,7 @@ func convert(r io.Reader, fc *alloyConvert) error {
 		return err
 	}
 
-	alloyBytes, diags := converter.Convert(inputBytes, converter.Input(fc.sourceFormat), ea)
+	alloyBytes, diags := fc.converter.Convert(inputBytes, fc.sourceFormat, ea)
 	err = generateConvertReport(diags, fc)
 	if err != nil {
 		return err
@@ -180,9 +189,32 @@ func hasErrorLevel(ds convert_diag.Diagnostics, sev convert_diag.Severity) bool 
 	return false
 }
 
-func supportedFormatsList() string {
-	var ret = make([]string, len(converter.SupportedFormats))
-	for i, f := range converter.SupportedFormats {
+// mountConfigFormatFlags adds the flags used to convert a config file from
+// another format before loading it. The flags are hidden if no converter is
+// built into Alloy.
+func mountConfigFormatFlags(fset *pflag.FlagSet, converter *clifeature.Converter, format *string, bypassErrors *bool, extraArgs *string) {
+	fset.StringVar(format, "config.format", *format, fmt.Sprintf("The format of the source file. Supported formats: %s.", supportedFormatsList(converterFormats(converter))))
+	fset.BoolVar(bypassErrors, "config.bypass-conversion-errors", *bypassErrors, "Enable bypassing errors when converting")
+	fset.StringVar(extraArgs, "config.extra-args", *extraArgs, "Extra arguments from the original format used by the converter. Multiple arguments can be passed by separating them with a space.")
+
+	if converter == nil {
+		for _, name := range []string{"config.format", "config.bypass-conversion-errors", "config.extra-args"} {
+			// MarkHidden only fails for unknown flags.
+			_ = fset.MarkHidden(name)
+		}
+	}
+}
+
+func converterFormats(converter *clifeature.Converter) []string {
+	if converter == nil {
+		return nil
+	}
+	return converter.Formats
+}
+
+func supportedFormatsList(formats []string) string {
+	var ret = make([]string, len(formats))
+	for i, f := range formats {
 		ret[i] = fmt.Sprintf("%q", f)
 	}
 	return strings.Join(ret, ", ")

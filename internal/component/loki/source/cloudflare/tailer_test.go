@@ -73,7 +73,7 @@ func TestTailer(t *testing.T) {
 		logs: []string{},
 	}, nil)
 	// replace the client.
-	getClient = func(apiKey, zoneID string, fields []string) (Client, error) {
+	getClient = func(apiURL, apiKey, zoneID string, fields []string) (Client, error) {
 		return cfClient, nil
 	}
 
@@ -121,7 +121,7 @@ func TestTailer_RetryErrorLogpullReceived(t *testing.T) {
 		err: ErrorLogpullReceived,
 	}, nil).Times(2) // just retry once
 	// replace the client
-	getClient = func(apiKey, zoneID string, fields []string) (Client, error) {
+	getClient = func(apiURL, apiKey, zoneID string, fields []string) (Client, error) {
 		return cfClient, nil
 	}
 	ta := &tailer{
@@ -168,7 +168,7 @@ func TestTailer_RetryErrorIterating(t *testing.T) {
 		err: ErrorLogpullReceived,
 	}, nil).Once()
 	// replace the client.
-	getClient = func(apiKey, zoneID string, fields []string) (Client, error) {
+	getClient = func(apiURL, apiKey, zoneID string, fields []string) (Client, error) {
 		return cfClient, nil
 	}
 	metrics := newMetrics(prometheus.NewRegistry())
@@ -221,7 +221,7 @@ func TestTailer_CloudflareTargetError(t *testing.T) {
 	// setup errors for all retries
 	cfClient.On("LogpullReceived", mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("no logs"))
 	// replace the client.
-	getClient = func(apiKey, zoneID string, fields []string) (Client, error) {
+	getClient = func(apiURL, apiKey, zoneID string, fields []string) (Client, error) {
 		return cfClient, nil
 	}
 
@@ -272,7 +272,7 @@ func TestTailer_CloudflareTargetError168h(t *testing.T) {
 	// setup errors for all retries
 	cfClient.On("LogpullReceived", mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("HTTP status 400: bad query: error parsing time: invalid time range: too early: logs older than 168h0m0s are not available"))
 	// replace the client.
-	getClient = func(_, _ string, _ []string) (Client, error) {
+	getClient = func(_, _, _ string, _ []string) (Client, error) {
 		return cfClient, nil
 	}
 

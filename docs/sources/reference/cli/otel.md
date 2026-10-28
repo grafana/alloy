@@ -2,7 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/cli/otel/
 description: Learn about the otel command
 labels:
-  stage: experimental
+  stage: public-preview
   products:
     - oss
 title: otel
@@ -11,10 +11,7 @@ weight: 350
 
 # `otel`
 
-> **EXPERIMENTAL**: This is an [experimental][] feature.
-> Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
-
-[experimental]: https://grafana.com/docs/release-life-cycle/
+{{< docs/shared lookup="stability/public_preview_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `otel` command runs {{< param "PRODUCT_NAME" >}} with the {{< param "OTEL_ENGINE" >}}.
 This command accepts OpenTelemetry Collector YAML configuration files.
@@ -119,6 +116,7 @@ The following sections list all included components:
 - [influxdb](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/influxdbreceiver/README.md)
 - [jaeger](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/jaegerreceiver/README.md)
 - [k8sclusterreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/k8sclusterreceiver/README.md)
+- [k8seventsreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/k8seventsreceiver/README.md)
 - [k8sobjectsreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/k8sobjectsreceiver/README.md)
 - [kafka](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/kafkareceiver/README.md)
 - [kubeletstatsreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/kubeletstatsreceiver/README.md)
@@ -137,6 +135,7 @@ The following sections list all included components:
 
 {{< collapse title="Connectors" >}}
 - [count](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/connector/countconnector/README.md)
+- [exceptions](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/connector/exceptionsconnector/README.md)
 - [grafanacloud](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/connector/grafanacloudconnector/README.md)
 - [servicegraph](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/connector/servicegraphconnector/README.md)
 - [signaltometrics](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/connector/signaltometricsconnector/README.md)
@@ -189,12 +188,13 @@ To view the full list of components and their versions, refer to the [OpenTeleme
 
 ## Component lifecycle
 
-Bundled components follow the upstream OpenTelemetry Collector [component lifecycle](https://github.com/open-telemetry/opentelemetry-collector/blob/main/docs/component-stability.md).
-When a component becomes deprecated or unmaintained upstream, {{< param "PRODUCT_NAME" >}} deprecates it and eventually removes it from the {{< param "OTEL_ENGINE" >}}.
+Bundled components follow the upstream OpenTelemetry Collector [Stability Levels and versioning][OTel stability] policy.
+When the OpenTelemetry project marks a component deprecated, the component remains in the {{< param "OTEL_ENGINE" >}} for at least two more minor releases.
+When the OpenTelemetry project marks a component unmaintained, the component remains in the {{< param "OTEL_ENGINE" >}} for three months.
+If you need a component that the {{< param "OTEL_ENGINE" >}} no longer includes, you can create a [custom build with the OpenTelemetry Collector Builder (OCB)][custom build] that includes the component.
 
-{{< admonition type="note" >}}
-{{< param "PRODUCT_NAME" >}} provides notice before it removes a component. You can keep using a removed component through a [custom OpenTelemetry Collector Builder (OCB) build](../../../set-up/otel_engine/#custom-builds-with-the-opentelemetry-collector-builder-ocb).
-{{< /admonition >}}
+[OTel stability]: https://github.com/open-telemetry/opentelemetry-collector/blob/main/docs/component-stability.md
+[custom build]: ../../../set-up/otel_engine/custom-builds/
 
 ## Related documentation
 

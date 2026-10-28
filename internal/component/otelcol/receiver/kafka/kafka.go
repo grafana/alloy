@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
+	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka"
@@ -98,17 +99,16 @@ func (args *Arguments) SetToDefault() {
 		RackID:                "",
 		UseLeaderEpoch:        true,
 		ConnIdleTimeout:       9 * time.Minute,
+		// Encoding is left unset so that it can be told apart from an explicit
+		// value. Convert falls back to the upstream default.
 		Logs: KafkaReceiverTopicEncodingConfig{
-			Topics:   []string{"otlp_logs"},
-			Encoding: "otlp_proto",
+			Topics: []string{"otlp_logs"},
 		},
 		Metrics: KafkaReceiverTopicEncodingConfig{
-			Topics:   []string{"otlp_metrics"},
-			Encoding: "otlp_proto",
+			Topics: []string{"otlp_metrics"},
 		},
 		Traces: KafkaReceiverTopicEncodingConfig{
-			Topics:   []string{"otlp_spans"},
-			Encoding: "otlp_proto",
+			Topics: []string{"otlp_spans"},
 		},
 	}
 	args.Metadata.SetToDefault()
@@ -143,6 +143,12 @@ func (args *Arguments) Validate() error {
 		return fmt.Errorf("authentication.sasl (or authentication.plaintext) and authentication.kerberos are mutually exclusive")
 	}
 
+	for _, signal := range args.signals() {
+		if signal.cfg.Encoding != nil && signal.cfg.EncodingExtension != nil {
+			return fmt.Errorf("%s: encoding and encoding_extension are mutually exclusive", signal.name)
+		}
+	}
+
 	for _, strategy := range args.GroupRebalanceStrategies {
 		if err := validateGroupRebalanceStrategy(strategy); err != nil {
 			return err
@@ -171,10 +177,26 @@ func validateGroupRebalanceStrategy(strategy string) error {
 }
 
 type KafkaReceiverTopicEncodingConfig struct {
-	Topic         string   `alloy:"topic,attr,optional"`
-	Topics        []string `alloy:"topics,attr,optional"`
-	Encoding      string   `alloy:"encoding,attr,optional"`
-	ExcludeTopics []string `alloy:"exclude_topics,attr,optional"`
+	Topic  string   `alloy:"topic,attr,optional"`
+	Topics []string `alloy:"topics,attr,optional"`
+	// Encoding is a pointer to distinguish an unset value from an explicit one.
+	// When unset, the upstream default is used.
+	Encoding          *string                     `alloy:"encoding,attr,optional"`
+	EncodingExtension *extension.ExtensionHandler `alloy:"encoding_extension,attr,optional"`
+	ExcludeTopics     []string                    `alloy:"exclude_topics,attr,optional"`
+}
+
+type signalTopicEncodingConfig struct {
+	name string
+	cfg  KafkaReceiverTopicEncodingConfig
+}
+
+func (args Arguments) signals() []signalTopicEncodingConfig {
+	return []signalTopicEncodingConfig{
+		{"logs", args.Logs},
+		{"metrics", args.Metrics},
+		{"traces", args.Traces},
+	}
 }
 
 var _ otelcol.DeprecationLogger = Arguments{}
@@ -184,19 +206,18 @@ func (args Arguments) LogDeprecations(logger *slog.Logger) {
 	if logger == nil {
 		return
 	}
-	for _, signal := range []struct {
-		name string
-		cfg  KafkaReceiverTopicEncodingConfig
-	}{
-		{"logs", args.Logs},
-		{"metrics", args.Metrics},
-		{"traces", args.Traces},
-	} {
+	for _, signal := range args.signals() {
 		if signal.cfg.Topic != "" {
 			logger.Warn(
 				"the topic attribute is deprecated and will be removed in a future release, use topics instead",
 				"signal", signal.name,
 				"topic", signal.cfg.Topic,
+			)
+		}
+		if signal.cfg.Encoding != nil && *signal.cfg.Encoding == "azure_resource_logs" {
+			logger.Warn(
+				"the azure_resource_logs encoding is deprecated, use encoding_extension with otelcol.encoding.azure instead",
+				"signal", signal.name,
 			)
 		}
 	}
@@ -213,14 +234,27 @@ func (args Arguments) LogDeprecations(logger *slog.Logger) {
 	args.Authentication.LogDeprecations(logger)
 }
 
-func (c KafkaReceiverTopicEncodingConfig) convert() kafkareceiver.TopicEncodingConfig {
+// convert converts c into the upstream type. defaults supplies the upstream
+// encoding when neither encoding nor encoding_extension is set.
+func (c KafkaReceiverTopicEncodingConfig) convert(defaults kafkareceiver.TopicEncodingConfig) kafkareceiver.TopicEncodingConfig {
 	topics := c.Topics
 	if c.Topic != "" {
 		topics = []string{c.Topic}
 	}
+
+	// Upstream resolves the encoding as an extension ID first, then falls back
+	// to built-in encodings.
+	encoding := defaults.Encoding
+	switch {
+	case c.EncodingExtension != nil:
+		encoding = c.EncodingExtension.ID.String()
+	case c.Encoding != nil:
+		encoding = *c.Encoding
+	}
+
 	return kafkareceiver.TopicEncodingConfig{
 		Topics:        topics,
-		Encoding:      c.Encoding,
+		Encoding:      encoding,
 		ExcludeTopics: c.ExcludeTopics,
 	}
 }
@@ -299,9 +333,9 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.ClientConfig.ConnIdleTimeout = args.ConnIdleTimeout
 	result.ErrorBackOff = *args.ErrorBackOff.Convert()
 
-	result.Logs = args.Logs.convert()
-	result.Metrics = args.Metrics.convert()
-	result.Traces = args.Traces.convert()
+	result.Logs = args.Logs.convert(result.Logs)
+	result.Metrics = args.Metrics.convert(result.Metrics)
+	result.Traces = args.Traces.convert(result.Traces)
 
 	if args.TLS != nil {
 		tlsCfg := args.TLS.Convert()
@@ -317,7 +351,18 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 // Extensions implements receiver.Arguments.
 func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
-	return nil
+	var out map[otelcomponent.ID]otelcomponent.Component
+	for _, signal := range args.signals() {
+		handler := signal.cfg.EncodingExtension
+		if handler == nil || handler.Extension == nil {
+			continue
+		}
+		if out == nil {
+			out = make(map[otelcomponent.ID]otelcomponent.Component)
+		}
+		out[handler.ID] = handler.Extension
+	}
+	return out
 }
 
 // Exporters implements receiver.Arguments.

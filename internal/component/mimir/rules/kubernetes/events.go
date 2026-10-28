@@ -117,7 +117,11 @@ func (e *eventProcessor) processEvent(ctx context.Context, event kubernetes.Even
 }
 
 func (e *eventProcessor) enqueueSyncMimir() {
-	e.queue.Add(kubernetes.Event{
+	enqueueSyncMimir(e.queue)
+}
+
+func enqueueSyncMimir(queue workqueue.TypedRateLimitingInterface[kubernetes.Event]) {
+	queue.Add(kubernetes.Event{
 		Typ: util.EventTypeSyncMimir,
 	})
 }

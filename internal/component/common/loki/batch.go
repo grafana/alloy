@@ -201,24 +201,17 @@ func (b *Batch) Clone() Batch {
 	}
 
 	for _, stream := range b.streams {
-		clonedStream := stream.Clone()
+		clonedStream := stream.clone()
 		clone.streams = append(clone.streams, clonedStream)
 	}
 
 	return clone
 }
 
-// ConsumeStreams calls fn for each stream in the batch and then resets the batch.
-// The callback receives ownership of the stream.
-// If callback returns errors interation will stop
-func (b *Batch) ConsumeStreams(fn func(stream Stream) error) error {
-	defer b.Reset()
-	for _, s := range b.streams {
-		if err := fn(s); err != nil {
-			return err
-		}
-	}
-	return nil
+// Streams returns all streams in the batch.
+// The streams are still owned by the batch and must not be mutated.
+func (b *Batch) Streams() []Stream {
+	return b.streams
 }
 
 // Reset clears the batch so it can be reused.
@@ -266,10 +259,11 @@ func (s *Stream) updateCreated(created int64) {
 	}
 }
 
-// Clone returns a clone of the stream.
-func (s Stream) Clone() Stream {
+// clone returns a clone of the stream that shares its labels. This is safe
+// because a Batch only changes labels by replacing them.
+func (s Stream) clone() Stream {
 	cloned := Stream{
-		Labels:  s.Labels.Clone(),
+		Labels:  s.Labels,
 		created: s.created,
 		Entries: make([]push.Entry, 0, len(s.Entries)),
 	}

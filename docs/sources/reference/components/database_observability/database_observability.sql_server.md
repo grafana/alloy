@@ -30,16 +30,26 @@ You can use the following arguments with `database_observability.sql_server`:
 
 | Name                | Type                 | Description                                                              | Default | Required |
 |---------------------|----------------------|--------------------------------------------------------------------------|---------|----------|
-| `data_source_name`  | `secret`             | [Data Source Name][] for the SQL Server instance to connect to.          |         | yes      |
+| `data_source_name`  | `secret`             | [Data Source Name][] for the SQL Server instance to connect to. Required when no `database_instance` blocks are defined. |         | no       |
 | `forward_to`        | `list(LogsReceiver)` | Where to forward log entries after processing.                           |         | yes      |
 | `targets`           | `list(map(string))`  | List of external targets to scrape.                                      |         | no       |
 | `disable_collectors`| `list(string)`       | A list of collectors to disable from the default set.                    |         | no       |
 | `enable_collectors` | `list(string)`       | A list of collectors to enable on top of the default set.                |         | no       |
-| `exclude_current_user` | `bool`            | Exclude query samples from sessions opened with the login that Alloy uses. | `true` | no       |
+| `exclude_current_user` | `bool`            | Exclude tagged Alloy queries and query samples from sessions matching the Alloy application name or opened with the login that Alloy uses. | `true` | no       |
 | `exclude_schemas`   | `list(string)`       | A list of schemas to exclude from monitoring, on top of the always-excluded system schemas `sys` and `information_schema`. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
 | `exclude_databases` | `list(string)`       | A list of databases to exclude from monitoring, on top of the always-excluded system databases `master`, `model`, `msdb`, and `tempdb`. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
 | `exclude_users`     | `list(string)`       | A list of original SQL Server login names to exclude from query samples. | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
 | `query_timeout`     | `duration`           | Timeout for each SQL statement.                                          | `"10s"` | no       |
+
+When `data_source_name` doesn't specify an application name (`app name`), Alloy sets it to `grafana:alloy:database_observability` on its SQL Server connections.
+
+The `exclude_current_user` argument excludes SQL tagged by Alloy from query metrics, query details, explain plans, and query samples.
+Query Store doesn't identify the login or application name that executed a query, so this exclusion can't remove arbitrary historical queries by login or previously captured Alloy queries without the marker.
+
+For live query samples, `exclude_current_user` also excludes sessions whose `sys.dm_exec_sessions.program_name` is `grafana:alloy:database_observability` or that were opened with the SQL Server login configured for Alloy.
+Setting it to `false` disables marker, application name, and automatic current-login exclusion.
+The `exclude_users` list still applies to query samples, and Alloy always excludes the request that collects the samples.
+Schema discovery, server configuration, and health-check results aren't filtered by this argument.
 
 The `query_timeout` applies separately to each SQL statement.
 The timeout includes waiting for an available connection and reading the statement results.
@@ -54,6 +64,7 @@ The following collectors are configurable:
 | `query_metrics`   | Collect per-query executions, errors, and duration counters from Query Store. | yes                |
 | `query_samples`   | Collect query samples and wait events for tracked queries.                    | yes                |
 | `schema_details`  | Collect schemas and tables from `information_schema`.                         | yes                |
+| `server_configuration` | Collect connection, resource-limit, and memory configuration metrics.     | yes                |
 
 ## Blocks
 
@@ -67,21 +78,32 @@ You can use the following blocks with `database_observability.sql_server`:
 | `cloud_provider` > [`aws`][aws]      | Provide AWS database host information.            | no       |
 | `cloud_provider` > [`azure`][azure]  | Provide Azure database host information.          | no       |
 | `cloud_provider` > [`gcp`][gcp]      | Provide GCP database host information.            | no       |
+| [`database_instance`][database_instance] | Define one SQL Server instance to monitor. Repeat the block to monitor several instances. | no |
+| `database_instance` > [`cloud_provider`][cloud_provider] | Provide Cloud Provider information for one instance. | no |
+| `database_instance` > [`rule`][rule] | Relabel the metrics and logs of one instance. | no |
+| [`clustering`][clustering]           | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no |
 | [`explain_plans`][explain_plans]     | Configure the query execution plan collector.     | no       |
+| [`health_check`][health_check]       | Configure the health check collector.             | no       |
 | [`query_details`][query_details]     | Configure the Query Store query text collector.   | no       |
 | [`query_metrics`][query_metrics]     | Configure the Query Store metrics collector.      | no       |
 | [`query_samples`][query_samples]     | Configure the query samples collector.            | no       |
 | [`schema_details`][schema_details]   | Configure the schema and table details collector. | no       |
+| [`server_configuration`][server_configuration] | Configure the server configuration collector. | no       |
 
 [cloud_provider]: #cloud_provider
 [aws]: #aws
 [azure]: #azure
 [gcp]: #gcp
+[database_instance]: #database_instance
+[rule]: #rule
+[clustering]: #clustering
 [explain_plans]: #explain_plans
+[health_check]: #health_check
 [query_details]: #query_details
 [query_metrics]: #query_metrics
 [query_samples]: #query_samples
 [schema_details]: #schema_details
+[server_configuration]: #server_configuration
 
 {{< /docs/alloy-config >}}
 
@@ -125,6 +147,88 @@ The `gcp` block supplies the identifying information for the GCP Cloud SQL datab
 |-------------------|----------|-----------------------------------------------------------------------------------------------------------------------------|---------|----------|
 | `connection_name` | `string` | The Cloud SQL instance connection name in the format `project:region:instance`, for example `my-project:us-central1:my-db`. |         | yes      |
 
+### `database_instance`
+
+The `database_instance` block defines one SQL Server instance to monitor.
+Repeat the block to monitor several instances with a single component.
+The block label must be unique across `database_instance` blocks and identifies the instance in the component's metrics endpoint path.
+Each `database_instance` block must also point to a distinct server: two blocks that resolve to the same host, port or named instance, and database name are rejected.
+
+| Name               | Type     | Description                                                      | Default | Required |
+|--------------------|----------|-------------------------------------------------------------------|---------|----------|
+| `data_source_name` | `secret` | [Data Source Name][] for the SQL Server instance to connect to. |         | yes      |
+
+Each `database_instance` block can also contain a [`cloud_provider`][cloud_provider] block that applies to that instance only, and [`rule`][rule] blocks that relabel the metrics and logs of that instance only.
+
+When you define `database_instance` blocks, don't set the top-level `data_source_name`, `targets`, and `cloud_provider` arguments.
+They're mutually exclusive with `database_instance` blocks.
+All other arguments and blocks, such as collector settings, apply to every configured instance.
+
+The metrics for each instance are served on a separate `/db/<LABEL>/metrics` path under the component's HTTP endpoint, and the exported targets point to the corresponding path.
+When you don't define `database_instance` blocks, the component serves metrics on its historical `/metrics` path.
+The metrics endpoints are served exactly at those paths: requests to any other path under the component's HTTP endpoint return HTTP 404.
+
+For example:
+
+```alloy
+database_observability.sql_server "pool" {
+  forward_to = [loki.write.logs_service.receiver]
+
+  database_instance "orders" {
+    data_source_name = sys.env("ORDERS_DSN")
+
+    cloud_provider {
+      aws {
+        arn = "orders-rds-db-arn"
+      }
+    }
+
+    rule {
+      target_label = "environment"
+      replacement  = "production"
+    }
+  }
+
+  database_instance "billing" {
+    data_source_name = sys.env("BILLING_DSN")
+
+    rule {
+      target_label = "environment"
+      replacement  = "staging"
+    }
+  }
+}
+```
+
+In this example, the metrics and logs of the `orders` instance carry `environment="production"`, and those of the `billing` instance carry `environment="staging"`.
+
+### `rule`
+
+The `rule` block relabels the metrics and the logs of the `database_instance` block that contains it.
+Use it to tell the data of each monitored instance apart, for example by environment, team, or tier.
+
+{{< docs/shared lookup="reference/components/rule-block-database-observability.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `clustering`
+
+| Name      | Type   | Description                                               | Default | Required |
+|-----------|--------|-----------------------------------------------------------|---------|----------|
+| `enabled` | `bool` | Enables distributing instances with other cluster nodes.  | `false` | yes      |
+
+When {{< param "PRODUCT_NAME" >}} is [using clustering][], and `enabled` is set to true, then this `database_observability.sql_server` component instance opts-in to distributing its configured instances between all cluster nodes.
+
+Clustering assumes that all cluster nodes are running with the same configuration file.
+All component instances opting in to clustering use the instance key of each configured instance, `<host>:<port>/<database>`, and a consistent hashing algorithm to determine ownership of each instance between the cluster peers.
+Each peer then only collects from the subset of instances it's responsible for, and only exports the targets of those instances, so `prometheus.scrape` components on the same node scrape exactly the instances the node owns.
+When a node joins or leaves the cluster, every peer recalculates ownership: expect a short gap or a brief duplicate collection for an instance while its ownership moves.
+While the cluster isn't yet ready to admit traffic, for example while it's still forming and waiting for the minimum cluster size, the component doesn't collect from any instance.
+
+Clustering is also useful with a single instance: when several cluster nodes run an identical configuration, exactly one node collects from the instance at a time, which gives you a highly available setup without duplicate collection.
+
+If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the block is a no-op and `database_observability.sql_server` collects from every configured instance.
+
+[using clustering]: ../../../../get-started/clustering/
+
 ### `explain_plans`
 
 | Name               | Type       | Description                                    | Default | Required |
@@ -140,6 +244,16 @@ The collector checks for a changed plan every `collect_interval`.
 It forwards a log entry only when the plan's shape has changed since the last entry.
 It also forwards a log entry when 30 minutes have passed since the last entry.
 This keeps log volume low and ensures a fresh entry at least every 30 minutes.
+
+### `health_check`
+
+| Name               | Type       | Description                          | Default | Required |
+|--------------------|------------|---------------------------------------|---------|----------|
+| `collect_interval` | `duration` | How frequently to run health checks. | `"1h"`  | no       |
+
+The `health_check` collector periodically verifies that the login has the required grants (`VIEW DEFINITION`, plus `VIEW DATABASE STATE` or its SQL Server 2022+ equivalent `VIEW DATABASE PERFORMANCE STATE`) and that [Query Store][query_store] is enabled and populated, on every database the login can access on the instance. Each check emits a log entry with `op="health_status"` and a `check` field identifying it: `AlloyVersion`, `RequiredGrantsPresent`, `QueryStoreEnabled`, or `QueryStoreHasRows`.
+
+`RequiredGrantsPresent` and `QueryStoreEnabled` pass only when true on every database the login can access; when they fail, the log entry's value lists the non-compliant databases. `QueryStoreHasRows` passes as soon as any accessible database has Query Store data, since it's expected for a low-traffic database to have none.
 
 ### `query_details`
 
@@ -186,6 +300,48 @@ The login requires `VIEW SERVER STATE` on SQL Server 2019 and earlier. On SQL Se
 | `collect_interval` | `duration` | How frequently to collect information from database. | `"1m"`  | no       |
 
 The collector scans every database that the login can access on the instance and collects schema details from each. Only databases where the login has `CONNECT` access to catalog views are collected.
+
+### `server_configuration`
+
+The `server_configuration` block configures how often `database_observability.sql_server` collects connection, resource-limit, and memory configuration metrics.
+
+| Name               | Type       | Description                                      | Default | Required |
+|--------------------|------------|--------------------------------------------------|---------|----------|
+| `collect_interval` | `duration` | How frequently to collect configuration metrics. | `"10m"` | no       |
+
+The collector queries configuration immediately after it starts and then every `collect_interval`.
+Prometheus scrapes read the latest successful result from memory and don't query SQL Server.
+If a query fails, the collector retains the last successful result and tries again at the next interval.
+The top-level `query_timeout` applies to each configuration query.
+
+For SQL Server, Amazon RDS for SQL Server, Google Cloud SQL for SQL Server, and Azure SQL Managed Instance, the collector reads the settings available in `sys.configurations`.
+Managed database services can omit settings or manage their values.
+The collector skips unavailable settings without failing the collection.
+
+The collector exports the following metrics:
+
+| Metric | Type | Source setting | Description |
+|--------|------|----------------|-------------|
+| `database_observability_sql_server_config_backup_compression_default` | gauge | `backup compression default` | Whether backup compression is enabled by default. |
+| `database_observability_sql_server_config_cost_threshold_for_parallelism` | gauge | `cost threshold for parallelism` | Threshold at which SQL Server creates and runs parallel plans. |
+| `database_observability_sql_server_config_database_max_degree_of_parallelism` | gauge | `sys.database_scoped_configurations.MAXDOP` | Maximum degree of parallelism for the current Azure SQL Database. |
+| `database_observability_sql_server_config_index_create_memory_bytes` | gauge | `index create memory (KB)` | Minimum memory for index creation. |
+| `database_observability_sql_server_config_max_degree_of_parallelism` | gauge | `max degree of parallelism` | Maximum processors used for a parallel plan. |
+| `database_observability_sql_server_config_max_server_memory_bytes` | gauge | `max server memory (MB)` | Maximum memory available to the SQL Server memory manager. |
+| `database_observability_sql_server_config_max_worker_threads` | gauge | `max worker threads` | Maximum worker threads. |
+| `database_observability_sql_server_config_min_memory_per_query_bytes` | gauge | `min memory per query (KB)` | Minimum memory for query execution. |
+| `database_observability_sql_server_config_min_server_memory_bytes` | gauge | `min server memory (MB)` | Minimum memory retained by the SQL Server memory manager. |
+| `database_observability_sql_server_config_network_packet_size_bytes` | gauge | `network packet size (B)` | Default network packet size. |
+| `database_observability_sql_server_config_optimize_for_ad_hoc_workloads` | gauge | `optimize for ad hoc workloads` | Whether plan cache efficiency for single-use ad hoc batches is enabled. |
+| `database_observability_sql_server_config_remote_admin_connections` | gauge | `remote admin connections` | Whether remote dedicated administrator connections are enabled. |
+| `database_observability_sql_server_config_remote_login_timeout_seconds` | gauge | `remote login timeout (s)` | Timeout for outgoing remote login attempts. |
+| `database_observability_sql_server_config_user_connections` | gauge | `user connections` | Configured user connection limit. |
+
+Except for `database_observability_sql_server_config_database_max_degree_of_parallelism`, each metric has a `state` label.
+The `configured` state reports the requested value from `sys.configurations.value`.
+The `in_use` state reports the running value from `sys.configurations.value_in_use`.
+The values can differ when an administrator hasn't run `RECONFIGURE` or when a setting change requires a restart.
+SQL Server can also represent automatic defaults differently for `max server memory (MB)` and `min server memory (MB)`.
 
 ## Example
 

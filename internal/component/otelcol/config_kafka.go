@@ -146,7 +146,7 @@ func (args *KafkaMetadataArguments) SetToDefault() {
 		Full:            true,
 		RefreshInterval: 10 * time.Minute,
 		Retry: KafkaMetadataRetryArguments{
-			MaxRetries: 3,
+			MaxRetries: 20,
 			Backoff:    250 * time.Millisecond,
 		},
 	}

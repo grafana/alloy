@@ -180,6 +180,100 @@ func TestQueueArguments_UnmarshalAlloy(t *testing.T) {
 			`,
 			errorMsg: "`max_size` must be greater or equal to `min_size`",
 		},
+		{
+			testName: "batch with partition block",
+			cfg: `
+				batch {
+					flush_timeout = "5s"
+					min_size = 100
+					max_size = 500
+					sizer = "items"
+
+					partition {
+						metadata_keys = ["tenant", "X-Scope-OrgID"]
+						cache_size = 50
+						idle_timeout = "2m"
+					}
+				}
+			`,
+			expected: otelcol.QueueArguments{
+				Enabled:      true,
+				NumConsumers: 10,
+				QueueSize:    1000,
+				Sizer:        "requests",
+				Batch: &otelcol.BatchConfig{
+					FlushTimeout: 5 * time.Second,
+					MinSize:      100,
+					MaxSize:      500,
+					Sizer:        "items",
+					Partition: &otelcol.PartitionConfig{
+						MetadataKeys: []string{"tenant", "X-Scope-OrgID"},
+						CacheSize:    50,
+						IdleTimeout:  2 * time.Minute,
+					},
+				},
+			},
+		},
+		{
+			testName: "batch with empty partition block uses upstream defaults",
+			cfg: `
+				batch {
+					partition {
+						metadata_keys = ["tenant"]
+					}
+				}
+			`,
+			expected: otelcol.QueueArguments{
+				Enabled:      true,
+				NumConsumers: 10,
+				QueueSize:    1000,
+				Sizer:        "requests",
+				Batch: &otelcol.BatchConfig{
+					FlushTimeout: 200 * time.Millisecond,
+					MinSize:      2000,
+					MaxSize:      3000,
+					Sizer:        "items",
+					Partition: &otelcol.PartitionConfig{
+						MetadataKeys: []string{"tenant"},
+						CacheSize:    10000,
+						IdleTimeout:  90 * time.Second,
+					},
+				},
+			},
+		},
+		{
+			testName: "batch partition with invalid cache_size",
+			cfg: `
+				batch {
+					partition {
+						cache_size = 0
+					}
+				}
+			`,
+			errorMsg: "`cache_size` must be positive",
+		},
+		{
+			testName: "batch partition with invalid idle_timeout",
+			cfg: `
+				batch {
+					partition {
+						idle_timeout = "0s"
+					}
+				}
+			`,
+			errorMsg: "`idle_timeout` must be positive",
+		},
+		{
+			testName: "batch partition with duplicate metadata_keys",
+			cfg: `
+				batch {
+					partition {
+						metadata_keys = ["Tenant", "tenant"]
+					}
+				}
+			`,
+			errorMsg: "duplicate entry in `metadata_keys`",
+		},
 	}
 
 	for _, tc := range tests {
@@ -194,4 +288,53 @@ func TestQueueArguments_UnmarshalAlloy(t *testing.T) {
 			require.Equal(t, tc.expected, args)
 		})
 	}
+}
+
+func TestBatchConfig_ConvertPartition(t *testing.T) {
+	t.Run("no batch block uses the upstream defaults", func(t *testing.T) {
+		var args *otelcol.BatchConfig
+		batch, err := args.Convert()
+		require.NoError(t, err)
+
+		cfg := batch.GetOrInsertDefault()
+		require.Equal(t, 10000, cfg.Partition.CacheSize)
+		require.Equal(t, 90*time.Second, cfg.Partition.IdleTimeout)
+		require.Empty(t, cfg.Partition.MetadataKeys)
+	})
+
+	t.Run("batch block without partition block never passes zero values upstream", func(t *testing.T) {
+		var args otelcol.QueueArguments
+		require.NoError(t, syntax.Unmarshal([]byte(`batch {}`), &args))
+
+		batch, err := args.Batch.Convert()
+		require.NoError(t, err)
+
+		cfg := batch.Get()
+		require.NotNil(t, cfg)
+		require.Equal(t, 10000, cfg.Partition.CacheSize)
+		require.Equal(t, 90*time.Second, cfg.Partition.IdleTimeout)
+		require.Empty(t, cfg.Partition.MetadataKeys)
+	})
+
+	t.Run("partition block is passed upstream", func(t *testing.T) {
+		var args otelcol.QueueArguments
+		require.NoError(t, syntax.Unmarshal([]byte(`
+			batch {
+				partition {
+					metadata_keys = ["tenant"]
+					cache_size = 50
+					idle_timeout = "2m"
+				}
+			}
+		`), &args))
+
+		batch, err := args.Batch.Convert()
+		require.NoError(t, err)
+
+		cfg := batch.Get()
+		require.NotNil(t, cfg)
+		require.Equal(t, []string{"tenant"}, cfg.Partition.MetadataKeys)
+		require.Equal(t, 50, cfg.Partition.CacheSize)
+		require.Equal(t, 2*time.Minute, cfg.Partition.IdleTimeout)
+	})
 }

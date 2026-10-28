@@ -11,7 +11,11 @@ import (
 // submitted after the consumer has been stopped.
 var ErrConsumerStopped = errors.New("consumer stopped")
 
+// Consumer consumes batches of log entries.
 type Consumer interface {
+	// Consume consumes batch and may modify it. The caller may reuse batch once
+	// Consume returns, so Consume must not retain any references to the batch itself
+	// after it returns. Labels and individual entries read from batch may be kept.
 	Consume(ctx context.Context, batch Batch) error
 }
 
@@ -32,7 +36,7 @@ func (c *CollectingConsumer) Consume(_ context.Context, batch Batch) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	c.batches = append(c.batches, batch)
+	c.batches = append(c.batches, batch.Clone())
 	return nil
 }
 

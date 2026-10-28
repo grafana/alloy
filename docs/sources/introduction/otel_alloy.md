@@ -14,7 +14,7 @@ weight: 230
 The {{< param "FULL_OTEL_ENGINE" >}} is an OpenTelemetry Collector distribution embedded within {{< param "PRODUCT_NAME" >}}.
 It lets you run {{< param "PRODUCT_NAME" >}} with the OpenTelemetry Collector while retaining access to {{< param "PRODUCT_NAME" >}} features and integrations through the {{< param "PRODUCT_NAME" >}} Engine extension.
 
-{{< docs/shared lookup="stability/experimental_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Why the {{% param "OTEL_ENGINE" %}} exists
 
@@ -25,7 +25,7 @@ The {{< param "OTEL_ENGINE" >}} addresses this by running the upstream Collector
 You can bring existing Collector configurations to {{< param "PRODUCT_NAME" >}}, use familiar Collector tooling, and choose from the [components bundled with the `otel` command](../../reference/cli/otel/#included-components).
 
 The {{< param "OTEL_ENGINE" >}} also gives Grafana a standards-native foundation for extending {{< param "PRODUCT_NAME" >}}.
-Grafana is committed to providing a first-class OpenTelemetry collection experience as this experimental engine matures.
+Grafana is committed to providing a first-class OpenTelemetry collection experience as this engine matures.
 
 ## How the engines fit together
 
@@ -70,6 +70,17 @@ flowchart TD
     style otel fill:#ffffff,stroke:#000000,color:#000000,rx:10,ry:10
 {{< /mermaid >}}
 
+### Differences between the engines
+
+The two engines store data and serve HTTP traffic in different ways.
+
+- **Storage**: The {{< param "DEFAULT_ENGINE" >}} uses the `--storage.path` flag to set the directory where components write data to disk.
+  The {{< param "OTEL_ENGINE" >}} has no such flag. Use the `filestorage` extension instead.
+  Refer to the [upstream documentation](https://opentelemetry.io/docs/collector/resiliency/#persistent-storage-write-ahead-log---wal) for more information.
+- **Ports**: The {{< param "DEFAULT_ENGINE" >}} serves its HTTP endpoints, including the UI, on port `12345`.
+  The {{< param "OTEL_ENGINE" >}} serves only its own metrics, on port `8888`.
+  It doesn't provide a UI, support bundles, or a reload endpoint.
+
 ## Choose an engine
 
 {{< param "PRODUCT_NAME" >}} supports two runtime engines and an extension.
@@ -113,7 +124,7 @@ It also provides Grafana-specific collection features that don't yet have OpenTe
 Use the `alloyengine` extension when one process needs both standard Collector components and {{< param "DEFAULT_ENGINE" >}} components.
 This approach can simplify small deployments.
 
-{{< docs/shared lookup="stability/experimental_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 For large workloads, run the engines in separate processes so you can scale and troubleshoot them independently.
 Push-based OTLP gateways and pull-based Prometheus scrapers have different load and scaling characteristics.

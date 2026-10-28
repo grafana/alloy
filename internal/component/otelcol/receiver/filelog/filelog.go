@@ -300,7 +300,7 @@ func (args *Arguments) Validate() error {
 		}
 
 		for _, s := range args.MatchCriteria.OrderingCriteria.SortBy {
-			if !slices.Contains([]string{"timestamp", "numeric", "lexicographic", "mtime"}, s.SortType) {
+			if !slices.Contains([]string{"timestamp", "numeric", "alphabetical", "mtime"}, s.SortType) {
 				errs = multierror.Append(errs, fmt.Errorf("invalid 'sort_type': %s", s.SortType))
 			}
 		}
