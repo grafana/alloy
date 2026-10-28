@@ -16,6 +16,7 @@ import (
 
 	"github.com/alecthomas/units"
 	"github.com/prometheus/prometheus/storage"
+	"golang.org/x/net/http/httpguts"
 
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -481,6 +482,14 @@ func (o *URLOptions) validate(queryType, source string, clientHeaders map[string
 	}
 	canonical := map[string]string{}
 	for _, k := range slices.Sorted(maps.Keys(o.Headers)) {
+		// net/http rejects these on each request. Do not show the value,
+		// because it can be a secret.
+		if !httpguts.ValidHeaderFieldName(k) {
+			errs = append(errs, fmt.Errorf("url_options.headers key %q is not a valid header name", k))
+		}
+		if !httpguts.ValidHeaderFieldValue(string(o.Headers[k])) {
+			errs = append(errs, fmt.Errorf("url_options.headers value for key %q has a character that a header cannot hold, such as a line break", k))
+		}
 		ck := http.CanonicalHeaderKey(k)
 		if prev, dup := canonical[ck]; dup {
 			errs = append(errs, fmt.Errorf("url_options.headers keys %q and %q are the same header", prev, k))

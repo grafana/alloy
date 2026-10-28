@@ -341,6 +341,14 @@ query "q" {
 	url = "http://x"
 	url_options { body_type = "graphql" }
 }`, "a request body is not allowed with method GET"},
+		{"header value with a line break", `query "q" {
+	url = "http://x"
+	url_options { headers = { "Authorization" = "Bearer abc\n" } }
+}`, `url_options.headers value for key "Authorization" has a character that a header cannot hold`},
+		{"header name with a space", `query "q" {
+	url = "http://x"
+	url_options { headers = { "X Token" = "abc" } }
+}`, `url_options.headers key "X Token" is not a valid header name`},
 		{"graphql without query", `query "q" {
 	type = "graphql"
 	url = "http://x"

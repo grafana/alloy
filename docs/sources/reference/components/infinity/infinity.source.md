@@ -328,6 +328,7 @@ Each body argument must match `body_type`, or it's a configuration error:
 
 `infinity.source` adds `headers` after the headers from the `client` block, and adds `params` to the existing query string of the request URL.
 A header name in both `headers` and `client`'s `http_headers` argument is a configuration error, and so is a parameter name in both `params` and the `url` argument's own query string.
+A header name or value that HTTP doesn't allow, such as a value that ends in a line break, is also a configuration error.
 Header names are case-insensitive, so two `headers` keys that differ only in case, such as `"x-key"` and `"X-Key"`, are a configuration error.
 A `Host` key in `headers` sets the host that the request sends.
 For HTTPS, the TLS check uses the `url` host.
