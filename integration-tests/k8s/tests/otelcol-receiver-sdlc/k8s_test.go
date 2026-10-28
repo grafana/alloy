@@ -20,10 +20,10 @@ const workloadNamespace = "test-sdlc-rollouts"
 // rolloutEvent is one grafana.sdlc.change record. name is the lifecycle step,
 // recovered from the change summary; body is the change.diff map.
 type rolloutEvent struct {
-	name, namespace, resourceID, pod string
-	timestamp                        uint64
-	body                             map[string]any
-	attrs                            map[string]any
+	name, namespace, resourceType, resourceID, pod string
+	timestamp                                      uint64
+	body                                           map[string]any
+	attrs                                          map[string]any
 }
 
 func TestK8sWorkloads(t *testing.T) {
@@ -83,8 +83,11 @@ func TestK8sWorkloads(t *testing.T) {
 	owners := map[string]bool{}
 	counts := map[string]int{}
 	for _, e := range events {
-		require.Contains(t, []string{"started", "succeeded", "stalled", "superseded", "images_resolved"}, e.name)
 		require.Equal(t, "k8s", e.attrs["grafana.sdlc.provider.type"])
+		if e.resourceType != "deployment" {
+			continue
+		}
+		require.Contains(t, []string{"started", "succeeded", "stalled", "superseded", "images_resolved"}, e.name)
 		if e.namespace == workloadNamespace {
 			owners[e.pod] = true
 			counts[e.name]++
@@ -92,6 +95,31 @@ func TestK8sWorkloads(t *testing.T) {
 	}
 	require.Len(t, owners, 1)
 	require.Equal(t, map[string]int{"started": 3, "succeeded": 2, "stalled": 1, "superseded": 1, "images_resolved": 3}, counts)
+
+	const secretValue = "integration-secret-value"
+	apply(t, map[string]any{"apiVersion": "v1", "kind": "ConfigMap", "metadata": map[string]any{"name": "settings", "namespace": workloadNamespace}, "data": map[string]string{"LOG_LEVEL": "info"}})
+	apply(t, map[string]any{"apiVersion": "v1", "kind": "Secret", "metadata": map[string]any{"name": "creds", "namespace": workloadNamespace}, "stringData": map[string]string{"password": secretValue}})
+	config := func(resourceType, name, summary string) func(rolloutEvent) bool {
+		return func(e rolloutEvent) bool {
+			return e.resourceType == resourceType && e.resourceID == workloadNamespace+"/"+name && e.name == summary
+		}
+	}
+	waitEvent(t, config("configmap", "settings", "Created"))
+	waitEvent(t, config("secret", "creds", "Created"))
+	require.NoError(t, harness.RunCommand("kubectl", "-n", workloadNamespace, "patch", "configmap/settings", "--type=merge", "-p", `{"data":{"LOG_LEVEL":"debug"}}`))
+	require.NoError(t, harness.RunCommand("kubectl", "-n", workloadNamespace, "patch", "secret/creds", "--type=merge", "-p", `{"stringData":{"password":"rotated-`+secretValue+`"}}`))
+	updated := waitEvent(t, config("configmap", "settings", "Updated"))
+	require.Equal(t, "effect", updated.attrs["grafana.sdlc.type"])
+	require.Equal(t, map[string]any{"changes": map[string]any{"data.LOG_LEVEL": map[string]any{"operation": "modified"}}}, updated.body)
+	rotated := waitEvent(t, config("secret", "creds", "Updated"))
+	require.Equal(t, map[string]any{"changes": map[string]any{"data": map[string]any{"operation": "modified"}}}, rotated.body)
+	events, err = readEvents()
+	require.NoError(t, err)
+	for _, e := range events {
+		attrs, err := json.Marshal(e.attrs)
+		require.NoError(t, err)
+		require.NotContains(t, string(attrs), secretValue)
+	}
 }
 func deployment(name string, labels map[string]string) map[string]any {
 	return map[string]any{"apiVersion": "apps/v1", "kind": "Deployment", "metadata": map[string]any{"name": name, "namespace": workloadNamespace, "labels": labels}, "spec": map[string]any{"replicas": 1, "progressDeadlineSeconds": 10, "selector": map[string]any{"matchLabels": map[string]string{"app": name}}, "template": map[string]any{"metadata": map[string]any{"labels": map[string]string{"app": name}}, "spec": map[string]any{"terminationGracePeriodSeconds": 1, "containers": []any{map[string]any{"name": "app", "image": "nginx:1.27-alpine"}}}}}}
@@ -143,6 +171,7 @@ func readEvents() ([]rolloutEvent, error) {
 				rl := logs.ResourceLogs().At(i)
 				resource := rl.Resource().Attributes().AsRaw()
 				resourceID, _ := resource["grafana.sdlc.resource.id"].(string)
+				resourceType, _ := resource["grafana.sdlc.resource.type"].(string)
 				namespace, _, _ := strings.Cut(resourceID, "/")
 				for j := 0; j < rl.ScopeLogs().Len(); j++ {
 					records := rl.ScopeLogs().At(j).LogRecords()
@@ -155,7 +184,7 @@ func readEvents() ([]rolloutEvent, error) {
 						attrs["grafana.sdlc.provider.type"] = resource["grafana.sdlc.provider.type"]
 						body, _ := attrs["grafana.sdlc.change.diff"].(map[string]any)
 						summary, _ := attrs["grafana.sdlc.change.summary"].(string)
-						events = append(events, rolloutEvent{name: lifecycle(summary), namespace: namespace, resourceID: resourceID, pod: pod, timestamp: uint64(r.Timestamp()), body: body, attrs: attrs})
+						events = append(events, rolloutEvent{name: lifecycle(summary), namespace: namespace, resourceType: resourceType, resourceID: resourceID, pod: pod, timestamp: uint64(r.Timestamp()), body: body, attrs: attrs})
 					}
 				}
 			}
@@ -164,7 +193,8 @@ func readEvents() ([]rolloutEvent, error) {
 	return events, nil
 }
 
-// lifecycle maps a change summary back to its rollout step.
+// lifecycle maps a change summary back to its rollout step. ConfigMap and
+// Secret summaries are returned unchanged.
 func lifecycle(summary string) string {
 	for prefix, name := range map[string]string{
 		"Rollout started":                   "started",

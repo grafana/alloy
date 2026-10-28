@@ -36,6 +36,36 @@ func TestArgumentsUnmarshal(t *testing.T) {
 	require.NotNil(t, args.Output)
 }
 
+func TestArgumentsConfigTracking(t *testing.T) {
+	var args Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(`output {}`), &args))
+	require.Equal(t, ConfigMapsArguments{Enabled: true, Content: "keys"}, args.ConfigMaps)
+	require.True(t, args.Secrets.Enabled)
+
+	require.NoError(t, syntax.Unmarshal([]byte(`
+		configmaps {
+			content = "all"
+		}
+
+		secrets {
+			enabled = false
+		}
+
+		output {}
+	`), &args))
+	require.Equal(t, ConfigMapsArguments{Enabled: true, Content: "all"}, args.ConfigMaps)
+	require.False(t, args.Secrets.Enabled)
+
+	err := syntax.Unmarshal([]byte(`
+		configmaps {
+			content = "values"
+		}
+
+		output {}
+	`), &args)
+	require.ErrorContains(t, err, "content must be one of")
+}
+
 func TestArgumentsRequireOutput(t *testing.T) {
 	var args Arguments
 	err := syntax.Unmarshal(nil, &args)

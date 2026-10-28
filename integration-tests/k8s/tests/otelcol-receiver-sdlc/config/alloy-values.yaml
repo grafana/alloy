@@ -17,5 +17,5 @@ rbac:
       resources: ["deployments", "replicasets"]
       verbs: ["list", "watch"]
     - apiGroups: [""]
-      resources: ["pods"]
+      resources: ["pods", "configmaps", "secrets"]
       verbs: ["list", "watch"]

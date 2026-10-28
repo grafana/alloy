@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/metadata"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 )
@@ -24,7 +25,10 @@ const revisionAnnotation = "deployment.kubernetes.io/revision"
 type controllerOptions struct {
 	logger                  *slog.Logger
 	client                  kubernetes.Interface
+	metadata                metadata.Interface
 	clusterName, clusterUID string
+	configMapContent        string // empty disables ConfigMap tracking
+	secrets                 bool
 	emit                    func(context.Context, func() eventBatch) error
 	now                     func() time.Time
 }
@@ -91,8 +95,12 @@ func (c *controller) run(ctx context.Context) error {
 	if err := c.watchImages(pods, replicaSets); err != nil {
 		return err
 	}
+	configs, err := c.configInformers()
+	if err != nil {
+		return err
+	}
 	deployments := factory.Apps().V1().Deployments().Informer()
-	_, err := deployments.AddEventHandler(cache.ResourceEventHandlerDetailedFuncs{
+	_, err = deployments.AddEventHandler(cache.ResourceEventHandlerDetailedFuncs{
 		AddFunc:    func(obj any, initial bool) { c.observe(obj.(*appsv1.Deployment), initial) },
 		UpdateFunc: func(_, obj any) { c.observe(obj.(*appsv1.Deployment), false) },
 		DeleteFunc: c.remove,
@@ -102,7 +110,16 @@ func (c *controller) run(ctx context.Context) error {
 	}
 	factory.Start(ctx.Done())
 	defer factory.Shutdown()
-	if !cache.WaitForCacheSync(ctx.Done(), deployments.HasSynced, pods.HasSynced, replicaSets.HasSynced) {
+	configCtx, stopConfigs := context.WithCancel(ctx)
+	var configsDone sync.WaitGroup
+	synced := []cache.InformerSynced{deployments.HasSynced, pods.HasSynced, replicaSets.HasSynced}
+	for _, informer := range configs {
+		configsDone.Add(1)
+		go func() { defer configsDone.Done(); informer.Run(configCtx.Done()) }()
+		synced = append(synced, informer.HasSynced)
+	}
+	defer func() { stopConfigs(); configsDone.Wait() }()
+	if !cache.WaitForCacheSync(ctx.Done(), synced...) {
 		return fmt.Errorf("sync Deployment watch")
 	}
 	go func() { <-ctx.Done(); c.queue.ShutDown(); c.imageQueue.ShutDown() }()

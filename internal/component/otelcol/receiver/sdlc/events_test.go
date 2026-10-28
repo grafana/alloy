@@ -210,7 +210,7 @@ func TestNewDeploymentAndBaseline(t *testing.T) {
 	_, started := take(t, c, "started")
 	take(t, c, "succeeded")
 	require.Equal(t, false, started.diff["changes_known"])
-	require.Empty(t, started.changes())
+	require.NotContains(t, started.diff, "changes", "empty change maps are omitted")
 	restarted := testController(t)
 	restarted.observe(d, true)
 	restarted.observe(d, false)

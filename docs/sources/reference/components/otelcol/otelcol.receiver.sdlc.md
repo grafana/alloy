@@ -14,6 +14,8 @@ title: otelcol.receiver.sdlc
 It watches Deployments across all namespaces and reports four transitions: `started`, `succeeded`, `stalled`, and `superseded`.
 Replica-only scaling doesn't start a rollout or open image collection.
 Shared Pod and ReplicaSet watches collect runtime image identities for newly observed rollouts.
+It also watches ConfigMaps and Secrets across all namespaces and reports their creation and updates.
+Secret content is never read.
 
 You can specify multiple `otelcol.receiver.sdlc` components by giving them different labels.
 
@@ -57,14 +59,18 @@ You can use the following blocks with `otelcol.receiver.sdlc`:
 | `client` > [`oauth2`][oauth2]               | Configures OAuth 2.0 authentication for Kubernetes API requests.       | no       |
 | `client` > [`tls_config`][tls_config]       | Configures TLS for connections to the Kubernetes API server.           | no       |
 | [`clustering`][clustering]                  | Configures cluster-wide ownership of the Kubernetes watcher.           | no       |
+| [`configmaps`][configmaps]                  | Configures ConfigMap change tracking.                                  | no       |
 | [`output`][output]                          | Configures where to send workload events.                               | yes      |
+| [`secrets`][secrets]                        | Configures Secret change tracking.                                     | no       |
 
 [authorization]: #authorization
 [basic_auth]: #basic_auth
 [client]: #client
 [clustering]: #clustering
+[configmaps]: #configmaps
 [oauth2]: #oauth2
 [output]: #output
+[secrets]: #secrets
 [tls_config]: #tls_config
 
 {{< /docs/alloy-config >}}
@@ -134,15 +140,45 @@ This delay reduces watcher restarts while members join, but doesn't guarantee ex
 
 If {{< param "PRODUCT_NAME" >}} isn't running in clustered mode, the block has no effect and every configured instance watches the Kubernetes cluster.
 
+### `configmaps`
+
+The `configmaps` block configures ConfigMap change tracking:
+
+| Name      | Type     | Description                                               | Default  | Required |
+| --------- | -------- | --------------------------------------------------------- | -------- | -------- |
+| `content` | `string` | How much of the `data` and `binaryData` fields to report. | `"keys"` | no       |
+| `enabled` | `bool`   | Track ConfigMaps in all namespaces.                       | `true`   | no       |
+
+`content` accepts the following values:
+
+* `all`: Report changed keys with their `before` and `after` values.
+* `keys`: Report changed keys without values.
+* `metadata`: Don't report `data` or `binaryData`. The component reads ConfigMaps through the metadata API, so their content never reaches {{< param "PRODUCT_NAME" >}}.
+
+ConfigMaps can contain credentials.
+Use `all` only when every ConfigMap in the cluster can be exported to the `output` destination.
+With `all`, {{< param "PRODUCT_NAME" >}} keeps the content of every ConfigMap in memory.
+
 ### `output`
 
 {{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block-logs.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
+### `secrets`
+
+The `secrets` block configures Secret change tracking:
+
+| Name      | Type   | Description                      | Default | Required |
+| --------- | ------ | -------------------------------- | ------- | -------- |
+| `enabled` | `bool` | Track Secrets in all namespaces. | `true`  | no       |
+
+The component reads Secrets through the metadata API, so Secret content never reaches {{< param "PRODUCT_NAME" >}}.
+The API server still requires `list` and `watch` permissions on Secrets.
+
 ## Kubernetes permissions
 
-The component lists and watches Deployments, ReplicaSets, and Pods across all namespaces.
+The component lists and watches Deployments, ReplicaSets, Pods, ConfigMaps, and Secrets across all namespaces.
 If `cluster_uid` is empty, it also reads the `kube-system` Namespace once to discover the cluster UID.
 Grant its service account the following permissions:
 
@@ -156,7 +192,7 @@ rules:
     resources: ["deployments", "replicasets"]
     verbs: ["list", "watch"]
   - apiGroups: [""]
-    resources: ["pods"]
+    resources: ["pods", "configmaps", "secrets"]
     verbs: ["list", "watch"]
   - apiGroups: [""]
     resources: ["namespaces"]
@@ -165,6 +201,8 @@ rules:
 ```
 
 You can omit the Namespace permission when you configure `cluster_uid`.
+You can omit the ConfigMap or Secret permission when you disable the `configmaps` or `secrets` block.
+Without a required permission, the watcher doesn't become ready and emits no events.
 
 ## Event schema
 
@@ -181,8 +219,8 @@ Send events to an ingest endpoint that is specific to your Grafana Cloud stack.
 | --- | --- |
 | `provider.type` | `k8s`. |
 | `provider.id` | The `cluster_name`, or the cluster UID when `cluster_name` isn't set. |
-| `resource.type` | `deployment`. |
-| `resource.id` | `<namespace>/<name>` of the Deployment. |
+| `resource.type` | `deployment`, `configmap`, or `secret`. |
+| `resource.id` | `<namespace>/<name>` of the object. |
 
 ### Log record fields and attributes
 
@@ -191,21 +229,21 @@ Send events to an ingest endpoint that is specific to your Grafana Cloud stack.
 | `eventName` | `grafana.sdlc.change`. |
 | `timeUnixNano` | The event end time: the watcher's observation time, not an exact Kubernetes transition time. |
 | `observedTimeUnixNano` | The same observation time. |
-| `traceId` | Derived from the rollout ID, so all events of one rollout share one trace. `spanId` isn't set. |
+| `traceId` | For Deployments, derived from the rollout ID, so all events of one rollout share one trace. Not set for ConfigMaps and Secrets. `spanId` isn't set. |
 | `schema.version` | `"1"`. |
 | `provider.version` | The {{< param "PRODUCT_NAME" >}} version. |
-| `event.id` | A deterministic hash of the rollout ID and event kind. Retries preserve it. |
+| `event.id` | A deterministic hash that identifies the event. Retries preserve it. |
 | `status` | Always `UNSET`. The lifecycle step is in `change.summary`. |
 | `start_time_unix_nano` | The event start time. |
 | `type` | `intent` for `started`. `effect` for every other event. |
 | `change.summary` | The lifecycle step. It doesn't include the resource name. |
-| `change.version.before` | The previous Deployment revision. Omitted when unknown. |
-| `change.version.after` | The Deployment revision of this rollout. |
-| `change.diff` | A map of rollout details, described in the following sections. |
+| `change.version.before` | The previous Deployment revision, or the previous ConfigMap or Secret resource version. Omitted when unknown. |
+| `change.version.after` | The Deployment revision of this rollout, or the ConfigMap or Secret resource version. |
+| `change.diff` | A map of change details, described in the following sections. Omitted when it has no entries. |
 
 The component doesn't set `service.ids`, `environment.id`, `owners`, `actor`, `tracing.enabled`, `logging.enabled`, `change.url`, or `change.git.*`.
 Because `tracing.enabled` isn't set, the backend emits a span for each event.
-Each event is a span in the rollout's trace.
+Each Deployment event is a span in the rollout's trace.
 
 ### Rollout events
 
@@ -242,7 +280,7 @@ A template change while paused starts a rollout only after the controller applie
 
 The `started` `change.diff` includes `changes_known`, which indicates whether a previous template is available for comparison.
 When a previous template is available, `changes` describes the changed fields.
-Empty change maps are omitted.
+`changes` is omitted when no tracked field changed, including when no previous template is available.
 The baseline is the previously observed rollout template; changes aren't reconstructed from historical ReplicaSets.
 
 `changes` is a map keyed by field path.
@@ -275,6 +313,46 @@ For example, an image update and a CPU request increase produce this `change.dif
   }
 }
 ```
+
+### ConfigMap and Secret events
+
+ConfigMap and Secret events are points in time with the following `change.summary` values:
+
+| `change.summary` | Meaning |
+| --- | --- |
+| `Created` | The watcher observes an object that didn't exist in its baseline. |
+| `Updated` | A tracked field of the object changes. |
+
+Deleting a ConfigMap or Secret doesn't emit an event.
+The `event.id` is a deterministic hash of the cluster UID, object UID, resource version, and event type.
+
+`change.diff` contains only `changes`, a map keyed by field path in the same format as rollout changes.
+A `created` event reports every tracked field as `added`.
+A `created` event has no `change.diff` when the object has no tracked fields, such as a Secret without labels or annotations.
+The following fields are tracked:
+
+* `metadata.labels.<key>`: Includes `before` and `after` values.
+* `metadata.annotations.<key>`: Never includes values. Annotations such as `kubectl.kubernetes.io/last-applied-configuration` can contain the full manifest, including Secret data.
+* `data.<key>` and `binaryData.<key>`: Include `before` and `after` values only when the [`configmaps`][configmaps] `content` is `all`. `binaryData` values are base64-encoded.
+* `metadata.ownerReferences`, `metadata.finalizers`, and `metadata.deletionTimestamp`: Never include values.
+* `immutable`: Includes `before` and `after` values.
+
+For example, a label change and a data change with `content` set to `keys` produce this `change.diff`:
+
+```json
+{
+  "changes": {
+    "metadata.labels.team": {"operation": "modified", "before": "payments", "after": "checkout"},
+    "data.LOG_LEVEL": {"operation": "modified"}
+  }
+}
+```
+
+The metadata API doesn't return content.
+For Secrets, and for ConfigMaps with `content` set to `metadata`, a new resource version without a tracked metadata change is reported as a `data` change with operation `modified`.
+This change is inferred: an update that only changes managed fields is also reported this way, and a content change made together with a metadata change reports only the metadata change.
+
+When `content` is `all` and an event would exceed 2 MiB, the component omits the `data` and `binaryData` values and reports only their operations.
 
 ### Resolved container images
 
@@ -311,6 +389,7 @@ The initial watch listing establishes an in-memory baseline without emitting eve
 An in-progress rollout found during startup can subsequently emit an outcome without a preceding `started` event.
 Restarts and ownership changes don't replay missed events, and intermediate revisions can be missed between observations.
 Deleting a Deployment emits no event and discards its tracked rollout and image collection state.
+ConfigMap and Secret changes made while the watcher is stopped aren't reported, and consecutive updates between observations are reported as one change.
 The component doesn't persist state or reconcile historical rollouts.
 
 Downstream delivery failures are logged and retried with the original event ID and timestamp.

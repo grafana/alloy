@@ -40,16 +40,15 @@ type eventBatch struct {
 
 // changeEvent is one grafana.sdlc.change record, before encoding.
 type changeEvent struct {
-	deployment *appsv1.Deployment
-	// kind distinguishes events of one rollout and is part of the event ID.
-	kind             string
-	rolloutID        string
-	revision         int64
-	previousRevision int64
-	start, end       time.Time
-	changeType       string
-	summary          string
-	diff             func(pcommon.Map)
+	resourceType, resourceID string
+	id                       string
+	// traceKey groups related events into one trace; empty leaves it unset.
+	traceKey                    string
+	versionBefore, versionAfter string
+	start, end                  time.Time
+	changeType                  string
+	summary                     string
+	diff                        func(pcommon.Map)
 }
 
 func (c *controller) rolloutID(d *appsv1.Deployment, revision int64) string {
@@ -59,16 +58,7 @@ func (c *controller) rolloutID(d *appsv1.Deployment, revision int64) string {
 func (c *controller) enqueue(d *appsv1.Deployment, state rolloutState, status string, replacement int64, changes []fieldChange, known bool) {
 	now := c.now()
 	rolloutID := c.rolloutID(d, state.revision)
-	event := changeEvent{
-		deployment:       d,
-		kind:             status,
-		rolloutID:        rolloutID,
-		revision:         state.revision,
-		previousRevision: state.previousRevision,
-		start:            now,
-		end:              now,
-		changeType:       changeTypeEffect,
-	}
+	event := rolloutEvent(d, state, status, rolloutID, now)
 	switch status {
 	case rolloutStarted:
 		event.changeType = changeTypeIntent
@@ -90,12 +80,31 @@ func (c *controller) enqueue(d *appsv1.Deployment, state rolloutState, status st
 		switch status {
 		case rolloutStarted:
 			diff.PutBool("changes_known", known)
-			putChanges(diff.PutEmptyMap("changes"), changes)
+			putChanges(diff, changes)
 		case rolloutSuperseded:
 			diff.PutStr("superseded_by", c.rolloutID(d, replacement))
 		}
 	}
 	c.enqueueChange(event)
+}
+
+// rolloutEvent is a point-in-time effect of the rollout. kind distinguishes
+// events of one rollout and is part of the event ID.
+func rolloutEvent(d *appsv1.Deployment, state rolloutState, kind, rolloutID string, at time.Time) changeEvent {
+	event := changeEvent{
+		resourceType: "deployment",
+		resourceID:   d.Namespace + "/" + d.Name,
+		id:           stableID(rolloutID, kind),
+		traceKey:     rolloutID,
+		versionAfter: strconv.FormatInt(state.revision, 10),
+		start:        at,
+		end:          at,
+		changeType:   changeTypeEffect,
+	}
+	if state.previousRevision > 0 {
+		event.versionBefore = strconv.FormatInt(state.previousRevision, 10)
+	}
+	return event
 }
 
 func (c *controller) putRolloutDiff(diff pcommon.Map, d *appsv1.Deployment, state rolloutState, rolloutID string) {
@@ -120,9 +129,13 @@ func (c *controller) putRolloutDiff(diff pcommon.Map, d *appsv1.Deployment, stat
 	}
 }
 
-// putChanges encodes changes as a map keyed by field path. Values are present
-// only for fields whose diff rule reports them.
-func putChanges(out pcommon.Map, changes []fieldChange) {
+// putChanges encodes changes as a "changes" map keyed by field path, omitted
+// when empty. Values are present only for fields whose diff rule reports them.
+func putChanges(diff pcommon.Map, changes []fieldChange) {
+	if len(changes) == 0 {
+		return
+	}
+	out := diff.PutEmptyMap("changes")
 	for _, change := range changes {
 		entry := out.PutEmptyMap(change.Path)
 		entry.PutStr("operation", change.Operation)
@@ -136,7 +149,10 @@ func putChanges(out pcommon.Map, changes []fieldChange) {
 }
 
 func (c *controller) enqueueChange(e changeEvent) {
-	d := e.deployment
+	c.queue.Add(&eventBatch{logs: c.changeLogs(e), id: e.id})
+}
+
+func (c *controller) changeLogs(e changeEvent) plog.Logs {
 	logs := plog.NewLogs()
 	rl := logs.ResourceLogs().AppendEmpty()
 	res := rl.Resource().Attributes()
@@ -146,8 +162,8 @@ func (c *controller) enqueueChange(e changeEvent) {
 	}
 	res.PutStr(attrPrefix+"provider.type", "k8s")
 	res.PutStr(attrPrefix+"provider.id", providerID)
-	res.PutStr(attrPrefix+"resource.type", "deployment")
-	res.PutStr(attrPrefix+"resource.id", d.Namespace+"/"+d.Name)
+	res.PutStr(attrPrefix+"resource.type", e.resourceType)
+	res.PutStr(attrPrefix+"resource.id", e.resourceID)
 	sl := rl.ScopeLogs().AppendEmpty()
 	sl.Scope().SetName("github.com/grafana/alloy/otelcol.receiver.sdlc")
 	record := sl.LogRecords().AppendEmpty()
@@ -156,29 +172,42 @@ func (c *controller) enqueueChange(e changeEvent) {
 	record.SetObservedTimestamp(pcommon.NewTimestampFromTime(e.end))
 	record.SetSeverityNumber(plog.SeverityNumberInfo)
 	// One trace per rollout. Derived from the rollout ID so retries are identical.
-	record.SetTraceID(traceID(e.rolloutID))
+	if e.traceKey != "" {
+		record.SetTraceID(traceID(e.traceKey))
+	}
 
-	id := stableID(e.rolloutID, e.kind)
 	attrs := record.Attributes()
 	attrs.PutStr(attrPrefix+"schema.version", schemaVersion)
 	attrs.PutStr(attrPrefix+"provider.version", build.Version)
-	attrs.PutStr(attrPrefix+"event.id", id)
+	attrs.PutStr(attrPrefix+"event.id", e.id)
 	attrs.PutStr(attrPrefix+"status", "UNSET")
 	attrs.PutInt(attrPrefix+"start_time_unix_nano", e.start.UnixNano())
 	attrs.PutStr(attrPrefix+"type", e.changeType)
 	attrs.PutStr(attrPrefix+"change.summary", truncate(e.summary, maxSummaryLength))
-	if e.previousRevision > 0 {
-		attrs.PutStr(attrPrefix+"change.version.before", strconv.FormatInt(e.previousRevision, 10))
+	if e.versionBefore != "" {
+		attrs.PutStr(attrPrefix+"change.version.before", e.versionBefore)
 	}
-	attrs.PutStr(attrPrefix+"change.version.after", strconv.FormatInt(e.revision, 10))
+	attrs.PutStr(attrPrefix+"change.version.after", e.versionAfter)
 	if e.diff != nil {
-		e.diff(attrs.PutEmptyMap(attrPrefix + "change.diff"))
+		diff := pcommon.NewMap()
+		e.diff(diff)
+		if diff.Len() > 0 {
+			diff.MoveTo(attrs.PutEmptyMap(attrPrefix + "change.diff"))
+		}
 	}
-	c.queue.Add(&eventBatch{logs: logs, id: id})
+	return logs
 }
 
-func traceID(rolloutID string) pcommon.TraceID {
-	sum := sha256.Sum256([]byte(rolloutID))
+// Bound the full OTLP JSON record so exporters don't reject it and retry forever.
+const maxEventBytes = 2*1024*1024 - 1024
+
+func wireSize(logs plog.Logs) (int, error) {
+	wire, err := (&plog.JSONMarshaler{}).MarshalLogs(logs)
+	return len(wire), err
+}
+
+func traceID(key string) pcommon.TraceID {
+	sum := sha256.Sum256([]byte(key))
 	var id pcommon.TraceID
 	copy(id[:], sum[:16])
 	return id

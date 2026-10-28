@@ -11,6 +11,7 @@ import (
 	"github.com/grafana/ckit/shard"
 	"go.opentelemetry.io/collector/consumer"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/metadata"
 	"k8s.io/client-go/rest"
 
 	"github.com/grafana/alloy/internal/component"
@@ -37,6 +38,9 @@ type Arguments struct {
 	ClusterName string `alloy:"cluster_name,attr,optional"`
 	ClusterUID  string `alloy:"cluster_uid,attr,optional"`
 
+	ConfigMaps ConfigMapsArguments `alloy:"configmaps,block,optional"`
+	Secrets    SecretsArguments    `alloy:"secrets,block,optional"`
+
 	Client     commonk8s.ClientArguments  `alloy:"client,block,optional"`
 	Clustering cluster.ComponentBlock     `alloy:"clustering,block,optional"`
 	Output     *otelcol.ConsumerArguments `alloy:"output,block"`
@@ -45,6 +49,8 @@ type Arguments struct {
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{Client: commonk8s.DefaultClientArguments}
+	args.ConfigMaps.SetToDefault()
+	args.Secrets.SetToDefault()
 }
 
 // Validate implements syntax.Validator.
@@ -52,7 +58,7 @@ func (args *Arguments) Validate() error {
 	if args.Output == nil {
 		return fmt.Errorf("output block is required")
 	}
-	return nil
+	return args.ConfigMaps.Validate()
 }
 
 // Component watches Kubernetes Deployment rollout transitions.
@@ -190,12 +196,23 @@ func (c *Component) runGeneration(ctx context.Context, args Arguments, restConfi
 	if err != nil {
 		return fmt.Errorf("creating Kubernetes client: %w", err)
 	}
+	metadataClient, err := metadata.NewForConfig(restConfig)
+	if err != nil {
+		return fmt.Errorf("creating Kubernetes metadata client: %w", err)
+	}
+	configMapContent := ""
+	if args.ConfigMaps.Enabled {
+		configMapContent = args.ConfigMaps.Content
+	}
 	ctrl := newController(controllerOptions{
-		logger:      c.opts.Logger,
-		client:      client,
-		clusterName: args.ClusterName,
-		clusterUID:  args.ClusterUID,
-		emit:        c.emit,
+		logger:           c.opts.Logger,
+		client:           client,
+		metadata:         metadataClient,
+		clusterName:      args.ClusterName,
+		clusterUID:       args.ClusterUID,
+		configMapContent: configMapContent,
+		secrets:          args.Secrets.Enabled,
+		emit:             c.emit,
 	})
 	return ctrl.run(ctx)
 }

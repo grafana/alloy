@@ -38,7 +38,7 @@ type imageCollection struct {
 
 // Transform each bounded list page before the reflector accumulates its initial
 // snapshot. Cache transforms alone run too late to bound initial list memory.
-func imageList(ctx context.Context, options metav1.ListOptions, list cache.ListWithContextFunc) (runtime.Object, error) {
+func pagedList(ctx context.Context, options metav1.ListOptions, list cache.ListWithContextFunc, transform cache.TransformFunc) (runtime.Object, error) {
 	if options.ResourceVersion == "0" {
 		// Kubernetes watch caches may ignore Limit for RV=0.
 		options.ResourceVersion = ""
@@ -56,7 +56,7 @@ func imageList(ctx context.Context, options metav1.ListOptions, list cache.ListW
 		}
 		result := &metainternal.List{ListMeta: metav1.ListMeta{ResourceVersion: metadata.GetResourceVersion(), Continue: metadata.GetContinue()}}
 		err = meta.EachListItem(page, func(item runtime.Object) error {
-			transformed, err := imageWatchTransform(item)
+			transformed, err := transform(item)
 			if err != nil {
 				return err
 			}
@@ -73,12 +73,19 @@ func imageList(ctx context.Context, options metav1.ListOptions, list cache.ListW
 }
 
 func newImageInformer(client kubernetes.Interface, example runtime.Object, list cache.ListWithContextFunc, watch cache.WatchFuncWithContext) cache.SharedIndexInformer {
-	return cache.NewSharedIndexInformer(cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
+	return newPagedInformer(client, example, list, watch, imageWatchTransform)
+}
+
+// The informer applies transform to watch events (and streamed lists) too.
+func newPagedInformer(client any, example runtime.Object, list cache.ListWithContextFunc, watch cache.WatchFuncWithContext, transform cache.TransformFunc) cache.SharedIndexInformer {
+	informer := cache.NewSharedIndexInformer(cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 		ListWithContextFunc: func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
-			return imageList(ctx, options, list)
+			return pagedList(ctx, options, list, transform)
 		},
 		WatchFuncWithContext: watch,
 	}, client), example, 0, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	_ = informer.SetTransform(transform) // Only fails after the informer has started.
+	return informer
 }
 
 // Keep only image-resolution fields in informer caches and handler queues. A
@@ -359,32 +366,24 @@ func (c *controller) finalizeImages(ctx context.Context, x *imageCollection) {
 	}
 	add(x.state.template.Spec.Containers, false)
 	add(x.state.template.Spec.InitContainers, true)
-	c.enqueueChange(changeEvent{
-		deployment:       x.deployment,
-		kind:             rolloutImagesResolved,
-		rolloutID:        rolloutID,
-		revision:         x.state.revision,
-		previousRevision: x.state.previousRevision,
-		start:            x.cutoff,
-		end:              x.cutoff,
-		changeType:       changeTypeEffect,
-		summary:          imagesSummary(containers, complete),
-		diff: func(diff pcommon.Map) {
-			c.putRolloutDiff(diff, x.deployment, x.state, rolloutID)
-			diff.PutBool("complete", complete)
-			resolved := diff.PutEmptySlice("resolved_containers")
-			for _, container := range containers {
-				m := resolved.AppendEmpty().SetEmptyMap()
-				m.PutStr("name", container.name)
-				m.PutBool("init", container.init)
-				m.PutStr("image", container.image)
-				ids := m.PutEmptySlice("runtime_image_ids")
-				for _, id := range container.runtimeImageIDs {
-					ids.AppendEmpty().SetStr(id)
-				}
+	event := rolloutEvent(x.deployment, x.state, rolloutImagesResolved, rolloutID, x.cutoff)
+	event.summary = imagesSummary(containers, complete)
+	event.diff = func(diff pcommon.Map) {
+		c.putRolloutDiff(diff, x.deployment, x.state, rolloutID)
+		diff.PutBool("complete", complete)
+		resolved := diff.PutEmptySlice("resolved_containers")
+		for _, container := range containers {
+			m := resolved.AppendEmpty().SetEmptyMap()
+			m.PutStr("name", container.name)
+			m.PutBool("init", container.init)
+			m.PutStr("image", container.image)
+			ids := m.PutEmptySlice("runtime_image_ids")
+			for _, id := range container.runtimeImageIDs {
+				ids.AppendEmpty().SetStr(id)
 			}
-		},
-	})
+		}
+	}
+	c.enqueueChange(event)
 }
 
 // imagesSummary lists runtime image IDs per container, e.g.

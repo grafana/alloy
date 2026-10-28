@@ -212,7 +212,7 @@ func TestImageWatchTransformDropsUnusedFields(t *testing.T) {
 
 func TestImageListPagesBeforeRetainingObjects(t *testing.T) {
 	calls := 0
-	result, err := imageList(context.Background(), metav1.ListOptions{ResourceVersion: "0"}, func(_ context.Context, opts metav1.ListOptions) (runtime.Object, error) {
+	result, err := pagedList(context.Background(), metav1.ListOptions{ResourceVersion: "0"}, func(_ context.Context, opts metav1.ListOptions) (runtime.Object, error) {
 		calls++
 		require.Equal(t, int64(250), opts.Limit)
 		require.Empty(t, opts.ResourceVersion)
@@ -224,7 +224,7 @@ func TestImageListPagesBeforeRetainingObjects(t *testing.T) {
 			require.Equal(t, "page-2", opts.Continue)
 		}
 		return &appsv1.ReplicaSetList{ListMeta: metav1.ListMeta{ResourceVersion: "123", Continue: next}, Items: []appsv1.ReplicaSet{{ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprint(calls), Annotations: map[string]string{revisionAnnotation: "2"}}, Spec: appsv1.ReplicaSetSpec{Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "unused", Image: "large"}}}}}}}}, nil
-	})
+	}, imageWatchTransform)
 	require.NoError(t, err)
 	require.Equal(t, 2, calls)
 	items, err := meta.ExtractList(result)
@@ -238,14 +238,14 @@ func TestImageListPagesBeforeRetainingObjects(t *testing.T) {
 	require.Equal(t, "123", metadata.GetResourceVersion())
 	require.Empty(t, metadata.GetContinue())
 	calls = 0
-	_, err = imageList(context.Background(), metav1.ListOptions{}, func(_ context.Context, opts metav1.ListOptions) (runtime.Object, error) {
+	_, err = pagedList(context.Background(), metav1.ListOptions{}, func(_ context.Context, opts metav1.ListOptions) (runtime.Object, error) {
 		calls++
 		require.Equal(t, int64(250), opts.Limit)
 		if calls == 1 {
 			return &corev1.PodList{ListMeta: metav1.ListMeta{Continue: "expired"}}, nil
 		}
 		return nil, apierrors.NewResourceExpired("expired")
-	})
+	}, imageWatchTransform)
 	require.True(t, apierrors.IsResourceExpired(err))
 	require.Equal(t, 2, calls, "must not fall back to unbounded list")
 }
