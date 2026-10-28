@@ -49,7 +49,7 @@ Query Store doesn't identify the login or application name that executed a query
 For live query samples, `exclude_current_user` also excludes sessions whose `sys.dm_exec_sessions.program_name` is `grafana:alloy:database_observability` or that were opened with the SQL Server login configured for Alloy.
 Setting it to `false` disables marker, application name, and automatic current-login exclusion.
 The `exclude_users` list still applies to query samples, and Alloy always excludes the request that collects the samples.
-Schema discovery and health-check results aren't filtered by this argument.
+Schema discovery, server configuration, and health-check results aren't filtered by this argument.
 
 The `query_timeout` applies separately to each SQL statement.
 The timeout includes waiting for an available connection and reading the statement results.
@@ -64,6 +64,7 @@ The following collectors are configurable:
 | `query_metrics`   | Collect per-query executions, errors, and duration counters from Query Store. | yes                |
 | `query_samples`   | Collect query samples and wait events for tracked queries.                    | yes                |
 | `schema_details`  | Collect schemas and tables from `information_schema`.                         | yes                |
+| `server_configuration` | Collect connection, resource-limit, and memory configuration metrics.     | yes                |
 
 ## Blocks
 
@@ -87,6 +88,7 @@ You can use the following blocks with `database_observability.sql_server`:
 | [`query_metrics`][query_metrics]     | Configure the Query Store metrics collector.      | no       |
 | [`query_samples`][query_samples]     | Configure the query samples collector.            | no       |
 | [`schema_details`][schema_details]   | Configure the schema and table details collector. | no       |
+| [`server_configuration`][server_configuration] | Configure the server configuration collector. | no       |
 
 [cloud_provider]: #cloud_provider
 [aws]: #aws
@@ -101,6 +103,7 @@ You can use the following blocks with `database_observability.sql_server`:
 [query_metrics]: #query_metrics
 [query_samples]: #query_samples
 [schema_details]: #schema_details
+[server_configuration]: #server_configuration
 
 {{< /docs/alloy-config >}}
 
@@ -297,6 +300,48 @@ The login requires `VIEW SERVER STATE` on SQL Server 2019 and earlier. On SQL Se
 | `collect_interval` | `duration` | How frequently to collect information from database. | `"1m"`  | no       |
 
 The collector scans every database that the login can access on the instance and collects schema details from each. Only databases where the login has `CONNECT` access to catalog views are collected.
+
+### `server_configuration`
+
+The `server_configuration` block configures how often `database_observability.sql_server` collects connection, resource-limit, and memory configuration metrics.
+
+| Name               | Type       | Description                                      | Default | Required |
+|--------------------|------------|--------------------------------------------------|---------|----------|
+| `collect_interval` | `duration` | How frequently to collect configuration metrics. | `"10m"` | no       |
+
+The collector queries configuration immediately after it starts and then every `collect_interval`.
+Prometheus scrapes read the latest successful result from memory and don't query SQL Server.
+If a query fails, the collector retains the last successful result and tries again at the next interval.
+The top-level `query_timeout` applies to each configuration query.
+
+For SQL Server, Amazon RDS for SQL Server, Google Cloud SQL for SQL Server, and Azure SQL Managed Instance, the collector reads the settings available in `sys.configurations`.
+Managed database services can omit settings or manage their values.
+The collector skips unavailable settings without failing the collection.
+
+The collector exports the following metrics:
+
+| Metric | Type | Source setting | Description |
+|--------|------|----------------|-------------|
+| `database_observability_sql_server_config_backup_compression_default` | gauge | `backup compression default` | Whether backup compression is enabled by default. |
+| `database_observability_sql_server_config_cost_threshold_for_parallelism` | gauge | `cost threshold for parallelism` | Threshold at which SQL Server creates and runs parallel plans. |
+| `database_observability_sql_server_config_database_max_degree_of_parallelism` | gauge | `sys.database_scoped_configurations.MAXDOP` | Maximum degree of parallelism for the current Azure SQL Database. |
+| `database_observability_sql_server_config_index_create_memory_bytes` | gauge | `index create memory (KB)` | Minimum memory for index creation. |
+| `database_observability_sql_server_config_max_degree_of_parallelism` | gauge | `max degree of parallelism` | Maximum processors used for a parallel plan. |
+| `database_observability_sql_server_config_max_server_memory_bytes` | gauge | `max server memory (MB)` | Maximum memory available to the SQL Server memory manager. |
+| `database_observability_sql_server_config_max_worker_threads` | gauge | `max worker threads` | Maximum worker threads. |
+| `database_observability_sql_server_config_min_memory_per_query_bytes` | gauge | `min memory per query (KB)` | Minimum memory for query execution. |
+| `database_observability_sql_server_config_min_server_memory_bytes` | gauge | `min server memory (MB)` | Minimum memory retained by the SQL Server memory manager. |
+| `database_observability_sql_server_config_network_packet_size_bytes` | gauge | `network packet size (B)` | Default network packet size. |
+| `database_observability_sql_server_config_optimize_for_ad_hoc_workloads` | gauge | `optimize for ad hoc workloads` | Whether plan cache efficiency for single-use ad hoc batches is enabled. |
+| `database_observability_sql_server_config_remote_admin_connections` | gauge | `remote admin connections` | Whether remote dedicated administrator connections are enabled. |
+| `database_observability_sql_server_config_remote_login_timeout_seconds` | gauge | `remote login timeout (s)` | Timeout for outgoing remote login attempts. |
+| `database_observability_sql_server_config_user_connections` | gauge | `user connections` | Configured user connection limit. |
+
+Except for `database_observability_sql_server_config_database_max_degree_of_parallelism`, each metric has a `state` label.
+The `configured` state reports the requested value from `sys.configurations.value`.
+The `in_use` state reports the running value from `sys.configurations.value_in_use`.
+The values can differ when an administrator hasn't run `RECONFIGURE` or when a setting change requires a restart.
+SQL Server can also represent automatic defaults differently for `max server memory (MB)` and `min server memory (MB)`.
 
 ## Example
 
