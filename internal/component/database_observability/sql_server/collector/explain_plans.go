@@ -21,41 +21,14 @@ import (
 )
 
 const (
-	ExplainPlansCollector  = "explain_plans"
-	OP_EXPLAIN_PLAN_OUTPUT = "explain_plan_output"
+	ExplainPlansCollector = "explain_plans"
 )
 
-// selectExplainPlansTemplate resolves each tracked query_hash to the most
-// recently active plan Query Store has already captured for it (no live
-// SET SHOWPLAN_XML ON compilation - the plan is read from the same Query
-// Store data query_metrics already joins). A query_hash can map to more than
-// one query_id/plan_id (recompiles, parameter sniffing), so ROW_NUMBER picks
-// exactly one plan per hash rather than enumerating every match.
-const selectExplainPlansTemplate = `
-	WITH ranked_plans AS (
-		SELECT
-			q.query_hash,
-			p.query_plan,
-			ROW_NUMBER() OVER (
-				PARTITION BY q.query_hash
-				ORDER BY MAX(i.end_time) DESC
-			) AS rn
-		FROM sys.query_store_query q
-		JOIN sys.query_store_plan p ON p.query_id = q.query_id
-		JOIN sys.query_store_runtime_stats rs ON rs.plan_id = p.plan_id
-		JOIN sys.query_store_runtime_stats_interval i
-			ON i.runtime_stats_interval_id = rs.runtime_stats_interval_id
-		WHERE q.is_internal_query = 0
-			AND q.query_hash IN (%s)
-		GROUP BY q.query_hash, p.plan_id, p.query_plan
-	)
-	SELECT query_hash, query_plan
-	FROM ranked_plans
-	WHERE rn = 1`
-
 type ExplainPlansArguments struct {
-	DB              *sql.DB
-	CollectInterval time.Duration
+	DB                 *sql.DB
+	CollectInterval    time.Duration
+	QueryTimeout       time.Duration
+	ExcludeCurrentUser bool
 	// Tracker is query_metrics's tracked query_hash set. This is nil when
 	// query_metrics is disabled, in which case explain_plans has no bounded
 	// candidate set to work from and no-ops every cycle, mirroring
@@ -67,10 +40,12 @@ type ExplainPlansArguments struct {
 }
 
 type ExplainPlans struct {
-	dbConnection    *sql.DB
-	collectInterval time.Duration
-	tracker         QueryTracker
-	entryHandler    loki.EntryHandler
+	dbConnection       *sql.DB
+	collectInterval    time.Duration
+	queryTimeout       time.Duration
+	excludeCurrentUser bool
+	tracker            QueryTracker
+	entryHandler       loki.EntryHandler
 
 	// lastEmittedAt/lastEmittedHash gate emission: a plan is only logged again
 	// once its structural hash changes, or once EmitInterval has elapsed since
@@ -92,15 +67,17 @@ type ExplainPlans struct {
 
 func NewExplainPlans(args ExplainPlansArguments) (*ExplainPlans, error) {
 	return &ExplainPlans{
-		dbConnection:    args.DB,
-		collectInterval: args.CollectInterval,
-		tracker:         args.Tracker,
-		entryHandler:    args.EntryHandler,
-		lastEmittedAt:   map[queryMetricsKey]time.Time{},
-		lastEmittedHash: map[queryMetricsKey]string{},
-		now:             time.Now,
-		logger:          args.Logger.With("collector", ExplainPlansCollector),
-		running:         atomic.NewBool(false),
+		dbConnection:       args.DB,
+		collectInterval:    args.CollectInterval,
+		queryTimeout:       queryTimeoutOrDefault(args.QueryTimeout),
+		excludeCurrentUser: args.ExcludeCurrentUser,
+		tracker:            args.Tracker,
+		entryHandler:       args.EntryHandler,
+		lastEmittedAt:      map[queryMetricsKey]time.Time{},
+		lastEmittedHash:    map[queryMetricsKey]string{},
+		now:                time.Now,
+		logger:             args.Logger.With("collector", ExplainPlansCollector),
+		running:            atomic.NewBool(false),
 	}, nil
 }
 
@@ -123,7 +100,7 @@ func (c *ExplainPlans) Start(ctx context.Context) error {
 		defer ticker.Stop()
 
 		for {
-			if err := c.collectWithTimeout(c.ctx); err != nil {
+			if err := c.collect(c.ctx); err != nil {
 				c.logger.Error("collector error", "err", err)
 			}
 
@@ -150,19 +127,13 @@ func (c *ExplainPlans) Stop() {
 	c.wg.Wait()
 }
 
-func (c *ExplainPlans) collectWithTimeout(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	return c.collect(ctx)
-}
-
 func (c *ExplainPlans) collect(ctx context.Context) error {
 	if c.tracker == nil {
 		c.logger.Error("no query tracker available, skipping collection")
 		return nil
 	}
 
-	database, ok := checkQueryStoreState(ctx, c.dbConnection, c.logger)
+	database, ok := checkQueryStoreState(ctx, c.dbConnection, c.queryTimeout, c.logger)
 	if !ok {
 		return nil
 	}
@@ -174,43 +145,49 @@ func (c *ExplainPlans) collect(ctx context.Context) error {
 		return nil
 	}
 
-	query, args, err := buildExplainPlansStatement(hashes)
+	query, args, err := buildExplainPlansStatement(hashes, c.excludeCurrentUser)
 	if err != nil {
 		return err
 	}
-
-	rs, err := c.dbConnection.QueryContext(ctx, query, args...)
-	if err != nil {
-		return fmt.Errorf("failed to fetch explain plans: %w", err)
-	}
-	defer rs.Close()
 
 	now := c.now()
 	seen := map[queryMetricsKey]struct{}{}
 	found := map[string]struct{}{}
 
-	for rs.Next() {
-		var hashBytes []byte
-		var planXML []byte
-		if err := rs.Scan(&hashBytes, &planXML); err != nil {
-			c.logger.Error("failed to scan explain plan row", "err", err)
-			continue
-		}
-
-		queryHash, err := formatQueryHash(hashBytes)
+	err = withQueryTimeout(ctx, c.queryTimeout, func(queryCtx context.Context) error {
+		rs, err := c.dbConnection.QueryContext(queryCtx, query, args...)
 		if err != nil {
-			c.logger.Error("failed to format query hash", "err", err)
-			continue
+			return fmt.Errorf("failed to fetch explain plans: %w", err)
 		}
+		defer rs.Close()
 
-		found[queryHash] = struct{}{}
-		key := queryMetricsKey{database: database, queryHash: queryHash}
-		seen[key] = struct{}{}
+		for rs.Next() {
+			var hashBytes []byte
+			var planXML []byte
+			if err := rs.Scan(&hashBytes, &planXML); err != nil {
+				c.logger.Error("failed to scan explain plan row", "err", err)
+				continue
+			}
 
-		c.processPlan(now, key, queryHash, database, planXML)
-	}
-	if err := rs.Err(); err != nil {
-		return fmt.Errorf("failed to iterate over explain plan rows: %w", err)
+			queryHash, err := formatQueryHash(hashBytes)
+			if err != nil {
+				c.logger.Error("failed to format query hash", "err", err)
+				continue
+			}
+
+			found[queryHash] = struct{}{}
+			key := queryMetricsKey{database: database, queryHash: queryHash}
+			seen[key] = struct{}{}
+
+			c.processPlan(now, key, queryHash, database, planXML)
+		}
+		if err := rs.Err(); err != nil {
+			return fmt.Errorf("failed to iterate over explain plan rows: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	// Tracked hashes with no captured plan yet still get a gated skip
@@ -252,6 +229,9 @@ func (c *ExplainPlans) processPlan(now time.Time, key queryMetricsKey, queryHash
 	if !c.shouldEmit(key, hash, now) {
 		return
 	}
+
+	c.logger.Debug("db native explain plan", "query_hash", queryHash,
+		"db_native_explain_plan", base64.StdEncoding.EncodeToString(redactNativeShowPlanXML(planXML)))
 
 	c.emit(database, queryHash, now, database_observability.ExplainProcessingResultSuccess, "", planNode)
 	c.recordEmission(key, hash, now)
@@ -316,12 +296,6 @@ func (c *ExplainPlans) emit(
 
 	output := &database_observability.ExplainPlanOutput{
 		Metadata: database_observability.ExplainPlanMetadataInfo{
-			// DatabaseEngine/DatabaseVersion are intentionally left unset: the
-			// engine is now carried as a Loki label (see addLokiLabels) instead,
-			// which is queryable and consistent with connection_info's "engine"
-			// metric label, unlike these fields which no UI consumer ever read
-			// (grafana-dbo11y-app#3471). mysql/postgres still populate them
-			// pending a follow-up change there.
 			QueryIdentifier:        queryHash,
 			GeneratedAt:            now.Format(time.RFC3339),
 			ProcessingResult:       result,
@@ -339,7 +313,7 @@ func (c *ExplainPlans) emit(
 	}
 
 	logMessage := fmt.Sprintf(
-		`database="%s" query_hash="%s" explain_plan_output="%s"`,
+		`database=%q query_hash=%q explain_plan_output=%q`,
 		database,
 		queryHash,
 		base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
@@ -347,7 +321,7 @@ func (c *ExplainPlans) emit(
 
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 		logging.LevelInfo,
-		OP_EXPLAIN_PLAN_OUTPUT,
+		database_observability.OP_EXPLAIN_PLAN_OUTPUT,
 		logMessage,
 	)
 }
@@ -381,7 +355,7 @@ func stripVolatileFields(node database_observability.ExplainPlanNode) database_o
 
 // buildExplainPlansStatement returns the hash-resolution statement plus its
 // named parameters, binding each 16-char hex hash back to its binary(8) form.
-func buildExplainPlansStatement(hashes []string) (string, []any, error) {
+func buildExplainPlansStatement(hashes []string, excludeCurrentUser bool) (string, []any, error) {
 	placeholders := make([]string, 0, len(hashes))
 	args := make([]any, 0, len(hashes))
 	for i, h := range hashes {
@@ -393,6 +367,8 @@ func buildExplainPlansStatement(hashes []string) (string, []any, error) {
 		placeholders = append(placeholders, "@"+name)
 		args = append(args, sql.Named(name, raw))
 	}
+
+	args = append(args, sql.Named("exclude_current_user", excludeCurrentUser), sql.Named("collector_marker", QueryMarker))
 
 	return fmt.Sprintf(selectExplainPlansTemplate, strings.Join(placeholders, ", ")), args, nil
 }

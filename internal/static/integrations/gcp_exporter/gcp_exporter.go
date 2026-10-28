@@ -141,7 +141,8 @@ func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error
 	}
 
 	return integrations.NewCollectorIntegration(
-		c.Name(), integrations.WithCollectors(gcpCollectors...), integrations.WithRunner(run),
+		c.Name(),
+		integrations.WithLogger(l), integrations.WithCollectors(gcpCollectors...), integrations.WithRunner(run),
 	), nil
 }
 

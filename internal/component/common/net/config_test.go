@@ -1,6 +1,7 @@
 package net
 
 import (
+	"net/http"
 	"testing"
 	"time"
 
@@ -10,6 +11,47 @@ import (
 
 	"github.com/grafana/alloy/syntax"
 )
+
+func TestHTTP2Config(t *testing.T) {
+	var absent *HTTP2Config
+	require.Nil(t, absent.Server())
+	require.Nil(t, (&HTTP2Config{}).Server())
+
+	var args testArguments
+	require.NoError(t, syntax.Unmarshal([]byte(`
+		http {
+			http2 {
+				enabled = true
+				max_handlers = 42
+				max_concurrent_streams = 123
+				max_decoder_header_table_size = 8192
+				max_encoder_header_table_size = 16384
+				max_read_frame_size = 32768
+				permit_prohibited_ciphers = true
+				idle_timeout = "1m"
+				read_idle_timeout = "10s"
+				ping_timeout = "5s"
+				write_byte_timeout = "3s"
+				max_upload_buffer_per_connection = 1048576
+				max_upload_buffer_per_stream = 524288
+			}
+		}
+	`), &args))
+	require.Equal(t, 42, args.Server.HTTP.HTTP2.MaxHandlers)
+	require.Equal(t, time.Minute, args.Server.HTTP.HTTP2.IdleTimeout)
+	require.Equal(t, &http.HTTP2Config{
+		MaxConcurrentStreams:          123,
+		MaxDecoderHeaderTableSize:     8192,
+		MaxEncoderHeaderTableSize:     16384,
+		MaxReadFrameSize:              32768,
+		PermitProhibitedCipherSuites:  true,
+		SendPingTimeout:               10 * time.Second,
+		PingTimeout:                   5 * time.Second,
+		WriteByteTimeout:              3 * time.Second,
+		MaxReceiveBufferPerConnection: 1048576,
+		MaxReceiveBufferPerStream:     524288,
+	}, args.Server.HTTP.HTTP2.Server())
+}
 
 // testArguments mimics an arguments type used by a component, applying the defaults to ServerConfig
 // from it's UnmarshalAlloy implementation, since the block is squashed.

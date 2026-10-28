@@ -63,7 +63,7 @@ func runIntegrationTests(cmd *cobra.Command, args []string) {
 
 	start := time.Now()
 	executeCommandInDir(testsRootDir, "docker", []string{"compose", "up", "-d"}, "Starting dependent services with docker compose")
-	waitArgs := []string{"compose", "up", "-d", "--wait", "mimir", "tempo", "kafka", "redis"}
+	waitArgs := []string{"compose", "up", "-d", "--wait", "mimir", "tempo", "kafka"}
 	executeCommandInDir(testsRootDir, "docker", waitArgs, "Waiting for dependent services to be healthy")
 	waitForHTTPReady("http://localhost:9009/ready", 3*time.Minute)
 	waitForHTTPReady("http://localhost:3100/ready", 3*time.Minute)

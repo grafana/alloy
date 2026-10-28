@@ -53,7 +53,7 @@ type Arguments struct {
 	// List of labels to copy from discovered targets to metrics. If empty, all labels will be copied.
 	LabelsToCopy []string `alloy:"labels_to_copy,attr,optional"`
 
-	ForwardTo []storage.Appendable `alloy:"forward_to,attr"`
+	ForwardTo []storage.AppendableV2 `alloy:"forward_to,attr"`
 }
 
 // Validate implements syntax.Validator.
@@ -73,7 +73,7 @@ func (a Arguments) Validate() error {
 
 // Exports holds values which are exported by the prometheus.enrich component.
 type Exports struct {
-	Receiver storage.Appendable `alloy:"receiver,attr"`
+	Receiver storage.AppendableV2 `alloy:"receiver,attr"`
 }
 
 // matchCache holds the hash-based lookup for a match strategy.

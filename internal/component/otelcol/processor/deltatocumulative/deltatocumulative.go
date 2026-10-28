@@ -77,10 +77,10 @@ func (args *Arguments) Validate() error {
 
 // Convert implements processor.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	return &deltatocumulativeprocessor.Config{
-		MaxStale:   args.MaxStale,
-		MaxStreams: args.MaxStreams,
-	}, nil
+	cfg := deltatocumulativeprocessor.NewFactory().CreateDefaultConfig().(*deltatocumulativeprocessor.Config)
+	cfg.MaxStale = args.MaxStale
+	cfg.MaxStreams = args.MaxStreams
+	return cfg, nil
 }
 
 // Extensions implements processor.Arguments.

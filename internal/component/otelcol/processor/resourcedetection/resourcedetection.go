@@ -18,6 +18,8 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/aws/lambda"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/azure"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/azure/aks"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/azure/appservice"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/azure/containerapps"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/consul"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/digitalocean"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/docker"
@@ -77,6 +79,9 @@ type Arguments struct {
 	// HTTP client settings for the detector
 	// Timeout default is 5s
 	Timeout time.Duration `alloy:"timeout,attr,optional"`
+
+	// Retry controls retry and backoff for each detection attempt.
+	Retry RetryArguments `alloy:"retry,block,optional"`
 	// Client otelcol.HTTPClientArguments `alloy:",squash"`
 	//TODO: Uncomment this later, and remove Timeout?
 	//      Can we just get away with a timeout, or do we need all the http client settings?
@@ -117,6 +122,12 @@ type DetectorConfig struct {
 
 	// Aks contains user-specified configurations for the aks detector
 	AksConfig aks.Config `alloy:"aks,block,optional"`
+
+	// AzureAppServiceConfig contains user-specified configurations for the Azure App Service detector
+	AzureAppServiceConfig appservice.Config `alloy:"azureappservice,block,optional"`
+
+	// AzureContainerAppsConfig contains user-specified configurations for the Azure Container Apps detector
+	AzureContainerAppsConfig containerapps.Config `alloy:"azurecontainerapps,block,optional"`
 
 	// ConsulConfig contains user-specified configurations for the Consul detector
 	ConsulConfig consul.Config `alloy:"consul,block,optional"`
@@ -175,31 +186,33 @@ type DetectorConfig struct {
 
 func (dc *DetectorConfig) SetToDefault() {
 	*dc = DetectorConfig{
-		EC2Config:              ec2.DefaultArguments,
-		ECSConfig:              ecs.DefaultArguments,
-		EKSConfig:              eks.DefaultArguments,
-		ElasticbeanstalkConfig: elasticbeanstalk.DefaultArguments,
-		LambdaConfig:           lambda.DefaultArguments,
-		AkamaiConfig:           akamai.DefaultArguments,
-		AzureConfig:            azure.DefaultArguments,
-		AksConfig:              aks.DefaultArguments,
-		ConsulConfig:           consul.DefaultArguments,
-		DockerConfig:           docker.DefaultArguments,
-		DigitalOceanConfig:     digitalocean.DefaultArguments,
-		GcpConfig:              gcp.DefaultArguments,
-		HerokuConfig:           heroku.DefaultArguments,
-		HetznerConfig:          hetzner.DefaultArguments,
-		OpenShiftConfig:        openshift.DefaultArguments,
-		KubernetesNodeConfig:   k8snode.DefaultArguments,
-		KubeADMConfig:          kubeadm.DefaultArguments,
-		DynatraceConfig:        dynatrace.DefaultArguments,
-		OpenStackNovaConfig:    openstacknova.DefaultArguments,
-		OracleCloudConfig:      oraclecloud.DefaultArguments,
-		ScalewayConfig:         scaleway.DefaultArguments,
-		UpCloudConfig:          upcloud.DefaultArguments,
-		VultrConfig:            vultr.DefaultArguments,
-		TencentCVMConfig:       tencentcvm.DefaultArguments,
-		AlibabaECSConfig:       alibabaecs.DefaultArguments,
+		EC2Config:                ec2.DefaultArguments,
+		ECSConfig:                ecs.DefaultArguments,
+		EKSConfig:                eks.DefaultArguments,
+		ElasticbeanstalkConfig:   elasticbeanstalk.DefaultArguments,
+		LambdaConfig:             lambda.DefaultArguments,
+		AkamaiConfig:             akamai.DefaultArguments,
+		AzureConfig:              azure.DefaultArguments,
+		AksConfig:                aks.DefaultArguments,
+		AzureAppServiceConfig:    appservice.DefaultArguments,
+		AzureContainerAppsConfig: containerapps.DefaultArguments,
+		ConsulConfig:             consul.DefaultArguments,
+		DockerConfig:             docker.DefaultArguments,
+		DigitalOceanConfig:       digitalocean.DefaultArguments,
+		GcpConfig:                gcp.DefaultArguments,
+		HerokuConfig:             heroku.DefaultArguments,
+		HetznerConfig:            hetzner.DefaultArguments,
+		OpenShiftConfig:          openshift.DefaultArguments,
+		KubernetesNodeConfig:     k8snode.DefaultArguments,
+		KubeADMConfig:            kubeadm.DefaultArguments,
+		DynatraceConfig:          dynatrace.DefaultArguments,
+		OpenStackNovaConfig:      openstacknova.DefaultArguments,
+		OracleCloudConfig:        oraclecloud.DefaultArguments,
+		ScalewayConfig:           scaleway.DefaultArguments,
+		UpCloudConfig:            upcloud.DefaultArguments,
+		VultrConfig:              vultr.DefaultArguments,
+		TencentCVMConfig:         tencentcvm.DefaultArguments,
+		AlibabaECSConfig:         alibabaecs.DefaultArguments,
 	}
 	dc.SystemConfig.SetToDefault()
 }
@@ -219,6 +232,35 @@ func (args *Arguments) SetToDefault() {
 	}
 	args.DetectorConfig.SetToDefault()
 	args.DebugMetrics.SetToDefault()
+	args.Retry.SetToDefault()
+}
+
+// RetryArguments is otelcol.RetryArguments defaulted from the upstream
+// resourcedetection factory, whose values differ from the shared retry block's.
+type RetryArguments otelcol.RetryArguments
+
+var (
+	_ syntax.Defaulter = (*RetryArguments)(nil)
+	_ syntax.Validator = (*RetryArguments)(nil)
+)
+
+// SetToDefault implements syntax.Defaulter.
+func (args *RetryArguments) SetToDefault() {
+	upstream := resourcedetectionprocessor.NewFactory().CreateDefaultConfig().(*resourcedetectionprocessor.Config).Retry
+
+	*args = RetryArguments{
+		Enabled:             upstream.Enabled,
+		InitialInterval:     upstream.InitialInterval,
+		RandomizationFactor: upstream.RandomizationFactor,
+		Multiplier:          upstream.Multiplier,
+		MaxInterval:         upstream.MaxInterval,
+		MaxElapsedTime:      upstream.MaxElapsedTime,
+	}
+}
+
+// Validate implements syntax.Validator.
+func (args *RetryArguments) Validate() error {
+	return (*otelcol.RetryArguments)(args).Validate()
 }
 
 // Validate implements syntax.Validator.
@@ -238,6 +280,8 @@ func (args *Arguments) Validate() error {
 			akamai.Name,
 			azure.Name,
 			aks.Name,
+			appservice.Name,
+			containerapps.Name,
 			consul.Name,
 			digitalocean.Name,
 			docker.Name,
@@ -262,7 +306,13 @@ func (args *Arguments) Validate() error {
 		}
 	}
 
-	return nil
+	// Leave the retry invariants to the collector rather than restating them here.
+	otelCfg, err := args.Convert()
+	if err != nil {
+		return err
+	}
+
+	return otelCfg.(*resourcedetectionprocessor.Config).Validate()
 }
 
 func (args Arguments) ConvertDetectors() []string {
@@ -299,6 +349,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	input["akamai"] = args.DetectorConfig.AkamaiConfig.Convert()
 	input["azure"] = args.DetectorConfig.AzureConfig.Convert()
 	input["aks"] = args.DetectorConfig.AksConfig.Convert()
+	input["azureappservice"] = args.DetectorConfig.AzureAppServiceConfig.Convert()
+	input["azurecontainerapps"] = args.DetectorConfig.AzureContainerAppsConfig.Convert()
 	input["consul"] = args.DetectorConfig.ConsulConfig.Convert()
 	input["docker"] = args.DetectorConfig.DockerConfig.Convert()
 	input["digitalocean"] = args.DetectorConfig.DigitalOceanConfig.Convert()
@@ -323,6 +375,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	result.Retry = *(*otelcol.RetryArguments)(&args.Retry).Convert()
 
 	return &result, nil
 }

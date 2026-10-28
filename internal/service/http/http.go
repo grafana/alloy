@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/ckit/memconn"
 	_ "github.com/grafana/pyroscope-go/godeltaprof/http/pprof" // Register godeltaprof handler
 	"github.com/prometheus/client_golang/prometheus"
@@ -239,7 +240,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 	r.Handle(
 		"/metrics",
-		promhttp.HandlerFor(s.gatherer, promhttp.HandlerOpts{}),
+		util.PromHTTPHandlerFor(s.gatherer, s.log, promhttp.HandlerOpts{}),
 	)
 	if s.opts.EnablePProf {
 		r.PathPrefix("/debug/pprof").Handler(http.DefaultServeMux)

@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/grafana/ckit/shard"
 	"github.com/grafana/dskit/backoff"
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -26,6 +27,7 @@ import (
 	toolscache "k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/grafana/alloy/internal/component"
 	commonk8s "github.com/grafana/alloy/internal/component/common/kubernetes"
@@ -38,6 +40,13 @@ import (
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/util"
 )
+
+// controller-runtime prints a warning and stack trace if its global logger is
+// never set. It is shared by all prometheus.operator components, so a
+// component logger can't be used here.
+func init() {
+	log.SetLogger(logr.Discard())
+}
 
 type crdManagerInterface interface {
 	Run(ctx context.Context) error
@@ -118,6 +127,10 @@ type crdManager struct {
 	args    *operator.Arguments
 	cluster cluster.Cluster
 
+	// scrapeClasses indexes args.ScrapeClasses. A new manager is created
+	// whenever the arguments change, so it is built once here.
+	scrapeClasses operator.ScrapeClassIndex
+
 	client     kubernetes.Interface
 	k8sFactory K8sFactory
 
@@ -158,6 +171,7 @@ func newCrdManager(opts component.Options, cluster cluster.Cluster, logger *slog
 		clusteringUpdated:      make(chan struct{}, 1),
 		ls:                     ls,
 		k8sFactory:             defaultK8sFactory,
+		scrapeClasses:          operator.NewScrapeClassIndex(args.ScrapeClasses),
 		serviceMonitorSettings: defaultServiceMonitorSettings,
 		serviceMonitorArbitraryFileAccessWarnings: map[string]string{},
 	}
@@ -539,6 +553,7 @@ func (c *crdManager) addPodMonitor(pm *promopv1.PodMonitor) {
 		Client:                   &c.args.Client,
 		AdditionalRelabelConfigs: c.args.RelabelConfigs,
 		ScrapeOptions:            c.args.Scrape,
+		ScrapeClasses:            c.scrapeClasses,
 	}
 	mapKeys := []string{}
 	for i, ep := range pm.Spec.PodMetricsEndpoints {
@@ -601,6 +616,7 @@ func (c *crdManager) addServiceMonitor(sm *promopv1.ServiceMonitor) {
 		AllowArbitraryFileAccess: serviceMonitorSettings.AllowArbitraryFileAccess,
 		AdditionalRelabelConfigs: c.args.RelabelConfigs,
 		ScrapeOptions:            c.args.Scrape,
+		ScrapeClasses:            c.scrapeClasses,
 	}
 
 	for i, ep := range sm.Spec.Endpoints {
@@ -713,6 +729,7 @@ func (c *crdManager) addProbe(p *promopv1.Probe) {
 		Client:                   &c.args.Client,
 		AdditionalRelabelConfigs: c.args.RelabelConfigs,
 		ScrapeOptions:            c.args.Scrape,
+		ScrapeClasses:            c.scrapeClasses,
 	}
 	var pmc *config.ScrapeConfig
 	pmc, err = gen.GenerateProbeConfig(p)
@@ -761,6 +778,7 @@ func (c *crdManager) addScrapeConfig(pm *promopv1alpha1.ScrapeConfig) {
 		Client:                   &c.args.Client,
 		AdditionalRelabelConfigs: c.args.RelabelConfigs,
 		ScrapeOptions:            c.args.Scrape,
+		ScrapeClasses:            c.scrapeClasses,
 	}
 	mapKeys := []string{}
 	scrapeConfigs, errs := gen.GenerateScrapeConfigConfigs(pm)

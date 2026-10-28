@@ -1409,6 +1409,7 @@ func TestDeadlockWithFrequentUpdates(t *testing.T) {
 			forward_to = []`
 
 	r := startTestFrequentUpdate(t, `forward_to = []`)
+	defer r.stop()
 
 	// Continuously send entries to both channels
 	r.sendLogs()
@@ -1422,9 +1423,6 @@ func TestDeadlockWithFrequentUpdates(t *testing.T) {
 	// Run everything for a while
 	time.Sleep(1 * time.Second)
 	require.WithinDuration(t, time.Now(), r.lastSend.Load().(time.Time), 300*time.Millisecond)
-
-	// Clean up
-	r.stop()
 }
 
 func getServiceData(name string) (any, error) {
@@ -1638,6 +1636,7 @@ type tester struct {
 	component    *Component
 	registry     *prometheus.Registry
 	cancelFunc   context.CancelFunc
+	runDone      chan struct{}
 	logReceiver  loki.LogsReceiver
 	logTimestamp time.Time
 	logEntry     loki.Entry
@@ -1668,7 +1667,11 @@ func newTester(t *testing.T) *tester {
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(t.Context())
-	go c.Run(ctx)
+	runDone := make(chan struct{})
+	go func() {
+		c.Run(ctx)
+		close(runDone)
+	}()
 
 	logTimestamp := time.Now()
 
@@ -1677,6 +1680,7 @@ func newTester(t *testing.T) *tester {
 		component:    c,
 		registry:     reg,
 		cancelFunc:   cancel,
+		runDone:      runDone,
 		logReceiver:  logReceiver,
 		logTimestamp: logTimestamp,
 		logEntry: loki.Entry{
@@ -1695,6 +1699,7 @@ func newTester(t *testing.T) *tester {
 
 func (t *tester) stop() {
 	t.cancelFunc()
+	<-t.runDone
 }
 
 func (t *tester) updateAndTest(numLogsToSend int, cfg, expectedMetricsBeforeSendingLogs, expectedMetricsAfterSendingLogs string) {

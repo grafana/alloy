@@ -55,8 +55,8 @@ var (
 // Arguments holds values which are used to configure the prometheus.scrape
 // component.
 type Arguments struct {
-	Targets   []discovery.Target   `alloy:"targets,attr"`
-	ForwardTo []storage.Appendable `alloy:"forward_to,attr"`
+	Targets   []discovery.Target     `alloy:"targets,attr"`
+	ForwardTo []storage.AppendableV2 `alloy:"forward_to,attr"`
 
 	// The job name to override the job label with.
 	JobName string `alloy:"job_name,attr,optional"`
@@ -140,7 +140,20 @@ type Arguments struct {
 	// a zero sample at that timestamp, marking a counter reset.
 	StartTimestampZeroIngestion bool `alloy:"start_timestamp_zero_ingestion,attr,optional"`
 
-	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
+	Clustering ClusteringConfig `alloy:"clustering,block,optional"`
+}
+
+// ClusteringConfig configures target ownership for prometheus.scrape.
+type ClusteringConfig struct {
+	Enabled        bool     `alloy:"enabled,attr"`
+	ExcludedLabels []string `alloy:"excluded_labels,attr,optional"`
+}
+
+func (cfg ClusteringConfig) targetHashing() discovery.TargetHashing {
+	if !cfg.Enabled {
+		return discovery.TargetHashing{}
+	}
+	return discovery.ExcludeOwnershipLabels(cfg.ExcludedLabels)
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -443,7 +456,7 @@ func (c *Component) Run(ctx context.Context) error {
 
 func (c *Component) distributeTargets(targets []discovery.Target, jobName string, args Arguments) (map[string][]*targetgroup.Group, []*scrape.Target) {
 	var (
-		newDistTargets        = discovery.NewDistributedTargets(args.Clustering.Enabled, c.cluster, targets)
+		newDistTargets        = discovery.NewDistributedTargets(args.Clustering.Enabled, c.cluster, targets, args.Clustering.targetHashing())
 		oldDistributedTargets *discovery.DistributedTargets
 	)
 

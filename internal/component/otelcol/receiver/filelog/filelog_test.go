@@ -13,6 +13,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/plog"
 )
@@ -125,6 +126,7 @@ func TestUnmarshal(t *testing.T) {
 	compression                = "gzip"
 	acquire_fs_lock            = true
 	file_cache_advise          = true
+	skip_unmodified_files      = true
 
 	header {
 		pattern = "^HEADER .*$"
@@ -166,6 +168,67 @@ func TestUnmarshal(t *testing.T) {
 
 	err = args.Validate()
 	require.NoError(t, err)
+}
+
+// TestConvertTopN checks that top_n is passed through as a pointer so that an
+// unset value (apply the upstream default) and an explicit 0 (match all files)
+// remain distinguishable, matching upstream's OrderingCriteria.TopN semantics.
+func TestConvertTopN(t *testing.T) {
+	unset := `
+	include = ["/var/log/*.log"]
+	ordering_criteria {
+		sort_by {
+			sort_type = "timestamp"
+			regex_key = "timestamp"
+		}
+	}
+	output {}
+	`
+	var unsetArgs filelog.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(unset), &unsetArgs))
+	unsetCfg, err := unsetArgs.Convert()
+	require.NoError(t, err)
+	require.Nil(t, unsetCfg.(*filelogreceiver.FileLogConfig).InputConfig.Criteria.OrderingCriteria.TopN)
+
+	explicitZero := `
+	include = ["/var/log/*.log"]
+	ordering_criteria {
+		top_n = 0
+		sort_by {
+			sort_type = "timestamp"
+			regex_key = "timestamp"
+		}
+	}
+	output {}
+	`
+	var explicitZeroArgs filelog.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(explicitZero), &explicitZeroArgs))
+	explicitZeroCfg, err := explicitZeroArgs.Convert()
+	require.NoError(t, err)
+	topN := explicitZeroCfg.(*filelogreceiver.FileLogConfig).InputConfig.Criteria.OrderingCriteria.TopN
+	require.NotNil(t, topN)
+	require.Equal(t, 0, *topN)
+}
+
+func TestConvertAlphabeticalSortType(t *testing.T) {
+	cfgText := `
+	include = ["/var/log/*.log"]
+	ordering_criteria {
+		regex = "^(?P<name>.*)\\.log$"
+		sort_by {
+			sort_type = "alphabetical"
+			regex_key = "name"
+		}
+	}
+	output {}
+	`
+	var args filelog.Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(cfgText), &args))
+	cfg, err := args.Convert()
+	require.NoError(t, err)
+	sortBy := cfg.(*filelogreceiver.FileLogConfig).InputConfig.Criteria.OrderingCriteria.SortBy
+	require.Len(t, sortBy, 1)
+	require.Equal(t, "alphabetical", sortBy[0].SortType)
 }
 
 func TestValidate(t *testing.T) {

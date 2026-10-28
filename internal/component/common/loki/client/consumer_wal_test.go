@@ -19,9 +19,10 @@ import (
 	"github.com/prometheus/prometheus/tsdb/record"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
+	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/client/internal/marker"
+	"github.com/grafana/alloy/internal/component/common/loki/client/internal/savepoint"
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 	"github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/alloy/internal/runtime/logging"
@@ -29,17 +30,25 @@ import (
 )
 
 func TestWALConsumer(t *testing.T) {
-	walConfig := wal.Config{
-		Dir:           t.TempDir(),
-		Enabled:       true,
-		MaxSegmentAge: time.Second * 10,
-		WatchConfig:   wal.DefaultWatchConfig,
-	}
+	var (
+		dir       = t.TempDir()
+		logger    = logging.NewSlogNop()
+		reg       = prometheus.NewRegistry()
+		walConfig = wal.Config{
+			MaxSegmentAge: time.Second * 10,
+			WatchConfig:   wal.DefaultWatchConfig,
+		}
+	)
 	// start all necessary resources
 	testEndpointConfig, rwReceivedReqs, closeServer := newServerAndEndpointConfig(t)
 
-	consumer, err := NewWALConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), walConfig, testEndpointConfig)
+	wl, err := wal.New(logger, reg, dir)
 	require.NoError(t, err)
+	defer wl.Close()
+
+	consumer, err := NewWALConsumer(logger, reg, wl, walConfig, testEndpointConfig)
+	require.NoError(t, err)
+	consumer.Start()
 
 	receivedRequests := util.NewSyncSlice[util.RemoteWriteRequest]()
 	go func() {
@@ -58,13 +67,19 @@ func TestWALConsumer(t *testing.T) {
 	}
 	var totalLines = 100
 	for i := range totalLines {
-		consumer.Chan() <- loki.Entry{
-			Labels: testLabels,
-			Entry: push.Entry{
-				Timestamp: time.Now(),
-				Line:      fmt.Sprintf("line%d", i),
-			},
-		}
+		require.NoError(
+			t,
+			consumer.ConsumeEntry(
+				t.Context(),
+				loki.Entry{
+					Labels: testLabels,
+					Entry: push.Entry{
+						Timestamp: time.Now(),
+						Line:      fmt.Sprintf("line%d", i),
+					},
+				},
+			),
+		)
 	}
 
 	require.Eventually(t, func() bool {
@@ -88,15 +103,23 @@ func TestWALConsumer_MultipleConfigs(t *testing.T) {
 	testEndpointConfig2, rwReceivedReqs2, closeServer2 := newServerAndEndpointConfig(t)
 	testEndpointConfig2.Name = "test-client-2"
 
-	walConfig := wal.Config{
-		Dir:           t.TempDir(),
-		Enabled:       true,
-		WatchConfig:   wal.DefaultWatchConfig,
-		MaxSegmentAge: time.Second * 10,
-	}
+	var (
+		dir       = t.TempDir()
+		logger    = logging.NewSlogNop()
+		reg       = prometheus.NewRegistry()
+		walConfig = wal.Config{
+			WatchConfig:   wal.DefaultWatchConfig,
+			MaxSegmentAge: time.Second * 10,
+		}
+	)
 
-	consumer, err := NewWALConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), walConfig, testEndpointConfig, testEndpointConfig2)
+	wl, err := wal.New(logger, reg, dir)
 	require.NoError(t, err)
+	defer wl.Close()
+
+	consumer, err := NewWALConsumer(logger, reg, wl, walConfig, testEndpointConfig, testEndpointConfig2)
+	require.NoError(t, err)
+	consumer.Start()
 
 	receivedRequests := util.NewSyncSlice[util.RemoteWriteRequest]()
 	ctx, cancel := context.WithCancel(t.Context())
@@ -125,13 +148,17 @@ func TestWALConsumer_MultipleConfigs(t *testing.T) {
 	}
 	var totalLines = 100
 	for i := range totalLines {
-		consumer.Chan() <- loki.Entry{
-			Labels: testLabels,
-			Entry: push.Entry{
-				Timestamp: time.Now(),
-				Line:      fmt.Sprintf("line%d", i),
-			},
-		}
+		require.NoError(
+			t,
+			consumer.ConsumeEntry(t.Context(),
+				loki.Entry{
+					Labels: testLabels,
+					Entry: push.Entry{
+						Timestamp: time.Now(),
+						Line:      fmt.Sprintf("line%d", i),
+					},
+				}),
+		)
 	}
 
 	// times 2 due to endpoint being run
@@ -153,14 +180,37 @@ func TestWALConsumer_MultipleConfigs(t *testing.T) {
 
 func TestWALConsumer_InvalidConfig(t *testing.T) {
 	t.Run("no endpoints", func(t *testing.T) {
-		_, err := NewWALConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), wal.Config{})
+		var (
+			dir       = t.TempDir()
+			logger    = logging.NewSlogNop()
+			reg       = prometheus.NewRegistry()
+			walConfig = wal.Config{}
+		)
+
+		wl, err := wal.New(logger, reg, dir)
+		require.NoError(t, err)
+		defer wl.Close()
+
+		_, err = NewWALConsumer(logger, reg, wl, walConfig)
 		require.Error(t, err)
 	})
 
 	t.Run("repeated endpoints", func(t *testing.T) {
 		host, _ := url.Parse("http://localhost:3100")
-		config := Config{URL: flagext.URLValue{URL: host}}
-		_, err := NewWALConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), wal.Config{}, config, config)
+
+		var (
+			dir       = t.TempDir()
+			logger    = logging.NewSlogNop()
+			reg       = prometheus.NewRegistry()
+			walConfig = wal.Config{}
+			config    = Config{URL: flagext.URLValue{URL: host}}
+		)
+
+		wl, err := wal.New(logger, reg, dir)
+		require.NoError(t, err)
+		defer wl.Close()
+
+		_, err = NewWALConsumer(logger, reg, wl, walConfig, config, config)
 		require.Error(t, err)
 	})
 }
@@ -262,11 +312,12 @@ func TestWALEndpoint(t *testing.T) {
 			}
 
 			logger := autil.TestAlloyLogger(t).Slog()
-			marker := marker.NewNopTracker()
+			tracker := savepoint.NewNopTracker()
 
-			endpoint, err := newEndpoint(newMetrics(reg), cfg, logger, marker)
+			endpoint, err := newEndpoint(newMetrics(reg), cfg, logger, tracker)
 			require.NoError(t, err)
-			adapter := newWalEndpointAdapter(endpoint, logger, newWALEndpointMetrics(reg).CurryWithId("test"), marker)
+			adapter := newWalEndpointAdapter(endpoint, logger, newWALEndpointMetrics(reg).CurryWithId("test"), tracker)
+			adapter.start()
 
 			//labels := model.LabelSet{"app": "test"}
 			lines := make([]string, 0, tc.numLines)
@@ -286,7 +337,7 @@ func TestWALEndpoint(t *testing.T) {
 					},
 				}, 0)
 
-				_ = adapter.AppendEntries(wal.RefEntries{
+				_ = adapter.AppendEntries(t.Context(), wal.RefEntries{
 					Ref:     chunks.HeadSeriesRef(mod),
 					Created: time.Now().UnixMicro(),
 					Entries: []push.Entry{{
@@ -305,7 +356,7 @@ func TestWALEndpoint(t *testing.T) {
 			}
 
 			// Stop the endpoint: it waits until the current batch is sent
-			adapter.Stop()
+			adapter.stop()
 			close(receivedReqsChan)
 		})
 	}
@@ -335,21 +386,21 @@ func BenchmarkEndpointImplementations(b *testing.B) {
 		},
 	} {
 		b.Run(name, func(b *testing.B) {
-			b.Run("implementation=wal_nil_marker_handler", func(b *testing.B) {
-				runWALEndpointBenchCase(b, bc, func(t *testing.B) marker.Tracker {
-					return marker.NewNopTracker()
+			b.Run("implementation=wal_nop_tracker", func(b *testing.B) {
+				runWALEndpointBenchCase(b, bc, func(t *testing.B) savepoint.Tracker {
+					return savepoint.NewNopTracker()
 				})
 			})
 
-			b.Run("implementation=wal_marker_handler", func(b *testing.B) {
-				runWALEndpointBenchCase(b, bc, func(t *testing.B) marker.Tracker {
+			b.Run("implementation=wal_segment_tracker", func(b *testing.B) {
+				runWALEndpointBenchCase(b, bc, func(t *testing.B) savepoint.Tracker {
 					dir := b.TempDir()
 					nopLogger := logging.NewSlogNop()
 
-					f, err := marker.NewFile(nopLogger, dir)
+					f, err := savepoint.NewFile(nopLogger, dir)
 					require.NoError(b, err)
 
-					return marker.NewSegmentTracker(f, time.Minute, nopLogger, marker.NewMetrics(nil).CurryWithId("test"))
+					return savepoint.NewSegmentTracker(f, "test", time.Minute, nopLogger, savepoint.NewMetrics(nil))
 				})
 			})
 
@@ -360,7 +411,7 @@ func BenchmarkEndpointImplementations(b *testing.B) {
 	}
 }
 
-func runWALEndpointBenchCase(b *testing.B, bc testCase, mhFactory func(t *testing.B) marker.Tracker) {
+func runWALEndpointBenchCase(b *testing.B, bc testCase, trackerFactory func(t *testing.B) savepoint.Tracker) {
 	reg := prometheus.NewRegistry()
 
 	// Create a buffer channel where we do enqueue received requests
@@ -405,11 +456,12 @@ func runWALEndpointBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 	}
 
 	logger := logging.NewSlogNop()
-	marker := mhFactory(b)
+	tracker := trackerFactory(b)
 
-	endpoint, err := newEndpoint(newMetrics(reg), cfg, logger, marker)
+	endpoint, err := newEndpoint(newMetrics(reg), cfg, logger, tracker)
 	require.NoError(b, err)
-	adapter := newWalEndpointAdapter(endpoint, logger, newWALEndpointMetrics(reg).CurryWithId("test"), marker)
+	adapter := newWalEndpointAdapter(endpoint, logger, newWALEndpointMetrics(reg).CurryWithId("test"), tracker)
+	adapter.start()
 
 	//labels := model.LabelSet{"app": "test"}
 	var lines []string
@@ -431,7 +483,7 @@ func runWALEndpointBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 				},
 			}, 0)
 
-			_ = adapter.AppendEntries(wal.RefEntries{
+			_ = adapter.AppendEntries(b.Context(), wal.RefEntries{
 				Ref:     chunks.HeadSeriesRef(seriesId),
 				Created: time.Now().UnixMicro(),
 				Entries: []push.Entry{{
@@ -450,7 +502,7 @@ func runWALEndpointBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 	}
 
 	// Stop the endpoint: it waits until the current batch is sent
-	adapter.Stop()
+	adapter.stop()
 	close(receivedReqsChan)
 }
 
@@ -499,8 +551,9 @@ func runEndpointBenchCase(b *testing.B, bc testCase) {
 	}
 
 	m := newMetrics(reg)
-	endpoint, err := newEndpoint(m, cfg, logging.NewSlogNop(), marker.NewNopTracker())
+	endpoint, err := newEndpoint(m, cfg, logging.NewSlogNop(), savepoint.NewNopTracker())
 	require.NoError(b, err)
+	endpoint.start()
 
 	//labels := model.LabelSet{"app": "test"}
 	var lines []string
@@ -512,7 +565,7 @@ func runEndpointBenchCase(b *testing.B, bc testCase) {
 		// Send all the input log entries
 		for j, l := range lines {
 			seriesId := j % bc.numSeries
-			endpoint.enqueue(loki.Entry{
+			endpoint.enqueue(b.Context(), loki.Entry{
 				Labels: model.LabelSet{
 					// take j module bc.numSeries to evenly distribute those numSeries across all sent entries
 					"app": model.LabelValue(fmt.Sprintf("series-%d", seriesId)),
@@ -535,4 +588,114 @@ func runEndpointBenchCase(b *testing.B, bc testCase) {
 	// Stop the endpoint: it waits until the current batch is sent
 	endpoint.stop()
 	close(receivedReqsChan)
+}
+
+func TestWALConsumer_StopWithFullSendQueue(t *testing.T) {
+	const (
+		drainTimeout = time.Second
+	)
+
+	server, blocked, release := newBlockedServer()
+	defer server.Close()
+	defer release()
+
+	serverURL, err := url.Parse(server.URL)
+	require.NoError(t, err)
+
+	dir := t.TempDir()
+	walConfig := wal.Config{
+		MaxSegmentAge: time.Minute,
+		WatchConfig: wal.WatchConfig{
+			MinReadFrequency: 10 * time.Millisecond,
+			MaxReadFrequency: 50 * time.Millisecond,
+			DrainTimeout:     drainTimeout,
+		},
+	}
+
+	endpointConfig := Config{
+		Name: "test-client",
+		URL:  flagext.URLValue{URL: serverURL},
+		// Long enough that the in-flight request stays parked for the whole test.
+		Timeout:   time.Minute,
+		BatchSize: 1,
+		BackoffConfig: backoff.Config{
+			MinBackoff: time.Millisecond,
+			MaxBackoff: 10 * time.Millisecond,
+			MaxRetries: 0,
+		},
+		QueueConfig: QueueConfig{
+			Capacity:        1,
+			MinShards:       1,
+			DrainTimeout:    drainTimeout,
+			BlockOnOverflow: true,
+		},
+	}
+
+	var (
+		logger = logging.NewSlogNop()
+		reg    = prometheus.NewRegistry()
+	)
+
+	wl, err := wal.New(logger, reg, dir)
+	require.NoError(t, err)
+	defer wl.Close()
+
+	consumer, err := NewWALConsumer(logger, reg, wl, walConfig, endpointConfig)
+	require.NoError(t, err)
+	consumer.Start()
+
+	feedUntilBlocked(t, blocked, consumer)
+
+	stopped := make(chan struct{})
+	go func() {
+		consumer.StopAndDrain()
+		close(stopped)
+	}()
+
+	// A healthy shutdown costs at most the WAL drain timeout plus the queue drain timeout.
+	select {
+	case <-stopped:
+	case <-time.After(5 * (drainTimeout + drainTimeout)):
+		release()
+		t.Fatal("StopAndDrain did not finish in time")
+	}
+}
+
+func TestWALConsumer_NoLeakOnFailedEndpoint(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	host, err := url.Parse("http://localhost:3100")
+	require.NoError(t, err)
+
+	var (
+		dir       = t.TempDir()
+		logger    = logging.NewSlogNop()
+		reg       = prometheus.NewRegistry()
+		walConfig = wal.Config{
+			MaxSegmentAge: time.Second * 10,
+			WatchConfig:   wal.DefaultWatchConfig,
+		}
+		cfg = Config{URL: flagext.URLValue{URL: host}}
+		// HTTPClientConfig.Validate allows at most one bearer token source, so
+		// creating the endpoint for this config fails.
+		invalidClientCfg = Config{
+			URL: flagext.URLValue{URL: host},
+			Client: config.HTTPClientConfig{
+				BearerToken:     "my-token",
+				BearerTokenFile: "my-token-file",
+			},
+		}
+	)
+
+	wl, err := wal.New(logger, reg, dir)
+	require.NoError(t, err)
+	defer wl.Close()
+
+	// Using same config twice.
+	_, err = NewWALConsumer(logger, reg, wl, walConfig, cfg, cfg)
+	require.Error(t, err)
+
+	// Using two different configs but endpoint cannot be created by the second one.
+	_, err = NewWALConsumer(logger, reg, wl, walConfig, cfg, invalidClientCfg)
+	require.Error(t, err)
 }

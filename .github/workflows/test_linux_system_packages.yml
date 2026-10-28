@@ -8,6 +8,14 @@ on:
     - internal/tools/packaging_test/**
     - Makefile
     - build-tools/make/*.mk
+    - .github/workflows/test_linux_system_packages.yml
+  pull_request:
+    paths:
+    - packaging/**
+    - internal/tools/packaging_test/**
+    - Makefile
+    - build-tools/make/*.mk
+    - .github/workflows/test_linux_system_packages.yml
 
 permissions:
   contents: read
@@ -17,7 +25,7 @@ jobs:
     name: Test Linux system packages
     runs-on: ubuntu-latest-8-cores
     container:
-      image: grafana/alloy-build-image:v0.1.35@sha256:9fa2a341b53503ce42cf9900c401d689a68ea67cdec6a20f53d72e3665fb8dc6
+      image: grafana/alloy-build-image:v0.1.37@sha256:716ebb596222e7d046384e7bcc908ad8db8e1eaf5efb89bef3183d8c9fdf6c54
       volumes:
         - /var/run/docker.sock
     steps:

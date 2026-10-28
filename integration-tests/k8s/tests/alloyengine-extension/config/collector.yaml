@@ -1,0 +1,27 @@
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+  alloyengine:
+    config:
+      path: /etc/alloy/config.alloy
+    flags:
+      stability.level: experimental
+
+# The collector needs a pipeline to start, but the test only exercises the one
+# the alloyengine extension runs in config.alloy. Nothing sends here.
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:14318
+
+exporters:
+  debug:
+    verbosity: basic
+
+service:
+  extensions: [health_check, alloyengine]
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      exporters: [debug]

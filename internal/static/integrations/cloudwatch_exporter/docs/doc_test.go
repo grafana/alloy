@@ -52,20 +52,25 @@ func TestSyncServicesDoc(t *testing.T) {
 	}
 }
 
-func TestSyncServicesDocPreservesPermissions(t *testing.T) {
+func TestSyncServicesDocUpdatesExistingFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "cloudwatch.md")
-	if err := os.WriteFile(path, []byte("old\n"), 0o640); err != nil {
+	if err := os.WriteFile(path, []byte("old\n"), 0o644); err != nil {
 		t.Fatalf("write test file: %v", err)
 	}
 
-	if _, err := syncServicesDoc(path, "new\n"); err != nil {
+	changed, err := syncServicesDoc(path, "new\n")
+	if err != nil {
 		t.Fatalf("syncServicesDoc() returned an error: %v", err)
 	}
-	fileInfo, err := os.Stat(path)
-	if err != nil {
-		t.Fatalf("stat synced file: %v", err)
+	if !changed {
+		t.Fatal("syncServicesDoc() changed = false, want true")
 	}
-	if got, want := fileInfo.Mode().Perm(), os.FileMode(0o640); got != want {
-		t.Fatalf("synced file permissions = %v, want %v", got, want)
+
+	updated, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read synced file: %v", err)
+	}
+	if string(updated) != "new\n" {
+		t.Fatalf("synced file = %q, want %q", updated, "new\n")
 	}
 }

@@ -3,15 +3,18 @@ package collector
 import (
 	"database/sql/driver"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/go-logfmt/logfmt"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -33,12 +36,12 @@ func TestQueryTables(t *testing.T) {
 				"select * from some_table where id = 1",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": database_observability.OP_QUERY_ASSOCIATION},
+				{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"",
-				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table" validated="false"`,
 			},
 		},
 		{
@@ -50,12 +53,12 @@ func TestQueryTables(t *testing.T) {
 				"insert into some_table (`id`, `name`) values (1, 'foo')",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": database_observability.OP_QUERY_ASSOCIATION},
+				{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"INSERT INTO `some_table` (`id`, `name`) VALUES (...)\"",
-				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table" validated="false"`,
 			},
 		},
 		{
@@ -67,12 +70,12 @@ func TestQueryTables(t *testing.T) {
 				"update some_table set active=false, reason=null where id = 1 and name = 'foo'",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": database_observability.OP_QUERY_ASSOCIATION},
+				{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"UPDATE `some_table` SET `active` = false, `reason` = ? WHERE `id` = ? AND `name` = ?\"",
-				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table" validated="false"`,
 			},
 		},
 		{
@@ -84,12 +87,12 @@ func TestQueryTables(t *testing.T) {
 				"delete from some_table where id = 1",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": database_observability.OP_QUERY_ASSOCIATION},
+				{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"DELETE FROM `some_table` WHERE `id` = ?\"",
-				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table" validated="false"`,
 			},
 		},
 		{
@@ -101,14 +104,14 @@ func TestQueryTables(t *testing.T) {
 				"select t.id, t.val1, o.val2 FROM some_table t inner join other_table as o on t.id = o.id where o.val2 = 1 order by t.val1 desc",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_PARSED_TABLE_NAME},
-				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": database_observability.OP_QUERY_ASSOCIATION},
+				{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME},
+				{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT `t`.`id`, `t`.`val1`, `o`.`val2` FROM `some_table` `t` INNER JOIN `other_table` AS `o` ON `t`.`id` = `o`.`id` WHERE `o`.`val2` = ? ORDER BY `t`.`val1` DESC\"",
-				`level="info" schema="some_schema" digest="abc123" table="other_table"`,
-				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="other_table" validated="false"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table" validated="false"`,
 			},
 		},
 		{
@@ -125,16 +128,16 @@ func TestQueryTables(t *testing.T) {
 				"select * from another_table where id = 1",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_PARSED_TABLE_NAME},
-				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": database_observability.OP_QUERY_ASSOCIATION},
+				{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME},
+				{"op": database_observability.OP_QUERY_ASSOCIATION},
+				{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"false\" digest=\"xyz456\" digest_text=\"INSERT INTO `some_table`...\"",
-				`level="info" schema="some_schema" digest="xyz456" table="some_table"`,
+				`level="info" schema="some_schema" digest="xyz456" table="some_table" validated="false"`,
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `another_table` WHERE `id` = ?\"",
-				`level="info" schema="some_schema" digest="abc123" table="another_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="another_table" validated="false"`,
 			},
 		},
 		{
@@ -146,12 +149,12 @@ func TestQueryTables(t *testing.T) {
 				"select * from some_table where id = 1 /*traceparent='00-abc...",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": database_observability.OP_QUERY_ASSOCIATION},
+				{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"",
-				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table" validated="false"`,
 			},
 		},
 		{
@@ -163,12 +166,12 @@ func TestQueryTables(t *testing.T) {
 				"select * from some_table where id = 1 /* comment that's closed */ and name = 'test...",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": database_observability.OP_QUERY_ASSOCIATION},
+				{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"false\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ? AND `name` =\"",
-				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table" validated="false"`,
 			},
 		},
 		{
@@ -180,7 +183,7 @@ func TestQueryTables(t *testing.T) {
 				"START TRANSACTION",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": database_observability.OP_QUERY_ASSOCIATION},
 			},
 			logsLines: []string{
 				`level="info" schema="some_schema" parseable="true" digest="abc123" digest_text="START TRANSACTION"`,
@@ -200,12 +203,12 @@ func TestQueryTables(t *testing.T) {
 				"select * from some_table where id = 1",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": database_observability.OP_QUERY_ASSOCIATION},
+				{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"",
-				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table" validated="false"`,
 			},
 		},
 		{
@@ -222,16 +225,16 @@ func TestQueryTables(t *testing.T) {
 				"select * from some_table where id = 1",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_PARSED_TABLE_NAME},
-				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": database_observability.OP_QUERY_ASSOCIATION},
+				{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME},
+				{"op": database_observability.OP_QUERY_ASSOCIATION},
+				{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"",
-				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table" validated="false"`,
 				"level=\"info\" schema=\"other_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"",
-				`level="info" schema="other_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="other_schema" digest="abc123" table="some_table" validated="false"`,
 			},
 		},
 		{
@@ -243,16 +246,16 @@ func TestQueryTables(t *testing.T) {
 				"SELECT * FROM (SELECT id, name FROM employees_us_east UNION SELECT id, name FROM employees_us_west) as employees_us UNION SELECT id, name FROM employees_emea",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_PARSED_TABLE_NAME},
-				{"op": OP_QUERY_PARSED_TABLE_NAME},
-				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": database_observability.OP_QUERY_ASSOCIATION},
+				{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME},
+				{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME},
+				{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM (SELECT `id`, `name` FROM `employees_us_east` UNION SELECT `id`, `name` FROM `employees_us_west`) AS `employees_us` UNION SELECT `id`, `name` FROM `employees_emea`\"",
-				`level="info" schema="some_schema" digest="abc123" table="employees_emea"`,
-				`level="info" schema="some_schema" digest="abc123" table="employees_us_east"`,
-				`level="info" schema="some_schema" digest="abc123" table="employees_us_west"`,
+				`level="info" schema="some_schema" digest="abc123" table="employees_emea" validated="false"`,
+				`level="info" schema="some_schema" digest="abc123" table="employees_us_east" validated="false"`,
+				`level="info" schema="some_schema" digest="abc123" table="employees_us_west" validated="false"`,
 			},
 		},
 		{
@@ -264,12 +267,12 @@ func TestQueryTables(t *testing.T) {
 				"SHOW CREATE TABLE some_table",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": database_observability.OP_QUERY_ASSOCIATION},
+				{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SHOW CREATE TABLE `some_table`\"",
-				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table" validated="false"`,
 			},
 		},
 		{
@@ -281,7 +284,7 @@ func TestQueryTables(t *testing.T) {
 				"SHOW VARIABLES LIKE 'version'",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": database_observability.OP_QUERY_ASSOCIATION},
 			},
 			logsLines: []string{
 				`level="info" schema="some_schema" parseable="true" digest="abc123" digest_text="SHOW VARIABLES LIKE ?"`,
@@ -296,12 +299,12 @@ func TestQueryTables(t *testing.T) {
 				"select * from some_table whe...",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": database_observability.OP_QUERY_ASSOCIATION},
+				{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"",
-				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table" validated="false"`,
 			},
 		},
 		{
@@ -313,12 +316,12 @@ func TestQueryTables(t *testing.T) {
 				"select * from some_table where",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": database_observability.OP_QUERY_ASSOCIATION},
+				{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"",
-				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table" validated="false"`,
 			},
 		},
 		{
@@ -330,12 +333,12 @@ func TestQueryTables(t *testing.T) {
 				"select * from some_table where",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": database_observability.OP_QUERY_ASSOCIATION},
+				{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"false\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE\"",
-				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table" validated="false"`,
 			},
 		},
 		{
@@ -347,12 +350,12 @@ func TestQueryTables(t *testing.T) {
 				"select * from `s...",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": database_observability.OP_QUERY_ASSOCIATION},
+				{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"false\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE\"",
-				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table" validated="false"`,
 			},
 		},
 		{
@@ -364,12 +367,12 @@ func TestQueryTables(t *testing.T) {
 				nil, // NULL query_sample_text
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_PARSED_TABLE_NAME},
+				{"op": database_observability.OP_QUERY_ASSOCIATION},
+				{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"",
-				`level="info" schema="some_schema" digest="abc123" table="some_table"`,
+				`level="info" schema="some_schema" digest="abc123" table="some_table" validated="false"`,
 			},
 		},
 	}
@@ -496,10 +499,10 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
 		require.Equal(t, "level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"", lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
+		require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="some_table" validated="false"`, lokiEntries[1].Line)
 	})
 
 	t.Run("result set iteration error", func(t *testing.T) {
@@ -559,10 +562,10 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
 		require.Equal(t, "level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"", lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
+		require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="some_table" validated="false"`, lokiEntries[1].Line)
 	})
 
 	t.Run("connection error recovery", func(t *testing.T) {
@@ -619,10 +622,10 @@ func TestQueryTablesSQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
 		require.Equal(t, "level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"", lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
+		require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="some_table" validated="false"`, lokiEntries[1].Line)
 	})
 }
 
@@ -653,5 +656,243 @@ func TestQueryDetailsExcludeSchemas(t *testing.T) {
 	}))
 
 	c.tablesFromEventsStatements(t.Context())
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestQueryDetails_ResolvesTableNameCasingViaTableRegistry(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+
+	tableRegistry := NewTableRegistry()
+	tableRegistry.SetTables([]*tableInfo{
+		// e.g. information_schema.tables reports this lowercased because the cluster is
+		// configured with lower_case_table_names=1, but the query below references it with
+		// its literal, mixed-case spelling.
+		{schema: "some_schema", tableName: "emailageconsumer"},
+	})
+
+	collector, err := NewQueryDetails(QueryDetailsArguments{
+		DB:              db,
+		CollectInterval: time.Second,
+		StatementsLimit: 250,
+		EntryHandler:    lokiClient,
+		TableRegistry:   tableRegistry,
+		Logger:          util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+	require.NotNil(t, collector)
+
+	mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, exclusionClause, 250)).WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(
+			sqlmock.NewRows([]string{
+				"digest",
+				"digest_text",
+				"schema_name",
+				"query_sample_text",
+			}).AddRow(
+				"abc123",
+				"SELECT * FROM `EmailAgeConsumer` WHERE `id` = ?",
+				"some_schema",
+				"select * from EmailAgeConsumer where id = 1",
+			),
+		)
+
+	err = collector.Start(t.Context())
+	require.NoError(t, err)
+
+	require.Eventually(t, func() bool {
+		return len(lokiClient.Received()) == 2
+	}, 5*time.Second, 100*time.Millisecond)
+
+	collector.Stop()
+	lokiClient.Stop()
+
+	require.Eventually(t, func() bool {
+		return collector.Stopped()
+	}, 5*time.Second, 100*time.Millisecond)
+
+	require.NoError(t, mock.ExpectationsWereMet())
+
+	lokiEntries := lokiClient.Received()
+	require.Len(t, lokiEntries, 2)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
+	// Resolved to the registry's canonical (lowercased) casing rather than the query's
+	// literal mixed-case spelling.
+	require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="emailageconsumer" validated="true"`, lokiEntries[1].Line)
+}
+
+func TestQueryDetails_MarksAnUnresolvedParsedNameAsNotValidated(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+
+	// The registry only knows about a real table; it never contains whatever the query below
+	// parses out as a "table" name, standing in for the SQL parser/tokenizer occasionally
+	// misidentifying something else (a column, an alias, a function) as a table reference.
+	tableRegistry := NewTableRegistry()
+	tableRegistry.SetTables([]*tableInfo{
+		{schema: "some_schema", tableName: "some_table"},
+	})
+
+	collector, err := NewQueryDetails(QueryDetailsArguments{
+		DB:              db,
+		CollectInterval: time.Second,
+		StatementsLimit: 250,
+		EntryHandler:    lokiClient,
+		TableRegistry:   tableRegistry,
+		Logger:          util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+	require.NotNil(t, collector)
+
+	mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, exclusionClause, 250)).WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(
+			sqlmock.NewRows([]string{
+				"digest",
+				"digest_text",
+				"schema_name",
+				"query_sample_text",
+			}).AddRow(
+				"abc123",
+				"SELECT * FROM `not_a_real_table` WHERE `id` = ?",
+				"some_schema",
+				"select * from not_a_real_table where id = 1",
+			),
+		)
+
+	err = collector.Start(t.Context())
+	require.NoError(t, err)
+
+	require.Eventually(t, func() bool {
+		return len(lokiClient.Received()) == 2
+	}, 5*time.Second, 100*time.Millisecond)
+
+	collector.Stop()
+	lokiClient.Stop()
+
+	require.Eventually(t, func() bool {
+		return collector.Stopped()
+	}, 5*time.Second, 100*time.Millisecond)
+
+	require.NoError(t, mock.ExpectationsWereMet())
+
+	lokiEntries := lokiClient.Received()
+	require.Len(t, lokiEntries, 2)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
+	require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="not_a_real_table" validated="false"`, lokiEntries[1].Line)
+}
+
+func TestQueryDetails_ResolvesASchemaQualifiedCrossDatabaseReference(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+
+	// The query below runs against "some_schema" but references a table in a different
+	// database ("other_schema"), casing-mismatched the same way an unqualified reference
+	// can be.
+	tableRegistry := NewTableRegistry()
+	tableRegistry.SetTables([]*tableInfo{
+		{schema: "other_schema", tableName: "emailageconsumer"},
+	})
+
+	collector, err := NewQueryDetails(QueryDetailsArguments{
+		DB:              db,
+		CollectInterval: time.Second,
+		StatementsLimit: 250,
+		EntryHandler:    lokiClient,
+		TableRegistry:   tableRegistry,
+		Logger:          util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+	require.NotNil(t, collector)
+
+	mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, exclusionClause, 250)).WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(
+			sqlmock.NewRows([]string{
+				"digest",
+				"digest_text",
+				"schema_name",
+				"query_sample_text",
+			}).AddRow(
+				"abc123",
+				"SELECT * FROM `other_schema`.`EmailAgeConsumer` WHERE `id` = ?",
+				"some_schema",
+				"select * from other_schema.EmailAgeConsumer where id = 1",
+			),
+		)
+
+	err = collector.Start(t.Context())
+	require.NoError(t, err)
+
+	require.Eventually(t, func() bool {
+		return len(lokiClient.Received()) == 2
+	}, 5*time.Second, 100*time.Millisecond)
+
+	collector.Stop()
+	lokiClient.Stop()
+
+	require.Eventually(t, func() bool {
+		return collector.Stopped()
+	}, 5*time.Second, 100*time.Millisecond)
+
+	require.NoError(t, mock.ExpectationsWereMet())
+
+	lokiEntries := lokiClient.Received()
+	require.Len(t, lokiEntries, 2)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
+	// The "schema" field stays the connection's active schema ("some_schema"); the resolved
+	// table carries its own schema qualifier ("other_schema"), lowercased to match the registry.
+	require.Equal(t, `level="info" schema="some_schema" digest="abc123" table="other_schema.emailageconsumer" validated="true"`, lokiEntries[1].Line)
+}
+
+func TestQueryDetails_EscapesQuotedIdentifiers(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
+	collector, err := NewQueryDetails(QueryDetailsArguments{
+		DB: db, StatementsLimit: 250, EntryHandler: handler, Logger: util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+	schema := "example\"schema"
+	table := "orders\"archive"
+	query := "SELECT * FROM `" + table + "`"
+	mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, exclusionClause, 250)).WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows([]string{"digest", "digest_text", "schema_name", "query_sample_text"}).
+			AddRow("abc123", query, schema, query))
+	require.NoError(t, collector.tablesFromEventsStatements(t.Context()))
+	require.Eventually(t, func() bool { return len(handler.Received()) == 2 }, time.Second, time.Millisecond)
+	entries := handler.Received()
+	for _, entry := range entries {
+		decoder := logfmt.NewDecoder(strings.NewReader(entry.Line))
+		fields := map[string]string{}
+		for decoder.ScanRecord() {
+			for decoder.ScanKeyval() {
+				fields[string(decoder.Key())] = string(decoder.Value())
+			}
+		}
+		require.NoError(t, decoder.Err())
+		require.Equal(t, schema, fields["schema"])
+		if entry.Labels["op"] == database_observability.OP_QUERY_ASSOCIATION {
+			require.Equal(t, query, fields["digest_text"])
+		} else {
+			require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, entry.Labels)
+			require.Equal(t, table, fields["table"])
+		}
+	}
 	require.NoError(t, mock.ExpectationsWereMet())
 }

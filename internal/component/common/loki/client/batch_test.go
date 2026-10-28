@@ -44,6 +44,12 @@ func TestBatch_MaxSize(t *testing.T) {
 	require.ErrorIs(t, b.add(entry, 0), errBatchSizeReached)
 }
 
+// labelSetSize returns the size, in bytes, that a stream with these labels
+// contributes to the batch. Each distinct label set is counted once.
+func labelSetSize(ls model.LabelSet) int {
+	return len(labelsMapToString(ls))
+}
+
 func TestBatch_add(t *testing.T) {
 	t.Parallel()
 
@@ -53,7 +59,7 @@ func TestBatch_add(t *testing.T) {
 		expectedSizeBytes int
 	}
 
-	batchSize := func(entries ...loki.Entry) int {
+	entriesSize := func(entries ...loki.Entry) int {
 		var size int
 		for _, e := range entries {
 			size += e.Size()
@@ -72,7 +78,7 @@ func TestBatch_add(t *testing.T) {
 			entries: []loki.Entry{
 				{Labels: model.LabelSet{}, Entry: logEntries[0].Entry},
 			},
-			expectedSizeBytes: batchSize(logEntries[0]),
+			expectedSizeBytes: entriesSize(logEntries[0]) + labelSetSize(model.LabelSet{}),
 		},
 		{
 			name: "single stream with multiple log entries",
@@ -81,7 +87,7 @@ func TestBatch_add(t *testing.T) {
 				{Labels: model.LabelSet{}, Entry: logEntries[1].Entry},
 				{Labels: model.LabelSet{}, Entry: logEntries[7].Entry},
 			},
-			expectedSizeBytes: batchSize(logEntries[0], logEntries[1], logEntries[7]),
+			expectedSizeBytes: entriesSize(logEntries[0], logEntries[1], logEntries[7]) + labelSetSize(model.LabelSet{}),
 		},
 		{
 			name: "multiple streams with multiple log entries",
@@ -90,7 +96,7 @@ func TestBatch_add(t *testing.T) {
 				{Labels: model.LabelSet{"type": "a"}, Entry: logEntries[1].Entry},
 				{Labels: model.LabelSet{"type": "b"}, Entry: logEntries[2].Entry},
 			},
-			expectedSizeBytes: batchSize(logEntries[0], logEntries[1], logEntries[2]),
+			expectedSizeBytes: entriesSize(logEntries[0], logEntries[1], logEntries[2]) + labelSetSize(model.LabelSet{"type": "a"}) + labelSetSize(model.LabelSet{"type": "b"}),
 		},
 	}
 

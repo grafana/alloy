@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,97 +20,12 @@ import (
 
 const (
 	SchemaDetailsCollector = "schema_details"
-	OP_TABLE_DETECTION     = "table_detection"
-	OP_CREATE_STATEMENT    = "create_statement"
-)
-
-const (
-	selectDatabasesTemplate = `
-		SELECT name, QUOTENAME(name)
-		FROM sys.databases
-		WHERE state_desc = 'ONLINE'
-			AND HAS_DBACCESS(name) = 1
-			AND name NOT IN %s
-		ORDER BY name`
-
-	selectTablesTemplate = `
-		SELECT
-			table_catalog,
-			table_schema,
-			table_name,
-			table_type
-		FROM information_schema.tables
-		WHERE table_schema NOT IN %s
-		ORDER BY table_schema, table_name`
-
-	// selectColumnsTemplate returns columns information for every table in
-	// the given IN-clause of table names, scoped to a single schema.
-	// Note that column_type is emitted as the bare SQL Server type family name
-	// (e.g. `varchar`, `int`, `decimal`) without precision/length.
-	selectColumnsTemplate = `
-		SELECT
-			OBJECT_NAME(c.object_id) AS table_name,
-			c.name AS column_name,
-			TYPE_NAME(c.user_type_id) AS column_type,
-			c.is_nullable,
-			c.is_identity,
-			dc.definition AS default_value,
-			CASE WHEN pk_ic.column_id IS NOT NULL THEN 1 ELSE 0 END AS is_primary_key
-		FROM sys.columns c
-		INNER JOIN sys.objects o ON c.object_id = o.object_id
-		INNER JOIN sys.schemas s ON o.schema_id = s.schema_id
-		LEFT JOIN sys.default_constraints dc ON c.default_object_id = dc.object_id
-		LEFT JOIN sys.indexes pk ON pk.object_id = c.object_id AND pk.is_primary_key = 1
-		LEFT JOIN sys.index_columns pk_ic ON pk_ic.object_id = c.object_id AND pk_ic.index_id = pk.index_id AND pk_ic.column_id = c.column_id
-		WHERE s.name = @p1 AND OBJECT_NAME(c.object_id) IN %s
-		ORDER BY OBJECT_NAME(c.object_id), c.column_id`
-
-	// selectIndexesTemplate returns index information for every table in
-	// the IN-clause. Note we filter out:
-	// - Heaps (i.type = 0) and unnamed rowstore rows
-	// - INCLUDE columns (ic.is_included_column = 1)
-	selectIndexesTemplate = `
-		SELECT
-			OBJECT_NAME(i.object_id) AS table_name,
-			i.name AS index_name,
-			ic.key_ordinal AS seq_in_index,
-			c.name AS column_name,
-			i.type_desc AS index_type,
-			i.is_unique,
-			c.is_nullable
-		FROM sys.indexes i
-		INNER JOIN sys.objects o ON i.object_id = o.object_id
-		INNER JOIN sys.schemas s ON o.schema_id = s.schema_id
-		INNER JOIN sys.index_columns ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id AND ic.is_included_column = 0
-		INNER JOIN sys.columns c ON ic.object_id = c.object_id AND ic.column_id = c.column_id
-		WHERE s.name = @p1 AND OBJECT_NAME(i.object_id) IN %s
-			AND i.type > 0
-			AND i.name IS NOT NULL
-		ORDER BY OBJECT_NAME(i.object_id), i.name, ic.key_ordinal`
-
-	// selectForeignKeysTemplate returns foreign key information for every table in
-	// the IN-clause. Ordering by constraint_column_id preserves the correlation
-	// between parent and referenced columns in composite foreign keys.
-	selectForeignKeysTemplate = `
-		SELECT
-			OBJECT_NAME(fk.parent_object_id) AS table_name,
-			fk.name AS constraint_name,
-			pcol.name AS column_name,
-			OBJECT_NAME(fk.referenced_object_id) AS referenced_table_name,
-			rcol.name AS referenced_column_name
-		FROM sys.foreign_keys fk
-		INNER JOIN sys.objects o ON fk.parent_object_id = o.object_id
-		INNER JOIN sys.schemas s ON o.schema_id = s.schema_id
-		INNER JOIN sys.foreign_key_columns fkc ON fk.object_id = fkc.constraint_object_id
-		INNER JOIN sys.columns pcol ON fkc.parent_object_id = pcol.object_id AND fkc.parent_column_id = pcol.column_id
-		INNER JOIN sys.columns rcol ON fkc.referenced_object_id = rcol.object_id AND fkc.referenced_column_id = rcol.column_id
-		WHERE s.name = @p1 AND OBJECT_NAME(fk.parent_object_id) IN %s
-		ORDER BY OBJECT_NAME(fk.parent_object_id), fk.name, fkc.constraint_column_id`
 )
 
 type SchemaDetailsArguments struct {
 	DB               *sql.DB
 	CollectInterval  time.Duration
+	QueryTimeout     time.Duration
 	ExcludeSchemas   []string
 	ExcludeDatabases []string
 	EntryHandler     loki.EntryHandler
@@ -120,9 +36,11 @@ type SchemaDetailsArguments struct {
 type SchemaDetails struct {
 	dbConnection     *sql.DB
 	collectInterval  time.Duration
+	queryTimeout     time.Duration
 	excludeSchemas   []string
 	excludeDatabases []string
 	entryHandler     loki.EntryHandler
+	tableRegistry    *TableRegistry
 
 	// lastEmittedAt records the wall-clock time at which OP_CREATE_STATEMENT
 	// was last emitted for a table. The outer key is the database name and
@@ -146,6 +64,197 @@ type tableInfo struct {
 	tableName    string
 	tableType    string
 	b64TableSpec string
+}
+
+// TableRegistry is a source-of-truth cache of databases, schemas, and tables
+// reported by information_schema.tables.
+type TableRegistry struct {
+	mu     sync.RWMutex
+	tables map[string]map[string]map[string]struct{}
+}
+
+func NewTableRegistry() *TableRegistry {
+	return &TableRegistry{
+		tables: make(map[string]map[string]map[string]struct{}),
+	}
+}
+
+// SetTablesForDatabase atomically replaces all known tables for a database.
+func (tr *TableRegistry) SetTablesForDatabase(database string, tablesInfo []*tableInfo) {
+	schemas := make(map[string]map[string]struct{})
+	for _, info := range tablesInfo {
+		if schemas[info.schema] == nil {
+			schemas[info.schema] = make(map[string]struct{})
+		}
+		schemas[info.schema][info.tableName] = struct{}{}
+	}
+
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+	tr.tables[database] = schemas
+}
+
+// HasDatabase reports whether tables have been collected for a database.
+// A database with no tables is still considered collected.
+func (tr *TableRegistry) HasDatabase(database string) bool {
+	tr.mu.RLock()
+	defer tr.mu.RUnlock()
+
+	_, ok := tr.tables[database]
+	return ok
+}
+
+// PruneDatabases removes databases that are no longer returned by discovery.
+func (tr *TableRegistry) PruneDatabases(discovered map[string]struct{}) {
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+
+	for database := range tr.tables {
+		if _, ok := discovered[database]; !ok {
+			delete(tr.tables, database)
+		}
+	}
+}
+
+// IsValid resolves a parsed table name against the database's known tables.
+// Unqualified names are checked across schemas because Query Store does not
+// expose the originating user's default schema.
+func (tr *TableRegistry) IsValid(database, parsedTableName string) (string, bool) {
+	schemaName, tableName, qualified, ok := parseSQLServerTableIdentifier(parsedTableName)
+	if !ok {
+		return parsedTableName, false
+	}
+
+	tr.mu.RLock()
+	defer tr.mu.RUnlock()
+
+	schemas, ok := tr.tables[database]
+	if !ok {
+		return parsedTableName, false
+	}
+	if qualified {
+		resolvedSchema, ok := resolveUniqueName(schemas, schemaName)
+		if !ok {
+			return parsedTableName, false
+		}
+		resolvedTable, ok := resolveUniqueName(schemas[resolvedSchema], tableName)
+		if !ok {
+			return parsedTableName, false
+		}
+		return resolvedSchema + "." + resolvedTable, true
+	}
+
+	for _, tables := range schemas {
+		if _, ok := tables[tableName]; ok {
+			return tableName, true
+		}
+	}
+
+	var resolved string
+	for _, tables := range schemas {
+		for candidate := range tables {
+			if !strings.EqualFold(candidate, tableName) {
+				continue
+			}
+			if resolved != "" && resolved != candidate {
+				return parsedTableName, false
+			}
+			resolved = candidate
+		}
+	}
+	if resolved == "" {
+		return parsedTableName, false
+	}
+	return resolved, true
+}
+
+func parseSQLServerTableIdentifier(name string) (schemaName, tableName string, qualified, ok bool) {
+	if name == "" {
+		return "", "", false, false
+	}
+
+	var parts []string
+	for i := 0; i < len(name); {
+		if len(parts) == 2 {
+			return "", "", false, false
+		}
+
+		part, next, valid := scanSQLServerIdentifierPart(name, i)
+		if !valid || part == "" {
+			return "", "", false, false
+		}
+		parts = append(parts, part)
+		if next == len(name) {
+			break
+		}
+		if name[next] != '.' || next+1 == len(name) {
+			return "", "", false, false
+		}
+		i = next + 1
+	}
+
+	switch len(parts) {
+	case 1:
+		return "", parts[0], false, true
+	case 2:
+		return parts[0], parts[1], true, true
+	default:
+		return "", "", false, false
+	}
+}
+
+func scanSQLServerIdentifierPart(name string, start int) (part string, next int, ok bool) {
+	if start >= len(name) {
+		return "", start, false
+	}
+
+	if name[start] == '[' || name[start] == '"' {
+		closing := byte(']')
+		if name[start] == '"' {
+			closing = '"'
+		}
+
+		var b strings.Builder
+		for i := start + 1; i < len(name); i++ {
+			if name[i] == closing {
+				if i+1 < len(name) && name[i+1] == closing {
+					b.WriteByte(closing)
+					i++
+					continue
+				}
+				return b.String(), i + 1, true
+			}
+			b.WriteByte(name[i])
+		}
+		return "", len(name), false
+	}
+
+	end := start
+	for end < len(name) && name[end] != '.' {
+		if name[end] == '[' || name[end] == ']' || name[end] == '"' {
+			return "", end, false
+		}
+		end++
+	}
+	return name[start:end], end, end > start
+}
+
+func resolveUniqueName[V any](values map[string]V, requested string) (string, bool) {
+	if _, ok := values[requested]; ok {
+		return requested, true
+	}
+
+	resolved := ""
+	for candidate := range values {
+		if !strings.EqualFold(candidate, requested) {
+			continue
+		}
+		if resolved != "" {
+			return "", false
+		}
+		resolved = candidate
+	}
+	return resolved, resolved != ""
 }
 
 type tableSpec struct {
@@ -183,9 +292,11 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 	c := &SchemaDetails{
 		dbConnection:     args.DB,
 		collectInterval:  args.CollectInterval,
+		queryTimeout:     queryTimeoutOrDefault(args.QueryTimeout),
 		excludeSchemas:   args.ExcludeSchemas,
 		excludeDatabases: args.ExcludeDatabases,
 		entryHandler:     args.EntryHandler,
+		tableRegistry:    NewTableRegistry(),
 		lastEmittedAt:    map[string]map[string]time.Time{},
 		now:              time.Now,
 		logger:           args.Logger.With("collector", SchemaDetailsCollector),
@@ -197,6 +308,10 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 
 func (c *SchemaDetails) Name() string {
 	return SchemaDetailsCollector
+}
+
+func (c *SchemaDetails) GetTableRegistry() *TableRegistry {
+	return c.tableRegistry
 }
 
 func (c *SchemaDetails) Start(ctx context.Context) error {
@@ -261,7 +376,12 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 		c.logger.Info("no databases detected")
 	} else {
 		// Pin one connection for the whole cycle as USE mutates session state
-		conn, err := c.dbConnection.Conn(ctx)
+		var conn *sql.Conn
+		err := withQueryTimeout(ctx, c.queryTimeout, func(queryCtx context.Context) error {
+			var err error
+			conn, err = c.dbConnection.Conn(queryCtx)
+			return err
+		})
 		if err != nil {
 			return fmt.Errorf("failed to acquire database connection: %w", err)
 		}
@@ -269,7 +389,11 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 
 		for _, db := range databases {
 			discovered[db.name] = struct{}{}
-			if _, err := conn.ExecContext(ctx, fmt.Sprintf("USE %s", db.quoted)); err != nil {
+			err := withQueryTimeout(ctx, c.queryTimeout, func(queryCtx context.Context) error {
+				_, err := conn.ExecContext(queryCtx, fmt.Sprintf(useDatabaseTemplate, db.quoted))
+				return err
+			})
+			if err != nil {
 				c.logger.Error("failed to switch database context, skipping", "database", db.name, "err", err)
 				continue
 			}
@@ -290,28 +414,42 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 			delete(c.lastEmittedAt, db)
 		}
 	}
+	c.tableRegistry.PruneDatabases(discovered)
 
 	return nil
 }
 
 func (c *SchemaDetails) listDatabases(ctx context.Context) ([]databaseName, error) {
-	query := fmt.Sprintf(selectDatabasesTemplate, buildExcludedDatabasesClause(c.excludeDatabases))
-	rs, err := c.dbConnection.QueryContext(ctx, query)
+	return listDatabases(ctx, c.dbConnection, c.queryTimeout, c.excludeDatabases)
+}
+
+// listDatabases lists the non-excluded, accessible, online databases on the
+// instance. It's shared by SchemaDetails and HealthCheck so both iterate
+// databases the same way.
+func listDatabases(ctx context.Context, db *sql.DB, queryTimeout time.Duration, excludeDatabases []string) ([]databaseName, error) {
+	query := fmt.Sprintf(selectDatabasesTemplate, buildExcludedDatabasesClause(excludeDatabases))
+	var databases []databaseName
+	err := withQueryTimeout(ctx, queryTimeout, func(queryCtx context.Context) error {
+		rs, err := db.QueryContext(queryCtx, query)
+		if err != nil {
+			return err
+		}
+		defer rs.Close()
+
+		for rs.Next() {
+			var name, quoted string
+			if err := rs.Scan(&name, &quoted); err != nil {
+				return fmt.Errorf("failed to scan database row: %w", err)
+			}
+			databases = append(databases, databaseName{name: name, quoted: quoted})
+		}
+		if err := rs.Err(); err != nil {
+			return fmt.Errorf("failed to iterate over databases result set: %w", err)
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
-	}
-	defer rs.Close()
-
-	var databases []databaseName
-	for rs.Next() {
-		var name, quoted string
-		if err := rs.Scan(&name, &quoted); err != nil {
-			return nil, fmt.Errorf("failed to scan database row: %w", err)
-		}
-		databases = append(databases, databaseName{name: name, quoted: quoted})
-	}
-	if err := rs.Err(); err != nil {
-		return nil, fmt.Errorf("failed to iterate over databases result set: %w", err)
 	}
 	return databases, nil
 }
@@ -324,12 +462,6 @@ func (c *SchemaDetails) listDatabases(ctx context.Context) ([]databaseName, erro
 // evict entries for tables we simply did not observe this cycle.
 func (c *SchemaDetails) extractSchemaForDatabase(ctx context.Context, conn *sql.Conn, dbName string, now time.Time) error {
 	query := fmt.Sprintf(selectTablesTemplate, buildExcludedSchemasClause(c.excludeSchemas))
-	rs, err := conn.QueryContext(ctx, query)
-	if err != nil {
-		return fmt.Errorf("failed to query tables: %w", err)
-	}
-	defer rs.Close()
-
 	tables := []*tableInfo{}
 	// scanComplete tracks whether we iterated the tables result set without
 	// bailing out early. If false we have a partial view and must skip the
@@ -337,29 +469,45 @@ func (c *SchemaDetails) extractSchemaForDatabase(ctx context.Context, conn *sql.
 	// did not get to scan this round.
 	scanComplete := true
 
-	for rs.Next() {
-		var database, schema, tableName, tableType string
-		if err := rs.Scan(&database, &schema, &tableName, &tableType); err != nil {
-			c.logger.Error("failed to scan tables", "database", dbName, "err", err)
-			scanComplete = false
-			break
+	err := withQueryTimeout(ctx, c.queryTimeout, func(queryCtx context.Context) error {
+		rs, err := conn.QueryContext(queryCtx, query)
+		if err != nil {
+			return fmt.Errorf("failed to query tables: %w", err)
 		}
-		tables = append(tables, &tableInfo{
-			database:  database,
-			schema:    schema,
-			tableName: tableName,
-			tableType: tableType,
-		})
+		defer rs.Close()
 
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-			logging.LevelInfo,
-			OP_TABLE_DETECTION,
-			fmt.Sprintf(`database="%s" schema="%s" table="%s"`, database, schema, tableName),
-		)
+		for rs.Next() {
+			var database, schema, tableName, tableType string
+			if err := rs.Scan(&database, &schema, &tableName, &tableType); err != nil {
+				c.logger.Error("failed to scan tables", "database", dbName, "err", err)
+				scanComplete = false
+				break
+			}
+			tables = append(tables, &tableInfo{
+				database:  database,
+				schema:    schema,
+				tableName: tableName,
+				tableType: tableType,
+			})
+
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+				logging.LevelInfo,
+				database_observability.OP_TABLE_DETECTION,
+				fmt.Sprintf(`database=%q schema=%q table=%q`, database, schema, tableName),
+			)
+		}
+
+		if err := rs.Err(); err != nil {
+			return fmt.Errorf("failed to iterate over tables result set: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
-	if err := rs.Err(); err != nil {
-		return fmt.Errorf("failed to iterate over tables result set: %w", err)
+	if scanComplete {
+		c.tableRegistry.SetTablesForDatabase(dbName, tables)
 	}
 
 	if len(tables) == 0 {
@@ -424,9 +572,9 @@ func (c *SchemaDetails) extractSchemaForDatabase(ctx context.Context, conn *sql.
 
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
-				OP_CREATE_STATEMENT,
+				database_observability.OP_CREATE_STATEMENT,
 				fmt.Sprintf(
-					`database="%s" schema="%s" table="%s" table_spec="%s"`,
+					`database=%q schema=%q table=%q table_spec=%q`,
 					table.database, table.schema, table.tableName, table.b64TableSpec,
 				),
 			)
@@ -496,120 +644,138 @@ func (c *SchemaDetails) fetchSchemaSpecs(ctx context.Context, conn *sql.Conn, sc
 		return s
 	}
 
-	colRS, err := conn.QueryContext(ctx, fmt.Sprintf(selectColumnsTemplate, database_observability.BuildExclusionClause(tableNames)), schema)
-	if err != nil {
-		c.logger.Error("failed to query schema columns", "schema", schema, "err", err)
-		return nil, err
-	}
-	defer colRS.Close()
+	err := withQueryTimeout(ctx, c.queryTimeout, func(queryCtx context.Context) error {
+		colRS, err := conn.QueryContext(queryCtx, fmt.Sprintf(selectColumnsTemplate, database_observability.BuildExclusionClause(tableNames)), schema)
+		if err != nil {
+			c.logger.Error("failed to query schema columns", "schema", schema, "err", err)
+			return err
+		}
+		defer colRS.Close()
 
-	for colRS.Next() {
-		var tableName, columnName, columnType string
-		var isNullable, isIdentity, isPrimaryKey bool
-		var defaultValue sql.NullString
-		if err := colRS.Scan(&tableName, &columnName, &columnType, &isNullable, &isIdentity, &defaultValue, &isPrimaryKey); err != nil {
-			c.logger.Error("failed to scan schema columns", "schema", schema, "err", err)
-			return nil, err
+		for colRS.Next() {
+			var tableName, columnName, columnType string
+			var isNullable, isIdentity, isPrimaryKey bool
+			var defaultValue sql.NullString
+			if err := colRS.Scan(&tableName, &columnName, &columnType, &isNullable, &isIdentity, &defaultValue, &isPrimaryKey); err != nil {
+				c.logger.Error("failed to scan schema columns", "schema", schema, "err", err)
+				return err
+			}
+
+			defaultVal := ""
+			if defaultValue.Valid {
+				defaultVal = defaultValue.String
+			}
+
+			spec := specOf(tableName)
+			spec.Columns = append(spec.Columns, columnSpec{
+				Name:          columnName,
+				Type:          columnType,
+				NotNull:       !isNullable,
+				AutoIncrement: isIdentity,
+				PrimaryKey:    isPrimaryKey,
+				DefaultValue:  defaultVal,
+			})
 		}
 
-		defaultVal := ""
-		if defaultValue.Valid {
-			defaultVal = defaultValue.String
+		if err := colRS.Err(); err != nil {
+			c.logger.Error("failed to iterate over schema columns result set", "schema", schema, "err", err)
+			return err
 		}
-
-		spec := specOf(tableName)
-		spec.Columns = append(spec.Columns, columnSpec{
-			Name:          columnName,
-			Type:          columnType,
-			NotNull:       !isNullable,
-			AutoIncrement: isIdentity,
-			PrimaryKey:    isPrimaryKey,
-			DefaultValue:  defaultVal,
-		})
-	}
-
-	if err := colRS.Err(); err != nil {
-		c.logger.Error("failed to iterate over schema columns result set", "schema", schema, "err", err)
-		return nil, err
-	}
-
-	idxRS, err := conn.QueryContext(ctx, fmt.Sprintf(selectIndexesTemplate, database_observability.BuildExclusionClause(tableNames)), schema)
+		return nil
+	})
 	if err != nil {
-		c.logger.Error("failed to query schema indexes", "schema", schema, "err", err)
 		return nil, err
 	}
-	defer idxRS.Close()
 
 	// Track the table whose last appended index we may merge into. When the
 	// table changes we always treat the next index row as a new index, even if
 	// the index name happens to match.
 	var lastTable string
-	for idxRS.Next() {
-		var tableName, indexName, columnName, indexType string
-		var seqInIndex int
-		var isUnique, isNullable bool
-		if err := idxRS.Scan(&tableName, &indexName, &seqInIndex, &columnName, &indexType, &isUnique, &isNullable); err != nil {
-			c.logger.Error("failed to scan schema indexes", "schema", schema, "err", err)
-			return nil, err
+	err = withQueryTimeout(ctx, c.queryTimeout, func(queryCtx context.Context) error {
+		idxRS, err := conn.QueryContext(queryCtx, fmt.Sprintf(selectIndexesTemplate, database_observability.BuildExclusionClause(tableNames)), schema)
+		if err != nil {
+			c.logger.Error("failed to query schema indexes", "schema", schema, "err", err)
+			return err
 		}
+		defer idxRS.Close()
 
-		spec := specOf(tableName)
+		for idxRS.Next() {
+			var tableName, indexName, columnName, indexType string
+			var seqInIndex int
+			var isUnique, isNullable bool
+			if err := idxRS.Scan(&tableName, &indexName, &seqInIndex, &columnName, &indexType, &isUnique, &isNullable); err != nil {
+				c.logger.Error("failed to scan schema indexes", "schema", schema, "err", err)
+				return err
+			}
 
-		// Append column to the last index if it's the same as the previous one
-		// within the same table (i.e. multi-column index).
-		if tableName == lastTable {
-			if nIndexes := len(spec.Indexes); nIndexes > 0 && spec.Indexes[nIndexes-1].Name == indexName {
-				lastIndex := &spec.Indexes[nIndexes-1]
-				if len(lastIndex.Columns) != seqInIndex-1 {
-					c.logger.Error("unexpected index ordinal position", "schema", schema, "table", tableName, "index", indexName, "seq", seqInIndex, "len_columns", len(lastIndex.Columns))
+			spec := specOf(tableName)
+
+			// Append column to the last index if it's the same as the previous one
+			// within the same table (i.e. multi-column index).
+			if tableName == lastTable {
+				if nIndexes := len(spec.Indexes); nIndexes > 0 && spec.Indexes[nIndexes-1].Name == indexName {
+					lastIndex := &spec.Indexes[nIndexes-1]
+					if len(lastIndex.Columns) != seqInIndex-1 {
+						c.logger.Error("unexpected index ordinal position", "schema", schema, "table", tableName, "index", indexName, "seq", seqInIndex, "len_columns", len(lastIndex.Columns))
+						continue
+					}
+					lastIndex.Columns = append(lastIndex.Columns, columnName)
+					lastIndex.Nullable = lastIndex.Nullable || isNullable
 					continue
 				}
-				lastIndex.Columns = append(lastIndex.Columns, columnName)
-				lastIndex.Nullable = lastIndex.Nullable || isNullable
-				continue
 			}
+
+			spec.Indexes = append(spec.Indexes, indexSpec{
+				Name:     indexName,
+				Type:     indexType,
+				Unique:   isUnique,
+				Nullable: isNullable,
+				Columns:  []string{columnName},
+			})
+			lastTable = tableName
 		}
 
-		spec.Indexes = append(spec.Indexes, indexSpec{
-			Name:     indexName,
-			Type:     indexType,
-			Unique:   isUnique,
-			Nullable: isNullable,
-			Columns:  []string{columnName},
-		})
-		lastTable = tableName
-	}
-
-	if err := idxRS.Err(); err != nil {
-		c.logger.Error("failed to iterate over schema indexes result set", "schema", schema, "err", err)
-		return nil, err
-	}
-
-	fkRS, err := conn.QueryContext(ctx, fmt.Sprintf(selectForeignKeysTemplate, database_observability.BuildExclusionClause(tableNames)), schema)
+		if err := idxRS.Err(); err != nil {
+			c.logger.Error("failed to iterate over schema indexes result set", "schema", schema, "err", err)
+			return err
+		}
+		return nil
+	})
 	if err != nil {
-		c.logger.Error("failed to query schema foreign keys", "schema", schema, "err", err)
 		return nil, err
 	}
-	defer fkRS.Close()
 
-	for fkRS.Next() {
-		var tableName, constraintName, columnName, referencedTableName, referencedColumnName string
-		if err := fkRS.Scan(&tableName, &constraintName, &columnName, &referencedTableName, &referencedColumnName); err != nil {
-			c.logger.Error("failed to scan schema foreign keys", "schema", schema, "err", err)
-			return nil, err
+	err = withQueryTimeout(ctx, c.queryTimeout, func(queryCtx context.Context) error {
+		fkRS, err := conn.QueryContext(queryCtx, fmt.Sprintf(selectForeignKeysTemplate, database_observability.BuildExclusionClause(tableNames)), schema)
+		if err != nil {
+			c.logger.Error("failed to query schema foreign keys", "schema", schema, "err", err)
+			return err
+		}
+		defer fkRS.Close()
+
+		for fkRS.Next() {
+			var tableName, constraintName, columnName, referencedTableName, referencedColumnName string
+			if err := fkRS.Scan(&tableName, &constraintName, &columnName, &referencedTableName, &referencedColumnName); err != nil {
+				c.logger.Error("failed to scan schema foreign keys", "schema", schema, "err", err)
+				return err
+			}
+
+			spec := specOf(tableName)
+			spec.ForeignKeys = append(spec.ForeignKeys, foreignKey{
+				Name:                 constraintName,
+				ColumnName:           columnName,
+				ReferencedTableName:  referencedTableName,
+				ReferencedColumnName: referencedColumnName,
+			})
 		}
 
-		spec := specOf(tableName)
-		spec.ForeignKeys = append(spec.ForeignKeys, foreignKey{
-			Name:                 constraintName,
-			ColumnName:           columnName,
-			ReferencedTableName:  referencedTableName,
-			ReferencedColumnName: referencedColumnName,
-		})
-	}
-
-	if err := fkRS.Err(); err != nil {
-		c.logger.Error("failed to iterate over schema foreign keys result set", "schema", schema, "err", err)
+		if err := fkRS.Err(); err != nil {
+			c.logger.Error("failed to iterate over schema foreign keys result set", "schema", schema, "err", err)
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 

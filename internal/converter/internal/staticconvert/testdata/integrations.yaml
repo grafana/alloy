@@ -208,3 +208,6 @@ integrations:
       - "HttpRequestCount"
   cadvisor:
     enabled: true
+    housekeeping_interval: 15s
+    max_housekeeping_interval: 2m
+    allow_dynamic_housekeeping: false

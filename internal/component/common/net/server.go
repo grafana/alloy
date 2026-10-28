@@ -3,12 +3,12 @@ package net
 import (
 	"fmt"
 	"log/slog"
+	"net/http"
 
 	"github.com/gorilla/mux"
 	dskit "github.com/grafana/dskit/server"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
-	"golang.org/x/net/http2/h2c" //nolint:staticcheck // TODO(#6347): migrate to http.Server.Protocols/HTTP2 once HTTP2Config field mapping (MaxHandlers, IdleTimeout, ReadIdleTimeout) is resolved.
 
 	"github.com/grafana/alloy/internal/slogadapter"
 )
@@ -78,8 +78,21 @@ func (ts *TargetServer) MountAndRun(mountRoute func(router *mux.Router)) error {
 
 	ts.server = srv
 
-	if http2Server := ts.http2.Server(); http2Server != nil {
-		ts.server.HTTPServer.Handler = h2c.NewHandler(ts.server.HTTPServer.Handler, http2Server) //nolint:staticcheck // TODO(#6347): migrate to http.Server.Protocols.SetUnencryptedHTTP2 once we map all HTTP2Config fields.
+	if http2Config := ts.http2.Server(); http2Config != nil {
+		ts.server.HTTPServer.HTTP2 = http2Config
+		protocols := new(http.Protocols)
+		protocols.SetHTTP1(true)
+		protocols.SetHTTP2(true)
+		protocols.SetUnencryptedHTTP2(true)
+		ts.server.HTTPServer.Protocols = protocols
+		if ts.http2.MaxHandlers != 0 {
+			ts.logger.Warn("http2 max_handlers is deprecated and has no effect; remove it from the configuration", "max_handlers", ts.http2.MaxHandlers)
+		}
+		if ts.http2.IdleTimeout != 0 {
+			// net/http uses one idle timeout for HTTP/1 and HTTP/2.
+			ts.server.HTTPServer.IdleTimeout = ts.http2.IdleTimeout
+			ts.logger.Warn("http2 idle_timeout is deprecated; use server_idle_timeout instead; the timeout now applies to both HTTP/1 and HTTP/2", "idle_timeout", ts.http2.IdleTimeout)
+		}
 	}
 	mountRoute(ts.server.HTTP)
 

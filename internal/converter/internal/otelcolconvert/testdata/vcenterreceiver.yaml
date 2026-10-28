@@ -3,6 +3,8 @@ receivers:
     endpoint: http://localhost:15672
     username: otelu
     password: "abc"
+    proxy_url: socks5://proxy.hostname.localnet:1080
+    max_query_metrics: 128
     collection_interval: 1m
     initial_delay: 1s
     metrics:
