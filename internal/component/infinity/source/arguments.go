@@ -39,8 +39,8 @@ type Arguments struct {
 
 // ForwardTo holds the Alloy-native receivers.
 type ForwardTo struct {
-	Metrics []storage.Appendable `alloy:"metrics,attr,optional"`
-	Logs    []loki.LogsReceiver  `alloy:"logs,attr,optional"`
+	Metrics []storage.AppendableV2 `alloy:"metrics,attr,optional"`
+	Logs    []loki.LogsReceiver    `alloy:"logs,attr,optional"`
 }
 
 // Output holds the OTel consumers.

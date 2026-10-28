@@ -57,13 +57,13 @@ func testOptions(t *testing.T, cl cluster.Cluster) component.Options {
 
 // startComponent parses cfg, adds app as the metrics receiver and recv as the
 // logs receiver, and runs the component until ctx ends.
-func startComponent(ctx context.Context, opts component.Options, cfg string, app storage.Appendable, recv loki.LogsReceiver) (*Component, error) {
+func startComponent(ctx context.Context, opts component.Options, cfg string, app storage.AppendableV2, recv loki.LogsReceiver) (*Component, error) {
 	args, err := parse(cfg)
 	if err != nil {
 		return nil, err
 	}
 	if app != nil {
-		args.ForwardTo.Metrics = []storage.Appendable{app}
+		args.ForwardTo.Metrics = []storage.AppendableV2{app}
 	}
 	if recv != nil {
 		args.ForwardTo.Logs = []loki.LogsReceiver{recv}
@@ -277,7 +277,7 @@ func TestUpdateRemovesQuery(t *testing.T) {
 		timeout  = "50ms"
 		query "other" { url = %q }`, srv.URL))
 	require.NoError(t, err)
-	args.ForwardTo.Metrics = []storage.Appendable{appendable}
+	args.ForwardTo.Metrics = []storage.AppendableV2{appendable}
 	require.NoError(t, c.Update(args))
 
 	require.EventuallyWithT(t, func(ct *assert.CollectT) {
@@ -333,7 +333,7 @@ func TestNewRetriesAfterFailedBuild(t *testing.T) {
 	_, err = New(opts, args)
 	require.ErrorContains(t, err, "needs forward_to.metrics or output.metrics")
 
-	args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()}}
+	args.ForwardTo.Metrics = []storage.AppendableV2{testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()}}
 	c, err := New(opts, args)
 	require.NoError(t, err)
 	cancel, _ := runComponent(t.Context(), c)
@@ -463,7 +463,7 @@ func TestUpdateDoesNotWaitForSlowPoll(t *testing.T) {
 			updateErr = perr
 			return
 		}
-		args.ForwardTo.Metrics = []storage.Appendable{appendable}
+		args.ForwardTo.Metrics = []storage.AppendableV2{appendable}
 		updateErr = c.Update(args)
 	}()
 
@@ -526,7 +526,7 @@ func TestParseBoundedByTimeout(t *testing.T) {
 		}`)
 	require.NoError(t, err)
 	app := testappender.NewCollectingAppender()
-	args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: app}}
+	args.ForwardTo.Metrics = []storage.AppendableV2{testappender.ConstantAppendable{Inner: app}}
 	c, err := New(testOptions(t, cluster.Mock()), args)
 	require.NoError(t, err)
 
@@ -600,7 +600,7 @@ func TestFormatChangeToLogsMarksStale(t *testing.T) {
 			data   = "level,body\nerror,disk full\n"
 		}`)
 	require.NoError(t, err)
-	args.ForwardTo.Metrics = []storage.Appendable{appendable}
+	args.ForwardTo.Metrics = []storage.AppendableV2{appendable}
 	args.ForwardTo.Logs = []loki.LogsReceiver{recv}
 	require.NoError(t, c.Update(args))
 
@@ -651,7 +651,7 @@ func TestUpdateClosesOldClient(t *testing.T) {
 			url = %q
 		}`, srv.URL))
 	require.NoError(t, err)
-	args.ForwardTo.Metrics = []storage.Appendable{appendable}
+	args.ForwardTo.Metrics = []storage.AppendableV2{appendable}
 	require.NoError(t, c.Update(args))
 
 	require.Eventually(t, func() bool { return closed.Load() > 0 }, 2*time.Second, 10*time.Millisecond)
@@ -734,7 +734,7 @@ func TestOAuthTokenHangIsBounded(t *testing.T) {
 			url = %q
 		}`, tokenSrv.URL, api.URL))
 	require.NoError(t, err)
-	args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()}}
+	args.ForwardTo.Metrics = []storage.AppendableV2{testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()}}
 	c, err := New(testOptions(t, cluster.Mock()), args)
 	require.NoError(t, err)
 	cancel, runDone := runComponent(t.Context(), c)
@@ -765,7 +765,7 @@ func TestOneAbandonedWorkerPerQuery(t *testing.T) {
 			data   = "[1]"
 		}`)
 	require.NoError(t, err)
-	args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()}}
+	args.ForwardTo.Metrics = []storage.AppendableV2{testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()}}
 	c, err := New(testOptions(t, cluster.Mock()), args)
 	require.NoError(t, err)
 
@@ -902,7 +902,7 @@ func TestCancelledEmitSendsNothing(t *testing.T) {
 			require.NoError(t, err)
 			app := testappender.NewCollectingAppender()
 			recv := loki.NewLogsReceiver()
-			args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: app}}
+			args.ForwardTo.Metrics = []storage.AppendableV2{testappender.ConstantAppendable{Inner: app}}
 			args.ForwardTo.Logs = []loki.LogsReceiver{recv}
 			c, err := New(testOptions(t, cluster.Mock()), args)
 			require.NoError(t, err)
@@ -1092,7 +1092,7 @@ func TestRemovedQueryMarkersOnlyFromOwner(t *testing.T) {
 			url = %q
 		}`, srv.URL))
 	require.NoError(t, err)
-	args.ForwardTo.Metrics = []storage.Appendable{appendable}
+	args.ForwardTo.Metrics = []storage.AppendableV2{appendable}
 	require.NoError(t, c.Update(args))
 
 	v := app.LatestSampleFor(series("v"))
@@ -1130,12 +1130,12 @@ const clusteredInline = `
 
 // newCounting builds a component from cfg that sends metrics to app. The
 // returned counter counts the parses, which is one per owned poll.
-func newCounting(opts component.Options, cfg string, app storage.Appendable) (*Component, *atomic.Int32, error) {
+func newCounting(opts component.Options, cfg string, app storage.AppendableV2) (*Component, *atomic.Int32, error) {
 	args, err := parse(cfg)
 	if err != nil {
 		return nil, nil, err
 	}
-	args.ForwardTo.Metrics = []storage.Appendable{app}
+	args.ForwardTo.Metrics = []storage.AppendableV2{app}
 	c, err := New(opts, args)
 	if err != nil {
 		return nil, nil, err
@@ -1265,7 +1265,7 @@ func TestNotifyClusterChangeDisabled(t *testing.T) {
 			data   = "[1]"
 		}`)
 	require.NoError(t, err)
-	args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()}}
+	args.ForwardTo.Metrics = []storage.AppendableV2{testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()}}
 	cl := newSwitchOwner(false)
 	c, err := New(testOptions(t, cl), args)
 	require.NoError(t, err)
@@ -1382,7 +1382,7 @@ func TestRefreshesAreSerialized(t *testing.T) {
 			data   = "[1]"
 		}`)
 	require.NoError(t, err)
-	args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()}}
+	args.ForwardTo.Metrics = []storage.AppendableV2{testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()}}
 
 	// Update looks up b with the old ring and waits.
 	entered, release := cl.gate.arm()
@@ -1422,7 +1422,7 @@ func TestUpdateKicksGainedRunningLoop(t *testing.T) {
 			data   = "[1]"
 		}`)
 	require.NoError(t, err)
-	args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()}}
+	args.ForwardTo.Metrics = []storage.AppendableV2{testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()}}
 
 	// Update adds b and waits in its Lookup. Run then starts the loop of b.
 	entered, release := cl.gate.arm()
@@ -1577,7 +1577,7 @@ func TestClusteringEnabledDuringFetchDropsResult(t *testing.T) {
 
 	args, err := parse(cfg + "\nclustering { enabled = true }")
 	require.NoError(t, err)
-	args.ForwardTo.Metrics = []storage.Appendable{appendable}
+	args.ForwardTo.Metrics = []storage.AppendableV2{appendable}
 	require.NoError(t, c.Update(args))
 	qs := queryStateOf(c, "q")
 	require.False(t, qs.assigned.Load(), "another node owns the query")
@@ -1656,7 +1656,7 @@ func TestClusteringEnabledNoGapBeforeOwnership(t *testing.T) {
 	}}}
 	args, err := parse(cfg)
 	require.NoError(t, err)
-	args.ForwardTo.Metrics = []storage.Appendable{appendable}
+	args.ForwardTo.Metrics = []storage.AppendableV2{appendable}
 	c, err := New(testOptions(t, cl), args)
 	require.NoError(t, err)
 	comp.Store(c)
@@ -1672,7 +1672,7 @@ func TestClusteringEnabledNoGapBeforeOwnership(t *testing.T) {
 	defer releaseLookup()
 	args, err = parse(cfg + "\nclustering { enabled = true }")
 	require.NoError(t, err)
-	args.ForwardTo.Metrics = []storage.Appendable{appendable}
+	args.ForwardTo.Metrics = []storage.AppendableV2{appendable}
 	updateDone := make(chan error, 1)
 	go func() { updateDone <- c.Update(args) }()
 	select {
@@ -1716,7 +1716,7 @@ func TestUpdateSendsRemovalMarkersToOldOutputs(t *testing.T) {
 	oldOTel, newOTel := &testConsumer{}, &testConsumer{}
 	args, err := parse(fmt.Sprintf(cfg, "q"))
 	require.NoError(t, err)
-	args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: oldApp}}
+	args.ForwardTo.Metrics = []storage.AppendableV2{testappender.ConstantAppendable{Inner: oldApp}}
 	args.Output.Metrics = []otelcol.Consumer{oldOTel}
 	c, err := New(testOptions(t, cluster.Mock()), args)
 	require.NoError(t, err)
@@ -1726,7 +1726,7 @@ func TestUpdateSendsRemovalMarkersToOldOutputs(t *testing.T) {
 
 	args, err = parse(fmt.Sprintf(cfg, "other"))
 	require.NoError(t, err)
-	args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: newApp}}
+	args.ForwardTo.Metrics = []storage.AppendableV2{testappender.ConstantAppendable{Inner: newApp}}
 	args.Output.Metrics = []otelcol.Consumer{newOTel}
 	require.NoError(t, c.Update(args))
 
@@ -1757,7 +1757,7 @@ func TestUpdateRemovalMarkersDoNotBlockReload(t *testing.T) {
 	otel := &blockingConsumer{}
 	args, err := parse(fmt.Sprintf(cfg, "q"))
 	require.NoError(t, err)
-	args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: app}}
+	args.ForwardTo.Metrics = []storage.AppendableV2{testappender.ConstantAppendable{Inner: app}}
 	args.Output.Metrics = []otelcol.Consumer{otel}
 	c, err := New(testOptions(t, cluster.Mock()), args)
 	require.NoError(t, err)
@@ -1772,7 +1772,7 @@ func TestUpdateRemovalMarkersDoNotBlockReload(t *testing.T) {
 
 	args, err = parse(fmt.Sprintf(cfg, "other"))
 	require.NoError(t, err)
-	args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()}}
+	args.ForwardTo.Metrics = []storage.AppendableV2{testappender.ConstantAppendable{Inner: testappender.NewCollectingAppender()}}
 	done := make(chan error, 1)
 	go func() { done <- c.Update(args) }()
 	select {
@@ -1811,7 +1811,7 @@ func argsWith(cfg string, o outputSet) (Arguments, error) {
 	if err != nil {
 		return Arguments{}, err
 	}
-	args.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{Inner: o.app}}
+	args.ForwardTo.Metrics = []storage.AppendableV2{testappender.ConstantAppendable{Inner: o.app}}
 	args.Output.Metrics = []otelcol.Consumer{o.otel}
 	return args, nil
 }

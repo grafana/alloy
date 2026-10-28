@@ -428,7 +428,7 @@ func TestValidateOutputs(t *testing.T) {
 	require.ErrorContains(t, validateOutputs(table), `query "q": format "table" needs forward_to.metrics or output.metrics`)
 	require.ErrorContains(t, validateOutputs(logs), `query "q": format "logs" needs forward_to.logs or output.logs`)
 
-	table.ForwardTo.Metrics = []storage.Appendable{testappender.ConstantAppendable{}}
+	table.ForwardTo.Metrics = []storage.AppendableV2{testappender.ConstantAppendable{}}
 	require.NoError(t, validateOutputs(table))
 
 	logs.ForwardTo.Logs = []loki.LogsReceiver{loki.NewLogsReceiver()}
