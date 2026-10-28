@@ -179,8 +179,8 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, "default", args.Discovery.ExcludeInstrument[0].Namespace)
 
 	require.Len(t, args.Discovery.Survey, 1)
-	require.Equal(t, "/app/microservice-*", args.Discovery.Survey[0].Path)
-	require.Equal(t, "microservice", args.Discovery.Survey[0].Name)
+	require.Equal(t, "/app/microservice-*", args.Discovery.Survey[0].Service.Path)
+	require.Equal(t, "microservice", args.Discovery.Survey[0].Service.Name)
 
 	// Verify metrics
 	require.Equal(t, []string{"application", "network"}, args.Metrics.Features)
@@ -422,15 +422,15 @@ func TestArguments_Validate(t *testing.T) {
 				},
 				Discovery: Discovery{
 					Instrument: Services{},
-					Survey:     Services{},
+					Survey:     SurveyServices{},
 				},
 			},
-			wantErr: "discovery.services, discovery.instrument, or discovery.survey is required when application features are enabled",
+			wantErr: "discovery.services, discovery.instrument, discovery.survey, or discovery.instrument_all_local is required when application features are enabled",
 		},
 		{
 			name:    "RED feature requires discovery",
 			args:    Arguments{Metrics: Metrics{Features: []string{"application_red"}}},
-			wantErr: "discovery.services, discovery.instrument, or discovery.survey is required when application features are enabled",
+			wantErr: "discovery.services, discovery.instrument, discovery.survey, or discovery.instrument_all_local is required when application features are enabled",
 		},
 		{
 			name: "valid application configuration",
@@ -452,14 +452,14 @@ func TestArguments_Validate(t *testing.T) {
 			args: Arguments{
 				Metrics: Metrics{Features: []string{"*"}},
 			},
-			wantErr: "discovery.services, discovery.instrument, or discovery.survey is required when application features are enabled",
+			wantErr: "discovery.services, discovery.instrument, discovery.survey, or discovery.instrument_all_local is required when application features are enabled",
 		},
 		{
 			name: "'all' feature requires discovery",
 			args: Arguments{
 				Metrics: Metrics{Features: []string{"all"}},
 			},
-			wantErr: "discovery.services, discovery.instrument, or discovery.survey is required when application features are enabled",
+			wantErr: "discovery.services, discovery.instrument, discovery.survey, or discovery.instrument_all_local is required when application features are enabled",
 		},
 		{
 			name: "cmd_args-only instrument with application feature",
