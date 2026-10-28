@@ -65,15 +65,30 @@ type xmlRelOp struct {
 	Merge           *xmlOpChildren `xml:"Merge"`
 	StreamAggregate *xmlOpChildren `xml:"StreamAggregate"`
 	Sort            *xmlSort       `xml:"Sort"`
+	TopSort         *xmlSort       `xml:"TopSort"`
 	ComputeScalar   *xmlOpChildren `xml:"ComputeScalar"`
 	Filter          *xmlFilter     `xml:"Filter"`
 	Top             *xmlOpChildren `xml:"Top"`
 	Concat          *xmlOpChildren `xml:"Concat"`
 	Parallelism     *xmlOpChildren `xml:"Parallelism"`
+	Spool           *xmlOpChildren `xml:"Spool"`
 	TableSpool      *xmlOpChildren `xml:"TableSpool"`
 	IndexSpool      *xmlOpChildren `xml:"IndexSpool"`
 	Update          *xmlUpdate     `xml:"Update"`
 	Assert          *xmlOpChildren `xml:"Assert"`
+
+	// Unmatched collects every child element not claimed by a field above:
+	// non-operator metadata (OutputList, RunTimeInformation, etc.) as well as
+	// wrapper elements for operators this package does not model (Bitmap,
+	// Segment, Sequence, Split, ...). Only nested RelOps are read from it, so
+	// the subtree beneath an unmodeled operator is preserved.
+	Unmatched []xmlUnmatched `xml:",any"`
+}
+
+// xmlUnmatched is a catch-all for an element with an unknown name; only its
+// direct RelOp children are retained.
+type xmlUnmatched struct {
+	RelOp []xmlRelOp `xml:"RelOp"`
 }
 
 // xmlOpChildren is reused by wrapper elements whose only content we care
@@ -218,15 +233,11 @@ func relOpToExplainPlanNode(op xmlRelOp) database_observability.ExplainPlanNode 
 		node.Operation = database_observability.ExplainPlanOutputOperationGroupingOperation
 		node.Children, childSubtreeCost = childrenOf(op.StreamAggregate.RelOp)
 	case op.Sort != nil:
-		if strings.EqualFold(op.LogicalOp, "Distinct Sort") {
-			node.Operation = database_observability.ExplainPlanOutputOperationDuplicatesRemoval
-		} else {
-			node.Operation = database_observability.ExplainPlanOutputOperationOrderingOperation
-		}
-		if op.Sort.OrderBy != nil {
-			node.Details.SortKeys = orderByColumns(op.Sort.OrderBy)
-		}
+		populateSortDetails(&node, op, op.Sort)
 		node.Children, childSubtreeCost = childrenOf(op.Sort.RelOp)
+	case op.TopSort != nil:
+		populateSortDetails(&node, op, op.TopSort)
+		node.Children, childSubtreeCost = childrenOf(op.TopSort.RelOp)
 	case op.ComputeScalar != nil:
 		node.Operation = database_observability.ExplainPlanOutputOperationComputeScalar
 		node.Children, childSubtreeCost = childrenOf(op.ComputeScalar.RelOp)
@@ -245,6 +256,9 @@ func relOpToExplainPlanNode(op xmlRelOp) database_observability.ExplainPlanNode 
 	case op.Parallelism != nil:
 		node.Operation = database_observability.ExplainPlanOutputOperationParallelism
 		node.Children, childSubtreeCost = childrenOf(op.Parallelism.RelOp)
+	case op.Spool != nil:
+		node.Operation = database_observability.ExplainPlanOutputOperationSpool
+		node.Children, childSubtreeCost = childrenOf(op.Spool.RelOp)
 	case op.TableSpool != nil:
 		node.Operation = database_observability.ExplainPlanOutputOperationSpool
 		node.Children, childSubtreeCost = childrenOf(op.TableSpool.RelOp)
@@ -260,6 +274,11 @@ func relOpToExplainPlanNode(op xmlRelOp) database_observability.ExplainPlanNode 
 	default:
 		node.Operation = database_observability.ExplainPlanOutputOperationUnknown
 		node.Details.UnrecognizedOperator = &op.PhysicalOp
+		var nested []xmlRelOp
+		for _, other := range op.Unmatched {
+			nested = append(nested, other.RelOp...)
+		}
+		node.Children, childSubtreeCost = childrenOf(nested)
 	}
 
 	if subtreeCost != nil {
@@ -269,6 +288,20 @@ func relOpToExplainPlanNode(op xmlRelOp) database_observability.ExplainPlanNode 
 	}
 
 	return node
+}
+
+// populateSortDetails fills in a node for both the <Sort> wrapper and the
+// <TopSort> wrapper SQL Server uses for "TopN Sort"; the two share the same
+// OrderBy structure. LogicalOp distinguishes a Distinct Sort from a plain one.
+func populateSortDetails(node *database_observability.ExplainPlanNode, op xmlRelOp, sort *xmlSort) {
+	if strings.EqualFold(op.LogicalOp, "Distinct Sort") {
+		node.Operation = database_observability.ExplainPlanOutputOperationDuplicatesRemoval
+	} else {
+		node.Operation = database_observability.ExplainPlanOutputOperationOrderingOperation
+	}
+	if sort.OrderBy != nil {
+		node.Details.SortKeys = orderByColumns(sort.OrderBy)
+	}
 }
 
 // populateHashDetails disambiguates SQL Server's "Hash Match" operator, which

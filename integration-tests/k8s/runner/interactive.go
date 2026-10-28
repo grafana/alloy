@@ -41,7 +41,7 @@ func configureInteractive(cfg *config) error {
 				Title("Run options").
 				Options(
 					huh.NewOption("Reuse kind cluster if one exists", "reuse-cluster").Selected(true),
-					huh.NewOption("Skip image builds (alloy, prom-gen)", "skip-image-builds").Selected(true),
+					huh.NewOption("Skip image builds (alloy, prom-gen, otel-gen)", "skip-image-builds").Selected(true),
 					huh.NewOption("Use regular (non-distroless) Alloy image", "regular-image").Selected(!cfg.distroless),
 				).
 				Value(&runOpts),

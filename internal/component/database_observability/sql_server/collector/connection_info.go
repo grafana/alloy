@@ -19,12 +19,35 @@ const ConnectionInfoName = "connection_info"
 // "engine" label and the "engine" Loki label added to every log line.
 const EngineName = "sql_server"
 
+// SERVERPROPERTY('EngineEdition') values for the Azure SQL offerings whose
+// ProductVersion is a fixed placeholder (12.0.2000.8) rather than a real version.
+const (
+	engineEditionAzureSQLDatabase        = 5
+	engineEditionAzureSQLManagedInstance = 8
+)
+
+// ResolveEngineVersion returns the value for the engine_version label. Azure
+// SQL Database and Managed Instance are evergreen and expose no real version,
+// so they are identified by name. Everything else keeps the numeric
+// ProductVersion.
+func ResolveEngineVersion(engineEdition sql.NullInt64, productVersion sql.NullString) string {
+	if engineEdition.Valid {
+		switch engineEdition.Int64 {
+		case engineEditionAzureSQLDatabase:
+			return "Azure SQL Database"
+		case engineEditionAzureSQLManagedInstance:
+			return "Azure SQL Managed Instance"
+		}
+	}
+	return productVersion.String
+}
+
 type ConnectionInfoArguments struct {
 	DSN           string
 	Registry      *prometheus.Registry
 	EngineVersion string
 	CloudProvider *database_observability.CloudProvider
-	DB            *sql.DB
+	Pinger        database_observability.Pinger
 }
 
 type ConnectionInfo struct {
@@ -33,7 +56,7 @@ type ConnectionInfo struct {
 	EngineVersion string
 	InfoMetric    *prometheus.GaugeVec
 	CloudProvider *database_observability.CloudProvider
-	dbConnection  *sql.DB
+	pinger        database_observability.Pinger
 
 	running *atomic.Bool
 	stop    func()
@@ -54,7 +77,7 @@ func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
 		EngineVersion: args.EngineVersion,
 		InfoMetric:    infoMetric,
 		CloudProvider: args.CloudProvider,
-		dbConnection:  args.DB,
+		pinger:        args.Pinger,
 		running:       &atomic.Bool{},
 	}, nil
 }
@@ -122,10 +145,10 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 	labelValues := []string{providerName, providerRegion, providerAccount, dbInstanceIdentifier, engine, c.EngineVersion}
 	c.InfoMetric.WithLabelValues(labelValues...).Set(1)
 
-	if c.dbConnection != nil {
+	if c.pinger != nil {
 		c.stop = database_observability.RunConnectionInfoMonitor(
 			ctx,
-			c.dbConnection,
+			c.pinger,
 			c.Registry,
 			c.InfoMetric,
 			labelValues,

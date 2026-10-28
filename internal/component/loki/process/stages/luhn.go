@@ -2,66 +2,68 @@ package stages
 
 import (
 	"context"
-	"fmt"
-	"regexp"
+	"errors"
 	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/grafana/alloy/internal/component/common/regexp"
+	"github.com/grafana/alloy/syntax"
+)
+
+var (
+	errLuhnMinLength   = errors.New("min_length must be greater than zero")
+	errLuhnReplacement = errors.New("replacement must not be empty")
+	errLuhnEmptySource = errors.New("empty source")
 )
 
 // LuhnFilterConfig configures a processing stage that filters out Luhn-valid numbers.
 type LuhnFilterConfig struct {
-	Replacement string  `alloy:"replacement,attr,optional"`
-	Source      *string `alloy:"source,attr,optional"`
-	MinLength   int     `alloy:"min_length,attr,optional"`
-	Delimiters  string  `alloy:"delimiters,attr,optional"`
-	SkipRegex   string  `alloy:"skip_regex,attr,optional"`
+	Replacement string        `alloy:"replacement,attr,optional"`
+	Source      *string       `alloy:"source,attr,optional"`
+	MinLength   int           `alloy:"min_length,attr,optional"`
+	Delimiters  string        `alloy:"delimiters,attr,optional"`
+	SkipRegex   regexp.Regexp `alloy:"skip_regex,attr,optional"`
 }
 
-// validateLuhnFilterConfig validates the LuhnFilterConfig.
-func validateLuhnFilterConfig(c *LuhnFilterConfig) error {
-	if c.Replacement == "" {
-		c.Replacement = "**REDACTED**"
-	}
+var (
+	_ syntax.Validator = (*LuhnFilterConfig)(nil)
+	_ syntax.Defaulter = (*LuhnFilterConfig)(nil)
+)
+
+func (c *LuhnFilterConfig) Validate() error {
 	if c.MinLength < 1 {
-		c.MinLength = 13
+		return errLuhnMinLength
+	}
+	if c.Replacement == "" {
+		return errLuhnReplacement
 	}
 	if c.Source != nil && *c.Source == "" {
-		return errEmptyRegexStageSource
+		return errLuhnEmptySource
 	}
 	return nil
+}
+
+func (c *LuhnFilterConfig) SetToDefault() {
+	c.Replacement = "**REDACTED**"
+	c.MinLength = 13
 }
 
 var _ entryProcessor = (*luhnFilterStage)(nil)
 
 // newLuhnFilterStage creates a new LuhnFilterStage.
-func newLuhnFilterStage(config LuhnFilterConfig, opts stageOpts) (*luhnFilterStage, error) {
-	if err := validateLuhnFilterConfig(&config); err != nil {
-		return nil, err
-	}
-
-	var skipRegex *regexp.Regexp
-	if config.SkipRegex != "" {
-		var err error
-		skipRegex, err = regexp.Compile(config.SkipRegex)
-		if err != nil {
-			return nil, fmt.Errorf("%v: %w", errCouldNotCompileRegex, err)
-		}
-	}
-
+func newLuhnFilterStage(config LuhnFilterConfig, opts stageOpts) *luhnFilterStage {
 	return &luhnFilterStage{
-		next:      opts.next,
-		config:    &config,
-		skipRegex: skipRegex,
-	}, nil
+		next:   opts.next,
+		config: &config,
+	}
 }
 
 // luhnFilterStage applies Luhn algorithm filtering to log entries.
 type luhnFilterStage struct {
-	next      nextFn
-	config    *LuhnFilterConfig
-	skipRegex *regexp.Regexp
+	next   nextFn
+	config *LuhnFilterConfig
 }
 
 func (l *luhnFilterStage) process(ctx context.Context, entries []Entry) error {
@@ -87,8 +89,8 @@ func (l *luhnFilterStage) processEntry(e Entry) Entry {
 
 	var updated string
 	// Replace Luhn-valid numbers in the input.
-	if l.skipRegex != nil {
-		updated = replaceLuhnValidNumbersSkipRegex(input, l.config.Replacement, l.config.MinLength, l.config.Delimiters, l.skipRegex)
+	if !l.config.SkipRegex.IsEmpty() {
+		updated = replaceLuhnValidNumbersSkipRegex(input, l.config.Replacement, l.config.MinLength, l.config.Delimiters, &l.config.SkipRegex)
 	} else if l.config.Delimiters != "" {
 		updated = replaceLuhnValidNumbersWithDelimiters(input, l.config.Replacement, l.config.MinLength, l.config.Delimiters)
 	} else {

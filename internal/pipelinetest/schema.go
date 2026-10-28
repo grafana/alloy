@@ -18,10 +18,16 @@ const (
 
 // TestSchema describes a declarative pipeline test loaded from a text file.
 type TestSchema struct {
+	Flags  FlagsSchema     `yaml:"flags,omitempty"`
 	Config ConfigSchema    `yaml:"config"`
 	Inputs InputSchema     `yaml:"inputs"`
 	Mocks  MockSchema      `yaml:"mocks"`
 	Assert AssertionSchema `yaml:"assert"`
+}
+
+// FlagsSchema holds the Alloy run flags enabled for a pipeline test.
+type FlagsSchema struct {
+	LokiPipelineV2 bool `yaml:"feature.loki.pipeline-v2.enabled,omitempty"`
 }
 
 type ConfigSchema string
@@ -57,6 +63,9 @@ func (c *ConfigSchema) UnmarshalYAML(value *yaml.Node) error {
 // InputSchema groups pipeline test inputs by signal type.
 type InputSchema struct {
 	Loki []LokiInputSchema `yaml:"loki"`
+	HTTP []HTTPInputSchema `yaml:"http"`
+	TCP  []TCPInputSchema  `yaml:"tcp"`
+	UDP  []UDPInputSchema  `yaml:"udp"`
 }
 
 // AssertionSchema groups declarative assertions by signal type.
@@ -73,9 +82,19 @@ type MapMatchSchema struct {
 	Values map[string]string `yaml:"values,omitempty"`
 }
 
-// produceInputs sends all configured test inputs into the running pipeline.
+// produceInputs sends all configured test inputs into the running pipeline,
+// in this order: Loki entries, HTTP requests, TCP data, then UDP datagrams.
 func produceInputs(ctx context.Context, alloy *harness.Alloy, inputs InputSchema) error {
-	return produceLokiInputs(ctx, alloy, inputs.Loki)
+	if err := produceLokiInputs(ctx, alloy, inputs.Loki); err != nil {
+		return err
+	}
+	if err := produceHTTPInputs(ctx, inputs.HTTP); err != nil {
+		return err
+	}
+	if err := produceTCPInputs(ctx, inputs.TCP); err != nil {
+		return err
+	}
+	return produceUDPInputs(ctx, alloy, inputs.UDP)
 }
 
 func buildAssertions(assertions AssertionSchema) ([]harness.Assertion, error) {
