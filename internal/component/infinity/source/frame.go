@@ -1,8 +1,10 @@
 package source
 
 import (
+	"encoding/csv"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	xj "github.com/basgys/goxml2json"
@@ -77,6 +79,9 @@ func parseFrame(s querySpec, body string) (*data.Frame, error) {
 		if s.qtype == typeTSV {
 			opts.Delimiter = "\t"
 		}
+		if err := checkCSVSize(body, opts); err != nil {
+			return nil, err
+		}
 		return csvframer.ToFrame(body, opts)
 	case "xml", "html":
 		// xmlframer only converts XML to JSON and calls jsonframer. Do the
@@ -107,12 +112,12 @@ func jsonToFrame(s querySpec, body string) (*data.Frame, error) {
 	})
 }
 
-// maxFrameCells limits rows times columns of one JSON, GraphQL, XML or
-// HTML frame. gframer makes one column for each distinct key in any row,
-// and gives every column a cell for every row. A small body with many
-// distinct keys can so need many gigabytes. 2 million cells is far more
-// than a normal API response needs, but one poll at this budget can still
-// use a few hundred MB.
+// maxFrameCells limits rows times columns of one frame. The framers give
+// every column a cell for every row. For JSON, gframer makes one column for
+// each distinct key in any row, so a small body with many distinct keys can
+// need many gigabytes. 2 million cells is far more than a normal API
+// response needs, but one poll at this budget can still use a few hundred
+// MB.
 const maxFrameCells = 2_000_000
 
 // checkFrameSize estimates the cells gframer allocates for the JSON in
@@ -140,12 +145,61 @@ func checkFrameSize(selected string, numColumns int) error {
 			cols = 1
 		}
 		if rows*cols > maxFrameCells {
-			err = newPollError(reasonTooLarge, fmt.Errorf("the response makes a frame with more than %d cells (rows times columns)", maxFrameCells))
+			err = tooManyCells()
 			return false
 		}
 		return true
 	})
 	return err
+}
+
+// checkCSVSize reads body with the same reader settings as csvframer and
+// counts the cells of the frame, before csvframer allocates them. Each
+// record gets a cell for each header column, even a short record that
+// relax_column_count allows.
+func checkCSVSize(body string, opts csvframer.FramerOptions) error {
+	r := csv.NewReader(strings.NewReader(body))
+	r.LazyQuotes = true
+	r.ReuseRecord = true
+	if opts.Comment != "" {
+		r.Comment = rune(opts.Comment[0])
+	}
+	if opts.Delimiter != "" {
+		r.Comma = rune(opts.Delimiter[0])
+	}
+	if opts.RelaxColumnCount {
+		r.FieldsPerRecord = -1
+	}
+	rows, cols := 0, -1
+	for {
+		record, err := r.Read()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			var pe *csv.ParseError
+			if errors.As(err, &pe) && opts.SkipLinesWithError {
+				continue
+			}
+			// csvframer reports the error, or would loop forever on an
+			// error that does not move the reader forward.
+			return newLibError(reasonParse, errors.Join(csvframer.ErrReadingCsvResponse, err))
+		}
+		if cols < 0 {
+			cols = max(1, len(record))
+			if !opts.NoHeaders {
+				continue
+			}
+		}
+		rows++
+		if rows*cols > maxFrameCells {
+			return tooManyCells()
+		}
+	}
+}
+
+func tooManyCells() error {
+	return newPollError(reasonTooLarge, fmt.Errorf("the response makes a frame with more than %d cells (rows times columns)", maxFrameCells))
 }
 
 func postProcess(s querySpec, frame *data.Frame) (*data.Frame, error) {

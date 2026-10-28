@@ -316,3 +316,86 @@ func TestBuildFrameBudget(t *testing.T) {
 	_, err = buildFrame(s, distinctKeyRows(1_500))
 	require.Equal(t, reasonTooLarge, reasonOf(err))
 }
+
+// wideCSV returns a header with cols columns, one full row, and rows short
+// rows of one field each. relax_column_count accepts the short rows, but
+// each one still gets a cell for every header column.
+func wideCSV(cols, rows int) []byte {
+	var b strings.Builder
+	for i := range cols {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		fmt.Fprintf(&b, "c%d", i)
+	}
+	b.WriteByte('\n')
+	b.WriteString(strings.TrimSuffix(strings.Repeat("1,", cols), ","))
+	b.WriteByte('\n')
+	b.WriteString(strings.Repeat("1\n", rows))
+	return []byte(b.String())
+}
+
+func TestBuildFrameRejectsHugeCSVFrame(t *testing.T) {
+	for _, qtype := range []string{"csv", "tsv"} {
+		t.Run(qtype, func(t *testing.T) {
+			s, err := specFromConfig(fmt.Sprintf(`query "q" {
+				url  = "http://x"
+				type = %q
+				csv_options {
+					relax_column_count = true
+				}
+			}`, qtype))
+			require.NoError(t, err)
+			body := wideCSV(2_000, 20_000)
+			if qtype == typeTSV {
+				body = []byte(strings.ReplaceAll(string(body), ",", "\t"))
+			}
+
+			var before, after runtime.MemStats
+			runtime.ReadMemStats(&before)
+			_, err = buildFrame(s, body)
+			runtime.ReadMemStats(&after)
+
+			require.Equal(t, reasonTooLarge, reasonOf(err))
+			require.Less(t, after.TotalAlloc-before.TotalAlloc, uint64(100<<20), "the check must fail before the frame is allocated")
+		})
+	}
+}
+
+// TestBuildFrameCSVBudget checks that a CSV frame under the budget parses,
+// and that skipped bad lines do not count.
+func TestBuildFrameCSVBudget(t *testing.T) {
+	s, err := specFromConfig(`query "q" {
+		url  = "http://x"
+		type = "csv"
+		csv_options {
+			skip_lines_with_error = true
+		}
+	}`)
+	require.NoError(t, err)
+	// 2,000 rows of 1,000 columns is the budget. The short rows have the
+	// wrong field count, so the reader skips them.
+	body := string(wideCSV(1_000, 50_000))
+	body += strings.Repeat(strings.TrimSuffix(strings.Repeat("1,", 1_000), ",")+"\n", 1_999)
+	f, err := buildFrame(s, []byte(body))
+	require.NoError(t, err)
+	require.Equal(t, 2_000, f.Rows())
+}
+
+// TestBuildFrameCSVBadDelimiterDoesNotSpin checks the backstop for a
+// delimiter that validation rejects. encoding/csv fails each read without
+// moving forward, and csvframer would loop forever when it skips bad lines.
+func TestBuildFrameCSVBadDelimiterDoesNotSpin(t *testing.T) {
+	s := querySpec{name: "q", qtype: typeCSV, csv: csvSpec{delimiter: `"`, skipLinesWithError: true}}
+	done := make(chan error, 1)
+	go func() {
+		_, err := buildFrame(s, []byte("a,b\n1,2\n"))
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		require.Equal(t, reasonParse, reasonOf(err))
+	case <-time.After(5 * time.Second):
+		t.Fatal("buildFrame did not return")
+	}
+}
