@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -56,7 +57,7 @@ func (c Arguments) tailerConfig() *tailerConfig {
 		APIURL:           strings.TrimSuffix(c.APIURL, "/"),
 		Labels:           lbls,
 		Workers:          c.Workers,
-		PullRange:        model.Duration(c.PullRange),
+		PullRange:        c.PullRange,
 		FieldsType:       c.FieldsType,
 		AdditionalFields: c.AdditionalFields,
 		Backoff:          defaultBackoff,
@@ -78,6 +79,9 @@ func (c *Arguments) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (c *Arguments) Validate() error {
+	if c.APIToken == "" {
+		return fmt.Errorf("api_token must not be empty")
+	}
 	if c.PullRange < 0 {
 		return fmt.Errorf("pull_range must be a positive duration")
 	}
@@ -87,6 +91,9 @@ func (c *Arguments) Validate() error {
 	}
 	if (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 		return fmt.Errorf("api_url must be an absolute http or https URL, got %q", c.APIURL)
+	}
+	if _, err := fieldsForType(c.FieldsType, c.AdditionalFields); err != nil {
+		return err
 	}
 	return nil
 }
@@ -98,9 +105,11 @@ type Component struct {
 	handler loki.LogsReceiver
 	metrics *metrics
 
-	// mut is used to protect access to tailer.
+	// mut is used to protect access to tailer and cfg.
 	mut    sync.RWMutex
 	tailer *tailer
+	// cfg is the config the running tailer was started with.
+	cfg *tailerConfig
 
 	fanout *loki.Fanout
 }
@@ -147,7 +156,9 @@ func (c *Component) Run(ctx context.Context) error {
 		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
-			c.tailer.stop()
+			if c.tailer != nil {
+				c.tailer.stop()
+			}
 		})
 	}()
 
@@ -164,16 +175,21 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
-	if c.tailer != nil {
-		c.tailer.stop()
-	}
+	cfg := newArgs.tailerConfig()
+	if !reflect.DeepEqual(c.cfg, cfg) {
+		if c.tailer != nil {
+			c.tailer.stop()
+			c.tailer = nil
+			c.cfg = nil
+		}
 
-	t, err := newTailer(c.metrics, c.opts.Logger, c.handler, c.posFile, newArgs.tailerConfig())
-	if err != nil {
-		c.opts.Logger.Error("failed to create cloudflare target with provided config", "err", err)
-		return err
+		t, err := newTailer(c.metrics, c.opts.Logger, c.handler, c.posFile, cfg)
+		if err != nil {
+			return fmt.Errorf("failed to create cloudflare target: %w", err)
+		}
+		c.tailer = t
+		c.cfg = cfg
 	}
-	c.tailer = t
 
 	return nil
 }
@@ -183,6 +199,9 @@ func (c *Component) DebugInfo() any {
 	c.mut.RLock()
 	defer c.mut.RUnlock()
 
+	if c.tailer == nil {
+		return targetDebugInfo{}
+	}
 	return targetDebugInfo{
 		Ready:   c.tailer.ready(),
 		Details: c.tailer.details(),

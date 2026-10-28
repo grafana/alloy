@@ -7,13 +7,13 @@ package cloudflare
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"regexp"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/grafana/cloudflare-go"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/concurrency"
 	"github.com/grafana/dskit/multierror"
@@ -44,7 +44,7 @@ type tailerConfig struct {
 	APIURL           string
 	Labels           model.LabelSet
 	Workers          int
-	PullRange        model.Duration
+	PullRange        time.Duration
 	FieldsType       FieldsType
 	AdditionalFields []string
 	Backoff          backoff.Config
@@ -53,21 +53,21 @@ type tailerConfig struct {
 // tailer is responsible to pull log messages from cloudflare using Logpull API.
 type tailer struct {
 	logger    *slog.Logger
+	metrics   *metrics
 	handler   loki.LogsReceiver
 	positions positions.Positions
 	config    *tailerConfig
-	metrics   *metrics
+	fields    []string
 
 	client  Client
 	ctx     context.Context
 	cancel  context.CancelFunc
 	wg      sync.WaitGroup
-	to      time.Time // the end of the next pull interval
 	running *atomic.Bool
-	err     error
+	err     *atomic.Error
 }
 
-// newTailer creates and runs a Cloudflare target.
+// newTailer creates and runs a Cloudflare tailer.
 func newTailer(metrics *metrics, logger *slog.Logger, handler loki.LogsReceiver, position positions.Positions, config *tailerConfig) (*tailer, error) {
 	fields, err := fieldsForType(config.FieldsType, config.AdditionalFields)
 	if err != nil {
@@ -88,56 +88,68 @@ func newTailer(metrics *metrics, logger *slog.Logger, handler loki.LogsReceiver,
 	ctx, cancel := context.WithCancel(context.Background())
 	t := &tailer{
 		logger:    logger,
-		handler:   handler,
-		positions: position,
-		config:    config,
 		metrics:   metrics,
+		positions: position,
+		handler:   handler,
+		config:    config,
+		fields:    fields,
 
 		ctx:     ctx,
 		cancel:  cancel,
 		client:  client,
-		to:      to,
 		running: atomic.NewBool(false),
+		err:     atomic.NewError(nil),
 	}
 
-	t.start()
+	t.start(to)
 
 	return t, nil
 }
 
-func (t *tailer) start() {
+// start pulls windows from to, the end of the next pull interval.
+func (t *tailer) start(to time.Time) {
 	t.running.Store(true)
 
 	t.wg.Go(func() {
 		defer t.running.Store(false)
 
-		for t.ctx.Err() == nil {
-			end := t.to
+		for {
+			if t.ctx.Err() != nil {
+				return
+			}
+
+			end := to
 			maxEnd := time.Now().Add(-minDelay)
 			if end.After(maxEnd) {
 				end = maxEnd
 			}
-			start := end.Add(-time.Duration(t.config.PullRange))
+			start := end.Add(-t.config.PullRange)
 			requests := splitRequests(start, end, t.config.Workers)
-			// Use background context for workers as we don't want to cancel halfway through.
+
+			// Stopping cancels the window halfway through. Its position is not saved, so it is pulled again on restart.
 			// In case of errors we stop the target, each worker has its own retry logic.
-			if err := concurrency.ForEachJob(context.Background(), len(requests), t.config.Workers, func(ctx context.Context, idx int) error {
+			err := concurrency.ForEachJob(t.ctx, len(requests), t.config.Workers, func(ctx context.Context, idx int) error {
 				request := requests[idx]
 				return t.pull(ctx, request.start, request.end)
-			}); err != nil {
+			})
+
+			if err != nil {
+				if errors.Is(err, context.Canceled) {
+					return
+				}
 				t.logger.Error("failed to pull logs", "err", err, "start", start, "end", end)
-				t.err = err
+				t.err.Store(err)
 				return
 			}
 
 			// Sets current timestamp metrics, move to the next interval and saves the position.
 			t.metrics.LastEnd.Set(float64(end.UnixNano()) / 1e9)
-			t.to = end.Add(time.Duration(t.config.PullRange))
-			t.positions.Put(positions.CursorKey(t.config.ZoneID), t.config.Labels.String(), t.to.UnixNano())
+			to = end.Add(t.config.PullRange)
+			t.positions.Put(positions.CursorKey(t.config.ZoneID), t.config.Labels.String(), to.UnixNano())
 
 			// If the next window can be fetched do it, if not sleep for a while.
 			// This is because Cloudflare logs should never be pulled between now-1m and now.
-			diff := t.to.Sub(time.Now().Add(-minDelay))
+			diff := to.Sub(time.Now().Add(-minDelay))
 			if diff > 0 {
 				select {
 				case <-time.After(diff):
@@ -152,26 +164,26 @@ func (t *tailer) start() {
 // It will retry on errors.
 func (t *tailer) pull(ctx context.Context, start, end time.Time) error {
 	var (
-		backoff = backoff.New(ctx, t.config.Backoff)
 		errs    = multierror.New()
-		it      cloudflare.LogpullReceivedIterator
-		err     error
+		backoff = backoff.New(ctx, t.config.Backoff)
 	)
 
 	for backoff.Ongoing() {
-		it, err = t.client.LogpullReceived(ctx, start, end)
-		if err != nil && cloudflareTooEarlyError.MatchString(err.Error()) {
-			t.logger.Warn("failed iterating over logs, out of cloudflare range, not retrying", "err", err, "start", start, "end", end, "retries", backoff.NumRetries())
-			return nil
-		} else if err != nil {
-			if it != nil {
-				it.Close()
+		it, err := t.client.LogpullReceived(ctx, start, end)
+		if err != nil {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			if cloudflareTooEarlyError.MatchString(err.Error()) {
+				t.logger.Warn("failed iterating over logs, out of cloudflare range, not retrying", "err", err, "start", start, "end", end, "retries", backoff.NumRetries())
+				return nil
 			}
 			errs.Add(err)
 			backoff.Wait()
 			continue
 		}
-		if err := func() error {
+
+		consume := func() error {
 			defer it.Close()
 			var lineRead int64
 			for it.Next() {
@@ -182,10 +194,14 @@ func (t *tailer) pull(ctx context.Context, start, end time.Time) error {
 				}
 
 				// TODO(kalleep): pretty sure we don't have to clone here.
-				t.handler.Chan() <- loki.NewEntry(t.config.Labels.Clone(), push.Entry{
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case t.handler.Chan() <- loki.NewEntry(t.config.Labels.Clone(), push.Entry{
 					Timestamp: time.Unix(0, ts),
 					Line:      string(line),
-				})
+				}):
+				}
 
 				lineRead++
 				t.metrics.Entries.Inc()
@@ -195,13 +211,21 @@ func (t *tailer) pull(ctx context.Context, start, end time.Time) error {
 				return it.Err()
 			}
 			return nil
-		}(); err != nil {
+		}
+
+		if err := consume(); err != nil {
+			if errors.Is(err, context.Canceled) {
+				return err
+			}
+
 			errs.Add(err)
 			backoff.Wait()
 			continue
 		}
+
 		return nil
 	}
+
 	return errs.Err()
 }
 
@@ -218,17 +242,22 @@ func (t *tailer) ready() bool {
 
 // details returns debug details about the Cloudflare target.
 func (t *tailer) details() map[string]string {
-	fields, _ := fieldsForType(t.config.FieldsType, t.config.AdditionalFields)
 	var errMsg string
-	if t.err != nil {
-		errMsg = t.err.Error()
+	if err := t.err.Load(); err != nil {
+		errMsg = err.Error()
 	}
+
+	var lastTimestamp string
+	if pos, _ := t.positions.Get(positions.CursorKey(t.config.ZoneID), t.config.Labels.String()); pos != 0 {
+		lastTimestamp = time.Unix(0, pos).String()
+	}
+
 	return map[string]string{
 		"zone_id":        t.config.ZoneID,
 		"error":          errMsg,
 		"position":       t.positions.GetString(positions.CursorKey(t.config.ZoneID), t.config.Labels.String()),
-		"last_timestamp": t.to.String(),
-		"fields":         strings.Join(fields, ","),
+		"last_timestamp": lastTimestamp,
+		"fields":         strings.Join(t.fields, ","),
 	}
 }
 
