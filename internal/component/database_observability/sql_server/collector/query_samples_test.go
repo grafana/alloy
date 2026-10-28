@@ -677,3 +677,196 @@ func TestClassifySQLServerWaitEventType(t *testing.T) {
 		})
 	}
 }
+
+func TestQuerySamples_SampleMinDurationDropsShortRequestsAndWaits(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
+	collector, err := NewQuerySamples(QuerySamplesArguments{
+		EntryHandler:      handler,
+		Logger:            util.TestAlloyLogger(t).Slog(),
+		SampleMinDuration: 100 * time.Millisecond,
+	})
+	require.NoError(t, err)
+
+	registered := map[string]struct{}{testHash: {}}
+	shortReq := querySampleRow{
+		Now:               querySampleNow,
+		DatabaseName:      testDatabase,
+		SessionID:         51,
+		RequestID:         0,
+		StartTime:         querySampleStart,
+		QueryHash:         testHash,
+		ElapsedTimeMillis: 50,
+		ExecContextID:     sql.NullInt64{Int64: 2, Valid: true},
+		WaitType:          sql.NullString{String: "LCK_M_S", Valid: true},
+		WaitDurationMs:    sql.NullInt64{Int64: 40, Valid: true},
+	}
+	growingReq := querySampleRow{
+		Now:               querySampleNow,
+		DatabaseName:      testDatabase,
+		SessionID:         52,
+		RequestID:         0,
+		StartTime:         querySampleStart,
+		QueryHash:         testHash,
+		ElapsedTimeMillis: 20,
+		ExecContextID:     sql.NullInt64{Int64: 2, Valid: true},
+		WaitType:          sql.NullString{String: "PAGEIOLATCH_SH", Valid: true},
+		WaitDurationMs:    sql.NullInt64{Int64: 15, Valid: true},
+	}
+
+	// Poll 1: both start below 100ms
+	collector.applySnapshot([]querySampleRow{shortReq, growingReq}, registered)
+
+	// Poll 2: shortReq completes at 50ms (< 100ms, dropped); growingReq grows to 150ms
+	growingReq.Now = querySampleNow.Add(time.Second)
+	growingReq.ElapsedTimeMillis = 150
+	growingReq.WaitDurationMs.Int64 = 120
+	collector.applySnapshot([]querySampleRow{growingReq}, registered)
+
+	// Poll 3: growingReq completes at 150ms (>= 100ms, emitted)
+	collector.applySnapshot(nil, registered)
+
+	require.Eventually(t, func() bool { return len(handler.Received()) == 2 }, 5*time.Second, 20*time.Millisecond)
+	entries := handler.Received()
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, entries[0].Labels)
+	require.Contains(t, entries[0].Line, `session_id="52"`)
+	require.Contains(t, entries[0].Line, `elapsed_time_ms="150"`)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT_V2}, entries[1].Labels)
+	require.Contains(t, entries[1].Line, `session_id="52"`)
+	require.Contains(t, entries[1].Line, `wait_time="120ms"`)
+}
+
+func TestQuerySamples_WaitEventMinDurationFiltersWaitOccurrences(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
+	collector, err := NewQuerySamples(QuerySamplesArguments{
+		EntryHandler:         handler,
+		Logger:               util.TestAlloyLogger(t).Slog(),
+		WaitEventMinDuration: 10 * time.Millisecond,
+	})
+	require.NoError(t, err)
+
+	registered := map[string]struct{}{testHash: {}}
+	base := querySampleRow{
+		Now:               querySampleNow,
+		DatabaseName:      testDatabase,
+		SessionID:         51,
+		RequestID:         0,
+		StartTime:         querySampleStart,
+		QueryHash:         testHash,
+		ElapsedTimeMillis: 100,
+	}
+
+	// Task 1 has a 2ms wait (never grows above 10ms -> dropped).
+	// Task 2 starts at 0ms on Poll 1 and grows to 25ms on Poll 2 (-> emitted).
+	task1 := base
+	task1.ExecContextID = sql.NullInt64{Int64: 1, Valid: true}
+	task1.WaitType = sql.NullString{String: "CXPACKET", Valid: true}
+	task1.WaitDurationMs = sql.NullInt64{Int64: 2, Valid: true}
+
+	task2 := base
+	task2.ExecContextID = sql.NullInt64{Int64: 2, Valid: true}
+	task2.WaitType = sql.NullString{String: "LCK_M_S", Valid: true}
+	task2.WaitDurationMs = sql.NullInt64{Int64: 0, Valid: true}
+
+	collector.applySnapshot([]querySampleRow{task1, task2}, registered)
+
+	task2Poll2 := task2
+	task2Poll2.Now = querySampleNow.Add(time.Second)
+	task2Poll2.WaitDurationMs.Int64 = 25
+	collector.applySnapshot([]querySampleRow{task2Poll2}, registered)
+
+	collector.applySnapshot(nil, registered)
+
+	require.Eventually(t, func() bool { return len(handler.Received()) == 2 }, 5*time.Second, 20*time.Millisecond)
+	entries := handler.Received()
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, entries[0].Labels)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT_V2}, entries[1].Labels)
+	require.Contains(t, entries[1].Line, `wait_event_name="LCK_M_S"`)
+	require.Contains(t, entries[1].Line, `wait_time="25ms"`)
+}
+
+func TestQuerySamples_MaxSamplesPerQueryAndPerCollect(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	const otherHash = "8899aabbccddeeff"
+
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
+	collector, err := NewQuerySamples(QuerySamplesArguments{
+		EntryHandler:         handler,
+		Logger:               util.TestAlloyLogger(t).Slog(),
+		MaxSamplesPerQuery:   2,
+		MaxSamplesPerCollect: 3,
+	})
+	require.NoError(t, err)
+
+	registered := map[string]struct{}{
+		testHash:  {},
+		otherHash: {},
+	}
+
+	makeRow := func(sessionID int64, hash string, elapsedMs, cpuMs int64, waitType string) querySampleRow {
+		return querySampleRow{
+			Now:               querySampleNow,
+			DatabaseName:      testDatabase,
+			SessionID:         sessionID,
+			RequestID:         0,
+			StartTime:         querySampleStart,
+			QueryHash:         hash,
+			ElapsedTimeMillis: elapsedMs,
+			CPUTimeMillis:     cpuMs,
+			ExecContextID:     sql.NullInt64{Int64: 1, Valid: true},
+			WaitType:          sql.NullString{String: waitType, Valid: true},
+			WaitDurationMs:    sql.NullInt64{Int64: 50, Valid: true},
+		}
+	}
+
+	// testHash has 3 requests:
+	// - session 51: 100ms elapsed, 10ms cpu (dropped by MaxSamplesPerQuery=2)
+	// - session 52: 300ms elapsed, 20ms cpu (kept, rank #1 overall)
+	// - session 53: 300ms elapsed, 80ms cpu (kept, CPU tie-breaker puts it ahead of 52)
+	// otherHash has 2 requests:
+	// - session 61: 250ms elapsed, 50ms cpu (kept, 3rd overall under MaxSamplesPerCollect=3)
+	// - session 62: 200ms elapsed, 40ms cpu (dropped by MaxSamplesPerCollect=3)
+	snapshot := []querySampleRow{
+		makeRow(51, testHash, 100, 10, "LCK_M_S"),
+		makeRow(52, testHash, 300, 20, "LCK_M_X"),
+		makeRow(53, testHash, 300, 80, "PAGEIOLATCH_SH"),
+		makeRow(61, otherHash, 250, 50, "WRITELOG"),
+		makeRow(62, otherHash, 200, 40, "CXPACKET"),
+	}
+
+	collector.applySnapshot(snapshot, registered)
+	collector.applySnapshot(nil, registered)
+
+	// 3 admitted samples, each with 1 wait event = 6 entries total.
+	// Throttled sessions (51 and 62) must not emit either query_sample or wait_event_v2.
+	require.Eventually(t, func() bool { return len(handler.Received()) == 6 }, 5*time.Second, 20*time.Millisecond)
+	entries := handler.Received()
+
+	// Entry pairs in priority order: session 53, session 52, session 61
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, entries[0].Labels)
+	require.Contains(t, entries[0].Line, `session_id="53"`)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT_V2}, entries[1].Labels)
+	require.Contains(t, entries[1].Line, `session_id="53"`)
+
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, entries[2].Labels)
+	require.Contains(t, entries[2].Line, `session_id="52"`)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT_V2}, entries[3].Labels)
+	require.Contains(t, entries[3].Line, `session_id="52"`)
+
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_SAMPLE}, entries[4].Labels)
+	require.Contains(t, entries[4].Line, `session_id="61"`)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_WAIT_EVENT_V2}, entries[5].Labels)
+	require.Contains(t, entries[5].Line, `session_id="61"`)
+
+	for _, entry := range entries {
+		require.NotContains(t, entry.Line, `session_id="51"`)
+		require.NotContains(t, entry.Line, `session_id="62"`)
+	}
+}
