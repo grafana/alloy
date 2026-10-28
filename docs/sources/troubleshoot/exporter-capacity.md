@@ -81,24 +81,36 @@ For `otelcol.exporter.otlphttp`, use the following query.
 The result is in seconds:
 
 ```promql
-sum(rate(http_client_request_duration_seconds_sum{component_id="<COMPONENT_ID>"}[$__rate_interval]))
+sum(rate(http_client_request_duration_seconds_sum{instance="<INSTANCE>", component_id="<COMPONENT_ID>"}[$__rate_interval]))
 /
-sum(rate(http_client_request_duration_seconds_count{component_id="<COMPONENT_ID>"}[$__rate_interval]))
+sum(rate(http_client_request_duration_seconds_count{instance="<INSTANCE>", component_id="<COMPONENT_ID>"}[$__rate_interval]))
 ```
 
 For `otelcol.exporter.otlp`, use the following query.
-The histogram is in milliseconds, so the query divides by `1000` to return seconds:
+The result is in seconds:
 
 ```promql
-sum(rate(rpc_client_duration_milliseconds_sum{component_id="<COMPONENT_ID>"}[$__rate_interval]))
+sum(rate(rpc_client_call_duration_seconds_sum{instance="<INSTANCE>", component_id="<COMPONENT_ID>"}[$__rate_interval]))
 /
-sum(rate(rpc_client_duration_milliseconds_count{component_id="<COMPONENT_ID>"}[$__rate_interval]))
-/ 1000
+sum(rate(rpc_client_call_duration_seconds_count{instance="<INSTANCE>", component_id="<COMPONENT_ID>"}[$__rate_interval]))
 ```
+
+{{< admonition type="note" >}}
+{{< param "PRODUCT_NAME" >}} v1.20.0 and later report the `rpc_client_call_duration_seconds` histogram.
+Earlier versions report the `rpc_client_duration_milliseconds` histogram instead.
+This histogram is in milliseconds, so divide the result of the query by `1000` to get seconds.
+
+In v1.20.0 and later, you can also get the legacy histogram.
+To do this, set the `OTEL_SEMCONV_STABILITY_OPT_IN` environment variable to `rpc/old` or `rpc/dup`.
+{{< /admonition >}}
 
 Replace the following:
 
+- _`<INSTANCE>`_: The `instance` label value of one {{< param "PRODUCT_NAME" >}} instance.
 - _`<COMPONENT_ID>`_: The ID of the exporter component, for example `otelcol.exporter.otlphttp.default`.
+
+Filter on one instance, because each instance has its own limit.
+If you query several instances together, the sums mix their traffic and the result doesn't match the limit of any one instance.
 
 If you use modules or `foreach` blocks, components in different module instances can have the same ID.
 In this case, also filter each query on the `component_path` label.
@@ -108,7 +120,7 @@ Use the mean in the calculation, and use the 99th percentile as a worst-case che
 
 ## Calculate the maximum data throughput
 
-Each request can carry items up to the maximum size that the batch size limit sets.
+The number of items in each request depends on your batching configuration.
 An item is a metric data point, a log record, or a span.
 To convert requests per second into items per second, multiply by the number of items in each request:
 
@@ -119,25 +131,31 @@ max items per second = max requests per second × mean items per request
 ### Measure the mean items per request
 
 Don't assume that every request is full.
-The exporter sends a batch when the batch reaches its size limit, or when the batch timeout expires.
-At low traffic, the exporter sends most batches when the timeout expires, and these batches are smaller than the limit.
+Batching is off by default.
+If you don't enable `batch` in the `sending_queue` block, and you don't use an upstream `otelcol.processor.batch` component, each request carries the data of one incoming batch.
+In this case, the request size depends on the sender.
+
+If you enable batching, the exporter sends a batch when the batch reaches `min_size`, or when `flush_timeout` expires.
+At low traffic, the exporter sends most batches when the timeout expires, and these batches are smaller than `min_size`.
+Under load, batches can be larger than `min_size`, but they never exceed `max_size`.
 
 For `otelcol.exporter.otlphttp`, the following query divides the number of metric data points that the exporter sends by the number of requests:
 
 ```promql
-sum(rate(otelcol_exporter_sent_metric_points_total{component_id="<COMPONENT_ID>"}[$__rate_interval]))
+sum(rate(otelcol_exporter_sent_metric_points_total{instance="<INSTANCE>", component_id="<COMPONENT_ID>"}[$__rate_interval]))
 /
-sum(rate(http_client_request_duration_seconds_count{component_id="<COMPONENT_ID>"}[$__rate_interval]))
+sum(rate(http_client_request_duration_seconds_count{instance="<INSTANCE>", component_id="<COMPONENT_ID>"}[$__rate_interval]))
 ```
 
 For other signals, replace `otelcol_exporter_sent_metric_points_total` with `otelcol_exporter_sent_log_records_total` or `otelcol_exporter_sent_spans_total`.
-For `otelcol.exporter.otlp`, replace `http_client_request_duration_seconds_count` with `rpc_client_duration_milliseconds_count`.
+For `otelcol.exporter.otlp`, replace `http_client_request_duration_seconds_count` with `rpc_client_call_duration_seconds_count`.
 
 The request count includes failed requests and retries.
 When the error rate is high, the result is lower than the real batch size.
 
-If you need the maximum throughput under load, measure during a period of high traffic, or use the batch size limit.
-At saturation, batches fill to their limit before the timeout expires.
+If you need the maximum throughput under load, measure during a period of high traffic.
+Don't use `max_size` as the request size.
+Batches can flush at `min_size`, so the real mean under load can be lower than `max_size`.
 
 ### Example calculation
 
@@ -174,7 +192,7 @@ This section shows the queries that tell you if the exporter is near its limit.
 The following query shows the rate of metric data points that the exporter sends:
 
 ```promql
-sum(rate(otelcol_exporter_sent_metric_points_total{component_id="<COMPONENT_ID>"}[$__rate_interval]))
+sum(rate(otelcol_exporter_sent_metric_points_total{instance="<INSTANCE>", component_id="<COMPONENT_ID>"}[$__rate_interval]))
 ```
 
 If the sent rate stays near the maximum for long periods, the exporter has no headroom.
@@ -183,7 +201,7 @@ The following query shows how many requests are in flight.
 This number includes requests that wait in retry backoff:
 
 ```promql
-sum(otelcol_exporter_in_flight_requests{component_id="<COMPONENT_ID>", data_type="metrics"})
+sum(otelcol_exporter_in_flight_requests{instance="<INSTANCE>", component_id="<COMPONENT_ID>", data_type="metrics"})
 ```
 
 If this value is often equal to `num_consumers`, all consumers are busy and the exporter is at its limit.
@@ -192,9 +210,9 @@ For other signals, set `data_type` to `logs` or `traces`.
 The following query shows how full the sending queue is, as a fraction between `0` and `1`:
 
 ```promql
-sum(otelcol_exporter_queue_size{component_id="<COMPONENT_ID>", data_type="metrics"})
+sum(otelcol_exporter_queue_size{instance="<INSTANCE>", component_id="<COMPONENT_ID>", data_type="metrics"})
 /
-sum(otelcol_exporter_queue_capacity{component_id="<COMPONENT_ID>", data_type="metrics"})
+sum(otelcol_exporter_queue_capacity{instance="<INSTANCE>", component_id="<COMPONENT_ID>", data_type="metrics"})
 ```
 
 A queue that grows and doesn't drain means that data comes in faster than the exporter can send it.
@@ -239,11 +257,19 @@ After an outage ends, the exporter sends the data in the queue, and new data con
 The time to drain a full queue is approximately:
 
 ```text
-drain time = queued requests / (max requests per second − incoming requests per second)
+drain time = queued items / (max items per second − incoming items per second)
 ```
 
-For example, with 1000 queued requests, a maximum of 8.3 requests per second, and no new data, the drain takes about 120 seconds.
-With new data still arriving, the drain takes longer.
+Use items for the backlog and for both rates.
+The `otelcol_exporter_queue_size` metric uses the unit of the `sizer` argument.
+With the default `requests` sizer, the queue counts incoming batches, not items.
+If batching is on, the exporter can merge or split these batches before it sends them, so the batch count doesn't match the number of requests that the exporter sends.
+To get a backlog in items, set `sizer` to `items`.
+
+The queue drains only if the maximum is higher than the incoming rate.
+If the incoming rate is equal to or higher than the maximum, the queue never drains.
+
+For example, with 1,360,000 queued items, a maximum of 68,000 items per second, and 20,000 incoming items per second, the drain takes about 28 seconds.
 
 During the drain, the destination receives old data.
 Some destinations reject data that's too old.
