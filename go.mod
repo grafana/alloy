@@ -307,7 +307,7 @@ require (
 	go.uber.org/zap v1.28.0
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/crypto v0.58.0
-	golang.org/x/crypto/x509roots/fallback v0.0.0-20240208163226-62c9f1799c91
+	golang.org/x/crypto/x509roots/fallback v0.0.0-20261027005312-1da6254a58cf
 	golang.org/x/exp v0.0.0-20260908205506-85c1c2202aba
 	golang.org/x/net v0.61.0
 	golang.org/x/oauth2 v0.37.0
