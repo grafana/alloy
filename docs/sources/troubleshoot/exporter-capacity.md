@@ -95,15 +95,6 @@ sum(rate(rpc_client_call_duration_seconds_sum{instance="<INSTANCE>", component_i
 sum(rate(rpc_client_call_duration_seconds_count{instance="<INSTANCE>", component_id="<COMPONENT_ID>"}[$__rate_interval]))
 ```
 
-{{< admonition type="note" >}}
-{{< param "PRODUCT_NAME" >}} v1.20.0 and later report the `rpc_client_call_duration_seconds` histogram.
-Earlier versions report the `rpc_client_duration_milliseconds` histogram instead.
-This histogram is in milliseconds, so divide the result of the query by `1000` to get seconds.
-
-In v1.20.0 and later, you can also get the legacy histogram.
-To do this, set the `OTEL_SEMCONV_STABILITY_OPT_IN` environment variable to `rpc/old` or `rpc/dup`.
-{{< /admonition >}}
-
 Replace the following:
 
 - _`<INSTANCE>`_: The `instance` label value of one {{< param "PRODUCT_NAME" >}} instance.
@@ -114,6 +105,16 @@ If you query several instances together, the sums mix their traffic and the resu
 
 If you use modules or `foreach` blocks, components in different module instances can have the same ID.
 In this case, also filter each query on the `component_path` label.
+
+{{< admonition type="note" >}}
+{{< param "PRODUCT_NAME" >}} v1.20.0 and later report the `rpc_client_call_duration_seconds` histogram.
+Earlier versions report the `rpc_client_duration_milliseconds` histogram instead.
+That histogram is in milliseconds.
+For an earlier version, use `rpc_client_duration_milliseconds_sum` and `rpc_client_duration_milliseconds_count` in the query, and divide the result by `1000` to get seconds.
+
+In v1.20.0 and later, you can also get the legacy histogram.
+To do this, set the `OTEL_SEMCONV_STABILITY_OPT_IN` environment variable to `rpc/old` or `rpc/dup`.
+{{< /admonition >}}
 
 To check the spread of the latency, you can also calculate percentiles from the same histogram, for example with `histogram_quantile(0.99, ...)`.
 Use the mean in the calculation, and use the 99th percentile as a worst-case check.
@@ -153,9 +154,8 @@ For `otelcol.exporter.otlp`, replace `http_client_request_duration_seconds_count
 The request count includes failed requests and retries.
 When the error rate is high, the result is lower than the real batch size.
 
-If you need the maximum throughput under load, measure during a period of high traffic.
-Don't use `max_size` as the request size.
-Batches can flush at `min_size`, so the real mean under load can be lower than `max_size`.
+To find the maximum throughput under load, measure during a period of high traffic.
+Don't use `max_size` as the request size, because batches can flush at `min_size`.
 
 ### Example calculation
 
@@ -163,14 +163,14 @@ This example uses the following values:
 
 - `num_consumers` is `10`.
 - The mean request latency is 1.2 seconds, and the 99th percentile is 2.5 seconds.
-- Each request carries 8192 metric data points.
+- Each request carries 8,192 metric data points.
 
 The calculation gives the following results:
 
-| Case                   | Requests per second | Data points per second |
-| ---------------------- | ------------------- | ---------------------- |
-| Mean latency (1.2 s)   | 10 / 1.2 ≈ 8.3      | 8.3 × 8192 ≈ 68,000    |
-| Worst case (2.5 s)     | 10 / 2.5 = 4        | 4 × 8192 ≈ 33,000      |
+| Case                 | Requests per second | Data points per second |
+| -------------------- | ------------------- | ---------------------- |
+| Mean latency (1.2 s) | 10 / 1.2 ≈ 8.3      | 8.3 × 8,192 ≈ 68,000   |
+| Worst case (2.5 s)   | 10 / 2.5 = 4        | 4 × 8,192 ≈ 33,000     |
 
 The maximum throughput of this exporter is about 68,000 data points per second.
 If all requests are as slow as the 99th percentile, the maximum falls to about 33,000 data points per second.
@@ -186,10 +186,11 @@ The number of samples that the destination ingests can be much higher than the n
 
 ## Compare the maximum with real traffic
 
-After you calculate the maximum throughput, compare it with the rate of data that goes into the exporter.
+After you calculate the maximum throughput, compare it with the traffic that the exporter handles.
 This section shows the queries that tell you if the exporter is near its limit.
 
-The following query shows the rate of metric data points that the exporter sends:
+The following query shows the rate of metric data points that the exporter sends.
+For other signals, replace `otelcol_exporter_sent_metric_points_total` as described in [Measure the mean items per request](#measure-the-mean-items-per-request):
 
 ```promql
 sum(rate(otelcol_exporter_sent_metric_points_total{instance="<INSTANCE>", component_id="<COMPONENT_ID>"}[$__rate_interval]))
@@ -218,6 +219,7 @@ sum(otelcol_exporter_queue_capacity{instance="<INSTANCE>", component_id="<COMPON
 A queue that grows and doesn't drain means that data comes in faster than the exporter can send it.
 When the queue is full, the exporter rejects new data.
 The `otelcol_exporter_enqueue_failed_metric_points_total` metric counts the data points that the exporter rejects.
+For logs and traces, use `otelcol_exporter_enqueue_failed_log_records_total` or `otelcol_exporter_enqueue_failed_spans_total`.
 
 ## Understand how failures reduce throughput
 
@@ -250,6 +252,7 @@ The exporter drops the data at once, and the consumer moves to the next request.
 Permanent errors don't cause retry backoff, so the consumer doesn't wait before it sends the next request.
 The response latency still holds the consumer, and you lose the data in those requests.
 The `otelcol_exporter_send_failed_metric_points_total` metric counts the data points in failed requests.
+For logs and traces, use `otelcol_exporter_send_failed_log_records_total` or `otelcol_exporter_send_failed_spans_total`.
 
 ### Estimate the time to drain the queue
 
@@ -308,4 +311,3 @@ Test each change before you use it in production.
 - [`otelcol.exporter.otlp`](../../reference/components/otelcol/otelcol.exporter.otlp/) reference
 - [`otelcol.exporter.otlphttp`](../../reference/components/otelcol/otelcol.exporter.otlphttp/) reference
 - [`otelcol.processor.batch`](../../reference/components/otelcol/otelcol.processor.batch/) reference
-
