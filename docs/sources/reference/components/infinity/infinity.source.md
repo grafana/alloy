@@ -485,6 +485,9 @@ infinity.source "inline_csv" {
 - A metric label value can be at most 64 KiB, and the labels of all samples from one poll can be at most 64 MiB in total.
   Each sample gets the string columns of its row as labels, so a row with many numeric columns repeats them.
   A poll over either limit fails with the `too_large` reason.
+- `summarize_by` can process at most 10,000,000 cells, where cells are the number of groups times the number of rows.
+  The summary reads all rows once for each group, so a column with a different value in each row is slow to summarize.
+  A poll over this limit fails with the `too_large` reason.
 - `metrics.series_limit` and `logs.entry_limit` default to `0`, which means no limit. Set them for large APIs and for APIs you don't control.
 - The parser libraries can't stop a `jq` or `jsonata` expression that doesn't end.
   After `timeout`, the poll fails, but the expression keeps using CPU until {{< param "PRODUCT_NAME" >}} restarts.

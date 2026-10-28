@@ -10,6 +10,7 @@ import (
 	xj "github.com/basgys/goxml2json"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/grafana/infinity-libs/lib/go/csvframer"
+	"github.com/grafana/infinity-libs/lib/go/framesql"
 	"github.com/grafana/infinity-libs/lib/go/gframer"
 	"github.com/grafana/infinity-libs/lib/go/jsonframer"
 	"github.com/grafana/infinity-libs/lib/go/transformations"
@@ -44,6 +45,10 @@ func buildFrame(s querySpec, body []byte) (_ *data.Frame, retErr error) {
 	}
 	frame, err = postProcess(s, frame)
 	if err != nil {
+		var pe *pollError
+		if errors.As(err, &pe) {
+			return nil, err
+		}
 		return nil, newLibError(reasonPostprocess, err)
 	}
 	if frame == nil {
@@ -216,7 +221,7 @@ func postProcess(s querySpec, frame *data.Frame) (*data.Frame, error) {
 		return nil, fmt.Errorf("filter_expression: %w", err)
 	}
 	if s.summarize != nil {
-		frame, err = transformations.GetSummaryFrame(frame, s.summarize.expression, s.summarize.by, s.summarize.alias)
+		frame, err = summarize(frame, s.summarize.expression, s.summarize.by, s.summarize.alias)
 		if err != nil {
 			return nil, fmt.Errorf("summarize: %w", err)
 		}
@@ -235,15 +240,72 @@ func postProcess(s querySpec, frame *data.Frame) (*data.Frame, error) {
 func applyTransform(frame *data.Frame, t transformSpec) (*data.Frame, error) {
 	switch t.kind {
 	case "limit":
-		return firstFrame(transformations.Limit([]*data.Frame{frame}, transformations.LimitOptions{LimitField: t.limit}))
+		return limitRows(frame, t.limit), nil
 	case "filter":
 		return firstFrame(transformations.FilterExpression([]*data.Frame{frame}, transformations.FilterExpressionOptions{Expression: t.expression}))
 	case "computed_column":
 		return transformations.GetFrameWithComputedColumns(frame, []transformations.ComputedColumn{{Selector: t.expression, Text: t.alias}})
 	case "summarize":
-		return transformations.GetSummaryFrame(frame, t.expression, t.by, t.alias)
+		return summarize(frame, t.expression, t.by, t.alias)
 	}
 	return nil, fmt.Errorf("unknown transform %q", t.kind)
+}
+
+// limitRows keeps the first n rows of frame. It gives the same result as
+// transformations.Limit, which deletes one row at a time and so takes time
+// that grows with the square of the row count.
+func limitRows(frame *data.Frame, n int) *data.Frame {
+	if frame.Rows() <= n {
+		return frame
+	}
+	// EmptyCopy would drop the field config, so copy each field here.
+	out := &data.Frame{Name: frame.Name, RefID: frame.RefID, Meta: frame.Meta}
+	for _, fld := range frame.Fields {
+		f := data.NewFieldFromFieldType(fld.Type(), n)
+		f.Name, f.Labels, f.Config = fld.Name, fld.Labels, fld.Config
+		for i := range n {
+			f.Set(i, fld.CopyAt(i))
+		}
+		out.Fields = append(out.Fields, f)
+	}
+	return out
+}
+
+// maxSummarizeWork limits groups times rows of one summarize_by step. The
+// library scans all rows once for each group, so a column with a different
+// value in each row makes the time grow with the square of the row count.
+const maxSummarizeWork = 10_000_000
+
+// summarize calls transformations.GetSummaryFrame, after it checks the
+// work that summarize_by needs.
+func summarize(frame *data.Frame, expression, by, alias string) (*data.Frame, error) {
+	if strings.TrimSpace(by) != "" && strings.TrimSpace(expression) != "" && frame != nil {
+		if groups := countGroups(frame, by); groups*frame.Rows() > maxSummarizeWork {
+			return nil, newPollError(reasonTooLarge, fmt.Errorf("summarize_by makes more than %d group times row steps", maxSummarizeWork))
+		}
+	}
+	return transformations.GetSummaryFrame(frame, expression, by, alias)
+}
+
+// countGroups counts the distinct values of the by field. It finds the
+// field the same way as GetSummarizeByFrame. The count is an estimate,
+// because the library compares values in a different form.
+func countGroups(frame *data.Frame, by string) int {
+	for _, fld := range frame.Fields {
+		if fld.Name != by && framesql.SlugifyFieldName(fld.Name) != by {
+			continue
+		}
+		seen := map[string]struct{}{}
+		for i := range fld.Len() {
+			v, ok := fld.ConcreteAt(i)
+			if !ok {
+				v = nil
+			}
+			seen[fmt.Sprint(v)] = struct{}{}
+		}
+		return len(seen)
+	}
+	return 0
 }
 
 func firstFrame(frames []*data.Frame, err error) (*data.Frame, error) {

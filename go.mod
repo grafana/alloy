@@ -76,6 +76,7 @@ require (
 	github.com/grafana/go-gelf/v2 v2.0.1
 	github.com/grafana/grafana-plugin-sdk-go v0.292.1
 	github.com/grafana/infinity-libs/lib/go/csvframer v1.0.4
+	github.com/grafana/infinity-libs/lib/go/framesql v1.1.1
 	github.com/grafana/infinity-libs/lib/go/gframer v1.1.13
 	github.com/grafana/infinity-libs/lib/go/jsonframer v1.3.0
 	github.com/grafana/infinity-libs/lib/go/transformations v1.1.1
@@ -716,7 +717,6 @@ require (
 	github.com/grafana/clusterurl v0.3.0 // indirect
 	github.com/grafana/faro/pkg/go v0.0.0-20260427090633-bb5f9417df83 // indirect
 	github.com/grafana/gomemcache v0.0.0-20260728143316-9448343bd654 // indirect
-	github.com/grafana/infinity-libs/lib/go/framesql v1.1.1 // indirect
 	github.com/grafana/infinity-libs/lib/go/utils v1.0.1 // indirect
 	github.com/grafana/jfr-parser v0.9.3 // indirect
 	github.com/grafana/otel-profiling-go v0.6.0 // indirect

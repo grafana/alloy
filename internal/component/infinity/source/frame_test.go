@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/data"
+	"github.com/grafana/infinity-libs/lib/go/transformations"
 	"github.com/stretchr/testify/require"
 )
 
@@ -397,5 +398,98 @@ func TestBuildFrameCSVBadDelimiterDoesNotSpin(t *testing.T) {
 		require.Equal(t, reasonParse, reasonOf(err))
 	case <-time.After(5 * time.Second):
 		t.Fatal("buildFrame did not return")
+	}
+}
+
+// TestLimitRowsMatchesLibrary checks that limitRows gives the same frame as
+// transformations.Limit.
+func TestLimitRowsMatchesLibrary(t *testing.T) {
+	newFrame := func() *data.Frame {
+		f := data.NewFrame("q",
+			data.NewField("s", data.Labels{"a": "b"}, []*string{}),
+			data.NewField("v", nil, []*float64{}),
+			data.NewField("b", nil, []bool{}),
+		)
+		f.Fields[1].SetConfig(&data.FieldConfig{Unit: "ms"})
+		for i := range 50 {
+			f.AppendRow(ptr(fmt.Sprint(i)), ptr(float64(i)), i%2 == 0)
+		}
+		return f
+	}
+	for _, n := range []int{1, 10, 50, 100} {
+		want, err := transformations.Limit([]*data.Frame{newFrame()}, transformations.LimitOptions{LimitField: n})
+		require.NoError(t, err)
+		// The JSON form holds the schema and the values. Equal would also
+		// compare the capacity of the slices.
+		wantJSON, err := want[0].MarshalJSON()
+		require.NoError(t, err)
+		gotJSON, err := limitRows(newFrame(), n).MarshalJSON()
+		require.NoError(t, err)
+		require.JSONEq(t, string(wantJSON), string(gotJSON), "limit %d", n)
+	}
+}
+
+func TestBuildFrameLimitIsLinear(t *testing.T) {
+	s, err := specFromConfig(`query "q" {
+		url = "http://x"
+		transform.limit {
+			limit = 10
+		}
+	}`)
+	require.NoError(t, err)
+	// The library takes about 3 seconds for 200,000 rows.
+	body := "[" + strings.TrimSuffix(strings.Repeat("1,", 200_000), ",") + "]"
+
+	start := time.Now()
+	f, err := buildFrame(s, []byte(body))
+	require.NoError(t, err)
+	require.Equal(t, 10, f.Rows())
+	require.Less(t, time.Since(start), 2*time.Second)
+}
+
+// groupRows returns n rows with groups distinct values of k.
+func groupRows(n, groups int) []byte {
+	var b strings.Builder
+	b.WriteByte('[')
+	for i := range n {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		fmt.Fprintf(&b, `{"k":"g%d","v":1}`, i%groups)
+	}
+	b.WriteByte(']')
+	return []byte(b.String())
+}
+
+func TestBuildFrameSummarizeByBudget(t *testing.T) {
+	for _, where := range []string{"query", "transform"} {
+		t.Run(where, func(t *testing.T) {
+			cfg := `query "q" {
+				url                  = "http://x"
+				summarize_expression = "sum(v)"
+				summarize_by         = "k"
+			}`
+			if where == "transform" {
+				cfg = `query "q" {
+					url = "http://x"
+					transform.summarize {
+						expression = "sum(v)"
+						by         = "k"
+					}
+				}`
+			}
+			s, err := specFromConfig(cfg)
+			require.NoError(t, err)
+
+			// The library takes about 12 seconds for 20,000 groups of one row.
+			start := time.Now()
+			_, err = buildFrame(s, groupRows(20_000, 20_000))
+			require.Equal(t, reasonTooLarge, reasonOf(err))
+			require.Less(t, time.Since(start), 2*time.Second)
+
+			f, err := buildFrame(s, groupRows(1_000, 10))
+			require.NoError(t, err)
+			require.Equal(t, 10, f.Rows())
+		})
 	}
 }
