@@ -204,6 +204,10 @@ The `csv_options` block configures parsing for `type = "csv"` and `type = "tsv"`
 
 For `type = "tsv"` queries, `infinity.source` ignores `delimiter` and always splits fields on a tab.
 
+`delimiter` and `comment` must each be one ASCII character other than a double quote, a carriage return, or a line feed.
+`comment` must not be the same as the delimiter.
+For `type = "tsv"` queries, the delimiter is a tab.
+
 Set `columns` to `"-"` or `"none"` when the response has no header line, so `infinity.source` generates column names automatically.
 Any other non-empty value for `columns` is added before the response body as a header line.
 `infinity.source` doesn't drop the response's own first line: it becomes a data row.

@@ -290,6 +290,49 @@ query "q" {
 		body_graphql_variables = "{}"
 	}
 }`, `body_graphql_query and body_graphql_variables require body_type "graphql"`},
+		{"csv valid delimiter and comment", `query "q" {
+	url = "http://x"
+	type = "csv"
+	csv_options {
+		delimiter = ";"
+		comment   = "#"
+	}
+}`, ""},
+		{"csv quote delimiter", `query "q" {
+	url = "http://x"
+	type = "csv"
+	csv_options { delimiter = "\"" }
+}`, "csv_options.delimiter must be one ASCII character"},
+		{"csv newline delimiter", `query "q" {
+	url = "http://x"
+	type = "csv"
+	csv_options { delimiter = "\n" }
+}`, "csv_options.delimiter must be one ASCII character"},
+		{"csv long delimiter", `query "q" {
+	url = "http://x"
+	type = "csv"
+	csv_options { delimiter = ";;" }
+}`, "csv_options.delimiter must be one ASCII character"},
+		{"csv non-ascii delimiter", `query "q" {
+	url = "http://x"
+	type = "csv"
+	csv_options { delimiter = "é" }
+}`, "csv_options.delimiter must be one ASCII character"},
+		{"csv carriage return comment", `query "q" {
+	url = "http://x"
+	type = "csv"
+	csv_options { comment = "\r" }
+}`, "csv_options.comment must be one ASCII character"},
+		{"csv comment same as default delimiter", `query "q" {
+	url = "http://x"
+	type = "csv"
+	csv_options { comment = "," }
+}`, "csv_options.comment must not be the same as the delimiter"},
+		{"tsv tab comment", `query "q" {
+	url = "http://x"
+	type = "tsv"
+	csv_options { comment = "\t" }
+}`, "csv_options.comment must not be the same as the delimiter"},
 		{"graphql without query", `query "q" {
 	type = "graphql"
 	url = "http://x"

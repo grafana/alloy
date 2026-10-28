@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/alecthomas/units"
 	"github.com/prometheus/prometheus/storage"
@@ -374,9 +375,44 @@ func (q *QueryBlock) validate(clientHeaders map[string]struct{}) error {
 	if q.CSVOptions != (CSVOptions{}) && q.Type != typeCSV && q.Type != typeTSV {
 		errs = append(errs, errors.New(`csv_options requires type "csv" or "tsv"`))
 	}
+	if q.Type == typeCSV || q.Type == typeTSV {
+		errs = append(errs, q.CSVOptions.validate(q.Type)...)
+	}
 
 	errs = append(errs, q.URLOptions.validate(q.Type, q.Source, clientHeaders)...)
 	return errors.Join(errs...)
+}
+
+// validate checks the delimiter and the comment. encoding/csv rejects some
+// characters on each read. csvframer then loops forever when
+// skip_lines_with_error is set, because the read never moves forward.
+func (o CSVOptions) validate(queryType string) []error {
+	var errs []error
+	delimiter := o.Delimiter
+	switch {
+	case queryType == typeTSV:
+		// csvframer gets a tab for a tsv query, whatever delimiter is.
+		delimiter = "\t"
+	case delimiter == "":
+		delimiter = ","
+	case !validCSVChar(delimiter):
+		errs = append(errs, errors.New("csv_options.delimiter must be one ASCII character other than a quote, CR or LF"))
+	}
+	if o.Comment != "" {
+		if !validCSVChar(o.Comment) {
+			errs = append(errs, errors.New("csv_options.comment must be one ASCII character other than a quote, CR or LF"))
+		} else if o.Comment == delimiter {
+			errs = append(errs, errors.New("csv_options.comment must not be the same as the delimiter"))
+		}
+	}
+	return errs
+}
+
+// validCSVChar reports whether s is a delimiter or comment that encoding/csv
+// accepts. csvframer uses only the first byte of the option, so a character
+// of more than one byte would change.
+func validCSVChar(s string) bool {
+	return len(s) == 1 && s[0] < utf8.RuneSelf && s[0] != 0 && s[0] != '"' && s[0] != '\r' && s[0] != '\n'
 }
 
 func (t Transform) kinds() int {
