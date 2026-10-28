@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.21.3](https://github.com/grafana/alloy/compare/v1.21.2...v1.21.3) (2026-10-28)
+
+
+### Bug Fixes 🐛
+
+* **beyla.ebpf:** Update Beyla to v3.38.1 ([#7570](https://github.com/grafana/alloy/issues/7570)) ([a677c00](https://github.com/grafana/alloy/commit/a677c00e88b8c0f043d5710ccc2380cc901e98ce))
+* **database_observability.postgres:** Improve table registry lifecycle and unqualified lookup [backport] ([#7551](https://github.com/grafana/alloy/issues/7551)) ([895aa64](https://github.com/grafana/alloy/commit/895aa64b7e43dc1f99ddfb9537fd61a275366ce5))
+* **database_observability.postgres:** Include instance label in ID generation [backport] ([#7550](https://github.com/grafana/alloy/issues/7550)) ([72770cc](https://github.com/grafana/alloy/commit/72770cc587f877b8a46ed69285dcee3800c70806))
+* **database_observability.sql_server:** Parse TopSort and Spool wrappers and keep subtrees of unmodeled operators [backport] ([#7563](https://github.com/grafana/alloy/issues/7563)) ([da38976](https://github.com/grafana/alloy/commit/da3897635233e9811fba5598519456cc79084743))
+* **database_observability.sql_server:** Preserve query shape avoiding normalization [backport] ([#7562](https://github.com/grafana/alloy/issues/7562)) ([c8560c4](https://github.com/grafana/alloy/commit/c8560c461c01ef37b3fab53c4e7eda9c5bff3a64))
+* **deps:** Update github.com/andybalholm/brotli to v1.2.7 [backport] ([#7546](https://github.com/grafana/alloy/issues/7546)) ([c913882](https://github.com/grafana/alloy/commit/c913882cc7049ce4af21851f1745b4605ce07e75))
+* Hide HTTP proxy env vars in support bundles [backport] ([#7560](https://github.com/grafana/alloy/issues/7560)) ([014cd6a](https://github.com/grafana/alloy/commit/014cd6a7f6b2f7ba3eeaf55737ff460988ccc6f0))
+* **loki.process:** Move stage.luhn to syntax.Validator [backport] ([#7564](https://github.com/grafana/alloy/issues/7564)) ([256f880](https://github.com/grafana/alloy/commit/256f8806b486ed3038cd16c9e63ef7d03cefa92a))
+* **loki.process:** Move stage.multiline to syntax.Validator [backport] ([#7565](https://github.com/grafana/alloy/issues/7565)) ([33d4191](https://github.com/grafana/alloy/commit/33d4191d15a921bed4f0c692bc87bc8b5bca87ed))
+* **loki.source.cloudflare:** Stop additional_fields from corrupting the extended and all field presets [backport] ([#7557](https://github.com/grafana/alloy/issues/7557)) ([3091601](https://github.com/grafana/alloy/commit/3091601f73cfe0d25d41838dd9eb3f9303a22a94))
+* **loki.source.kubernetes,loki.source.podlogs:** Prevent re-ingesting logs on re-tails [backport] ([#7512](https://github.com/grafana/alloy/issues/7512)) ([8cda438](https://github.com/grafana/alloy/commit/8cda438c07c8af02dcd1e02577c421d807d1a724))
+* **mimir.alerts.kubernetes:** Pick up Secret changes without a restart [backport] ([#7555](https://github.com/grafana/alloy/issues/7555)) ([031f4eb](https://github.com/grafana/alloy/commit/031f4ebf45fde64af926535079eb4ee90e3cf6db))
+* **mimir.rules.kubernetes:** Fix non-recovering unhealthy state after a failed restart when Mimir is unreachable [backport] ([#7554](https://github.com/grafana/alloy/issues/7554)) ([a60d95c](https://github.com/grafana/alloy/commit/a60d95cb1a7daaad15e0f675960a58152a21c49c))
+* **otelcol.exporter.otlphttp:** Deprecate enabled in the cookies block [backport] ([#7552](https://github.com/grafana/alloy/issues/7552)) ([0e8389a](https://github.com/grafana/alloy/commit/0e8389acacb86d1507ae251445dd93535377e5cb))
+* **otelcol.exporter.prometheus:** Pass missing `include_scope_labels` to converter [backport] ([#7558](https://github.com/grafana/alloy/issues/7558)) ([52e7e14](https://github.com/grafana/alloy/commit/52e7e1421face3116eae642d693203d867db0bbb))
+* **otelcol.processor.tail_sampling:** Pass invert_match through for boolean_attribute policies [backport] ([#7547](https://github.com/grafana/alloy/issues/7547)) ([5d7b5ea](https://github.com/grafana/alloy/commit/5d7b5ea3518866718876c1a425288fe066fa15a0))
+* **otelcol:** Report full build version including pre-release suffix in service.version [backport] ([#7548](https://github.com/grafana/alloy/issues/7548)) ([401bf58](https://github.com/grafana/alloy/commit/401bf581ff0881712c44f9d43cf3dea592e94cde))
+* **prometheus.operator:** Initialize controller-runtime logging [backport] ([#7556](https://github.com/grafana/alloy/issues/7556)) ([ff0f144](https://github.com/grafana/alloy/commit/ff0f144a52bba829344afb5b83eddf86de0ce17b))
+* **remotecfg:** Restore last success metric in notModified response [backport] ([#7549](https://github.com/grafana/alloy/issues/7549)) ([df3d2fd](https://github.com/grafana/alloy/commit/df3d2fd14dc28a0ff7cd089aaa599c05dbe9a59e))
+
 ## [1.21.2](https://github.com/grafana/alloy/compare/v1.21.1...v1.21.2) (2026-10-22)
 
 
