@@ -16,8 +16,10 @@ import (
 	"math"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus"
 	"github.com/prometheus/common/model"
@@ -951,11 +953,24 @@ func (conv *Converter) FlushMetadata() {
 var labelNamer = otlptranslator.LabelNamer{PreserveMultipleUnderscores: true}
 
 // normalizeLabel converts an OTLP attribute name into a Prometheus label name.
-// Names that cannot be converted (for example empty ones) are returned as-is.
+// Names that LabelNamer rejects (for example empty or punctuation-only ones)
+// fall back to replacing every non-alphanumeric rune with an underscore, so the
+// result is always a valid legacy label name.
 func normalizeLabel(k string) string {
-	name, err := labelNamer.Build(k)
-	if err != nil {
+	if name, err := labelNamer.Build(k); err == nil {
+		return name
+	}
+	if k == "" {
 		return k
+	}
+	name := strings.Map(func(r rune) rune {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			return r
+		}
+		return '_'
+	}, k)
+	if unicode.IsDigit(rune(name[0])) {
+		name = "key_" + name
 	}
 	return name
 }

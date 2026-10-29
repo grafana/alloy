@@ -367,7 +367,7 @@ Enabling `independent` lets each assigned partition be processed by its own work
 
 `independent` requires `autocommit.enable` to be `true`.
 
-The `max_buffered_batches` argument is deprecated and will be removed in a future release. Use ``max_prefetch` > `batches`` instead.
+The `max_buffered_batches` argument is deprecated and will be removed in a future release. Use `max_prefetch` > `batches` instead.
 
 #### `max_prefetch`
 
@@ -378,6 +378,9 @@ The `max_prefetch` block limits the fetched batches waiting for each independent
 | `batches` | `int` | How many fetched batches may wait for each partition worker. Must be greater than `0`.             | `1`     | no       |
 | `bytes`   | `int` | Pauses fetching for a partition once the waiting batches reach this many bytes. `0` means no cap. | `0`     | no       |
 
+The `bytes` limit only takes effect when `batches` is greater than `1`.
+A batch that crosses the limit is still admitted, so the limit can be exceeded by one fetched batch and isn't a hard memory bound.
+
 #### `max_in_flight`
 
 The `max_in_flight` block limits concurrent decode-and-forward calls for each independent partition worker.
@@ -385,8 +388,10 @@ The `max_in_flight` block limits concurrent decode-and-forward calls for each in
 | Name      | Type     | Description                                                                                                  | Default       | Required |
 | --------- | -------- | ------------------------------------------------------------------------------------------------------------ | ------------- | -------- |
 | `records` | `int`    | How many calls may run at once for a partition. Above `1`, records may be forwarded out of order.            | `1`           | no       |
-| `bytes`   | `int`    | Caps the bytes of records in flight. `0` means no cap.                                                       | `0`           | no       |
+| `bytes`   | `int`    | Caps the bytes of records in flight. `0` means no cap. Only takes effect when `records` is greater than `1`. | `0`           | no       |
 | `window`  | `string` | Either `per_fetch` or `cross_fetch`. `cross_fetch` requires `records` above `1` and `bytes` above `0`.      | `"per_fetch"` | no       |
+
+A single record larger than the `bytes` limit still runs, alone, so the limit isn't a hard per-record bound.
 
 ## Exported fields
 
