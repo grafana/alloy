@@ -832,6 +832,31 @@ func TestPartitionProcessing(t *testing.T) {
 		}, otelObj.PartitionProcessing)
 	})
 
+	t.Run("partially set nested blocks keep their defaults", func(t *testing.T) {
+		otelObj, err := convert(t, `
+			brokers          = ["broker:9092"]
+			protocol_version = "2.0.0"
+
+			partition_processing {
+				independent = true
+				max_prefetch {
+					bytes = 1000
+				}
+				max_in_flight {
+					bytes = 2000
+				}
+			}
+
+			output {}
+		`)
+		require.NoError(t, err)
+		require.Equal(t, kafkareceiver.PartitionProcessing{
+			Independent: true,
+			MaxPrefetch: kafkareceiver.MaxPrefetchConfig{Batches: 1, Bytes: 1000},
+			MaxInFlight: kafkareceiver.MaxInFlightConfig{Records: 1, Bytes: 2000, Window: kafkareceiver.InFlightWindowPerFetch},
+		}, otelObj.PartitionProcessing)
+	})
+
 	t.Run("max_prefetch and max_in_flight are passed through", func(t *testing.T) {
 		otelObj, err := convert(t, `
 			brokers          = ["broker:9092"]

@@ -456,6 +456,16 @@ type MaxInFlightArguments struct {
 	Window  string `alloy:"window,attr,optional"`
 }
 
+// SetToDefault implements syntax.Defaulter.
+func (args *MaxPrefetchArguments) SetToDefault() {
+	*args = MaxPrefetchArguments{Batches: 1}
+}
+
+// SetToDefault implements syntax.Defaulter.
+func (args *MaxInFlightArguments) SetToDefault() {
+	*args = MaxInFlightArguments{Records: 1, Window: kafkareceiver.InFlightWindowPerFetch}
+}
+
 func (args *PartitionProcessingArguments) SetToDefault() {
 	*args = PartitionProcessingArguments{
 		Independent:        false,

@@ -284,19 +284,20 @@ func toKafkaHeaderExtraction(cfg kafkareceiver.HeaderExtraction) kafka.HeaderExt
 }
 
 func toKafkaPartitionProcessing(cfg kafkareceiver.PartitionProcessing) kafka.PartitionProcessingArguments {
-	return kafka.PartitionProcessingArguments{
-		Independent:        cfg.Independent,
-		MaxBufferedBatches: 1, // Deprecated: the converter populates max_prefetch.batches instead.
-		MaxPrefetch: kafka.MaxPrefetchArguments{
-			Batches: cfg.MaxPrefetch.Batches,
-			Bytes:   cfg.MaxPrefetch.Bytes,
-		},
-		MaxInFlight: kafka.MaxInFlightArguments{
-			Records: cfg.MaxInFlight.Records,
-			Bytes:   cfg.MaxInFlight.Bytes,
-			Window:  cfg.MaxInFlight.Window,
-		},
+	// Start from the defaults so the deprecated max_buffered_batches keeps its default.
+	var args kafka.PartitionProcessingArguments
+	args.SetToDefault()
+	args.Independent = cfg.Independent
+	args.MaxPrefetch = kafka.MaxPrefetchArguments{
+		Batches: cfg.MaxPrefetch.Batches,
+		Bytes:   cfg.MaxPrefetch.Bytes,
 	}
+	args.MaxInFlight = kafka.MaxInFlightArguments{
+		Records: cfg.MaxInFlight.Records,
+		Bytes:   cfg.MaxInFlight.Bytes,
+		Window:  cfg.MaxInFlight.Window,
+	}
+	return args
 }
 
 // toKafkaRebalance always returns the plural strategies form; upstream removed the singular
