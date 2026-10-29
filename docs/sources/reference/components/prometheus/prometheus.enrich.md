@@ -19,12 +19,6 @@ If no match occurs, the metrics pass through unchanged.
 
 Use the `target_to_metric_match` argument to specify which target labels correspond to which metric labels. The map keys are target label names and the values are the corresponding metric label names. All labels in the map must match for enrichment to occur.
 
-{{< admonition type="caution" >}}
-The `target_match_label` and `metrics_match_label` arguments are deprecated in favor of `target_to_metric_match`.
-If `target_to_metric_match` is set, it takes precedence. Replace `target_match_label = "hostname"` with `target_to_metric_match = {"hostname" = "hostname"}`.
-These deprecated arguments will be removed in a future release.
-{{< /admonition >}}
-
 You can specify multiple `prometheus.enrich` components by giving them different labels.
 
 ## Usage
@@ -51,11 +45,9 @@ You can use the following arguments with `prometheus.enrich`:
 | `forward_to`             | `list(MetricsReceiver)` | Where to forward metrics after enrichment.                                                                      |         | yes      |
 | `targets`                | `list(map(string))`     | List of targets from a discovery component.                                                                     |         | yes      |
 | `labels_to_copy`         | `list(string)`          | List of labels to copy from discovered targets to metrics. If empty, the component copies all labels.           |         | no       |
-| `metrics_match_label`    | `string`                | (Deprecated) The label from incoming metrics to match against discovered targets, for example `"service_name"`. |         | no       |
-| `target_match_label`     | `string`                | (Deprecated) The label from discovered targets to match against, for example, `"__inventory_consul_service"`.   |         | no       |
-| `target_to_metric_match` | `map(string)`           | Map of target label name to metric label name. All entries must match for enrichment.                           |         | no       |
+| `target_to_metric_match` | `map(string)`           | Map of target label name to metric label name. All entries must match for enrichment.                           |         | yes      |
 
-You must set at least one of `target_to_metric_match` or `target_match_label`. Setting `metrics_match_label` alone, without `target_match_label`, causes a validation error.
+The `target_to_metric_match` map must contain at least one entry. The keys and values can't be empty strings.
 
 ## Blocks
 

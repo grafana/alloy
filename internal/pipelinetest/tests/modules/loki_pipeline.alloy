@@ -83,9 +83,9 @@ declare "loki_pipeline" {
 			},
 		]
 
-		target_match_label = "service_name"
-		labels_to_copy     = ["cluster"]
-		forward_to         = [loki.relabel.r.receiver]
+		target_to_log_match = {"service_name" = "service_name"}
+		labels_to_copy      = ["cluster"]
+		forward_to          = [loki.relabel.r.receiver]
 	}
 
 	loki.relabel "r" {
