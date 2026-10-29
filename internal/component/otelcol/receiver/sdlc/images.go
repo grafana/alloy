@@ -111,15 +111,29 @@ func imageWatchTransform(obj any) (any, error) {
 		}
 		return out
 	}
+	// StatefulSet and DaemonSet Pods and revisions are matched by this label.
+	hashLabel := func(m metav1.ObjectMeta) map[string]string {
+		if hash, ok := m.Labels[controllerRevisionHashLabel]; ok {
+			return map[string]string{controllerRevisionHashLabel: hash}
+		}
+		return nil
+	}
 	switch value := obj.(type) {
 	case *corev1.Pod:
-		return &corev1.Pod{TypeMeta: value.TypeMeta, ObjectMeta: metadata(value.ObjectMeta), Status: corev1.PodStatus{
+		meta := metadata(value.ObjectMeta)
+		meta.Labels = hashLabel(value.ObjectMeta)
+		return &corev1.Pod{TypeMeta: value.TypeMeta, ObjectMeta: meta, Status: corev1.PodStatus{
 			Phase: value.Status.Phase, ContainerStatuses: statuses(value.Status.ContainerStatuses),
 			InitContainerStatuses: statuses(value.Status.InitContainerStatuses)}}, nil
 	case *appsv1.ReplicaSet:
 		meta := metadata(value.ObjectMeta)
 		meta.Annotations = map[string]string{revisionAnnotation: value.Annotations[revisionAnnotation]}
 		return &appsv1.ReplicaSet{TypeMeta: value.TypeMeta, ObjectMeta: meta}, nil
+	case *appsv1.ControllerRevision:
+		// Data holds a full template snapshot that the receiver never reads.
+		meta := metadata(value.ObjectMeta)
+		meta.Labels = hashLabel(value.ObjectMeta)
+		return &appsv1.ControllerRevision{TypeMeta: value.TypeMeta, ObjectMeta: meta, Revision: value.Revision}, nil
 	default:
 		return obj, nil
 	}

@@ -29,6 +29,7 @@ type controllerOptions struct {
 	clusterName, clusterUID string
 	configMapContent        string // empty disables ConfigMap tracking
 	secrets                 bool
+	statefulSets            bool
 	emit                    func(context.Context, func() eventBatch) error
 	now                     func() time.Time
 }
@@ -55,8 +56,12 @@ type controller struct {
 	imageQueue              workqueue.TypedRateLimitingInterface[*imageCollection]
 	opts                    controllerOptions
 	rollouts                map[string]rolloutState
-	queue                   workqueue.TypedRateLimitingInterface[*eventBatch]
-	now                     func() time.Time
+	// revisions indexes ControllerRevisions by owner UID and name; workloads
+	// holds the latest StatefulSet or DaemonSet to re-evaluate against them.
+	revisions map[string]map[string]controllerRevision
+	workloads map[string]any
+	queue     workqueue.TypedRateLimitingInterface[*eventBatch]
+	now       func() time.Time
 }
 
 func newController(opts controllerOptions) *controller {
@@ -66,7 +71,7 @@ func newController(opts controllerOptions) *controller {
 	if opts.logger == nil {
 		opts.logger = slog.Default()
 	}
-	return &controller{podsByOwner: map[string]map[string]*corev1.Pod{}, replicaSetsByDeployment: map[string]map[string]*appsv1.ReplicaSet{}, pods: map[string]*corev1.Pod{}, replicaSets: map[string]*appsv1.ReplicaSet{}, collections: map[string]*imageCollection{}, imageQueue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*imageCollection]()), opts: opts, rollouts: map[string]rolloutState{}, now: opts.now, queue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*eventBatch]())}
+	return &controller{podsByOwner: map[string]map[string]*corev1.Pod{}, replicaSetsByDeployment: map[string]map[string]*appsv1.ReplicaSet{}, pods: map[string]*corev1.Pod{}, replicaSets: map[string]*appsv1.ReplicaSet{}, collections: map[string]*imageCollection{}, imageQueue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*imageCollection]()), opts: opts, rollouts: map[string]rolloutState{}, revisions: map[string]map[string]controllerRevision{}, workloads: map[string]any{}, now: opts.now, queue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*eventBatch]())}
 }
 
 func (c *controller) run(ctx context.Context) error {
@@ -108,17 +113,35 @@ func (c *controller) run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	factory.Start(ctx.Done())
-	defer factory.Shutdown()
-	configCtx, stopConfigs := context.WithCancel(ctx)
-	var configsDone sync.WaitGroup
 	synced := []cache.InformerSynced{deployments.HasSynced, pods.HasSynced, replicaSets.HasSynced}
-	for _, informer := range configs {
-		configsDone.Add(1)
-		go func() { defer configsDone.Done(); informer.Run(configCtx.Done()) }()
+	informersCtx, stopInformers := context.WithCancel(ctx)
+	var informersDone sync.WaitGroup
+	defer func() { stopInformers(); informersDone.Wait() }()
+	runInformer := func(informer cache.SharedIndexInformer) {
+		informersDone.Add(1)
+		go func() { defer informersDone.Done(); informer.Run(informersCtx.Done()) }()
 		synced = append(synced, informer.HasSynced)
 	}
-	defer func() { stopConfigs(); configsDone.Wait() }()
+	if c.opts.statefulSets {
+		revisions, err := c.controllerRevisionInformer()
+		if err != nil {
+			return err
+		}
+		// Index all revisions before the initial workload listing establishes
+		// baselines, so existing rollouts aren't mistaken for new ones.
+		runInformer(revisions)
+		if !cache.WaitForCacheSync(ctx.Done(), revisions.HasSynced) {
+			return fmt.Errorf("sync ControllerRevision watch")
+		}
+		if err := c.watchRevisioned(factory.Apps().V1().StatefulSets().Informer()); err != nil {
+			return err
+		}
+	}
+	factory.Start(ctx.Done())
+	defer factory.Shutdown()
+	for _, informer := range configs {
+		runInformer(informer)
+	}
 	if !cache.WaitForCacheSync(ctx.Done(), synced...) {
 		return fmt.Errorf("sync Deployment watch")
 	}
@@ -228,4 +251,6 @@ func (c *controller) remove(obj any) {
 	defer c.mu.Unlock()
 	delete(c.rollouts, string(m.GetUID()))
 	delete(c.collections, string(m.GetUID()))
+	delete(c.workloads, string(m.GetUID()))
+	delete(c.revisions, string(m.GetUID()))
 }

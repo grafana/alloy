@@ -70,6 +70,12 @@ var summaryFor = map[string]string{
 
 func take(t *testing.T, c *controller, status string) (*eventBatch, decoded) {
 	t.Helper()
+	return takeWorkload(t, c, status, "deployment")
+}
+
+// takeWorkload takes the next event, for a demo/web workload of resourceType.
+func takeWorkload(t *testing.T, c *controller, status, resourceType string) (*eventBatch, decoded) {
+	t.Helper()
 	require.Positive(t, c.queue.Len())
 	event, _ := c.queue.Get()
 	c.queue.Done(event)
@@ -82,11 +88,11 @@ func take(t *testing.T, c *controller, status string) (*eventBatch, decoded) {
 	require.NotEmpty(t, got.rolloutID)
 	require.False(t, got.record.TraceID().IsEmpty())
 	require.True(t, got.record.SpanID().IsEmpty())
-	// The resource names the Deployment; the summary must not.
+	// The resource names the workload; the summary must not.
 	require.Equal(t, map[string]any{
 		"grafana.sdlc.provider.type": "k8s",
 		"grafana.sdlc.provider.id":   "cluster-1",
-		"grafana.sdlc.resource.type": "deployment",
+		"grafana.sdlc.resource.type": resourceType,
 		"grafana.sdlc.resource.id":   "demo/web",
 	}, got.resource)
 	require.NotContains(t, got.summary, "web")

@@ -120,6 +120,34 @@ func TestK8sWorkloads(t *testing.T) {
 		require.NoError(t, err)
 		require.NotContains(t, string(attrs), secretValue)
 	}
+
+	apply(t, statefulSet("db"))
+	workload := func(resourceType, name, step string) func(rolloutEvent) bool {
+		return func(e rolloutEvent) bool {
+			return e.resourceType == resourceType && e.resourceID == workloadNamespace+"/"+name && e.name == step
+		}
+	}
+	created := waitEvent(t, workload("statefulset", "db", "started"))
+	waitEvent(t, func(e rolloutEvent) bool {
+		return e.name == "succeeded" && e.body["rollout_id"] == created.body["rollout_id"]
+	})
+	require.NoError(t, harness.RunCommand("kubectl", "-n", workloadNamespace, "set", "image", "statefulset/db", "app=nginx:1.28-alpine"))
+	updatedSet := waitEvent(t, func(e rolloutEvent) bool {
+		return e.resourceType == "statefulset" && e.name == "started" && e.body["rollout_id"] != created.body["rollout_id"]
+	})
+	require.Equal(t, "RollingUpdate", updatedSet.body["update_strategy"])
+	require.Contains(t, updatedSet.body["changes"], "containers.app.image")
+	require.Equal(t, created.attrs["grafana.sdlc.change.version.after"], updatedSet.attrs["grafana.sdlc.change.version.before"])
+	waitEvent(t, func(e rolloutEvent) bool {
+		return e.name == "succeeded" && e.body["rollout_id"] == updatedSet.body["rollout_id"]
+	})
+	setImages := waitEvent(t, func(e rolloutEvent) bool {
+		return e.name == "images_resolved" && e.body["rollout_id"] == updatedSet.body["rollout_id"]
+	})
+	require.Equal(t, true, setImages.body["complete"])
+}
+func statefulSet(name string) map[string]any {
+	return map[string]any{"apiVersion": "apps/v1", "kind": "StatefulSet", "metadata": map[string]any{"name": name, "namespace": workloadNamespace}, "spec": map[string]any{"replicas": 2, "serviceName": name, "selector": map[string]any{"matchLabels": map[string]string{"app": name}}, "template": map[string]any{"metadata": map[string]any{"labels": map[string]string{"app": name}}, "spec": map[string]any{"terminationGracePeriodSeconds": 1, "containers": []any{map[string]any{"name": "app", "image": "nginx:1.27-alpine"}}}}}}
 }
 func deployment(name string, labels map[string]string) map[string]any {
 	return map[string]any{"apiVersion": "apps/v1", "kind": "Deployment", "metadata": map[string]any{"name": name, "namespace": workloadNamespace, "labels": labels}, "spec": map[string]any{"replicas": 1, "progressDeadlineSeconds": 10, "selector": map[string]any{"matchLabels": map[string]string{"app": name}}, "template": map[string]any{"metadata": map[string]any{"labels": map[string]string{"app": name}}, "spec": map[string]any{"terminationGracePeriodSeconds": 1, "containers": []any{map[string]any{"name": "app", "image": "nginx:1.27-alpine"}}}}}}

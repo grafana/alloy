@@ -10,10 +10,10 @@ title: otelcol.receiver.sdlc
 
 # `otelcol.receiver.sdlc`
 
-`otelcol.receiver.sdlc` emits Kubernetes Deployment rollouts as `grafana.sdlc.change` events, encoded as OpenTelemetry logs.
-It watches Deployments across all namespaces and reports four transitions: `started`, `succeeded`, `stalled`, and `superseded`.
+`otelcol.receiver.sdlc` emits Kubernetes Deployment and StatefulSet rollouts as `grafana.sdlc.change` events, encoded as OpenTelemetry logs.
+It watches workloads across all namespaces and reports four transitions: `started`, `succeeded`, `stalled`, and `superseded`.
 Replica-only scaling doesn't start a rollout or open image collection.
-Shared Pod and ReplicaSet watches collect runtime image identities for newly observed rollouts.
+Shared Pod, ReplicaSet, and ControllerRevision watches collect runtime image identities for newly observed rollouts.
 It also watches ConfigMaps and Secrets across all namespaces and reports their creation and updates.
 Secret content is never read.
 
@@ -62,6 +62,7 @@ You can use the following blocks with `otelcol.receiver.sdlc`:
 | [`configmaps`][configmaps]                  | Configures ConfigMap change tracking.                                  | no       |
 | [`output`][output]                          | Configures where to send workload events.                               | yes      |
 | [`secrets`][secrets]                        | Configures Secret change tracking.                                     | no       |
+| [`statefulsets`][statefulsets]              | Configures StatefulSet rollout tracking.                               | no       |
 
 [authorization]: #authorization
 [basic_auth]: #basic_auth
@@ -71,6 +72,7 @@ You can use the following blocks with `otelcol.receiver.sdlc`:
 [oauth2]: #oauth2
 [output]: #output
 [secrets]: #secrets
+[statefulsets]: #statefulsets
 [tls_config]: #tls_config
 
 {{< /docs/alloy-config >}}
@@ -176,9 +178,19 @@ The `secrets` block configures Secret change tracking:
 The component reads Secrets through the metadata API, so Secret content never reaches {{< param "PRODUCT_NAME" >}}.
 The API server still requires `list` and `watch` permissions on Secrets.
 
+### `statefulsets`
+
+The `statefulsets` block configures StatefulSet rollout tracking:
+
+| Name      | Type   | Description                                   | Default | Required |
+| --------- | ------ | --------------------------------------------- | ------- | -------- |
+| `enabled` | `bool` | Track StatefulSet rollouts in all namespaces. | `true`  | no       |
+
+StatefulSet revisions are stored as ControllerRevisions, so the component also watches ControllerRevisions while StatefulSet tracking is enabled.
+
 ## Kubernetes permissions
 
-The component lists and watches Deployments, ReplicaSets, Pods, ConfigMaps, and Secrets across all namespaces.
+The component lists and watches Deployments, ReplicaSets, StatefulSets, ControllerRevisions, Pods, ConfigMaps, and Secrets across all namespaces.
 If `cluster_uid` is empty, it also reads the `kube-system` Namespace once to discover the cluster UID.
 Grant its service account the following permissions:
 
@@ -189,7 +201,7 @@ metadata:
   name: alloy-sdlc
 rules:
   - apiGroups: ["apps"]
-    resources: ["deployments", "replicasets"]
+    resources: ["deployments", "replicasets", "statefulsets", "controllerrevisions"]
     verbs: ["list", "watch"]
   - apiGroups: [""]
     resources: ["pods", "configmaps", "secrets"]
@@ -202,6 +214,7 @@ rules:
 
 You can omit the Namespace permission when you configure `cluster_uid`.
 You can omit the ConfigMap or Secret permission when you disable the `configmaps` or `secrets` block.
+You can omit the StatefulSet and ControllerRevision permissions when you disable the `statefulsets` block.
 Without a required permission, the watcher doesn't become ready and emits no events.
 
 ## Event schema
@@ -219,7 +232,7 @@ Send events to an ingest endpoint that is specific to your Grafana Cloud stack.
 | --- | --- |
 | `provider.type` | `k8s`. |
 | `provider.id` | The `cluster_name`, or the cluster UID when `cluster_name` isn't set. |
-| `resource.type` | `deployment`, `configmap`, or `secret`. |
+| `resource.type` | `deployment`, `statefulset`, `configmap`, or `secret`. |
 | `resource.id` | `<namespace>/<name>` of the object. |
 
 ### Log record fields and attributes
@@ -229,7 +242,7 @@ Send events to an ingest endpoint that is specific to your Grafana Cloud stack.
 | `eventName` | `grafana.sdlc.change`. |
 | `timeUnixNano` | The event end time: the watcher's observation time, not an exact Kubernetes transition time. |
 | `observedTimeUnixNano` | The same observation time. |
-| `traceId` | For Deployments, derived from the rollout ID, so all events of one rollout share one trace. Not set for ConfigMaps and Secrets. `spanId` isn't set. |
+| `traceId` | For rollouts, derived from the rollout ID, so all events of one rollout share one trace. Not set for ConfigMaps and Secrets. `spanId` isn't set. |
 | `schema.version` | `"1"`. |
 | `provider.version` | The {{< param "PRODUCT_NAME" >}} version. |
 | `event.id` | A deterministic hash that identifies the event. Retries preserve it. |
@@ -237,13 +250,13 @@ Send events to an ingest endpoint that is specific to your Grafana Cloud stack.
 | `start_time_unix_nano` | The event start time. |
 | `type` | `intent` for `started`. `effect` for every other event. |
 | `change.summary` | The lifecycle step. It doesn't include the resource name. |
-| `change.version.before` | The previous Deployment revision, or the previous ConfigMap or Secret resource version. Omitted when unknown. |
-| `change.version.after` | The Deployment revision of this rollout, or the ConfigMap or Secret resource version. |
+| `change.version.before` | The previous workload revision, or the previous ConfigMap or Secret resource version. Omitted when unknown. |
+| `change.version.after` | The workload revision of this rollout, or the ConfigMap or Secret resource version. |
 | `change.diff` | A map of change details, described in the following sections. Omitted when it has no entries. |
 
 The component doesn't set `service.ids`, `environment.id`, `owners`, `actor`, `tracing.enabled`, `logging.enabled`, `change.url`, or `change.git.*`.
 Because `tracing.enabled` isn't set, the backend emits a span for each event.
-Each Deployment event is a span in the rollout's trace.
+Each rollout event is a span in the rollout's trace.
 
 ### Rollout events
 
@@ -252,9 +265,20 @@ The component emits the following lifecycle events:
 | `change.summary` | Meaning |
 | --- | --- |
 | `Rollout started` | The watcher observes a new controller-assigned revision after the controller observes the current generation. |
-| `Rollout succeeded` | The controller reports `NewReplicaSetAvailable`, all desired replicas are updated and available, and no old replicas remain in the replica count. |
-| `Rollout stalled: ProgressDeadlineExceeded` | The controller reports `Progressing=False` with reason `ProgressDeadlineExceeded`. |
+| `Rollout succeeded` | The rollout has completed, as described in the following list. |
+| `Rollout stalled: ProgressDeadlineExceeded` | Deployments only. The controller reports `Progressing=False` with reason `ProgressDeadlineExceeded`. |
 | `Rollout superseded by revision <N>` | A newer revision replaces an unfinished rollout. |
+
+A rollout succeeds under the following conditions:
+
+* Deployment: the controller reports `NewReplicaSetAvailable`, all desired replicas are updated and available, and no old replicas remain in the replica count.
+* StatefulSet: all desired replicas are available, and every Pod the update strategy replaces runs the update revision.
+  With a `RollingUpdate` strategy and no partition, the controller must also promote the update revision to the current revision.
+  With a partition, only ordinals at or above the partition are updated, so the rollout succeeds once those Pods run the update revision.
+  With an `OnDelete` strategy, Pods change only when they're deleted, so the rollout can stay open for a long time.
+
+StatefulSets have no progress deadline, so their rollouts never stall.
+They remain open until they succeed or are superseded.
 
 `started` is a point in time: `start_time_unix_nano` equals `timeUnixNano`.
 The other events start when the watcher observed the rollout start, so their duration covers the rollout.
@@ -265,8 +289,11 @@ When configured, it also contains `cluster_name`.
 Container entries contain `name`, `init`, and the configured `image` from that rollout's template.
 Runtime image identities are reported separately by the image collection event.
 A `superseded` event also contains `superseded_by`, the replacement rollout ID.
+StatefulSet events also contain `update_strategy` and `partition`, the lowest ordinal that receives the update.
 
-`rollout_id` is a deterministic hash of the cluster UID, Deployment UID, and controller-assigned revision.
+The revision of a Deployment is its `deployment.kubernetes.io/revision` annotation.
+The revision of a StatefulSet is the `revision` number of the ControllerRevision named by its update revision.
+`rollout_id` is a deterministic hash of the cluster UID, workload UID, and controller-assigned revision.
 Consumers can deduplicate using the event ID.
 A rollback receives a new revision and therefore a new rollout ID, even when it reuses an older template.
 
@@ -365,8 +392,9 @@ Collection opens when a new revision is observed, remains open while stalled, an
 closes on success or supersession. Initial discovery and later replica scaling
 don't open collection.
 
-Pods are associated through their controller ReplicaSet and its Deployment owner
-and revision. The receiver collects distinct runtime image IDs for each regular
+Deployment Pods are associated through their controller ReplicaSet and its Deployment owner
+and revision. StatefulSet Pods are associated through their StatefulSet owner and
+their `controller-revision-hash` label. The receiver collects distinct runtime image IDs for each regular
 and init container. At closure, bounded API reads collect available identities
 that may not yet have reached the watches. Lifecycle events don't wait for these
 reads. Pods created after the closing observation are excluded.
@@ -388,7 +416,7 @@ Later scaling doesn't reopen collection or emit another image event.
 The initial watch listing establishes an in-memory baseline without emitting events.
 An in-progress rollout found during startup can subsequently emit an outcome without a preceding `started` event.
 Restarts and ownership changes don't replay missed events, and intermediate revisions can be missed between observations.
-Deleting a Deployment emits no event and discards its tracked rollout and image collection state.
+Deleting a workload emits no event and discards its tracked rollout and image collection state.
 ConfigMap and Secret changes made while the watcher is stopped aren't reported, and consecutive updates between observations are reported as one change.
 The component doesn't persist state or reconcile historical rollouts.
 

@@ -41,6 +41,8 @@ type Arguments struct {
 	ConfigMaps ConfigMapsArguments `alloy:"configmaps,block,optional"`
 	Secrets    SecretsArguments    `alloy:"secrets,block,optional"`
 
+	StatefulSets StatefulSetsArguments `alloy:"statefulsets,block,optional"`
+
 	Client     commonk8s.ClientArguments  `alloy:"client,block,optional"`
 	Clustering cluster.ComponentBlock     `alloy:"clustering,block,optional"`
 	Output     *otelcol.ConsumerArguments `alloy:"output,block"`
@@ -51,6 +53,7 @@ func (args *Arguments) SetToDefault() {
 	*args = Arguments{Client: commonk8s.DefaultClientArguments}
 	args.ConfigMaps.SetToDefault()
 	args.Secrets.SetToDefault()
+	args.StatefulSets.SetToDefault()
 }
 
 // Validate implements syntax.Validator.
@@ -212,6 +215,7 @@ func (c *Component) runGeneration(ctx context.Context, args Arguments, restConfi
 		clusterUID:       args.ClusterUID,
 		configMapContent: configMapContent,
 		secrets:          args.Secrets.Enabled,
+		statefulSets:     args.StatefulSets.Enabled,
 		emit:             c.emit,
 	})
 	return ctrl.run(ctx)
