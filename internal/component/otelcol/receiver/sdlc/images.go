@@ -21,6 +21,10 @@ import (
 
 const rolloutImagesResolved = "images_resolved"
 
+// controllerRevisionHashLabel marks StatefulSet and DaemonSet Pods, and the
+// ControllerRevisions of DaemonSets, with their revision.
+const controllerRevisionHashLabel = appsv1.ControllerRevisionHashLabelKey
+
 type resolvedContainer struct {
 	name            string
 	init            bool
@@ -28,12 +32,15 @@ type resolvedContainer struct {
 	runtimeImageIDs []string
 }
 type imageCollection struct {
-	deployment  *appsv1.Deployment
-	state       rolloutState
-	cutoff      time.Time
-	succeeded   bool
-	ids         map[string]map[string]bool
+	workload  workload
+	state     rolloutState
+	cutoff    time.Time
+	succeeded bool
+	ids       map[string]map[string]bool
+	// Deployment Pods belong to the revision through its ReplicaSets; other
+	// workloads own their Pods directly and label them with hash.
 	replicaSets map[string]bool
+	hash        string
 }
 
 // Transform each bounded list page before the reflector accumulates its initial
@@ -159,9 +166,10 @@ func (c *controller) watchImages(pods, replicaSets cache.SharedIndexInformer) er
 
 // Index owner relationships so watch callbacks never scan unrelated workloads
 // while holding the lifecycle mutex. Pods can arrive before their ReplicaSet.
+// An empty kind matches a controller of any kind.
 func controllerUID(m metav1.Object, kind string) string {
 	owner := metav1.GetControllerOf(m)
-	if owner != nil && owner.Kind == kind {
+	if owner != nil && (kind == "" || owner.Kind == kind) {
 		return string(owner.UID)
 	}
 	return ""
@@ -169,10 +177,10 @@ func controllerUID(m metav1.Object, kind string) string {
 func (c *controller) removePod(p *corev1.Pod) {
 	id := string(p.UID)
 	if old := c.pods[id]; old != nil {
-		key := controllerUID(old, "ReplicaSet")
-		delete(c.podsByReplicaSet[key], id)
-		if len(c.podsByReplicaSet[key]) == 0 {
-			delete(c.podsByReplicaSet, key)
+		key := controllerUID(old, "")
+		delete(c.podsByOwner[key], id)
+		if len(c.podsByOwner[key]) == 0 {
+			delete(c.podsByOwner, key)
 		}
 	}
 	delete(c.pods, id)
@@ -192,19 +200,22 @@ func (c *controller) observePod(p *corev1.Pod) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.removePod(p)
-	rsID := controllerUID(p, "ReplicaSet")
-	if rsID == "" {
+	ownerID := controllerUID(p, "")
+	if ownerID == "" {
 		return
 	}
 	c.pods[string(p.UID)] = p
-	if c.podsByReplicaSet[rsID] == nil {
-		c.podsByReplicaSet[rsID] = map[string]*corev1.Pod{}
+	if c.podsByOwner[ownerID] == nil {
+		c.podsByOwner[ownerID] = map[string]*corev1.Pod{}
 	}
-	c.podsByReplicaSet[rsID][string(p.UID)] = p
-	if rs := c.replicaSets[rsID]; rs != nil {
-		if collection := c.collections[controllerUID(rs, "Deployment")]; collection != nil {
-			collection.observe(p)
-		}
+	c.podsByOwner[ownerID][string(p.UID)] = p
+	// Owners are unique by UID: a ReplicaSet of a Deployment, or a workload.
+	workloadID := ownerID
+	if rs := c.replicaSets[ownerID]; rs != nil {
+		workloadID = controllerUID(rs, "Deployment")
+	}
+	if collection := c.collections[workloadID]; collection != nil {
+		collection.observe(p)
 	}
 }
 func (c *controller) observeReplicaSet(rs *appsv1.ReplicaSet) {
@@ -224,46 +235,63 @@ func (c *controller) observeReplicaSet(rs *appsv1.ReplicaSet) {
 	if collection := c.collections[depID]; collection != nil {
 		collection.track(rs)
 		if collection.replicaSets[id] {
-			for _, p := range c.podsByReplicaSet[id] {
+			for _, p := range c.podsByOwner[id] {
 				collection.observe(p)
 			}
 		}
 	}
 }
-func (c *controller) openImages(d *appsv1.Deployment, state rolloutState) {
-	collection := &imageCollection{deployment: d.DeepCopy(), state: state, ids: map[string]map[string]bool{}, replicaSets: map[string]bool{}}
-	c.collections[string(d.UID)] = collection
-	for id, rs := range c.replicaSetsByDeployment[string(d.UID)] {
+func (c *controller) openImages(w workload, state rolloutState) {
+	uid := string(w.GetUID())
+	collection := &imageCollection{workload: w.copy(), state: state, ids: map[string]map[string]bool{}, replicaSets: map[string]bool{}, hash: w.revisionHash()}
+	c.collections[uid] = collection
+	for id, rs := range c.replicaSetsByDeployment[uid] {
 		collection.track(rs)
 		if collection.replicaSets[id] {
-			for _, p := range c.podsByReplicaSet[id] {
+			for _, p := range c.podsByOwner[id] {
 				collection.observe(p)
 			}
 		}
 	}
+	for _, p := range c.podsByOwner[uid] {
+		collection.observe(p)
+	}
 }
-func (c *controller) closeImages(d *appsv1.Deployment, succeeded bool) {
-	collection := c.collections[string(d.UID)]
+func (c *controller) closeImages(w workload, succeeded bool) {
+	uid := string(w.GetUID())
+	collection := c.collections[uid]
 	if collection == nil {
 		return
 	}
-	delete(c.collections, string(d.UID))
+	delete(c.collections, uid)
 	collection.cutoff = c.now()
 	collection.succeeded = succeeded
-	// Use the closing replica count/selector, but retain the original template.
-	collection.deployment = d.DeepCopy()
+	// Use the closing replica count/selector, but retain the original template
+	// and revision hash.
+	collection.workload = w.copy()
 	c.imageQueue.Add(collection)
 }
 func (x *imageCollection) track(rs *appsv1.ReplicaSet) {
 	owner := metav1.GetControllerOf(rs)
 	revision, _ := strconv.ParseInt(rs.Annotations[revisionAnnotation], 10, 64)
-	if rs.Namespace == x.deployment.Namespace && owner != nil && owner.Kind == "Deployment" && owner.UID == x.deployment.UID && revision == x.state.revision {
+	if rs.Namespace == x.workload.GetNamespace() && owner != nil && owner.Kind == "Deployment" && owner.UID == x.workload.GetUID() && revision == x.state.revision {
 		x.replicaSets[string(rs.UID)] = true
 	}
 }
-func (x *imageCollection) observe(p *corev1.Pod) bool {
+
+// owns reports whether p runs the collection's revision.
+func (x *imageCollection) owns(p *corev1.Pod) bool {
 	owner := metav1.GetControllerOf(p)
-	if p.Namespace != x.deployment.Namespace || owner == nil || owner.Kind != "ReplicaSet" || !x.replicaSets[string(owner.UID)] || (!x.cutoff.IsZero() && p.CreationTimestamp.Time.After(x.cutoff)) {
+	if p.Namespace != x.workload.GetNamespace() || owner == nil {
+		return false
+	}
+	if x.hash != "" {
+		return owner.UID == x.workload.GetUID() && p.Labels[controllerRevisionHashLabel] == x.hash
+	}
+	return owner.Kind == "ReplicaSet" && x.replicaSets[string(owner.UID)]
+}
+func (x *imageCollection) observe(p *corev1.Pod) bool {
+	if !x.owns(p) || (!x.cutoff.IsZero() && p.CreationTimestamp.Time.After(x.cutoff)) {
 		return false
 	}
 	complete := true
@@ -309,28 +337,30 @@ func (c *controller) finalizeImages(ctx context.Context, x *imageCollection) {
 	readCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 	complete := x.succeeded
-	selector, err := metav1.LabelSelectorAsSelector(x.deployment.Spec.Selector)
+	namespace := x.workload.GetNamespace()
+	selector, err := metav1.LabelSelectorAsSelector(x.workload.selector())
 	if err != nil {
 		complete = false
 	}
 	readyPods := 0
 	if err == nil && c.opts.client != nil {
-		sets, listErr := c.opts.client.AppsV1().ReplicaSets(x.deployment.Namespace).List(readCtx, metav1.ListOptions{LabelSelector: selector.String()})
-		if listErr != nil {
-			complete = false
-		} else {
-			for i := range sets.Items {
-				x.track(&sets.Items[i])
+		if x.hash == "" {
+			sets, listErr := c.opts.client.AppsV1().ReplicaSets(namespace).List(readCtx, metav1.ListOptions{LabelSelector: selector.String()})
+			if listErr != nil {
+				complete = false
+			} else {
+				for i := range sets.Items {
+					x.track(&sets.Items[i])
+				}
 			}
 		}
-		pods, listErr := c.opts.client.CoreV1().Pods(x.deployment.Namespace).List(readCtx, metav1.ListOptions{LabelSelector: selector.String()})
+		pods, listErr := c.opts.client.CoreV1().Pods(namespace).List(readCtx, metav1.ListOptions{LabelSelector: selector.String()})
 		if listErr != nil {
 			complete = false
 		} else {
 			for i := range pods.Items {
 				p := &pods.Items[i]
-				owner := metav1.GetControllerOf(p)
-				if owner == nil || !x.replicaSets[string(owner.UID)] || p.CreationTimestamp.Time.After(x.cutoff) || p.DeletionTimestamp != nil || p.Status.Phase == corev1.PodFailed || p.Status.Phase == corev1.PodSucceeded {
+				if !x.owns(p) || p.CreationTimestamp.Time.After(x.cutoff) || p.DeletionTimestamp != nil || p.Status.Phase == corev1.PodFailed || p.Status.Phase == corev1.PodSucceeded {
 					continue
 				}
 				readyPods++
@@ -342,14 +372,11 @@ func (c *controller) finalizeImages(ctx context.Context, x *imageCollection) {
 	} else {
 		complete = false
 	}
-	desired := int32(1)
-	if x.deployment.Spec.Replicas != nil {
-		desired = *x.deployment.Spec.Replicas
-	}
+	desired := x.workload.desiredPods()
 	if desired == 0 || readyPods < int(desired) {
 		complete = false
 	}
-	rolloutID := c.rolloutID(x.deployment, x.state.revision)
+	rolloutID := c.rolloutID(x.workload, x.state.revision)
 	var containers []resolvedContainer
 	add := func(list []corev1.Container, init bool) {
 		for _, container := range list {
@@ -366,10 +393,10 @@ func (c *controller) finalizeImages(ctx context.Context, x *imageCollection) {
 	}
 	add(x.state.template.Spec.Containers, false)
 	add(x.state.template.Spec.InitContainers, true)
-	event := rolloutEvent(x.deployment, x.state, rolloutImagesResolved, rolloutID, x.cutoff)
+	event := rolloutEvent(x.workload, x.state, rolloutImagesResolved, rolloutID, x.cutoff)
 	event.summary = imagesSummary(containers, complete)
 	event.diff = func(diff pcommon.Map) {
-		c.putRolloutDiff(diff, x.deployment, x.state, rolloutID)
+		c.putRolloutDiff(diff, x.workload, x.state, rolloutID)
 		diff.PutBool("complete", complete)
 		resolved := diff.PutEmptySlice("resolved_containers")
 		for _, container := range containers {

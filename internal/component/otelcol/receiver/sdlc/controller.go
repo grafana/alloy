@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"strconv"
 	"sync"
 	"time"
 
 	"go.opentelemetry.io/collector/pdata/plog"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/informers"
@@ -47,7 +47,7 @@ type rolloutState struct {
 
 type controller struct {
 	mu                      sync.Mutex
-	podsByReplicaSet        map[string]map[string]*corev1.Pod
+	podsByOwner             map[string]map[string]*corev1.Pod
 	replicaSetsByDeployment map[string]map[string]*appsv1.ReplicaSet
 	pods                    map[string]*corev1.Pod
 	replicaSets             map[string]*appsv1.ReplicaSet
@@ -66,7 +66,7 @@ func newController(opts controllerOptions) *controller {
 	if opts.logger == nil {
 		opts.logger = slog.Default()
 	}
-	return &controller{podsByReplicaSet: map[string]map[string]*corev1.Pod{}, replicaSetsByDeployment: map[string]map[string]*appsv1.ReplicaSet{}, pods: map[string]*corev1.Pod{}, replicaSets: map[string]*appsv1.ReplicaSet{}, collections: map[string]*imageCollection{}, imageQueue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*imageCollection]()), opts: opts, rollouts: map[string]rolloutState{}, now: opts.now, queue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*eventBatch]())}
+	return &controller{podsByOwner: map[string]map[string]*corev1.Pod{}, replicaSetsByDeployment: map[string]map[string]*appsv1.ReplicaSet{}, pods: map[string]*corev1.Pod{}, replicaSets: map[string]*appsv1.ReplicaSet{}, collections: map[string]*imageCollection{}, imageQueue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*imageCollection]()), opts: opts, rollouts: map[string]rolloutState{}, now: opts.now, queue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*eventBatch]())}
 }
 
 func (c *controller) run(ctx context.Context) error {
@@ -142,19 +142,24 @@ func (c *controller) run(ctx context.Context) error {
 	}
 }
 
-// Informer handlers serialize state updates. Revisions are assigned by the
-// Deployment controller, unlike generation which also changes during scaling.
+// Informer handlers serialize state updates.
 func (c *controller) observe(d *appsv1.Deployment, initial bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	uid := string(d.UID)
+	c.observeRollout(deploymentWorkload{d}, initial)
+}
+
+// observeRollout advances the rollout state machine of any workload kind.
+// Callers hold c.mu.
+func (c *controller) observeRollout(w workload, initial bool) {
+	uid := string(w.GetUID())
 	previous, exists := c.rollouts[uid]
-	revision, _ := strconv.ParseInt(d.Annotations[revisionAnnotation], 10, 64)
+	revision, template := w.revision(), w.template()
 	if initial {
-		c.rollouts[uid] = rolloutState{revision: revision, template: *d.Spec.Template.DeepCopy(), status: rolloutStatus(d), stalled: rolloutStatus(d) == rolloutStalled}
+		c.rollouts[uid] = rolloutState{revision: revision, template: *template.DeepCopy(), status: w.rolloutStatus(), stalled: w.rolloutStatus() == rolloutStalled}
 		return
 	}
-	if d.DeletionTimestamp != nil || d.Spec.Paused || d.Status.ObservedGeneration < d.Generation || revision <= 0 {
+	if !w.settled() || revision <= 0 {
 		return
 	}
 	// Ignore stale revision observations, including relists after watch reconnects.
@@ -163,57 +168,35 @@ func (c *controller) observe(d *appsv1.Deployment, initial bool) {
 	}
 	if !exists || revision != previous.revision {
 		if exists && previous.revision > 0 && previous.status != rolloutSucceeded {
-			c.enqueue(d, previous, rolloutSuperseded, revision, nil, false)
-			c.closeImages(d, false)
+			c.enqueue(w, previous, rolloutSuperseded, revision, nil, false)
+			c.closeImages(w, false)
 		}
 		changes := []fieldChange{}
 		if exists {
-			changes = templateChanges(previous.template, d.Spec.Template)
+			changes = templateChanges(previous.template, template)
 		}
-		previous = rolloutState{revision: revision, previousRevision: previous.revision, startedAt: c.now(), template: *d.Spec.Template.DeepCopy(), status: rolloutStarted}
-		c.enqueue(d, previous, rolloutStarted, 0, changes, exists)
-		c.openImages(d, previous)
+		previous = rolloutState{revision: revision, previousRevision: previous.revision, startedAt: c.now(), template: *template.DeepCopy(), status: rolloutStarted}
+		c.enqueue(w, previous, rolloutStarted, 0, changes, exists)
+		c.openImages(w, previous)
 	}
-	status := rolloutStatus(d)
+	status := w.rolloutStatus()
 	// Success closes a rollout permanently; later availability/scaling changes
 	// aren't new rollout outcomes. A stalled rollout can recover or be superseded.
 	if previous.status != rolloutSucceeded {
 		switch status {
 		case rolloutSucceeded:
-			c.enqueue(d, previous, rolloutSucceeded, 0, nil, false)
-			c.closeImages(d, true)
+			c.enqueue(w, previous, rolloutSucceeded, 0, nil, false)
+			c.closeImages(w, true)
 			previous.status = status
 		case rolloutStalled:
 			if !previous.stalled {
-				c.enqueue(d, previous, rolloutStalled, 0, nil, false)
+				c.enqueue(w, previous, rolloutStalled, 0, nil, false)
 				previous.stalled = true
 			}
 			previous.status = status
 		}
 	}
 	c.rollouts[uid] = previous
-}
-
-func rolloutStatus(d *appsv1.Deployment) string {
-	if d.Spec.Paused || d.DeletionTimestamp != nil || d.Status.ObservedGeneration < d.Generation {
-		return rolloutStarted
-	}
-	for _, condition := range d.Status.Conditions {
-		if condition.Type == appsv1.DeploymentProgressing && condition.Status == corev1.ConditionFalse && condition.Reason == "ProgressDeadlineExceeded" {
-			return rolloutStalled
-		}
-	}
-	desired := int32(1)
-	if d.Spec.Replicas != nil {
-		desired = *d.Spec.Replicas
-	}
-	// Require the controller's completion condition as well as replica counts.
-	for _, condition := range d.Status.Conditions {
-		if condition.Type == appsv1.DeploymentProgressing && condition.Status == corev1.ConditionTrue && condition.Reason == "NewReplicaSetAvailable" && d.Status.UpdatedReplicas == desired && d.Status.Replicas == desired && d.Status.AvailableReplicas == desired && d.Status.UnavailableReplicas == 0 {
-			return rolloutSucceeded
-		}
-	}
-	return rolloutStarted
 }
 
 // Retry the original event, preserving its ID and timestamp, and give consumers
@@ -237,12 +220,12 @@ func (c *controller) remove(obj any) {
 	if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
 		obj = tombstone.Obj
 	}
-	d, ok := obj.(*appsv1.Deployment)
-	if !ok || d.UID == "" {
+	m, err := meta.Accessor(obj)
+	if err != nil || m.GetUID() == "" {
 		return
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	delete(c.rollouts, string(d.UID))
-	delete(c.collections, string(d.UID))
+	delete(c.rollouts, string(m.GetUID()))
+	delete(c.collections, string(m.GetUID()))
 }

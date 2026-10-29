@@ -255,15 +255,15 @@ func TestImageOwnerIndexesFollowUpdatesAndDeletion(t *testing.T) {
 	c := testController(t)
 	c.observePod(p)
 	c.observeReplicaSet(rs)
-	c.openImages(d, rolloutState{revision: 2, template: d.Spec.Template})
+	c.openImages(deploymentWorkload{d}, rolloutState{revision: 2, template: d.Spec.Template})
 	require.True(t, c.collections[string(d.UID)].ids["false:app"]["registry/web@sha256:amd64"])
 	moved := p.DeepCopy()
 	moved.OwnerReferences[0].UID = "other-rs"
 	c.observePod(moved)
-	require.Empty(t, c.podsByReplicaSet[string(rs.UID)])
-	require.Len(t, c.podsByReplicaSet["other-rs"], 1)
+	require.Empty(t, c.podsByOwner[string(rs.UID)])
+	require.Len(t, c.podsByOwner["other-rs"], 1)
 	c.removePod(moved)
-	require.Empty(t, c.podsByReplicaSet)
+	require.Empty(t, c.podsByOwner)
 	movedRS := rs.DeepCopy()
 	movedRS.OwnerReferences[0].UID = "other-deployment"
 	c.observeReplicaSet(movedRS)
@@ -288,7 +288,7 @@ func BenchmarkReplicaSetUpdateWithUnrelatedWorkloads(b *testing.B) {
 				p.OwnerReferences[0].UID = rs.UID
 				c.observePod(p)
 				c.observeReplicaSet(rs)
-				c.openImages(d, rolloutState{revision: 2, template: d.Spec.Template})
+				c.openImages(deploymentWorkload{d}, rolloutState{revision: 2, template: d.Spec.Template})
 			}
 			_, rs, _ := imageFixtures()
 			b.ResetTimer()

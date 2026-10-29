@@ -9,7 +9,6 @@ import (
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
-	appsv1 "k8s.io/api/apps/v1"
 
 	"github.com/grafana/alloy/internal/build"
 )
@@ -29,7 +28,7 @@ const (
 	changeTypeIntent = "intent"
 	changeTypeEffect = "effect"
 
-	// Cap the summary so a Deployment with many containers can't bloat a record.
+	// Cap the summary so a workload with many containers can't bloat a record.
 	maxSummaryLength = 1024
 )
 
@@ -51,14 +50,14 @@ type changeEvent struct {
 	diff                        func(pcommon.Map)
 }
 
-func (c *controller) rolloutID(d *appsv1.Deployment, revision int64) string {
-	return stableID(c.opts.clusterUID, string(d.UID), strconv.FormatInt(revision, 10))
+func (c *controller) rolloutID(w workload, revision int64) string {
+	return stableID(c.opts.clusterUID, string(w.GetUID()), strconv.FormatInt(revision, 10))
 }
 
-func (c *controller) enqueue(d *appsv1.Deployment, state rolloutState, status string, replacement int64, changes []fieldChange, known bool) {
+func (c *controller) enqueue(w workload, state rolloutState, status string, replacement int64, changes []fieldChange, known bool) {
 	now := c.now()
-	rolloutID := c.rolloutID(d, state.revision)
-	event := rolloutEvent(d, state, status, rolloutID, now)
+	rolloutID := c.rolloutID(w, state.revision)
+	event := rolloutEvent(w, state, status, rolloutID, now)
 	switch status {
 	case rolloutStarted:
 		event.changeType = changeTypeIntent
@@ -76,13 +75,13 @@ func (c *controller) enqueue(d *appsv1.Deployment, state rolloutState, status st
 		event.start = state.startedAt
 	}
 	event.diff = func(diff pcommon.Map) {
-		c.putRolloutDiff(diff, d, state, rolloutID)
+		c.putRolloutDiff(diff, w, state, rolloutID)
 		switch status {
 		case rolloutStarted:
 			diff.PutBool("changes_known", known)
 			putChanges(diff, changes)
 		case rolloutSuperseded:
-			diff.PutStr("superseded_by", c.rolloutID(d, replacement))
+			diff.PutStr("superseded_by", c.rolloutID(w, replacement))
 		}
 	}
 	c.enqueueChange(event)
@@ -90,10 +89,10 @@ func (c *controller) enqueue(d *appsv1.Deployment, state rolloutState, status st
 
 // rolloutEvent is a point-in-time effect of the rollout. kind distinguishes
 // events of one rollout and is part of the event ID.
-func rolloutEvent(d *appsv1.Deployment, state rolloutState, kind, rolloutID string, at time.Time) changeEvent {
+func rolloutEvent(w workload, state rolloutState, kind, rolloutID string, at time.Time) changeEvent {
 	event := changeEvent{
-		resourceType: "deployment",
-		resourceID:   d.Namespace + "/" + d.Name,
+		resourceType: w.resourceType(),
+		resourceID:   w.GetNamespace() + "/" + w.GetName(),
 		id:           stableID(rolloutID, kind),
 		traceKey:     rolloutID,
 		versionAfter: strconv.FormatInt(state.revision, 10),
@@ -107,10 +106,10 @@ func rolloutEvent(d *appsv1.Deployment, state rolloutState, kind, rolloutID stri
 	return event
 }
 
-func (c *controller) putRolloutDiff(diff pcommon.Map, d *appsv1.Deployment, state rolloutState, rolloutID string) {
+func (c *controller) putRolloutDiff(diff pcommon.Map, w workload, state rolloutState, rolloutID string) {
 	diff.PutInt("revision", state.revision)
 	diff.PutStr("rollout_id", rolloutID)
-	diff.PutStr("namespace", d.Namespace)
+	diff.PutStr("namespace", w.GetNamespace())
 	if c.opts.clusterName != "" {
 		diff.PutStr("cluster_name", c.opts.clusterName)
 	}
@@ -127,6 +126,7 @@ func (c *controller) putRolloutDiff(diff pcommon.Map, d *appsv1.Deployment, stat
 	for _, container := range state.template.Spec.InitContainers {
 		add(container.Name, container.Image, true)
 	}
+	w.putDiff(diff)
 }
 
 // putChanges encodes changes as a "changes" map keyed by field path, omitted
