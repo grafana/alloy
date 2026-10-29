@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -17,7 +18,9 @@ import (
 
 var serverConfigurationColumns = []string{"name", "configured_value", "in_use_value"}
 
-func newTestServerConfiguration(t *testing.T, engineEdition int, queryTimeout time.Duration) (*ServerConfiguration, sqlmock.Sqlmock, *prometheus.Registry) {
+const testServerConfigurationQueryTimeout = time.Second
+
+func newTestServerConfiguration(t *testing.T, engineEdition int) (*ServerConfiguration, sqlmock.Sqlmock, *prometheus.Registry) {
 	t.Helper()
 
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
@@ -31,7 +34,7 @@ func newTestServerConfiguration(t *testing.T, engineEdition int, queryTimeout ti
 		DB:              db,
 		Registry:        registry,
 		CollectInterval: time.Hour,
-		QueryTimeout:    queryTimeout,
+		QueryTimeout:    testServerConfigurationQueryTimeout,
 		Logger:          util.TestAlloyLogger(t).Slog(),
 		EngineEdition:   engineEdition,
 	})
@@ -40,7 +43,7 @@ func newTestServerConfiguration(t *testing.T, engineEdition int, queryTimeout ti
 }
 
 func TestServerConfigurationCollectsAllowlistedSettings(t *testing.T) {
-	c, mock, _ := newTestServerConfiguration(t, 3, time.Second)
+	c, mock, _ := newTestServerConfiguration(t, 3)
 
 	mock.ExpectQuery(selectServerConfiguration).WillReturnRows(
 		sqlmock.NewRows(serverConfigurationColumns).
@@ -119,7 +122,7 @@ database_observability_sql_server_config_user_connections{state="in_use"} 0
 }
 
 func TestServerConfigurationToleratesProviderSubsets(t *testing.T) {
-	c, mock, _ := newTestServerConfiguration(t, azureSQLManagedInstanceEngineEdition, time.Second)
+	c, mock, _ := newTestServerConfiguration(t, azureSQLManagedInstanceEngineEdition)
 
 	mock.ExpectQuery(selectServerConfiguration).WillReturnRows(
 		sqlmock.NewRows(serverConfigurationColumns).
@@ -143,7 +146,7 @@ database_observability_sql_server_config_max_worker_threads{state="in_use"} 512
 }
 
 func TestServerConfigurationAzureSQLDatabaseCollectsUsefulSettings(t *testing.T) {
-	c, mock, _ := newTestServerConfiguration(t, azureSQLDatabaseEngineEdition, time.Second)
+	c, mock, _ := newTestServerConfiguration(t, azureSQLDatabaseEngineEdition)
 
 	mock.ExpectQuery(selectAzureSQLDatabaseServerConfiguration).WillReturnRows(
 		sqlmock.NewRows(serverConfigurationColumns).
@@ -182,7 +185,7 @@ database_observability_sql_server_config_remote_login_timeout_seconds{state="in_
 }
 
 func TestServerConfigurationFailedRefreshRetainsLastSuccessfulValues(t *testing.T) {
-	c, mock, _ := newTestServerConfiguration(t, 3, time.Second)
+	c, mock, _ := newTestServerConfiguration(t, 3)
 
 	mock.ExpectQuery(selectServerConfiguration).WillReturnRows(
 		sqlmock.NewRows(serverConfigurationColumns).AddRow("user connections", 100, 80),
@@ -211,39 +214,45 @@ func TestServerConfigurationAppliesQueryTimeout(t *testing.T) {
 		startedAt := time.Now()
 		err := c.collectWithTimeout(t.Context())
 		require.Error(t, err)
-		assert.Less(t, time.Since(startedAt), 50*time.Millisecond)
+		assert.Equal(t, testServerConfigurationQueryTimeout, time.Since(startedAt))
 		require.NoError(t, mock.ExpectationsWereMet())
 	}
 
 	t.Run("server configuration", func(t *testing.T) {
-		c, mock, _ := newTestServerConfiguration(t, 3, time.Millisecond)
-		mock.ExpectQuery(selectServerConfiguration).
-			WillDelayFor(100 * time.Millisecond).
-			WillReturnRows(sqlmock.NewRows(serverConfigurationColumns))
-		assertTimesOut(t, c, mock)
+		synctest.Test(t, func(t *testing.T) {
+			c, mock, _ := newTestServerConfiguration(t, 3)
+			mock.ExpectQuery(selectServerConfiguration).
+				WillDelayFor(time.Hour).
+				WillReturnRows(sqlmock.NewRows(serverConfigurationColumns))
+			assertTimesOut(t, c, mock)
+		})
 	})
 
 	t.Run("Azure SQL Database server configuration", func(t *testing.T) {
-		c, mock, _ := newTestServerConfiguration(t, azureSQLDatabaseEngineEdition, time.Millisecond)
-		mock.ExpectQuery(selectAzureSQLDatabaseServerConfiguration).
-			WillDelayFor(100 * time.Millisecond).
-			WillReturnRows(sqlmock.NewRows(serverConfigurationColumns))
-		assertTimesOut(t, c, mock)
+		synctest.Test(t, func(t *testing.T) {
+			c, mock, _ := newTestServerConfiguration(t, azureSQLDatabaseEngineEdition)
+			mock.ExpectQuery(selectAzureSQLDatabaseServerConfiguration).
+				WillDelayFor(time.Hour).
+				WillReturnRows(sqlmock.NewRows(serverConfigurationColumns))
+			assertTimesOut(t, c, mock)
+		})
 	})
 
 	t.Run("Azure SQL Database scoped configuration", func(t *testing.T) {
-		c, mock, _ := newTestServerConfiguration(t, azureSQLDatabaseEngineEdition, time.Millisecond)
-		mock.ExpectQuery(selectAzureSQLDatabaseServerConfiguration).
-			WillReturnRows(sqlmock.NewRows(serverConfigurationColumns))
-		mock.ExpectQuery(selectDatabaseMaxDegreeOfParallelism).
-			WillDelayFor(100 * time.Millisecond).
-			WillReturnRows(sqlmock.NewRows([]string{"value"}))
-		assertTimesOut(t, c, mock)
+		synctest.Test(t, func(t *testing.T) {
+			c, mock, _ := newTestServerConfiguration(t, azureSQLDatabaseEngineEdition)
+			mock.ExpectQuery(selectAzureSQLDatabaseServerConfiguration).
+				WillReturnRows(sqlmock.NewRows(serverConfigurationColumns))
+			mock.ExpectQuery(selectDatabaseMaxDegreeOfParallelism).
+				WillDelayFor(time.Hour).
+				WillReturnRows(sqlmock.NewRows([]string{"value"}))
+			assertTimesOut(t, c, mock)
+		})
 	})
 }
 
 func TestServerConfigurationStartAndStop(t *testing.T) {
-	c, mock, registry := newTestServerConfiguration(t, 3, time.Second)
+	c, mock, registry := newTestServerConfiguration(t, 3)
 	mock.ExpectQuery(selectServerConfiguration).WillReturnRows(
 		sqlmock.NewRows(serverConfigurationColumns).AddRow("user connections", 0, 0),
 	)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -958,35 +959,36 @@ database_observability_sql_server_info{compatibility_level="",edition_name="ente
 }
 
 func TestServerMetricsGiveEachQueryAnIndependentTimeout(t *testing.T) {
-	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-	require.NoError(t, err)
-	defer db.Close()
+	synctest.Test(t, func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
 
-	registry := prometheus.NewRegistry()
-	c, err := NewServerMetrics(ServerMetricsArguments{
-		DB:            db,
-		Registry:      registry,
-		Logger:        util.TestAlloyLogger(t).Slog(),
-		EngineEdition: 3,
-		QueryTimeout:  time.Millisecond,
-	})
-	require.NoError(t, err)
-	require.NoError(t, c.Start(t.Context()))
-	defer c.Stop()
+		registry := prometheus.NewRegistry()
+		c, err := NewServerMetrics(ServerMetricsArguments{
+			DB:            db,
+			Registry:      registry,
+			Logger:        util.TestAlloyLogger(t).Slog(),
+			EngineEdition: 3,
+			QueryTimeout:  time.Second,
+		})
+		require.NoError(t, err)
+		require.NoError(t, c.Start(t.Context()))
+		defer c.Stop()
 
-	mock.ExpectQuery(selectServerMetrics).WithoutArgs().
-		WillDelayFor(10 * time.Millisecond).
-		WillReturnRows(sqlmock.NewRows(serverMetricsColumns))
-	mock.ExpectQuery(selectUserSessions).WithArgs(sql.Named("exclude_current_user", false), sql.Named("collector_app_name", AppName)).RowsWillBeClosed().
-		WillReturnRows(sqlmock.NewRows(userSessionColumns).
-			AddRow(2, 3, 0, 0, 100))
-	mock.ExpectQuery(selectDatabaseStorage).WithoutArgs().WillReturnError(fmt.Errorf("storage unavailable"))
-	mock.ExpectQuery(selectPerformanceCounters).WithoutArgs().WillReturnError(fmt.Errorf("counters unavailable"))
-	mock.ExpectQuery(selectFileIOStats).WithoutArgs().WillReturnError(fmt.Errorf("io stats unavailable"))
-	mock.ExpectQuery(selectTempdbSpaceUsage).WithoutArgs().WillReturnError(fmt.Errorf("tempdb unavailable"))
-	mock.ExpectQuery(selectVolumeStorage).WithoutArgs().WillReturnError(fmt.Errorf("volume storage unavailable"))
+		mock.ExpectQuery(selectServerMetrics).WithoutArgs().
+			WillDelayFor(time.Hour).
+			WillReturnRows(sqlmock.NewRows(serverMetricsColumns))
+		mock.ExpectQuery(selectUserSessions).WithArgs(sql.Named("exclude_current_user", false), sql.Named("collector_app_name", AppName)).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows(userSessionColumns).
+				AddRow(2, 3, 0, 0, 100))
+		mock.ExpectQuery(selectDatabaseStorage).WithoutArgs().WillReturnError(fmt.Errorf("storage unavailable"))
+		mock.ExpectQuery(selectPerformanceCounters).WithoutArgs().WillReturnError(fmt.Errorf("counters unavailable"))
+		mock.ExpectQuery(selectFileIOStats).WithoutArgs().WillReturnError(fmt.Errorf("io stats unavailable"))
+		mock.ExpectQuery(selectTempdbSpaceUsage).WithoutArgs().WillReturnError(fmt.Errorf("tempdb unavailable"))
+		mock.ExpectQuery(selectVolumeStorage).WithoutArgs().WillReturnError(fmt.Errorf("volume storage unavailable"))
 
-	expected := `
+		expected := `
 # HELP database_observability_sql_server_user_session_limit Maximum simultaneous SQL Server user sessions allowed by the active configuration and service limit.
 # TYPE database_observability_sql_server_user_session_limit gauge
 database_observability_sql_server_user_session_limit 100
@@ -998,13 +1000,17 @@ database_observability_sql_server_user_sessions{status="running"} 2
 database_observability_sql_server_user_sessions{status="sleeping"} 3
 `
 
-	require.NoError(t, testutil.CollectAndCompare(
-		registry,
-		strings.NewReader(expected),
-		"database_observability_sql_server_user_session_limit",
-		"database_observability_sql_server_user_sessions",
-	))
-	require.NoError(t, mock.ExpectationsWereMet())
+		start := time.Now()
+		require.NoError(t, testutil.CollectAndCompare(
+			registry,
+			strings.NewReader(expected),
+			"database_observability_sql_server_user_session_limit",
+			"database_observability_sql_server_user_sessions",
+		))
+		// Only the delayed query waits, so one timeout elapses in total.
+		require.Equal(t, time.Second, time.Since(start))
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
 }
 
 func TestEffectiveUserSessionLimit(t *testing.T) {
