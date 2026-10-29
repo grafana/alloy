@@ -3,6 +3,7 @@ package deps
 import (
 	"context"
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -18,16 +19,16 @@ const (
 	alloyOtelConfigMap = "alloy-otel-config"
 	// alloyImagePlaceholder is replaced with the image under test at install time.
 	alloyImagePlaceholder = "__ALLOY_IMAGE__"
-	// alloyOtelArgs is how the manifest starts the collector, through the
-	// image's /bin/alloy ENTRYPOINT. otelcolArgs replaces it to start the
-	// collector through the image's /bin/otelcol wrapper instead.
-	alloyOtelArgs = `          args:
-            - otel
-`
-	otelcolArgs = `          command:
-            - /bin/otelcol
-          args:
-`
+	// alloyOtelCommandPlaceholder is replaced with the container command, as a
+	// JSON array, which YAML reads as a flow sequence.
+	alloyOtelCommandPlaceholder = "__ALLOY_OTEL_COMMAND__"
+)
+
+var (
+	alloyOtelCommand = []string{"/bin/alloy", "otel"}
+	// otelcolCommand is the image's wrapper for tools that expect an otelcol
+	// binary. It runs `alloy otel` with the same arguments.
+	otelcolCommand = []string{"/bin/otelcol"}
 )
 
 //go:embed manifests/alloy-otel.yaml
@@ -81,13 +82,18 @@ func (a *AlloyOtel) Install(ctx *harness.TestContext) error {
 	}
 	a.installed = true
 
-	a.manifest = strings.ReplaceAll(alloyOtelManifest, alloyImagePlaceholder, image)
+	command := alloyOtelCommand
 	if a.opts.OtelcolEntrypoint {
-		if !strings.Contains(a.manifest, alloyOtelArgs) {
-			return fmt.Errorf("alloy-otel manifest has no args block to replace for the otelcol entrypoint")
-		}
-		a.manifest = strings.Replace(a.manifest, alloyOtelArgs, otelcolArgs, 1)
+		command = otelcolCommand
 	}
+	commandJSON, err := json.Marshal(command)
+	if err != nil {
+		return fmt.Errorf("encode alloy-otel command: %w", err)
+	}
+	a.manifest = strings.NewReplacer(
+		alloyImagePlaceholder, image,
+		alloyOtelCommandPlaceholder, string(commandJSON),
+	).Replace(alloyOtelManifest)
 	if err := util.Step("apply alloy-otel manifest", func() error {
 		return harness.ApplyManifest(a.opts.Namespace, a.manifest)
 	}); err != nil {
