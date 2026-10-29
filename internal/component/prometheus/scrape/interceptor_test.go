@@ -15,11 +15,16 @@ import (
 	"github.com/grafana/alloy/internal/service/livedebugging"
 )
 
-// debugCase is one scenario for the live debugging tests.
+// debugCase is one scenario for the live debugging tests. A nil v1 or v2
+// means that the appender version has no equivalent of the scenario.
+//
+// TODO: Remove the v1 fields and the V1 subtests when the V1 appenders are removed.
 type debugCase struct {
 	name   string
 	v1     func(storage.Appender) error
 	v1Want []string
+	v2     func(storage.AppenderV2) error
+	v2Want []string
 }
 
 func debugCases() []debugCase {
@@ -39,6 +44,13 @@ func debugCases() []debugCase {
 		wantExemplar = `exemplar: ts=123, labels={__name__="test_metric"}, exemplar_labels={trace_id="abc"}, value=12.500000`
 		wantLabels   = `{__name__="test_metric"}`
 	)
+	appendV2 := func(h *histogram.Histogram, fh *histogram.FloatHistogram, opts storage.AppendV2Options) func(storage.AppenderV2) error {
+		return func(app storage.AppenderV2) error {
+			_, err := app.Append(0, metricLabels, 0, 123, 12.5, h, fh, opts)
+			return err
+		}
+	}
+
 	return []debugCase{
 		{
 			name: "sample",
@@ -47,6 +59,8 @@ func debugCases() []debugCase {
 				return err
 			},
 			v1Want: []string{wantSample},
+			v2:     appendV2(nil, nil, storage.AppendV2Options{}),
+			v2Want: []string{wantSample},
 		},
 		{
 			name: "histogram",
@@ -55,6 +69,8 @@ func debugCases() []debugCase {
 				return err
 			},
 			v1Want: []string{"histogram: ts=123, labels=" + wantLabels + ", value=" + h.String()},
+			v2:     appendV2(h, nil, storage.AppendV2Options{}),
+			v2Want: []string{"histogram: ts=123, labels=" + wantLabels + ", value=" + h.String()},
 		},
 		{
 			name: "float histogram",
@@ -63,8 +79,11 @@ func debugCases() []debugCase {
 				return err
 			},
 			v1Want: []string{"float_histogram: ts=123, labels=" + wantLabels + ", value=" + fh.String()},
+			v2:     appendV2(nil, fh, storage.AppendV2Options{}),
+			v2Want: []string{"float_histogram: ts=123, labels=" + wantLabels + ", value=" + fh.String()},
 		},
 		{
+			// V2 can't express a histogram without a value: it's a plain sample.
 			name: "histogram without a value",
 			v1: func(app storage.Appender) error {
 				_, err := app.AppendHistogram(0, metricLabels, 123, nil, nil)
@@ -73,20 +92,31 @@ func debugCases() []debugCase {
 			v1Want: []string{`histogram_with_no_value: ts=123, labels={__name__="test_metric"}`},
 		},
 		{
+			// In V2 the exemplar comes together with its sample.
 			name: "exemplar",
 			v1: func(app storage.Appender) error {
 				_, err := app.AppendExemplar(0, metricLabels, metricExemplar)
 				return err
 			},
 			v1Want: []string{wantExemplar},
+			v2:     appendV2(nil, nil, storage.AppendV2Options{Exemplars: []exemplar.Exemplar{metricExemplar}}),
+			v2Want: []string{wantSample, wantExemplar},
 		},
 		{
+			// In V2 the metadata comes together with its sample.
 			name: "metadata",
 			v1: func(app storage.Appender) error {
 				_, err := app.UpdateMetadata(0, metricLabels, metricMetadata)
 				return err
 			},
 			v1Want: []string{wantMetadata},
+			v2:     appendV2(nil, nil, storage.AppendV2Options{Metadata: metricMetadata}),
+			v2Want: []string{wantSample, wantMetadata},
+		},
+		{
+			name:   "sample with metadata and exemplars",
+			v2:     appendV2(nil, nil, storage.AppendV2Options{Metadata: metricMetadata, Exemplars: []exemplar.Exemplar{metricExemplar, metricExemplar}}),
+			v2Want: []string{wantSample, wantMetadata, wantExemplar, wantExemplar},
 		},
 	}
 }
@@ -136,6 +166,14 @@ func TestInterceptorDebuggingRespectsActivity(t *testing.T) {
 					run(t, tc.v1Want, func(i *prometheus.Interceptor) func() error {
 						app := i.Appender(t.Context())
 						return func() error { return tc.v1(app) }
+					})
+				})
+			}
+			if tc.v2 != nil {
+				t.Run("V2", func(t *testing.T) {
+					run(t, tc.v2Want, func(i *prometheus.Interceptor) func() error {
+						app := i.AppenderV2(t.Context())
+						return func() error { return tc.v2(app) }
 					})
 				})
 			}
