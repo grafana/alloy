@@ -91,13 +91,14 @@ type Arguments struct {
 
 	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 
-	CloudProvider          *CloudProvider         `alloy:"cloud_provider,block,optional"`
-	SchemaDetailsArguments SchemaDetailsArguments `alloy:"schema_details,block,optional"`
-	QueryMetricsArguments  QueryMetricsArguments  `alloy:"query_metrics,block,optional"`
-	QuerySamplesArguments  QuerySamplesArguments  `alloy:"query_samples,block,optional"`
-	QueryDetailsArguments  QueryDetailsArguments  `alloy:"query_details,block,optional"`
-	ExplainPlansArguments  ExplainPlansArguments  `alloy:"explain_plans,block,optional"`
-	HealthCheckArguments   HealthCheckArguments   `alloy:"health_check,block,optional"`
+	CloudProvider                *CloudProvider               `alloy:"cloud_provider,block,optional"`
+	SchemaDetailsArguments       SchemaDetailsArguments       `alloy:"schema_details,block,optional"`
+	ServerConfigurationArguments ServerConfigurationArguments `alloy:"server_configuration,block,optional"`
+	QueryMetricsArguments        QueryMetricsArguments        `alloy:"query_metrics,block,optional"`
+	QuerySamplesArguments        QuerySamplesArguments        `alloy:"query_samples,block,optional"`
+	QueryDetailsArguments        QueryDetailsArguments        `alloy:"query_details,block,optional"`
+	ExplainPlansArguments        ExplainPlansArguments        `alloy:"explain_plans,block,optional"`
+	HealthCheckArguments         HealthCheckArguments         `alloy:"health_check,block,optional"`
 }
 
 // DatabaseArguments configures one monitored SQL Server instance. When one or
@@ -137,6 +138,10 @@ type SchemaDetailsArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 }
 
+type ServerConfigurationArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+}
+
 type QueryMetricsArguments struct {
 	CollectInterval    time.Duration `alloy:"collect_interval,attr,optional"`
 	StatementsLimit    int           `alloy:"statements_limit,attr,optional"`
@@ -171,6 +176,10 @@ func defaultArguments() Arguments {
 
 		SchemaDetailsArguments: SchemaDetailsArguments{
 			CollectInterval: 1 * time.Minute,
+		},
+
+		ServerConfigurationArguments: ServerConfigurationArguments{
+			CollectInterval: 10 * time.Minute,
 		},
 
 		QueryMetricsArguments: QueryMetricsArguments{
@@ -286,6 +295,12 @@ func (a *Arguments) Validate() error {
 		lookback := a.QueryMetricsArguments.StatementsLookback
 		if lookback < time.Second || lookback > math.MaxInt32*time.Second {
 			return fmt.Errorf("query_metrics.statements_lookback must be between 1s and %ds", math.MaxInt32)
+		}
+	}
+
+	if enableOrDisableCollectors(*a)[collector.ServerConfigurationCollector] {
+		if a.ServerConfigurationArguments.CollectInterval <= 0 {
+			return fmt.Errorf("server_configuration.collect_interval must be greater than zero")
 		}
 	}
 
@@ -747,7 +762,8 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 
 	queryCtx, cancelQuery := context.WithTimeout(ctx, c.args.QueryTimeout)
 	var serverName, machineName, instanceName, engineVersion sql.NullString
-	err = inst.dbConnection.QueryRowContext(queryCtx, collector.SelectServerInfo).Scan(&serverName, &machineName, &instanceName, &engineVersion)
+	var engineEdition sql.NullInt64
+	err = inst.dbConnection.QueryRowContext(queryCtx, collector.SelectServerInfo).Scan(&serverName, &machineName, &instanceName, &engineVersion, &engineEdition)
 	cancelQuery()
 	if err != nil {
 		return fmt.Errorf("failed to query server information: %w", err)
@@ -799,7 +815,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	}
 	inst.collectors = nil
 
-	if err := c.startCollectors(ctx, inst, generatedServerID, engineVersion.String, cp, effectiveExcludeUsers); err != nil {
+	if err := c.startCollectors(ctx, inst, generatedServerID, engineVersion.String, int(engineEdition.Int64), cp, effectiveExcludeUsers); err != nil {
 		return fmt.Errorf("failed to start collectors: %w", err)
 	}
 
@@ -816,11 +832,12 @@ func generateServerID(serverName, machineName, instanceName string) string {
 
 func enableOrDisableCollectors(a Arguments) map[string]bool {
 	collectors := map[string]bool{
-		collector.SchemaDetailsCollector: true,
-		collector.QueryMetricsCollector:  true,
-		collector.QuerySamplesCollector:  true,
-		collector.QueryDetailsCollector:  true,
-		collector.ExplainPlansCollector:  true,
+		collector.SchemaDetailsCollector:       true,
+		collector.ServerConfigurationCollector: true,
+		collector.QueryMetricsCollector:        true,
+		collector.QuerySamplesCollector:        true,
+		collector.QueryDetailsCollector:        true,
+		collector.ExplainPlansCollector:        true,
 	}
 
 	for _, disabled := range a.DisableCollectors {
@@ -840,7 +857,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 // startCollectors attempts to start all of the enabled collectors for a
 // database instance. If one or more collectors fail to start, their errors
 // are reported.
-func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serverID string, engineVersion string, cloudProviderInfo *database_observability.CloudProvider, effectiveExcludeUsers []string) error {
+func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serverID string, engineVersion string, engineEdition int, cloudProviderInfo *database_observability.CloudProvider, effectiveExcludeUsers []string) error {
 	var startErrors []string
 
 	logStartError := func(collectorName, action string, err error) {
@@ -871,6 +888,25 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 				logStartError(collector.SchemaDetailsCollector, "start", err)
 			}
 			inst.collectors = append(inst.collectors, stCollector)
+		}
+	}
+
+	if collectors[collector.ServerConfigurationCollector] {
+		scCollector, err := collector.NewServerConfiguration(collector.ServerConfigurationArguments{
+			DB:              inst.dbConnection,
+			Registry:        inst.registry,
+			CollectInterval: c.args.ServerConfigurationArguments.CollectInterval,
+			QueryTimeout:    c.args.QueryTimeout,
+			Logger:          c.opts.Logger,
+			EngineEdition:   engineEdition,
+		})
+		if err != nil {
+			logStartError(collector.ServerConfigurationCollector, "create", err)
+		} else {
+			if err := scCollector.Start(ctx); err != nil {
+				logStartError(collector.ServerConfigurationCollector, "start", err)
+			}
+			inst.collectors = append(inst.collectors, scCollector)
 		}
 	}
 

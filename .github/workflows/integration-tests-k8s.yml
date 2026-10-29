@@ -10,9 +10,9 @@ permissions:
 
 jobs:
   # Build the docker images the test suite needs (Alloy under test, plus
-  # prom-gen as a scrape-target fixture) once and ship them as a single
-  # artifact, so each shard in run_tests just docker-loads them instead of
-  # rebuilding.
+  # prom-gen as a scrape-target fixture and otel-gen as an OTLP sender) once
+  # and ship them as a single artifact, so each shard in run_tests just
+  # docker-loads them instead of rebuilding.
   build_images:
     runs-on:
       labels: github-hosted-ubuntu-x64-large
@@ -31,8 +31,10 @@ jobs:
       run: make alloy-image-distroless
     - name: Build prom-gen image
       run: make prom-gen-image
+    - name: Build otel-gen image
+      run: make otel-gen-image
     - name: Save images
-      run: docker save grafana/alloy:latest-distroless prom-gen:latest -o test-images.tar
+      run: docker save grafana/alloy:latest-distroless prom-gen:latest otel-gen:latest -o test-images.tar
     - name: Upload images artifact
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:

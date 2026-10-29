@@ -282,6 +282,46 @@ func TestQueryMetricsEnabledByDefault(t *testing.T) {
 	assert.False(t, collectors[collector.QueryMetricsCollector])
 }
 
+func TestServerConfiguration(t *testing.T) {
+	t.Run("defaults and enablement", func(t *testing.T) {
+		var args Arguments
+		args.SetToDefault()
+
+		assert.Equal(t, 10*time.Minute, args.ServerConfigurationArguments.CollectInterval)
+		assert.True(t, enableOrDisableCollectors(args)[collector.ServerConfigurationCollector])
+
+		args.DisableCollectors = []string{collector.ServerConfigurationCollector}
+		assert.False(t, enableOrDisableCollectors(args)[collector.ServerConfigurationCollector])
+	})
+
+	t.Run("configuration is parsed", func(t *testing.T) {
+		config := `
+			data_source_name = "sqlserver://user:pass@localhost:1433"
+			forward_to       = []
+
+			server_configuration {
+				collect_interval = "5m"
+			}
+		`
+
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(config), &args))
+		assert.Equal(t, 5*time.Minute, args.ServerConfigurationArguments.CollectInterval)
+	})
+
+	t.Run("non-positive collect interval is rejected when enabled", func(t *testing.T) {
+		var args Arguments
+		args.SetToDefault()
+		args.DataSourceName = "sqlserver://user:pass@localhost:1433"
+		args.ServerConfigurationArguments.CollectInterval = 0
+
+		require.ErrorContains(t, args.Validate(), "server_configuration.collect_interval")
+
+		args.DisableCollectors = []string{collector.ServerConfigurationCollector}
+		require.NoError(t, args.Validate())
+	})
+}
+
 func TestValidateQueryMetrics(t *testing.T) {
 	base := func() Arguments {
 		var args Arguments
@@ -562,8 +602,8 @@ func TestConnectAndStartCollectorsFailsWhenCurrentUserCannotBeResolved(t *testin
 
 	mock.ExpectQuery("SELECT " + collector.QueryMarker + " 1").WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(1))
 	mock.ExpectQuery(collector.SelectServerInfo).
-		WillReturnRows(sqlmock.NewRows([]string{"server_name", "machine_name", "instance_name", "product_version"}).
-			AddRow("server", "machine", nil, "16.0"))
+		WillReturnRows(sqlmock.NewRows([]string{"server_name", "machine_name", "instance_name", "product_version", "engine_edition"}).
+			AddRow("server", "machine", nil, "16.0", 3))
 	mock.ExpectQuery(collector.SelectOriginalLogin).WillReturnError(errors.New("permission denied"))
 
 	var args Arguments
@@ -928,7 +968,7 @@ func clusteringTestArgs() Arguments {
 			{Name: "db2", DataSourceName: "sqlserver://user:pass@127.0.0.1:1433?database=db2"},
 		},
 		QueryTimeout:         10 * time.Second,
-		DisableCollectors:    []string{"schema_details", "query_metrics", "query_samples", "query_details", "explain_plans"},
+		DisableCollectors:    []string{"schema_details", "server_configuration", "query_metrics", "query_samples", "query_details", "explain_plans"},
 		Clustering:           cluster.ComponentBlock{Enabled: true},
 		HealthCheckArguments: HealthCheckArguments{CollectInterval: 1 * time.Hour},
 	}
@@ -950,8 +990,8 @@ func componentTestMockDB(t *testing.T, serverName string, instanceName any) *sql
 
 	mock.ExpectQuery("SELECT " + collector.QueryMarker + " 1").WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(1))
 	mock.ExpectQuery(collector.SelectServerInfo).
-		WillReturnRows(sqlmock.NewRows([]string{"server_name", "machine_name", "instance_name", "product_version"}).
-			AddRow(serverName, "machine", instanceName, "16.0"))
+		WillReturnRows(sqlmock.NewRows([]string{"server_name", "machine_name", "instance_name", "product_version", "engine_edition"}).
+			AddRow(serverName, "machine", instanceName, "16.0", 3))
 	return db
 }
 
@@ -987,7 +1027,7 @@ func TestSqlServer_NamedInstancesHaveDistinctServerIDs(t *testing.T) {
 			{Name: "two", DataSourceName: "sqlserver://user:pass@same-host/INST_TWO?database=db1"},
 		},
 		QueryTimeout:         10 * time.Second,
-		DisableCollectors:    []string{"schema_details", "query_metrics", "query_samples", "query_details", "explain_plans"},
+		DisableCollectors:    []string{"schema_details", "server_configuration", "query_metrics", "query_samples", "query_details", "explain_plans"},
 		HealthCheckArguments: HealthCheckArguments{CollectInterval: 1 * time.Hour},
 	}
 	require.NoError(t, args.Validate())
@@ -1285,7 +1325,7 @@ func TestSqlServer_Clustering_SingleDatabaseStandby(t *testing.T) {
 		DataSourceName:    "sqlserver://user:pass@127.0.0.1:1433?database=db",
 		QueryTimeout:      10 * time.Second,
 		Clustering:        cluster.ComponentBlock{Enabled: true},
-		DisableCollectors: []string{"schema_details", "query_metrics", "query_samples", "query_details", "explain_plans"},
+		DisableCollectors: []string{"schema_details", "server_configuration", "query_metrics", "query_samples", "query_details", "explain_plans"},
 	}
 
 	c, err := newComponent(clusteringTestOptions(t, fake, &gotExports), args, func(_ string, _ string) (*sql.DB, error) {

@@ -27,6 +27,9 @@ use_docker_tls = true
 docker_tls_cert = "docker_tls_cert"
 docker_tls_key = "docker_tls_key"
 docker_tls_ca = "docker_tls_ca"
+housekeeping_interval = "15s"
+max_housekeeping_interval = "2m"
+allow_dynamic_housekeeping = false
 `
 	var args Arguments
 	err := syntax.Unmarshal([]byte(alloyCfg), &args)
@@ -48,6 +51,9 @@ docker_tls_ca = "docker_tls_ca"
 		DockerTLSCert:              "docker_tls_cert",
 		DockerTLSKey:               "docker_tls_key",
 		DockerTLSCA:                "docker_tls_ca",
+		HousekeepingInterval:       15 * time.Second,
+		MaxHousekeepingInterval:    2 * time.Minute,
+		AllowDynamicHousekeeping:   false,
 	}
 	require.Equal(t, expected, args)
 }
@@ -70,6 +76,9 @@ func TestConvert(t *testing.T) {
 		DockerTLSCert:              "docker_tls_cert",
 		DockerTLSKey:               "docker_tls_key",
 		DockerTLSCA:                "docker_tls_ca",
+		HousekeepingInterval:       15 * time.Second,
+		MaxHousekeepingInterval:    2 * time.Minute,
+		AllowDynamicHousekeeping:   false,
 	}
 
 	res := args.Convert()
@@ -90,6 +99,42 @@ func TestConvert(t *testing.T) {
 		DockerTLSCert:              "docker_tls_cert",
 		DockerTLSKey:               "docker_tls_key",
 		DockerTLSCA:                "docker_tls_ca",
+		HousekeepingInterval:       15 * time.Second,
+		MaxHousekeepingInterval:    2 * time.Minute,
+		AllowDynamicHousekeeping:   false,
 	}
 	require.Equal(t, expected, res)
+}
+
+func TestHousekeepingDefaults(t *testing.T) {
+	var args Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(``), &args))
+	require.Equal(t, 1*time.Second, args.HousekeepingInterval)
+	require.Equal(t, 60*time.Second, args.MaxHousekeepingInterval)
+	require.True(t, args.AllowDynamicHousekeeping)
+}
+
+func TestValidateHousekeeping(t *testing.T) {
+	tests := []struct {
+		name    string
+		cfg     string
+		wantErr string
+	}{
+		{name: "valid", cfg: `housekeeping_interval = "15s"`},
+		{name: "zero interval", cfg: `housekeeping_interval = "0s"`, wantErr: "housekeeping_interval must be greater than 0"},
+		{name: "max below base", cfg: "housekeeping_interval = \"2m\"\nmax_housekeeping_interval = \"1m\"", wantErr: "max_housekeeping_interval (1m0s) must be greater than or equal to housekeeping_interval (2m0s)"},
+		{name: "max below base without dynamic", cfg: "housekeeping_interval = \"2m\"\nallow_dynamic_housekeeping = false"},
+		{name: "explicit max below base without dynamic", cfg: "housekeeping_interval = \"2m\"\nmax_housekeeping_interval = \"1m\"\nallow_dynamic_housekeeping = false"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var args Arguments
+			err := syntax.Unmarshal([]byte(tc.cfg), &args)
+			if tc.wantErr == "" {
+				require.NoError(t, err)
+				return
+			}
+			require.ErrorContains(t, err, tc.wantErr)
+		})
+	}
 }

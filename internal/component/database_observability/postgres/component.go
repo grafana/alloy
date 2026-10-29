@@ -209,6 +209,9 @@ var defaultEnabledCollectors = []string{"stat_statements"}
 // resolveExporterArgs injects defaultEnabledCollectors after decoding, since SetToDefault runs before the user's block is decoded onto it.
 func resolveExporterArgs(userBlock *PrometheusExporterArguments) exporter_postgres.Arguments {
 	exporterArgs := exporter_postgres.DefaultArguments
+	if exporterArgs.StatStatementFlags != nil {
+		exporterArgs.StatStatementFlags.Limit = 100
+	}
 	if userBlock != nil {
 		exporterArgs = exporter_postgres.Arguments(*userBlock)
 	}

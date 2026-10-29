@@ -651,7 +651,7 @@ require (
 	github.com/go-faster/errors v0.7.1 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.9.0 // indirect
-	github.com/go-jose/go-jose/v4 v4.1.5 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.6 // indirect
 	github.com/go-kit/kit v0.13.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
@@ -1142,10 +1142,10 @@ replace github.com/influxdata/go-syslog/v3 => github.com/leodido/go-syslog/v4 v4
 replace github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-20250210100727-533688b5600d
 
 // TODO - remove forks when changes are merged upstream — non-singleton cadvisor Fork branch: https://github.com/grafana/cadvisor/tree/grafana-v0.60.5-noglobals (auto-synced from collector/builder-config.yaml)
-replace github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20260914142459-6f984a063abc
+replace github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20261027180521-39c571fbfcf6
 
 // cadvisor v0.60 split its /lib submodule out; its local replace is ignored from a dependency, so redirect /lib to the fork here too. (auto-synced from collector/builder-config.yaml)
-replace github.com/google/cadvisor/lib => github.com/grafana/cadvisor/lib v0.0.0-20260914142459-6f984a063abc
+replace github.com/google/cadvisor/lib => github.com/grafana/cadvisor/lib v0.0.0-20261027180521-39c571fbfcf6
 
 // TODO - this tracks exporter-package-v0.19.1 branch of grafana fork; remove once all patches are merged upstream (auto-synced from collector/builder-config.yaml)
 replace github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20260225165717-9c2c77e3702a

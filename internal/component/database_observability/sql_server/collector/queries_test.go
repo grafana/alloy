@@ -12,19 +12,22 @@ func TestQueryMarkers(t *testing.T) {
 	// Keep this explicit list in sync with queries.go. Query builders are covered
 	// below with representative inputs; this suite does not discover SQL automatically.
 	for name, query := range map[string]string{
-		"ping":              PingQuery,
-		"server info":       SelectServerInfo,
-		"original login":    SelectOriginalLogin,
-		"metrics":           selectQueryMetrics,
-		"query store state": selectQueryStoreState,
-		"permissions":       selectMyPermissionsQuery,
-		"query store rows":  selectQueryStoreHasRowsQuery,
-		"databases":         fmt.Sprintf(selectDatabasesTemplate, "('master', 'model')"),
-		"tables":            fmt.Sprintf(selectTablesTemplate, "('sys', 'information_schema')"),
-		"columns":           fmt.Sprintf(selectColumnsTemplate, "('table', 'quote''s table')"),
-		"indexes":           fmt.Sprintf(selectIndexesTemplate, "('table', 'quote''s table')"),
-		"foreign keys":      fmt.Sprintf(selectForeignKeysTemplate, "('table', 'quote''s table')"),
-		"use database":      fmt.Sprintf(useDatabaseTemplate, "[SELECT odd]]name]"),
+		"ping":                 PingQuery,
+		"server info":          SelectServerInfo,
+		"original login":       SelectOriginalLogin,
+		"metrics":              selectQueryMetrics,
+		"query store state":    selectQueryStoreState,
+		"permissions":          selectMyPermissionsQuery,
+		"query store rows":     selectQueryStoreHasRowsQuery,
+		"databases":            fmt.Sprintf(selectDatabasesTemplate, "('master', 'model')"),
+		"tables":               fmt.Sprintf(selectTablesTemplate, "('sys', 'information_schema')"),
+		"columns":              fmt.Sprintf(selectColumnsTemplate, "('table', 'quote''s table')"),
+		"indexes":              fmt.Sprintf(selectIndexesTemplate, "('table', 'quote''s table')"),
+		"foreign keys":         fmt.Sprintf(selectForeignKeysTemplate, "('table', 'quote''s table')"),
+		"use database":         fmt.Sprintf(useDatabaseTemplate, "[SELECT odd]]name]"),
+		"server configuration": selectServerConfiguration,
+		"azure sql database server configuration": selectAzureSQLDatabaseServerConfiguration,
+		"database max degree of parallelism":      selectDatabaseMaxDegreeOfParallelism,
 	} {
 		t.Run(name, func(t *testing.T) { requireQueryMarker(t, query) })
 	}
