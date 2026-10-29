@@ -35,7 +35,12 @@ attributes:
                 - x
 cloud_metadata:
     cluster_name: x
+    refresh_interval: 1s
     region: x
+    route53:
+        hosted_zone_ids:
+            - x
+        refresh_interval: 1s
 discovery:
     bpf_pid_filter_off: true
     default_exclude_instrument:
@@ -165,6 +170,7 @@ discovery:
           sampler:
             arg: x
             name: x
+    instrument_all_local: true
     min_process_age: 1s
     poll_interval: 1s
     route_harvester_advanced:
@@ -219,6 +225,9 @@ discovery:
           sampler:
             arg: x
             name: x
+          socket_apps:
+            enabled: true
+            non_root: true
 dotnet_runtime_metrics:
     sampling_interval: 1s
     timeout: 1s
@@ -456,10 +465,15 @@ jvm_runtime_metrics:
     sampling_interval: 1s
 log_level: x
 name_resolver:
+    azure:
+        resource_group: x
+        subscription_id: x
     cache_expiry: 1s
     cache_len: 1
-    ecs:
-        refresh_interval: 1s
+    gce:
+        endpoint: x
+        project_id: x
+        zone: x
     sources:
         - x
 network:

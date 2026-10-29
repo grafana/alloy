@@ -4,6 +4,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/grafana/alloy/integration-tests/k8s/deps"
 	"github.com/grafana/alloy/integration-tests/k8s/harness"
 )
@@ -128,6 +131,22 @@ func TestPrometheusExporterCadvisor(t *testing.T) {
 		"container_label_io_kubernetes_pod_name",
 		"container_label_io_kubernetes_pod_namespace",
 		"container_label_io_kubernetes_container_name",
+	)
+
+	// The housekeeping exporter collects every 10s with dynamic housekeeping
+	// off, so samples must be at least 10s apart. The default 1s interval
+	// produces samples 1-2s apart. The root cgroup always exists, so its series
+	// covers the full window.
+	mimir.QuerySampleTimestamps(t, "cadvisor-housekeeping", "container_cpu_usage_seconds_total", "1m",
+		map[string]string{"id": "/"},
+		func(c *assert.CollectT, labels map[string]string, timestamps []float64) {
+			require.GreaterOrEqualf(c, len(timestamps), 3, "%v: not enough samples yet", labels)
+			for i := 1; i < len(timestamps); i++ {
+				gap := timestamps[i] - timestamps[i-1]
+				// Allow for small differences in when each collection reads its stats.
+				require.GreaterOrEqualf(c, gap, 9.0, "%v: samples %.3fs apart, want about 10s or more", labels, gap)
+			}
+		},
 	)
 }
 
