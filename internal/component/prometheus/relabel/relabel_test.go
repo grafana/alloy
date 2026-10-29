@@ -8,7 +8,9 @@ import (
 
 	prom "github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
+	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/prometheus/prometheus/model/value"
 	"github.com/prometheus/prometheus/storage"
@@ -180,15 +182,67 @@ func TestCacheSizeMetric(t *testing.T) {
 	}
 }
 
+// TestMetrics checks the processing and cache counters for each way of
+// feeding the component. The V1 appender relabels the sample, each exemplar
+// and the metadata in separate calls.
 func TestMetrics(t *testing.T) {
-	relabeller := generateRelabel(t)
 	lbls := labels.FromStrings("__address__", "localhost")
+	exemplars := []exemplar.Exemplar{
+		{Labels: labels.FromStrings("trace_id", "a"), Value: 1, Ts: 10},
+		{Labels: labels.FromStrings("trace_id", "b"), Value: 2, Ts: 11},
+	}
+	meta := metadata.Metadata{Type: "gauge", Help: "help"}
 
-	relabeller.relabel(0, lbls)
-	m := &dto.Metric{}
-	err := relabeller.metricsProcessed.Write(m)
-	require.NoError(t, err)
-	require.True(t, *(m.Counter.Value) == 1)
+	appendV1 := func(t *testing.T, c *Component) {
+		app := c.receiver.Appender(t.Context())
+		_, err := app.Append(0, lbls, 10, 1)
+		require.NoError(t, err)
+		for _, e := range exemplars {
+			_, err = app.AppendExemplar(0, lbls, e)
+			require.NoError(t, err)
+		}
+		_, err = app.UpdateMetadata(0, lbls, meta)
+		require.NoError(t, err)
+		require.NoError(t, app.Commit())
+	}
+	// Want is [processed, outgoing, cache hits, cache misses].
+	for _, tc := range []struct {
+		name   string
+		action string
+		run    func(*testing.T, *Component)
+		want   [4]float64
+	}{
+		{
+			name: "relabel", action: "replace",
+			run:  func(_ *testing.T, c *Component) { c.relabel(0, lbls) },
+			want: [4]float64{1, 0, 0, 1},
+		},
+		{name: "V1 sample, exemplars and metadata", action: "replace", run: appendV1, want: [4]float64{4, 1, 3, 1}},
+		{name: "V1 dropped sample, exemplars and metadata", action: "drop", run: appendV1, want: [4]float64{4, 0, 3, 1}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c := generateRelabel(t)
+			require.NoError(t, c.Update(Arguments{
+				CacheSize: 100_000,
+				MetricRelabelConfigs: []*alloy_relabel.Config{{
+					SourceLabels: []string{"__address__"},
+					Regex:        alloy_relabel.Regexp(relabel.MustNewRegexp("(.+)")),
+					TargetLabel:  "new_label",
+					Replacement:  "new_value",
+					Action:       alloy_relabel.Action(tc.action),
+				}},
+			}))
+			tc.run(t, c)
+
+			got := [4]float64{
+				testutilCounter(t, c.metricsProcessed),
+				testutilCounter(t, c.metricsOutgoing),
+				testutilCounter(t, c.cacheHits),
+				testutilCounter(t, c.cacheMisses),
+			}
+			require.Equal(t, tc.want, got)
+		})
+	}
 }
 
 func TestRelabelDebuggingRespectsActivity(t *testing.T) {
@@ -220,6 +274,13 @@ func TestRelabelDebuggingRespectsActivity(t *testing.T) {
 			}
 		})
 	}
+}
+
+func testutilCounter(t *testing.T, c prom.Counter) float64 {
+	t.Helper()
+	var m dto.Metric
+	require.NoError(t, c.Write(&m))
+	return m.GetCounter().GetValue()
 }
 
 type debugDataPublisherSpy struct {

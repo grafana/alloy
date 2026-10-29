@@ -1,6 +1,7 @@
 package enrich
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"testing"
@@ -167,42 +168,70 @@ func TestEnricher(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fanout := prometheus.NewInterceptor(
-				nil,
-				prometheus.WithAppendHook(func(ref storage.SeriesRef, l labels.Labels, _ int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
+		for _, path := range appendPaths() {
+			t.Run(tt.name+"/"+path.name, func(t *testing.T) {
+				var calls int
+				check := func(l labels.Labels) {
+					calls++
 					for name, value := range tt.expectedLabels {
 						require.Equal(t, value, l.Get(name), "label %s", name)
 					}
+				}
+				fanout := nextWithHooks(check)
 
-					return ref, nil
-				}))
+				var entry storage.AppendableV2
+				tt.args.ForwardTo = []storage.AppendableV2{fanout}
+				_, err := New(component.Options{
+					ID:     "1",
+					Logger: util.TestAlloyLogger(t).Slog(),
+					OnStateChange: func(e component.Exports) {
+						newE := e.(Exports)
+						entry = newE.Receiver
+					},
+					Registerer:     prom.NewRegistry(),
+					GetServiceData: getServiceData,
+				}, tt.args)
+				require.NoError(t, err)
 
-			var entry storage.AppendableV2
-			tt.args.ForwardTo = []storage.AppendableV2{fanout}
-			_, err := New(component.Options{
-				ID:     "1",
-				Logger: util.TestAlloyLogger(t).Slog(),
-				OnStateChange: func(e component.Exports) {
-					newE := e.(Exports)
-					entry = newE.Receiver
-				},
-				Registerer:     prom.NewRegistry(),
-				GetServiceData: getServiceData,
-			}, tt.args)
-
-			require.NoError(t, err)
-
-			lbls := labels.FromMap(tt.inputLabels)
-			app := entry.(storage.Appendable).Appender(t.Context())
-
-			_, err = app.Append(0, lbls, time.Now().UnixMilli(), 0)
-			require.NoError(t, err)
-
-			err = app.Commit()
-			require.NoError(t, err)
-		})
+				require.NoError(t, path.append(t.Context(), entry, labels.FromMap(tt.inputLabels)))
+				require.Equal(t, 1, calls, "the sample didn't reach the next component")
+			})
+		}
 	}
+}
+
+// appendPath appends a single sample to a receiver through one appender version.
+type appendPath struct {
+	name   string
+	append func(ctx context.Context, entry storage.AppendableV2, l labels.Labels) error
+}
+
+// appendPaths returns every way a sample can reach a receiver, so tests can
+// run the same scenario through each of them.
+func appendPaths() []appendPath {
+	return []appendPath{
+		{
+			name: "V1",
+			append: func(ctx context.Context, entry storage.AppendableV2, l labels.Labels) error {
+				app := entry.(storage.Appendable).Appender(ctx)
+				if _, err := app.Append(0, l, time.Now().UnixMilli(), 0); err != nil {
+					return err
+				}
+				return app.Commit()
+			},
+		},
+	}
+}
+
+// nextWithHooks returns an interceptor that terminates the pipeline, and
+// calls onAppend with the labels of every sample it receives.
+func nextWithHooks(onAppend func(labels.Labels)) *prometheus.Interceptor {
+	return prometheus.NewInterceptor(nil,
+		prometheus.WithAppendHook(func(ref storage.SeriesRef, l labels.Labels, _ int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
+			onAppend(l)
+			return ref, nil
+		}),
+	)
 }
 
 func TestValidate(t *testing.T) {
@@ -265,10 +294,7 @@ func TestValidate(t *testing.T) {
 // TestEnrichConcurrentUpdate exercises Append/Update concurrently to surface
 // data races.
 func TestEnrichConcurrentUpdate(t *testing.T) {
-	fanout := prometheus.NewInterceptor(nil,
-		prometheus.WithAppendHook(func(ref storage.SeriesRef, _ labels.Labels, _ int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
-			return ref, nil
-		}))
+	fanout := nextWithHooks(func(labels.Labels) {})
 
 	args := Arguments{
 		Targets: []discovery.Target{
@@ -292,14 +318,14 @@ func TestEnrichConcurrentUpdate(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	// append samples
-	wg.Go(func() {
-		for range iterations {
-			app := c.receiver.Appender(t.Context())
-			_, _ = app.Append(0, lbls, 0, 0)
-			_ = app.Commit()
-		}
-	})
+	// append samples through every appender version
+	for _, path := range appendPaths() {
+		wg.Go(func() {
+			for range iterations {
+				_ = path.append(t.Context(), c.receiver, lbls)
+			}
+		})
+	}
 
 	// continuously rotate Targets and LabelsToCopy.
 	wg.Go(func() {
