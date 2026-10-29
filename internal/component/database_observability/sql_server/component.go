@@ -173,9 +173,9 @@ func defaultArguments() Arguments {
 	return Arguments{
 		QueryTimeout: defaultQueryTimeout,
 
-		ExcludeSchemas:     database_observability.DefaultExcludedSchemas(),
-		ExcludeDatabases:   database_observability.DefaultExcludedDatabases(),
-		ExcludeUsers:       database_observability.DefaultExcludedUsers(),
+		ExcludeSchemas:     database_observability.DefaultSQLServerExcludedSchemas(),
+		ExcludeDatabases:   database_observability.DefaultSQLServerExcludedDatabases(),
+		ExcludeUsers:       database_observability.DefaultSQLServerExcludedUsers(),
 		ExcludeCurrentUser: true,
 
 		SchemaDetailsArguments: SchemaDetailsArguments{

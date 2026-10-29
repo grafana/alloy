@@ -2,7 +2,7 @@ package collector
 
 import "github.com/grafana/alloy/internal/component/database_observability"
 
-var excludedDatabases = []string{"azure_maintenance"}
+var excludedDatabases = database_observability.AlwaysExcludedPostgresDatabases()
 
 var exclusionClause = database_observability.BuildExclusionClause(excludedDatabases)
 
