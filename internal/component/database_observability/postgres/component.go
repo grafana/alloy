@@ -156,8 +156,9 @@ func defaultArguments() Arguments {
 		ExcludeUsers:       database_observability.DefaultExcludedUsers(),
 		ExcludeCurrentUser: true,
 		QuerySampleArguments: QuerySampleArguments{
-			CollectInterval:       10 * time.Second,
-			DisableQueryRedaction: false,
+			CollectInterval:               10 * time.Second,
+			DisableQueryRedaction:         false,
+			EnablePreClassifiedWaitEvents: true,
 		},
 		QueryDetailsArguments: QueryDetailsArguments{
 			CollectInterval: 1 * time.Minute,
