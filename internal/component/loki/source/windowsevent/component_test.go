@@ -3,7 +3,6 @@
 package windowsevent
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,6 +17,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
@@ -53,17 +53,15 @@ func TestEventLogger(t *testing.T) {
 		Labels:               map[string]string{"job": "windows"},
 	})
 	require.NoError(t, err)
-	ctx, cancelFunc := context.WithTimeout(t.Context(), 10*time.Second)
 	found := false
-	stopComponent := runInBackground(ctx, cancelFunc, c, rec)
-	defer stopComponent()
+	stop := componenttest.RunInBackground(t, c.Run)
+	defer stopAndDrain(stop, rec)
 	tm := time.Now().Format(time.RFC3339Nano)
 	err = wlog.Info(2, tm)
 	require.NoError(t, err)
 	select {
-	case <-ctx.Done():
-		// Fail!
-		require.True(t, false)
+	case <-time.After(10 * time.Second):
+		require.FailNow(t, "timed out waiting for the event")
 	case e := <-rec.Chan():
 		require.Equal(t, model.LabelValue("windows"), e.Labels["job"])
 		if strings.Contains(e.Line, tm) {
@@ -74,29 +72,29 @@ func TestEventLogger(t *testing.T) {
 	require.True(t, found)
 }
 
-// runInBackground runs c with ctx in a new goroutine. The returned function
-// calls cancel and waits for Run to return. Waiting matters for goleak: on
-// shutdown the component saves the bookmark file, which can be slow enough on
-// Windows for goleak to report the still-running goroutines as leaked. While
-// waiting, rec is drained so that shutdown isn't blocked forwarding entries
-// that no one reads.
-func runInBackground(ctx context.Context, cancel context.CancelFunc, c *Component, rec loki.LogsReceiver) func() {
-	done := make(chan struct{})
+// stopAndDrain calls stop while reading from rec. Waiting for the component
+// to stop matters for goleak: on shutdown the component saves the bookmark
+// file, which can be slow enough on Windows for goleak to report the
+// still-running goroutines as leaked. Shutdown also forwards pending entries,
+// so without a reader stop could block until loki.DefaultDrainTimeout.
+func stopAndDrain(stop func(), rec loki.LogsReceiver) {
+	quit, done := make(chan struct{}), make(chan struct{})
 	go func() {
 		defer close(done)
-		_ = c.Run(ctx)
-	}()
-
-	return func() {
-		cancel()
 		for {
 			select {
 			case <-rec.Chan():
-			case <-done:
+			case <-quit:
 				return
 			}
 		}
-	}
+	}()
+	defer func() {
+		close(quit)
+		<-done
+	}()
+
+	stop()
 }
 
 func TestLegacyBookmarkConversion(t *testing.T) {
@@ -141,6 +139,5 @@ func TestLegacyBookmarkConversion(t *testing.T) {
 	require.True(t, string(dd) == bookmarkText)
 
 	// Run the component and cancel it to stop the target that was started in New()
-	ctx, cancelFunc := context.WithTimeout(t.Context(), 10*time.Second)
-	runInBackground(ctx, cancelFunc, c, rec)()
+	stopAndDrain(componenttest.RunInBackground(t, c.Run), rec)
 }
