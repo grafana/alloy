@@ -77,12 +77,13 @@ func newBookMark(path string) (*bookMark, error) {
 			return nil, err
 		}
 	}
+	// Start from the loaded position, so that saving it before the first new event arrives does not erase it.
 	return &bookMark{
 		handle:      bm,
 		path:        path,
 		isNew:       fileString == "",
 		buf:         buf,
-		bookmarkStr: uberAtomic.NewString(""),
+		bookmarkStr: uberAtomic.NewString(fileString),
 	}, nil
 }
 
