@@ -761,9 +761,9 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	inst.dbConnection = dbConnection
 
 	queryCtx, cancelQuery := context.WithTimeout(ctx, c.args.QueryTimeout)
-	var serverName, machineName, instanceName, engineVersion sql.NullString
+	var serverName, machineName, instanceName, engineVersion, productLevel, productBuild, compatibilityLevel sql.NullString
 	var engineEdition sql.NullInt64
-	err = inst.dbConnection.QueryRowContext(queryCtx, collector.SelectServerInfo).Scan(&serverName, &machineName, &instanceName, &engineVersion, &engineEdition)
+	err = inst.dbConnection.QueryRowContext(queryCtx, collector.SelectServerInfo).Scan(&serverName, &machineName, &instanceName, &engineVersion, &productLevel, &productBuild, &engineEdition, &compatibilityLevel)
 	cancelQuery()
 	if err != nil {
 		return fmt.Errorf("failed to query server information: %w", err)
@@ -815,7 +815,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	}
 	inst.collectors = nil
 
-	if err := c.startCollectors(ctx, inst, generatedServerID, engineVersion.String, int(engineEdition.Int64), cp, effectiveExcludeUsers); err != nil {
+	if err := c.startCollectors(ctx, inst, generatedServerID, engineVersion.String, productLevel.String, productBuild.String, int(engineEdition.Int64), compatibilityLevel.String, cp, effectiveExcludeUsers); err != nil {
 		return fmt.Errorf("failed to start collectors: %w", err)
 	}
 
@@ -834,6 +834,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 	collectors := map[string]bool{
 		collector.SchemaDetailsCollector:       true,
 		collector.ServerConfigurationCollector: true,
+		collector.ServerMetricsCollector:       true,
 		collector.QueryMetricsCollector:        true,
 		collector.QuerySamplesCollector:        true,
 		collector.QueryDetailsCollector:        true,
@@ -857,7 +858,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 // startCollectors attempts to start all of the enabled collectors for a
 // database instance. If one or more collectors fail to start, their errors
 // are reported.
-func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serverID string, engineVersion string, engineEdition int, cloudProviderInfo *database_observability.CloudProvider, effectiveExcludeUsers []string) error {
+func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serverID string, engineVersion string, productLevel string, productBuild string, engineEdition int, compatibilityLevel string, cloudProviderInfo *database_observability.CloudProvider, effectiveExcludeUsers []string) error {
 	var startErrors []string
 
 	logStartError := func(collectorName, action string, err error) {
@@ -888,6 +889,29 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 				logStartError(collector.SchemaDetailsCollector, "start", err)
 			}
 			inst.collectors = append(inst.collectors, stCollector)
+		}
+	}
+
+	if collectors[collector.ServerMetricsCollector] {
+		smCollector, err := collector.NewServerMetrics(collector.ServerMetricsArguments{
+			DB:                 inst.dbConnection,
+			Registry:           inst.registry,
+			QueryTimeout:       c.args.QueryTimeout,
+			ExcludeCurrentUser: c.args.ExcludeCurrentUser,
+			Logger:             c.opts.Logger,
+			EngineEdition:      engineEdition,
+			ProductVersion:     engineVersion,
+			ProductLevel:       productLevel,
+			ProductBuild:       productBuild,
+			CompatibilityLevel: compatibilityLevel,
+		})
+		if err != nil {
+			logStartError(collector.ServerMetricsCollector, "create", err)
+		} else {
+			if err := smCollector.Start(ctx); err != nil {
+				logStartError(collector.ServerMetricsCollector, "start", err)
+			}
+			inst.collectors = append(inst.collectors, smCollector)
 		}
 	}
 

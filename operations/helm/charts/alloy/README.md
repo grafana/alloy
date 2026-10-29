@@ -145,6 +145,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | global.image.registry | string | `""` | Global image registry to use if it needs to be overridden for some specific use cases (e.g local registries, custom images, ...) |
 | global.podSecurityContext | object | `{}` | Security context to apply to the Grafana Alloy pod. |
 | image.digest | string | `nil` | Grafana Alloy image's SHA256 digest (either in format "sha256:XYZ" or "XYZ"). When set, will override `image.tag`. |
+| image.distroless | bool | `false` | Use a distroless version of Grafana Alloy image (experimental).  Appends "-distroless" to the image tag (or the chart's appVersion when tag is empty). Ignored when image.digest is set. |
 | image.pullPolicy | string | `"IfNotPresent"` | Grafana Alloy image pull policy. |
 | image.pullSecrets | list | `[]` | Optional set of image pull secrets. |
 | image.registry | string | `"docker.io"` | Grafana Alloy image registry (defaults to docker.io) |
