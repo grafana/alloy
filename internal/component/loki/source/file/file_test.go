@@ -667,7 +667,9 @@ func TestDeleteRecreateFile(t *testing.T) {
 		_, err = f.Write([]byte("writing some new text\n"))
 		require.NoError(t, err)
 
-		checkMsg(t, ch1, "writing some new text", 5*time.Second, wantLabelSet)
+		// With file match enabled the recreated file may only be picked up on the next sync tick,
+		// so wait longer than SyncPeriod.
+		checkMsg(t, ch1, "writing some new text", 2*match.SyncPeriod, wantLabelSet)
 	})
 }
 

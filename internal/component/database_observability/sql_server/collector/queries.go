@@ -17,9 +17,7 @@ const PingQuery = "SELECT " + QueryMarker + " 1"
 
 // selectServerInfo returns a stable identifier for the server instance plus
 // its product version and engine edition, used to derive a server_id label and
-// to expose the engine version on the connection_info metric. The edition is
-// needed because Azure SQL Database and Managed Instance report a fixed
-// ProductVersion that says nothing about the running engine.
+// to expose version/edition metadata on metrics.
 const SelectServerInfo = `SELECT ` + QueryMarker + `
     CONVERT(NVARCHAR(128), SERVERPROPERTY('ServerName')) AS server_name,
     CONVERT(NVARCHAR(128), SERVERPROPERTY('MachineName')) AS machine_name,
@@ -323,3 +321,43 @@ const (
 )
 
 const useDatabaseTemplate = "USE " + QueryMarker + " %s"
+
+const selectServerConfiguration = `
+SELECT ` + QueryMarker + `
+	name,
+	CONVERT(float, value) AS configured_value,
+	CONVERT(float, value_in_use) AS in_use_value
+FROM sys.configurations
+WHERE name IN (
+	N'user connections',
+	N'remote admin connections',
+	N'network packet size (B)',
+	N'remote login timeout (s)',
+	N'max server memory (MB)',
+	N'min server memory (MB)',
+	N'max worker threads',
+	N'max degree of parallelism',
+	N'cost threshold for parallelism',
+	N'optimize for ad hoc workloads',
+	N'backup compression default',
+	N'min memory per query (KB)',
+	N'index create memory (KB)'
+)`
+
+const selectAzureSQLDatabaseServerConfiguration = `
+SELECT ` + QueryMarker + `
+	name,
+	CONVERT(float, value) AS configured_value,
+	CONVERT(float, value_in_use) AS in_use_value
+FROM sys.configurations
+WHERE name IN (
+	N'network packet size (B)',
+	N'remote login timeout (s)',
+	N'min memory per query (KB)',
+	N'index create memory (KB)'
+)`
+
+const selectDatabaseMaxDegreeOfParallelism = `
+SELECT ` + QueryMarker + ` CONVERT(float, value)
+FROM sys.database_scoped_configurations
+WHERE name = N'MAXDOP'`

@@ -27,7 +27,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	"github.com/prometheus-operator/prometheus-operator/pkg/assets"
 	promExternalVersions "github.com/prometheus-operator/prometheus-operator/pkg/client/informers/externalversions"
 	promListers_v1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1alpha1"
 	promVersioned "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
@@ -235,9 +234,7 @@ func (c *Component) Startup(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal global config: %w", err)
 	}
-	sb := assets.NewStoreBuilder(c.k8sClient.CoreV1(), c.k8sClient.CoreV1())
-
-	c.eventProcessor = c.newEventProcessor(queue, informerStopChan, namespaceLister, cfgLister, *baseCfg, sb)
+	c.eventProcessor = c.newEventProcessor(queue, informerStopChan, namespaceLister, cfgLister, *baseCfg)
 
 	go c.eventProcessor.run(ctx)
 	return nil
@@ -365,7 +362,7 @@ func (c *Component) startConfigInformer(queue workqueue.TypedRateLimitingInterfa
 
 func (c *Component) newEventProcessor(queue workqueue.TypedRateLimitingInterface[commonK8s.Event], stopChan chan struct{},
 	namespaceLister coreListers.NamespaceLister, cfgLister promListers_v1alpha1.AlertmanagerConfigLister,
-	baseCfg alertmgr_cfg.Config, sb *assets.StoreBuilder) *eventProcessor {
+	baseCfg alertmgr_cfg.Config) *eventProcessor {
 
 	// Deep copy to make sure that a change in arguments won't immediately propagate to the event processor.
 	templateFiles := make(map[string]string, len(c.args.TemplateFiles))
@@ -387,6 +384,5 @@ func (c *Component) newEventProcessor(queue workqueue.TypedRateLimitingInterface
 		logger:                c.opts.Logger,
 		kclient:               c.k8sClient,
 		templateFiles:         templateFiles,
-		storeBuilder:          sb,
 	}
 }

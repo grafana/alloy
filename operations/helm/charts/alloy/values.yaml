@@ -163,6 +163,10 @@ image:
   # -- (string) Grafana Alloy image tag. When empty, the Chart's appVersion is
   # used.
   tag: null
+  # -- Use a distroless version of Grafana Alloy image (experimental).
+  #
+  # Appends "-distroless" to the image tag (or the chart's appVersion when tag is empty). Ignored when image.digest is set.
+  distroless: false
   # -- Grafana Alloy image's SHA256 digest (either in format "sha256:XYZ" or "XYZ"). When set, will override `image.tag`.
   digest: null
   # -- Grafana Alloy image pull policy.
