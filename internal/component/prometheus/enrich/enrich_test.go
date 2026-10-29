@@ -13,6 +13,7 @@ import (
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/util"
 	prom "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/assert"
@@ -177,7 +178,7 @@ func TestEnricher(t *testing.T) {
 						require.Equal(t, value, l.Get(name), "label %s", name)
 					}
 				}
-				fanout := nextWithHooks(check)
+				fanout := nextWithBothHooks(check)
 
 				var entry storage.AppendableV2
 				tt.args.ForwardTo = []storage.AppendableV2{fanout}
@@ -200,7 +201,7 @@ func TestEnricher(t *testing.T) {
 	}
 }
 
-// appendPath appends a single sample to a receiver through one appender version.
+// appendPath appends a single sample to a receiver through either the V1 or the V2 appender.
 type appendPath struct {
 	name   string
 	append func(ctx context.Context, entry storage.AppendableV2, l labels.Labels) error
@@ -208,6 +209,8 @@ type appendPath struct {
 
 // appendPaths returns every way a sample can reach a receiver, so tests can
 // run the same scenario through each of them.
+//
+// TODO: Remove the V1 path when the V1 appenders are removed.
 func appendPaths() []appendPath {
 	return []appendPath{
 		{
@@ -220,18 +223,78 @@ func appendPaths() []appendPath {
 				return app.Commit()
 			},
 		},
+		{
+			name: "V2",
+			append: func(ctx context.Context, entry storage.AppendableV2, l labels.Labels) error {
+				app := entry.AppenderV2(ctx)
+				if _, err := app.Append(0, l, 0, time.Now().UnixMilli(), 0, nil, nil, storage.AppendV2Options{}); err != nil {
+					return err
+				}
+				return app.Commit()
+			},
+		},
 	}
 }
 
-// nextWithHooks returns an interceptor that terminates the pipeline, and
-// calls onAppend with the labels of every sample it receives.
-func nextWithHooks(onAppend func(labels.Labels)) *prometheus.Interceptor {
+// nextWithBothHooks returns an interceptor that terminates the pipeline, and
+// calls onAppend with the labels of every sample it receives, whichever
+// appender version was used.
+//
+// TODO: Remove the V1 hook when the V1 appenders are removed.
+func nextWithBothHooks(onAppend func(labels.Labels)) *prometheus.Interceptor {
 	return prometheus.NewInterceptor(nil,
 		prometheus.WithAppendHook(func(ref storage.SeriesRef, l labels.Labels, _ int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
 			onAppend(l)
 			return ref, nil
 		}),
+		prometheus.WithAppendV2Hook(func(ref storage.SeriesRef, l labels.Labels, _, _ int64, _ float64, _ *histogram.Histogram, _ *histogram.FloatHistogram, _ storage.AppendV2Options, _ storage.AppenderV2) (storage.SeriesRef, error) {
+			onAppend(l)
+			return ref, nil
+		}),
 	)
+}
+
+func TestEnricherAppendV2(t *testing.T) {
+	var (
+		gotLabels labels.Labels
+		gotH      *histogram.Histogram
+		gotCalls  int
+	)
+	next := prometheus.NewInterceptor(nil, prometheus.WithAppendV2Hook(func(_ storage.SeriesRef, l labels.Labels, _, _ int64, _ float64, h *histogram.Histogram, _ *histogram.FloatHistogram, _ storage.AppendV2Options, _ storage.AppenderV2) (storage.SeriesRef, error) {
+		gotLabels, gotH = l, h
+		gotCalls++
+		return 1, nil
+	}))
+
+	var entry storage.AppendableV2
+	c, err := New(component.Options{
+		ID:     "1",
+		Logger: util.TestAlloyLogger(t).Slog(),
+		OnStateChange: func(e component.Exports) {
+			entry = e.(Exports).Receiver
+		},
+		Registerer:     prom.NewRegistry(),
+		GetServiceData: getServiceData,
+	}, Arguments{
+		ForwardTo: []storage.AppendableV2{next},
+	})
+	require.NoError(t, err)
+
+	app := entry.AppenderV2(t.Context())
+	lbls := labels.FromStrings("__name__", "test_metric", "pod", "nginx-abc")
+
+	h := &histogram.Histogram{Schema: 1}
+	_, err = app.Append(42, lbls, 0, time.Now().UnixMilli(), 0, h, nil, storage.AppendV2Options{})
+	require.NoError(t, err)
+	require.NoError(t, app.Commit())
+	require.Equal(t, 1, gotCalls)
+	require.Equal(t, lbls, gotLabels)
+	require.Same(t, h, gotH)
+
+	c.exited.Store(true)
+	_, err = app.Append(0, lbls, 0, time.Now().UnixMilli(), 0, nil, nil, storage.AppendV2Options{})
+	require.ErrorContains(t, err, "has exited")
+	require.Equal(t, 1, gotCalls)
 }
 
 func TestValidate(t *testing.T) {
@@ -294,7 +357,7 @@ func TestValidate(t *testing.T) {
 // TestEnrichConcurrentUpdate exercises Append/Update concurrently to surface
 // data races.
 func TestEnrichConcurrentUpdate(t *testing.T) {
-	fanout := nextWithHooks(func(labels.Labels) {})
+	fanout := nextWithBothHooks(func(labels.Labels) {})
 
 	args := Arguments{
 		Targets: []discovery.Target{

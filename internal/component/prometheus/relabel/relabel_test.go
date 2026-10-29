@@ -9,6 +9,7 @@ import (
 	prom "github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prometheus/model/exemplar"
+	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -184,7 +185,8 @@ func TestCacheSizeMetric(t *testing.T) {
 
 // TestMetrics checks the processing and cache counters for each way of
 // feeding the component. The V1 appender relabels the sample, each exemplar
-// and the metadata in separate calls.
+// and the metadata in separate calls, so the V2 appender, which gets them
+// together, must count them the same way.
 func TestMetrics(t *testing.T) {
 	lbls := labels.FromStrings("__address__", "localhost")
 	exemplars := []exemplar.Exemplar{
@@ -205,6 +207,13 @@ func TestMetrics(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, app.Commit())
 	}
+	appendV2 := func(t *testing.T, c *Component) {
+		app := c.receiver.AppenderV2(t.Context())
+		_, err := app.Append(0, lbls, 0, 10, 1, nil, nil, storage.AppendV2Options{Metadata: meta, Exemplars: exemplars})
+		require.NoError(t, err)
+		require.NoError(t, app.Commit())
+	}
+
 	// Want is [processed, outgoing, cache hits, cache misses].
 	for _, tc := range []struct {
 		name   string
@@ -218,7 +227,9 @@ func TestMetrics(t *testing.T) {
 			want: [4]float64{1, 0, 0, 1},
 		},
 		{name: "V1 sample, exemplars and metadata", action: "replace", run: appendV1, want: [4]float64{4, 1, 3, 1}},
+		{name: "V2 sample, exemplars and metadata", action: "replace", run: appendV2, want: [4]float64{4, 1, 3, 1}},
 		{name: "V1 dropped sample, exemplars and metadata", action: "drop", run: appendV1, want: [4]float64{4, 0, 3, 1}},
+		{name: "V2 dropped sample, exemplars and metadata", action: "drop", run: appendV2, want: [4]float64{4, 0, 3, 1}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			c := generateRelabel(t)
@@ -274,6 +285,111 @@ func TestRelabelDebuggingRespectsActivity(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestAppendV2 exercises the AppenderV2 path of the relabel interceptor.
+func TestAppendV2(t *testing.T) {
+	type appended struct {
+		l  labels.Labels
+		st int64
+		t  int64
+		v  float64
+		h  *histogram.Histogram
+		fh *histogram.FloatHistogram
+	}
+
+	newRelabeller := func(t *testing.T, action string) (storage.AppenderV2, *[]appended, *Component) {
+		var got []appended
+		next := prometheus.NewInterceptor(nil, prometheus.WithAppendV2Hook(func(_ storage.SeriesRef, l labels.Labels, st, ts int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, _ storage.AppendV2Options, _ storage.AppenderV2) (storage.SeriesRef, error) {
+			got = append(got, appended{l, st, ts, v, h, fh})
+			return 1, nil
+		}))
+		var entry storage.AppendableV2
+		c, err := New(component.Options{
+			ID:             "1",
+			Logger:         util.TestAlloyLogger(t).Slog(),
+			OnStateChange:  func(e component.Exports) { entry = e.(Exports).Receiver },
+			Registerer:     prom.NewRegistry(),
+			GetServiceData: getServiceData,
+		}, Arguments{
+			ForwardTo: []storage.AppendableV2{next},
+			MetricRelabelConfigs: []*alloy_relabel.Config{{
+				SourceLabels: []string{"__address__"},
+				Regex:        alloy_relabel.Regexp(relabel.MustNewRegexp("(.+)")),
+				TargetLabel:  "new_label",
+				Replacement:  "new_value",
+				Action:       alloy_relabel.Action(action),
+			}},
+			CacheSize: 100_000,
+		})
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			c.mut.RLock()
+			c.cache.close()
+			c.mut.RUnlock()
+		})
+		return entry.AppenderV2(t.Context()), &got, c
+	}
+
+	lbls := labels.FromStrings("__address__", "localhost")
+
+	t.Run("relabels samples", func(t *testing.T) {
+		app, got, c := newRelabeller(t, "replace")
+		_, err := app.Append(42, lbls, 5, 10, 1.5, nil, nil, storage.AppendV2Options{})
+		require.NoError(t, err)
+		require.Len(t, *got, 1)
+		require.Equal(t, "new_value", (*got)[0].l.Get("new_label"))
+		require.Equal(t, int64(5), (*got)[0].st)
+		require.Equal(t, int64(10), (*got)[0].t)
+		require.Equal(t, 1.5, (*got)[0].v)
+		require.Equal(t, 1.0, testutilCounter(t, c.metricsProcessed))
+		require.Equal(t, 1.0, testutilCounter(t, c.metricsOutgoing))
+	})
+
+	t.Run("relabels histograms", func(t *testing.T) {
+		app, got, _ := newRelabeller(t, "replace")
+		h := &histogram.Histogram{Schema: 1}
+		fh := &histogram.FloatHistogram{Schema: 1}
+		_, err := app.Append(0, lbls, 0, 10, 0, h, nil, storage.AppendV2Options{})
+		require.NoError(t, err)
+		_, err = app.Append(0, lbls, 0, 11, 0, nil, fh, storage.AppendV2Options{})
+		require.NoError(t, err)
+		require.Len(t, *got, 2)
+		require.Same(t, h, (*got)[0].h)
+		require.Same(t, fh, (*got)[1].fh)
+		require.Equal(t, "new_value", (*got)[1].l.Get("new_label"))
+	})
+
+	t.Run("drops series", func(t *testing.T) {
+		app, got, c := newRelabeller(t, "drop")
+		ref, err := app.Append(42, lbls, 0, 10, 1, nil, nil, storage.AppendV2Options{})
+		require.NoError(t, err)
+		require.Equal(t, storage.SeriesRef(0), ref)
+		require.Empty(t, *got)
+		require.Equal(t, 1.0, testutilCounter(t, c.metricsProcessed))
+		require.Equal(t, 0.0, testutilCounter(t, c.metricsOutgoing))
+	})
+
+	t.Run("stale NaN removes from cache", func(t *testing.T) {
+		app, _, c := newRelabeller(t, "replace")
+		_, err := app.Append(0, lbls, 0, 10, 1, nil, nil, storage.AppendV2Options{})
+		require.NoError(t, err)
+		_, found := c.getFromCache(lbls)
+		require.True(t, found)
+
+		_, err = app.Append(0, lbls, 0, 11, math.Float64frombits(value.StaleNaN), nil, nil, storage.AppendV2Options{})
+		require.NoError(t, err)
+		_, found = c.getFromCache(lbls)
+		require.False(t, found)
+	})
+
+	t.Run("errors once exited", func(t *testing.T) {
+		app, got, c := newRelabeller(t, "replace")
+		c.exited.Store(true)
+		_, err := app.Append(0, lbls, 0, 10, 1, nil, nil, storage.AppendV2Options{})
+		require.ErrorContains(t, err, "has exited")
+		require.Empty(t, *got)
+	})
 }
 
 func testutilCounter(t *testing.T, c prom.Counter) float64 {
