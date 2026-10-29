@@ -90,6 +90,7 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 		ClientID:          cfg.ClientConfig.ClientID,
 		InitialOffset:     cfg.ConsumerConfig.InitialOffset,
 		ConnIdleTimeout:   cfg.ClientConfig.ConnIdleTimeout,
+		DialTimeout:       cfg.ClientConfig.DialTimeout,
 
 		// ResolveCanonicalBootstrapServersOnly is deprecated and no longer exists upstream to read back.
 
@@ -110,6 +111,7 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 		MaxFetchSize:             cfg.ConsumerConfig.MaxFetchSize,
 		MaxPartitionFetchSize:    cfg.ConsumerConfig.MaxPartitionFetchSize,
 		MaxFetchWait:             cfg.ConsumerConfig.MaxFetchWait,
+		MaxDecompressBatchBytes:  cfg.ConsumerConfig.MaxDecompressBatchBytes,
 		RackID:                   cfg.ClientConfig.RackID,
 		UseLeaderEpoch:           cfg.ClientConfig.UseLeaderEpoch,
 		GroupRebalanceStrategies: rebalanceStrategies,
@@ -284,7 +286,16 @@ func toKafkaHeaderExtraction(cfg kafkareceiver.HeaderExtraction) kafka.HeaderExt
 func toKafkaPartitionProcessing(cfg kafkareceiver.PartitionProcessing) kafka.PartitionProcessingArguments {
 	return kafka.PartitionProcessingArguments{
 		Independent:        cfg.Independent,
-		MaxBufferedBatches: cfg.MaxBufferedBatches,
+		MaxBufferedBatches: 1, // Deprecated: the converter populates max_prefetch.batches instead.
+		MaxPrefetch: kafka.MaxPrefetchArguments{
+			Batches: cfg.MaxPrefetch.Batches,
+			Bytes:   cfg.MaxPrefetch.Bytes,
+		},
+		MaxInFlight: kafka.MaxInFlightArguments{
+			Records: cfg.MaxInFlight.Records,
+			Bytes:   cfg.MaxInFlight.Bytes,
+			Window:  cfg.MaxInFlight.Window,
+		},
 	}
 }
 

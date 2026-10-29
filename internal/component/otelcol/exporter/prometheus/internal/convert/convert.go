@@ -21,6 +21,7 @@ import (
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/otlptranslator"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
@@ -232,7 +233,7 @@ func (conv *Converter) getOrCreateResource(res pcommon.Resource) *memorySeries {
 			return true
 		}
 
-		lb.Set(prometheus.NormalizeLabel(k), v.AsString())
+		lb.Set(normalizeLabel(k), v.AsString())
 		return true
 	})
 
@@ -292,7 +293,7 @@ func (conv *Converter) getOrCreateScope(res *memorySeries, scope pcommon.Instrum
 	// There is no need to sort the attributes here.
 	// The call to lb.Labels below will sort them.
 	scope.Attributes().Range(func(k string, v pcommon.Value) bool {
-		lb.Set(prometheus.NormalizeLabel(k), v.AsString())
+		lb.Set(normalizeLabel(k), v.AsString())
 		return true
 	})
 
@@ -458,7 +459,7 @@ func (conv *Converter) getOrCreateSeries(res *memorySeries, scope *memorySeries,
 	// There is no need to sort the attributes here.
 	// The call to lb.Labels below will sort them.
 	attrs.Range(func(k string, v pcommon.Value) bool {
-		lb.Set(prometheus.NormalizeLabel(k), v.AsString())
+		lb.Set(normalizeLabel(k), v.AsString())
 		return true
 	})
 
@@ -942,4 +943,19 @@ func (conv *Converter) FlushMetadata() {
 		conv.metadataCache.Delete(key)
 		return true
 	})
+}
+
+// labelNamer mirrors the label sanitization used by the upstream Prometheus
+// translators: multiple underscores are preserved and labels with a single
+// leading underscore are not prefixed with "key".
+var labelNamer = otlptranslator.LabelNamer{PreserveMultipleUnderscores: true}
+
+// normalizeLabel converts an OTLP attribute name into a Prometheus label name.
+// Names that cannot be converted (for example empty ones) are returned as-is.
+func normalizeLabel(k string) string {
+	name, err := labelNamer.Build(k)
+	if err != nil {
+		return k
+	}
+	return name
 }
