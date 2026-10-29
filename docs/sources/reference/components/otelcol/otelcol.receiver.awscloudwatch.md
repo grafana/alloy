@@ -23,6 +23,17 @@ Bug reports or feature requests will be redirected to the upstream repository, i
 
 You can specify multiple `otelcol.receiver.awscloudwatch` components by giving them different labels.
 
+{{< admonition type="caution" >}}
+`otelcol.receiver.awscloudwatch` doesn't support clustering.
+Every {{< param "PRODUCT_NAME" >}} instance that runs this component polls the same log groups.
+If you deploy {{< param "PRODUCT_NAME" >}} as a DaemonSet or with more than one replica, each instance collects every log event, which duplicates logs and multiplies CloudWatch Logs API calls.
+
+Run this component on a single {{< param "PRODUCT_NAME" >}} instance, and set the `storage` argument so the instance resumes from its last position after a restart.
+For more information, refer to [using clustering][].
+
+[using clustering]: ../../../../get-started/clustering/
+{{< /admonition >}}
+
 ## Usage
 
 ```alloy
