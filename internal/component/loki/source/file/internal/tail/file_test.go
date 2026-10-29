@@ -126,6 +126,33 @@ func TestFile(t *testing.T) {
 		verifyResult(t, file, nil, io.EOF)
 	})
 
+	t.Run("truncate in place keeps file handle", func(t *testing.T) {
+		name := createFile(t, "truncate-in-place", "before-truncate\n")
+		defer removeFile(t, name)
+
+		file, err := NewFile(logging.NewSlogNop(), &Config{
+			Filename: name,
+			WatcherConfig: WatcherConfig{
+				MinPollFrequency: 50 * time.Millisecond,
+				MaxPollFrequency: 50 * time.Millisecond,
+			},
+		})
+		require.NoError(t, err)
+		defer file.Close()
+
+		verifyResult(t, file, &Line{Text: "before-truncate", Offset: 16}, nil)
+		verifyResult(t, file, nil, io.EOF)
+
+		fd := file.file.Fd()
+		go func() {
+			time.Sleep(50 * time.Millisecond)
+			truncateFile(t, name, "after-truncate\n")
+		}()
+		require.NoError(t, file.Wait(t.Context()))
+		require.Equal(t, fd, file.file.Fd(), "truncation should not close and reopen the file")
+		verifyResult(t, file, &Line{Text: "after-truncate", Offset: 15}, nil)
+	})
+
 	t.Run("truncate", func(t *testing.T) {
 		name := createFile(t, "truncate", "a really long string goes here\nhello\nworld\n")
 		defer removeFile(t, name)
@@ -661,28 +688,6 @@ func createCompressedFile(t *testing.T, name, compression string, reader io.Read
 		require.NoError(t, err)
 	}
 	return path
-}
-
-func TestInodeReused(t *testing.T) {
-	mod := time.Unix(1_700_000_000, 0)
-	tests := []struct {
-		name           string
-		offset, size   int64
-		oldMod, newMod time.Time
-		want           bool
-	}{
-		{name: "same size and mtime", offset: 100, size: 100, oldMod: mod, newMod: mod, want: false},
-		{name: "grew with the same mtime", offset: 100, size: 150, oldMod: mod, newMod: mod, want: false},
-		{name: "shrunk below the consumed offset", offset: 100, size: 40, oldMod: mod, newMod: mod, want: true},
-		{name: "empty replacement", offset: 10, size: 0, oldMod: mod, newMod: mod, want: true},
-		{name: "mtime moved forward", offset: 100, size: 180, oldMod: mod, newMod: mod.Add(time.Second), want: true},
-		{name: "mtime moved backward", offset: 100, size: 100, oldMod: mod, newMod: mod.Add(-time.Second), want: true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, inodeReused(tt.offset, tt.size, tt.oldMod, tt.newMod))
-		})
-	}
 }
 
 func verifyResult(t *testing.T, f *File, expectedLine *Line, expectedErr error) {
