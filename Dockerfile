@@ -39,7 +39,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 
 ###
 
-FROM public.ecr.aws/ubuntu/ubuntu:noble@sha256:748740465d0aadaa69ab6e6c295892f17d7a8f44a85090dbb571ec0bb8c5674f
+FROM docker.io/library/ubuntu:noble@sha256:fe81560990fae86dc4743202b2cb4d3df98d0bcf949173cecef15ce1127ef852
 
 # Username and uid for alloy user
 ARG UID="473"
