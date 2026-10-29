@@ -19,11 +19,11 @@ import (
 
 func statefulSetFixture() (*appsv1.StatefulSet, *appsv1.ControllerRevision) {
 	s := &appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "demo", UID: "s-1", Generation: 1}, Spec: appsv1.StatefulSetSpec{Replicas: ptr.To(int32(2)), Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": "web"}}, Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "app", Image: "postgres:16"}}}}}, Status: appsv1.StatefulSetStatus{ObservedGeneration: 1, Replicas: 2, UpdatedReplicas: 2, AvailableReplicas: 2, CurrentRevision: "web-1", UpdateRevision: "web-1"}}
-	return s, ownedRevision(s.UID, "web-1", 1)
+	return s, ownedRevision(s.UID, "StatefulSet", "web-1", 1)
 }
 
-func ownedRevision(owner types.UID, name string, n int64) *appsv1.ControllerRevision {
-	return &appsv1.ControllerRevision{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "demo", UID: types.UID("cr-" + name), Labels: map[string]string{controllerRevisionHashLabel: name[len("web-"):]}, OwnerReferences: []metav1.OwnerReference{{Kind: "StatefulSet", UID: owner, Controller: ptr.To(true)}}}, Revision: n}
+func ownedRevision(owner types.UID, kind, name string, n int64) *appsv1.ControllerRevision {
+	return &appsv1.ControllerRevision{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "demo", UID: types.UID("cr-" + name), Labels: map[string]string{controllerRevisionHashLabel: name[len("web-"):]}, OwnerReferences: []metav1.OwnerReference{{Kind: kind, UID: owner, Controller: ptr.To(true)}}}, Revision: n}
 }
 
 // updateStatefulSet starts rolling out a new template as revision name.
@@ -66,7 +66,7 @@ func TestStatefulSetRolloutLifecycle(t *testing.T) {
 	s.Spec.Template.Spec.Containers[0].Image = "postgres:17"
 	c.observeRevisioned(s, false)
 	require.Zero(t, c.queue.Len())
-	c.observeControllerRevision(ownedRevision(s.UID, "web-2", 2))
+	c.observeControllerRevision(ownedRevision(s.UID, "StatefulSet", "web-2", 2))
 	started := takeStatefulSet(t, c, rolloutStarted)
 	require.Equal(t, int64(2), started.revision)
 	require.Equal(t, "1", started.attrs["grafana.sdlc.change.version.before"])
@@ -95,7 +95,7 @@ func TestStatefulSetUpdateStrategies(t *testing.T) {
 		s.Spec.UpdateStrategy = appsv1.StatefulSetUpdateStrategy{Type: appsv1.RollingUpdateStatefulSetStrategyType, RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{Partition: ptr.To(int32(1))}}
 		c := testController(t)
 		c.observeControllerRevision(cr)
-		c.observeControllerRevision(ownedRevision(s.UID, "web-2", 2))
+		c.observeControllerRevision(ownedRevision(s.UID, "StatefulSet", "web-2", 2))
 		c.observeRevisioned(s, true)
 		updateStatefulSet(s, "web-2")
 		c.observeRevisioned(s, false)
@@ -114,7 +114,7 @@ func TestStatefulSetUpdateStrategies(t *testing.T) {
 		s.Spec.UpdateStrategy = appsv1.StatefulSetUpdateStrategy{Type: appsv1.OnDeleteStatefulSetStrategyType}
 		c := testController(t)
 		c.observeControllerRevision(cr)
-		c.observeControllerRevision(ownedRevision(s.UID, "web-2", 2))
+		c.observeControllerRevision(ownedRevision(s.UID, "StatefulSet", "web-2", 2))
 		c.observeRevisioned(s, true)
 		updateStatefulSet(s, "web-2")
 		c.observeRevisioned(s, false)
@@ -131,12 +131,12 @@ func TestStatefulSetSupersededStaleAndRollback(t *testing.T) {
 	c := testController(t)
 	c.observeControllerRevision(cr)
 	c.observeRevisioned(s, true)
-	c.observeControllerRevision(ownedRevision(s.UID, "web-2", 2))
+	c.observeControllerRevision(ownedRevision(s.UID, "StatefulSet", "web-2", 2))
 	updateStatefulSet(s, "web-2")
 	c.observeRevisioned(s, false)
 	takeStatefulSet(t, c, rolloutStarted)
 	stale := s.DeepCopy()
-	c.observeControllerRevision(ownedRevision(s.UID, "web-3", 3))
+	c.observeControllerRevision(ownedRevision(s.UID, "StatefulSet", "web-3", 3))
 	updateStatefulSet(s, "web-3")
 	c.observeRevisioned(s, false)
 	superseded := takeStatefulSet(t, c, rolloutSuperseded)
@@ -152,7 +152,7 @@ func TestStatefulSetSupersededStaleAndRollback(t *testing.T) {
 	updateStatefulSet(s, "web-1")
 	c.observeRevisioned(s, false)
 	require.Zero(t, c.queue.Len(), "web-1 is still revision 1 until the controller renumbers it")
-	c.observeControllerRevision(ownedRevision(s.UID, "web-1", 4))
+	c.observeControllerRevision(ownedRevision(s.UID, "StatefulSet", "web-1", 4))
 	rollback := takeStatefulSet(t, c, rolloutStarted)
 	require.Equal(t, "3", rollback.attrs["grafana.sdlc.change.version.before"])
 	require.Equal(t, "4", rollback.attrs["grafana.sdlc.change.version.after"])
@@ -169,7 +169,7 @@ func TestStatefulSetImagesMatchRevisionHash(t *testing.T) {
 	c.observeControllerRevision(cr)
 	c.observeRevisioned(s, true)
 	c.observePod(old)
-	c.observeControllerRevision(ownedRevision(s.UID, "web-2", 2))
+	c.observeControllerRevision(ownedRevision(s.UID, "StatefulSet", "web-2", 2))
 	updateStatefulSet(s, "web-2")
 	c.observeRevisioned(s, false)
 	takeStatefulSet(t, c, rolloutStarted)
@@ -229,7 +229,7 @@ func TestWatcherTracksStatefulSets(t *testing.T) {
 		return false
 	}, time.Second, 10*time.Millisecond)
 	require.Empty(t, received, "initial observation is a silent baseline")
-	next := ownedRevision(s.UID, "web-2", 2)
+	next := ownedRevision(s.UID, "StatefulSet", "web-2", 2)
 	_, err := client.AppsV1().ControllerRevisions(s.Namespace).Create(ctx, next, metav1.CreateOptions{})
 	require.NoError(t, err)
 	updateStatefulSet(s, "web-2")

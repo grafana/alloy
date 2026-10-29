@@ -84,6 +84,8 @@ func (c *controller) revisionedWorkload(obj any) workload {
 	switch value := obj.(type) {
 	case *appsv1.StatefulSet:
 		return statefulSetWorkload{StatefulSet: value, current: c.revisions[string(value.UID)][value.Status.UpdateRevision]}
+	case *appsv1.DaemonSet:
+		return daemonSetWorkload{DaemonSet: value, current: newestRevision(c.revisions[string(value.UID)])}
 	}
 	return nil
 }

@@ -30,6 +30,7 @@ type controllerOptions struct {
 	configMapContent        string // empty disables ConfigMap tracking
 	secrets                 bool
 	statefulSets            bool
+	daemonSets              bool
 	emit                    func(context.Context, func() eventBatch) error
 	now                     func() time.Time
 }
@@ -122,7 +123,7 @@ func (c *controller) run(ctx context.Context) error {
 		go func() { defer informersDone.Done(); informer.Run(informersCtx.Done()) }()
 		synced = append(synced, informer.HasSynced)
 	}
-	if c.opts.statefulSets {
+	if c.opts.statefulSets || c.opts.daemonSets {
 		revisions, err := c.controllerRevisionInformer()
 		if err != nil {
 			return err
@@ -133,7 +134,14 @@ func (c *controller) run(ctx context.Context) error {
 		if !cache.WaitForCacheSync(ctx.Done(), revisions.HasSynced) {
 			return fmt.Errorf("sync ControllerRevision watch")
 		}
+	}
+	if c.opts.statefulSets {
 		if err := c.watchRevisioned(factory.Apps().V1().StatefulSets().Informer()); err != nil {
+			return err
+		}
+	}
+	if c.opts.daemonSets {
+		if err := c.watchRevisioned(factory.Apps().V1().DaemonSets().Informer()); err != nil {
 			return err
 		}
 	}

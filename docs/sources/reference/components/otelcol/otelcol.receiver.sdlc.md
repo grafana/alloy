@@ -10,7 +10,7 @@ title: otelcol.receiver.sdlc
 
 # `otelcol.receiver.sdlc`
 
-`otelcol.receiver.sdlc` emits Kubernetes Deployment and StatefulSet rollouts as `grafana.sdlc.change` events, encoded as OpenTelemetry logs.
+`otelcol.receiver.sdlc` emits Kubernetes Deployment, StatefulSet, and DaemonSet rollouts as `grafana.sdlc.change` events, encoded as OpenTelemetry logs.
 It watches workloads across all namespaces and reports four transitions: `started`, `succeeded`, `stalled`, and `superseded`.
 Replica-only scaling doesn't start a rollout or open image collection.
 Shared Pod, ReplicaSet, and ControllerRevision watches collect runtime image identities for newly observed rollouts.
@@ -60,6 +60,7 @@ You can use the following blocks with `otelcol.receiver.sdlc`:
 | `client` > [`tls_config`][tls_config]       | Configures TLS for connections to the Kubernetes API server.           | no       |
 | [`clustering`][clustering]                  | Configures cluster-wide ownership of the Kubernetes watcher.           | no       |
 | [`configmaps`][configmaps]                  | Configures ConfigMap change tracking.                                  | no       |
+| [`daemonsets`][daemonsets]                  | Configures DaemonSet rollout tracking.                                 | no       |
 | [`output`][output]                          | Configures where to send workload events.                               | yes      |
 | [`secrets`][secrets]                        | Configures Secret change tracking.                                     | no       |
 | [`statefulsets`][statefulsets]              | Configures StatefulSet rollout tracking.                               | no       |
@@ -69,6 +70,7 @@ You can use the following blocks with `otelcol.receiver.sdlc`:
 [client]: #client
 [clustering]: #clustering
 [configmaps]: #configmaps
+[daemonsets]: #daemonsets
 [oauth2]: #oauth2
 [output]: #output
 [secrets]: #secrets
@@ -161,6 +163,16 @@ ConfigMaps can contain credentials.
 Use `all` only when every ConfigMap in the cluster can be exported to the `output` destination.
 With `all`, {{< param "PRODUCT_NAME" >}} keeps the content of every ConfigMap in memory.
 
+### `daemonsets`
+
+The `daemonsets` block configures DaemonSet rollout tracking:
+
+| Name      | Type   | Description                                 | Default | Required |
+| --------- | ------ | ------------------------------------------- | ------- | -------- |
+| `enabled` | `bool` | Track DaemonSet rollouts in all namespaces. | `true`  | no       |
+
+DaemonSet revisions are stored as ControllerRevisions, so the component also watches ControllerRevisions while DaemonSet tracking is enabled.
+
 ### `output`
 
 {{< badge text="Required" >}}
@@ -190,7 +202,7 @@ StatefulSet revisions are stored as ControllerRevisions, so the component also w
 
 ## Kubernetes permissions
 
-The component lists and watches Deployments, ReplicaSets, StatefulSets, ControllerRevisions, Pods, ConfigMaps, and Secrets across all namespaces.
+The component lists and watches Deployments, ReplicaSets, StatefulSets, DaemonSets, ControllerRevisions, Pods, ConfigMaps, and Secrets across all namespaces.
 If `cluster_uid` is empty, it also reads the `kube-system` Namespace once to discover the cluster UID.
 Grant its service account the following permissions:
 
@@ -201,7 +213,7 @@ metadata:
   name: alloy-sdlc
 rules:
   - apiGroups: ["apps"]
-    resources: ["deployments", "replicasets", "statefulsets", "controllerrevisions"]
+    resources: ["deployments", "replicasets", "statefulsets", "daemonsets", "controllerrevisions"]
     verbs: ["list", "watch"]
   - apiGroups: [""]
     resources: ["pods", "configmaps", "secrets"]
@@ -214,7 +226,8 @@ rules:
 
 You can omit the Namespace permission when you configure `cluster_uid`.
 You can omit the ConfigMap or Secret permission when you disable the `configmaps` or `secrets` block.
-You can omit the StatefulSet and ControllerRevision permissions when you disable the `statefulsets` block.
+You can omit the StatefulSet or DaemonSet permission when you disable the `statefulsets` or `daemonsets` block.
+You can omit the ControllerRevision permission when you disable both blocks.
 Without a required permission, the watcher doesn't become ready and emits no events.
 
 ## Event schema
@@ -232,7 +245,7 @@ Send events to an ingest endpoint that is specific to your Grafana Cloud stack.
 | --- | --- |
 | `provider.type` | `k8s`. |
 | `provider.id` | The `cluster_name`, or the cluster UID when `cluster_name` isn't set. |
-| `resource.type` | `deployment`, `statefulset`, `configmap`, or `secret`. |
+| `resource.type` | `deployment`, `statefulset`, `daemonset`, `configmap`, or `secret`. |
 | `resource.id` | `<namespace>/<name>` of the object. |
 
 ### Log record fields and attributes
@@ -276,8 +289,11 @@ A rollout succeeds under the following conditions:
   With a `RollingUpdate` strategy and no partition, the controller must also promote the update revision to the current revision.
   With a partition, only ordinals at or above the partition are updated, so the rollout succeeds once those Pods run the update revision.
   With an `OnDelete` strategy, Pods change only when they're deleted, so the rollout can stay open for a long time.
+* DaemonSet: every node that should run the DaemonSet runs an updated, available Pod.
+  A DaemonSet scheduled on no nodes succeeds immediately.
+  With an `OnDelete` strategy, the rollout can stay open for a long time, as for StatefulSets.
 
-StatefulSets have no progress deadline, so their rollouts never stall.
+StatefulSets and DaemonSets have no progress deadline, so their rollouts never stall.
 They remain open until they succeed or are superseded.
 
 `started` is a point in time: `start_time_unix_nano` equals `timeUnixNano`.
@@ -289,10 +305,12 @@ When configured, it also contains `cluster_name`.
 Container entries contain `name`, `init`, and the configured `image` from that rollout's template.
 Runtime image identities are reported separately by the image collection event.
 A `superseded` event also contains `superseded_by`, the replacement rollout ID.
-StatefulSet events also contain `update_strategy` and `partition`, the lowest ordinal that receives the update.
+StatefulSet and DaemonSet events also contain `update_strategy`.
+StatefulSet events also contain `partition`, the lowest ordinal that receives the update.
 
 The revision of a Deployment is its `deployment.kubernetes.io/revision` annotation.
 The revision of a StatefulSet is the `revision` number of the ControllerRevision named by its update revision.
+The revision of a DaemonSet is the highest `revision` number among its ControllerRevisions.
 `rollout_id` is a deterministic hash of the cluster UID, workload UID, and controller-assigned revision.
 Consumers can deduplicate using the event ID.
 A rollback receives a new revision and therefore a new rollout ID, even when it reuses an older template.
@@ -393,7 +411,7 @@ closes on success or supersession. Initial discovery and later replica scaling
 don't open collection.
 
 Deployment Pods are associated through their controller ReplicaSet and its Deployment owner
-and revision. StatefulSet Pods are associated through their StatefulSet owner and
+and revision. StatefulSet and DaemonSet Pods are associated through their workload owner and
 their `controller-revision-hash` label. The receiver collects distinct runtime image IDs for each regular
 and init container. At closure, bounded API reads collect available identities
 that may not yet have reached the watches. Lifecycle events don't wait for these

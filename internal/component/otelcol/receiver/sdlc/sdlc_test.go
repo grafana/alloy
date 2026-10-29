@@ -42,6 +42,7 @@ func TestArgumentsConfigTracking(t *testing.T) {
 	require.Equal(t, ConfigMapsArguments{Enabled: true, Content: "keys"}, args.ConfigMaps)
 	require.True(t, args.Secrets.Enabled)
 	require.True(t, args.StatefulSets.Enabled)
+	require.True(t, args.DaemonSets.Enabled)
 
 	require.NoError(t, syntax.Unmarshal([]byte(`
 		configmaps {
@@ -56,11 +57,16 @@ func TestArgumentsConfigTracking(t *testing.T) {
 			enabled = false
 		}
 
+		daemonsets {
+			enabled = false
+		}
+
 		output {}
 	`), &args))
 	require.Equal(t, ConfigMapsArguments{Enabled: true, Content: "all"}, args.ConfigMaps)
 	require.False(t, args.Secrets.Enabled)
 	require.False(t, args.StatefulSets.Enabled)
+	require.False(t, args.DaemonSets.Enabled)
 
 	err := syntax.Unmarshal([]byte(`
 		configmaps {

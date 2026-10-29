@@ -145,6 +145,29 @@ func TestK8sWorkloads(t *testing.T) {
 		return e.name == "images_resolved" && e.body["rollout_id"] == updatedSet.body["rollout_id"]
 	})
 	require.Equal(t, true, setImages.body["complete"])
+
+	apply(t, daemonSet("agent"))
+	createdDaemons := waitEvent(t, workload("daemonset", "agent", "started"))
+	waitEvent(t, func(e rolloutEvent) bool {
+		return e.name == "succeeded" && e.body["rollout_id"] == createdDaemons.body["rollout_id"]
+	})
+	require.NoError(t, harness.RunCommand("kubectl", "-n", workloadNamespace, "set", "image", "daemonset/agent", "app=nginx:1.28-alpine"))
+	updatedDaemons := waitEvent(t, func(e rolloutEvent) bool {
+		return e.resourceType == "daemonset" && e.name == "started" && e.body["rollout_id"] != createdDaemons.body["rollout_id"]
+	})
+	require.Equal(t, "RollingUpdate", updatedDaemons.body["update_strategy"])
+	require.Contains(t, updatedDaemons.body["changes"], "containers.app.image")
+	require.Equal(t, createdDaemons.attrs["grafana.sdlc.change.version.after"], updatedDaemons.attrs["grafana.sdlc.change.version.before"])
+	waitEvent(t, func(e rolloutEvent) bool {
+		return e.name == "succeeded" && e.body["rollout_id"] == updatedDaemons.body["rollout_id"]
+	})
+	daemonImages := waitEvent(t, func(e rolloutEvent) bool {
+		return e.name == "images_resolved" && e.body["rollout_id"] == updatedDaemons.body["rollout_id"]
+	})
+	require.Equal(t, true, daemonImages.body["complete"])
+}
+func daemonSet(name string) map[string]any {
+	return map[string]any{"apiVersion": "apps/v1", "kind": "DaemonSet", "metadata": map[string]any{"name": name, "namespace": workloadNamespace}, "spec": map[string]any{"selector": map[string]any{"matchLabels": map[string]string{"app": name}}, "template": map[string]any{"metadata": map[string]any{"labels": map[string]string{"app": name}}, "spec": map[string]any{"terminationGracePeriodSeconds": 1, "containers": []any{map[string]any{"name": "app", "image": "nginx:1.27-alpine"}}}}}}
 }
 func statefulSet(name string) map[string]any {
 	return map[string]any{"apiVersion": "apps/v1", "kind": "StatefulSet", "metadata": map[string]any{"name": name, "namespace": workloadNamespace}, "spec": map[string]any{"replicas": 2, "serviceName": name, "selector": map[string]any{"matchLabels": map[string]string{"app": name}}, "template": map[string]any{"metadata": map[string]any{"labels": map[string]string{"app": name}}, "spec": map[string]any{"terminationGracePeriodSeconds": 1, "containers": []any{map[string]any{"name": "app", "image": "nginx:1.27-alpine"}}}}}}

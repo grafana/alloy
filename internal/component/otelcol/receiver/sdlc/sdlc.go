@@ -42,6 +42,7 @@ type Arguments struct {
 	Secrets    SecretsArguments    `alloy:"secrets,block,optional"`
 
 	StatefulSets StatefulSetsArguments `alloy:"statefulsets,block,optional"`
+	DaemonSets   DaemonSetsArguments   `alloy:"daemonsets,block,optional"`
 
 	Client     commonk8s.ClientArguments  `alloy:"client,block,optional"`
 	Clustering cluster.ComponentBlock     `alloy:"clustering,block,optional"`
@@ -54,6 +55,7 @@ func (args *Arguments) SetToDefault() {
 	args.ConfigMaps.SetToDefault()
 	args.Secrets.SetToDefault()
 	args.StatefulSets.SetToDefault()
+	args.DaemonSets.SetToDefault()
 }
 
 // Validate implements syntax.Validator.
@@ -216,6 +218,7 @@ func (c *Component) runGeneration(ctx context.Context, args Arguments, restConfi
 		configMapContent: configMapContent,
 		secrets:          args.Secrets.Enabled,
 		statefulSets:     args.StatefulSets.Enabled,
+		daemonSets:       args.DaemonSets.Enabled,
 		emit:             c.emit,
 	})
 	return ctrl.run(ctx)
