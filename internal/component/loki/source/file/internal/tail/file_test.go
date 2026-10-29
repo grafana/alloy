@@ -143,13 +143,10 @@ func TestFile(t *testing.T) {
 		verifyResult(t, file, &Line{Text: "before-truncate", Offset: 16}, nil)
 		verifyResult(t, file, nil, io.EOF)
 
-		fd := file.file.Fd()
-		go func() {
-			time.Sleep(50 * time.Millisecond)
-			truncateFile(t, name, "after-truncate\n")
-		}()
+		original := file.file
+		truncateFile(t, name, "after-truncate\n")
 		require.NoError(t, file.Wait(t.Context()))
-		require.Equal(t, fd, file.file.Fd(), "truncation should not close and reopen the file")
+		require.Same(t, original, file.file, "truncation should not close and reopen the file")
 		verifyResult(t, file, &Line{Text: "after-truncate", Offset: 15}, nil)
 	})
 

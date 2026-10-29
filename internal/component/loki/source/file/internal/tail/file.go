@@ -178,14 +178,9 @@ func (f *File) Wait(ctx context.Context) error {
 	}
 }
 
-// handleTruncation resets tailing after an in-place truncate. The open file
-// descriptor remains valid, so seek back to the start and reset the reader and
-// signature instead of closing and reopening.
+// handleTruncation resets tailing to the start of the file after an in-place
+// truncate.
 func (f *File) handleTruncation() error {
-	if _, err := f.file.Seek(0, io.SeekStart); err != nil {
-		return err
-	}
-
 	sig, err := newSignatureFromFile(f.file)
 	if err != nil {
 		return err
@@ -279,10 +274,10 @@ func (f *File) reopen(ctx context.Context) error {
 			return err
 		}
 
-		// A file recreated at this path after delete/rename is tailed from the start.
-		// Atomic rename-over (for example mv tempfile) is also reported as a delete
-		// event; when the replacement shares a prefix with the bytes already consumed,
-		// resume after that prefix instead of re-emitting it.
+		// A file recreated at this path starts from the beginning, unless its signature
+		// matches the previous file's. Atomic rename-over (for example mv tempfile) is
+		// reported as a delete, so a matching signature is treated as the same file and
+		// resumes at the previous offset.
 		offset := int64(0)
 		if f.signature.equal(sig) {
 			offset = min(f.reader.position(), nf.Size())
