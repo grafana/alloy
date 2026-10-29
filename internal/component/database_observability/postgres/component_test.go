@@ -439,6 +439,33 @@ func TestQuerySamples_ExcludeCurrentUser_ConfigParsing(t *testing.T) {
 	})
 }
 
+func TestQuerySamples_EnablePreClassifiedWaitEvents_ConfigParsing(t *testing.T) {
+	t.Run("enabled by default", func(t *testing.T) {
+		cfg := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		targets = []
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		assert.True(t, args.QuerySampleArguments.EnablePreClassifiedWaitEvents)
+	})
+
+	t.Run("explicitly false", func(t *testing.T) {
+		cfg := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		targets = []
+		query_samples {
+			enable_pre_classified_wait_events = false
+		}
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		assert.False(t, args.QuerySampleArguments.EnablePreClassifiedWaitEvents)
+	})
+}
+
 func TestPostgres_ExcludeCurrentUser_Runtime(t *testing.T) {
 	t.Run("when true, queries current_user and merges it into effective exclude list", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true), sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
