@@ -28,6 +28,10 @@ const (
 	changeTypeIntent = "intent"
 	changeTypeEffect = "effect"
 
+	// Resource change types; rollout events use "rollout_" + their kind.
+	changeCreated = "created"
+	changeUpdated = "updated"
+
 	// Cap the summary so a workload with many containers can't bloat a record.
 	maxSummaryLength = 1024
 )
@@ -46,8 +50,10 @@ type changeEvent struct {
 	versionBefore, versionAfter string
 	start, end                  time.Time
 	changeType                  string
-	summary                     string
-	diff                        func(pcommon.Map)
+	// resourceChangeType is the provider-defined provider.resource.change.type.
+	resourceChangeType string
+	summary            string
+	diff               func(pcommon.Map)
 }
 
 func (c *controller) rolloutID(w workload, revision int64) string {
@@ -99,11 +105,30 @@ func rolloutEvent(w workload, state rolloutState, kind, rolloutID string, at tim
 		start:        at,
 		end:          at,
 		changeType:   changeTypeEffect,
+		// Rollout kinds are part of event IDs, so they keep their names here.
+		resourceChangeType: "rollout_" + kind,
 	}
 	if state.previousRevision > 0 {
 		event.versionBefore = strconv.FormatInt(state.previousRevision, 10)
 	}
 	return event
+}
+
+// enqueueCreated reports a workload added after the initial listing. Its first
+// rollout is reported separately.
+func (c *controller) enqueueCreated(w workload) {
+	now := c.now()
+	c.enqueueChange(changeEvent{
+		resourceType:       w.resourceType(),
+		resourceID:         w.GetNamespace() + "/" + w.GetName(),
+		id:                 stableID(c.opts.clusterUID, string(w.GetUID()), changeCreated),
+		versionAfter:       strconv.FormatInt(w.GetGeneration(), 10),
+		start:              now,
+		end:                now,
+		changeType:         changeTypeEffect,
+		resourceChangeType: changeCreated,
+		summary:            "Created",
+	})
 }
 
 func (c *controller) putRolloutDiff(diff pcommon.Map, w workload, state rolloutState, rolloutID string) {
@@ -162,8 +187,9 @@ func (c *controller) changeLogs(e changeEvent) plog.Logs {
 	}
 	res.PutStr(attrPrefix+"provider.type", "k8s")
 	res.PutStr(attrPrefix+"provider.id", providerID)
-	res.PutStr(attrPrefix+"resource.type", e.resourceType)
-	res.PutStr(attrPrefix+"resource.id", e.resourceID)
+	res.PutStr(attrPrefix+"provider.resource.type", e.resourceType)
+	res.PutStr(attrPrefix+"provider.resource.id", e.resourceID)
+	res.PutStr(attrPrefix+"provider.resource.change.type", e.resourceChangeType)
 	sl := rl.ScopeLogs().AppendEmpty()
 	sl.Scope().SetName("github.com/grafana/alloy/otelcol.receiver.sdlc")
 	record := sl.LogRecords().AppendEmpty()

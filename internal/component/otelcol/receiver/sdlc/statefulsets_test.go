@@ -51,20 +51,20 @@ func TestStatefulSetRolloutLifecycle(t *testing.T) {
 	s, cr := statefulSetFixture()
 	c := testController(t)
 	c.observeControllerRevision(cr)
-	c.observeRevisioned(s, true)
-	c.observeRevisioned(s, false)
+	c.observeRevisioned(s, false, true)
+	c.observeRevisioned(s, false, false)
 	// Scaling changes generation, not the update revision.
 	s.Generation++
 	s.Status.ObservedGeneration = s.Generation
 	s.Spec.Replicas = ptr.To(int32(3))
 	s.Status.Replicas, s.Status.UpdatedReplicas, s.Status.AvailableReplicas = 3, 3, 3
-	c.observeRevisioned(s, false)
+	c.observeRevisioned(s, false, false)
 	require.Zero(t, c.queue.Len())
 
 	// The workload update arrives before its ControllerRevision.
 	updateStatefulSet(s, "web-2")
 	s.Spec.Template.Spec.Containers[0].Image = "postgres:17"
-	c.observeRevisioned(s, false)
+	c.observeRevisioned(s, false, false)
 	require.Zero(t, c.queue.Len())
 	c.observeControllerRevision(ownedRevision(s.UID, "StatefulSet", "web-2", 2))
 	started := takeStatefulSet(t, c, rolloutStarted)
@@ -77,13 +77,13 @@ func TestStatefulSetRolloutLifecycle(t *testing.T) {
 
 	// All Pods updated, but the controller hasn't promoted the revision yet.
 	s.Status.UpdatedReplicas, s.Status.AvailableReplicas = 3, 3
-	c.observeRevisioned(s, false)
+	c.observeRevisioned(s, false, false)
 	require.Zero(t, c.queue.Len())
 	completeStatefulSet(s)
-	c.observeRevisioned(s, false)
+	c.observeRevisioned(s, false, false)
 	succeeded := takeStatefulSet(t, c, rolloutSucceeded)
 	require.Equal(t, started.rolloutID, succeeded.rolloutID)
-	c.observeRevisioned(s, false)
+	c.observeRevisioned(s, false, false)
 	require.Zero(t, c.queue.Len())
 }
 
@@ -96,17 +96,17 @@ func TestStatefulSetUpdateStrategies(t *testing.T) {
 		c := testController(t)
 		c.observeControllerRevision(cr)
 		c.observeControllerRevision(ownedRevision(s.UID, "StatefulSet", "web-2", 2))
-		c.observeRevisioned(s, true)
+		c.observeRevisioned(s, false, true)
 		updateStatefulSet(s, "web-2")
-		c.observeRevisioned(s, false)
+		c.observeRevisioned(s, false, false)
 		started := takeStatefulSet(t, c, rolloutStarted)
 		require.Equal(t, int64(1), started.diff["partition"])
 		s.Status.UpdatedReplicas = 1
-		c.observeRevisioned(s, false)
+		c.observeRevisioned(s, false, false)
 		require.Zero(t, c.queue.Len())
 		// Ordinals 1 and 2 are updated; ordinal 0 keeps the current revision.
 		s.Status.UpdatedReplicas, s.Status.AvailableReplicas = 2, 3
-		c.observeRevisioned(s, false)
+		c.observeRevisioned(s, false, false)
 		takeStatefulSet(t, c, rolloutSucceeded)
 	})
 	t.Run("OnDelete", func(t *testing.T) {
@@ -115,13 +115,13 @@ func TestStatefulSetUpdateStrategies(t *testing.T) {
 		c := testController(t)
 		c.observeControllerRevision(cr)
 		c.observeControllerRevision(ownedRevision(s.UID, "StatefulSet", "web-2", 2))
-		c.observeRevisioned(s, true)
+		c.observeRevisioned(s, false, true)
 		updateStatefulSet(s, "web-2")
-		c.observeRevisioned(s, false)
+		c.observeRevisioned(s, false, false)
 		require.Equal(t, "OnDelete", takeStatefulSet(t, c, rolloutStarted).diff["update_strategy"])
 		// OnDelete never promotes the current revision.
 		s.Status.UpdatedReplicas, s.Status.AvailableReplicas = 2, 2
-		c.observeRevisioned(s, false)
+		c.observeRevisioned(s, false, false)
 		takeStatefulSet(t, c, rolloutSucceeded)
 	})
 }
@@ -130,27 +130,27 @@ func TestStatefulSetSupersededStaleAndRollback(t *testing.T) {
 	s, cr := statefulSetFixture()
 	c := testController(t)
 	c.observeControllerRevision(cr)
-	c.observeRevisioned(s, true)
+	c.observeRevisioned(s, false, true)
 	c.observeControllerRevision(ownedRevision(s.UID, "StatefulSet", "web-2", 2))
 	updateStatefulSet(s, "web-2")
-	c.observeRevisioned(s, false)
+	c.observeRevisioned(s, false, false)
 	takeStatefulSet(t, c, rolloutStarted)
 	stale := s.DeepCopy()
 	c.observeControllerRevision(ownedRevision(s.UID, "StatefulSet", "web-3", 3))
 	updateStatefulSet(s, "web-3")
-	c.observeRevisioned(s, false)
+	c.observeRevisioned(s, false, false)
 	superseded := takeStatefulSet(t, c, rolloutSuperseded)
 	require.Equal(t, int64(2), superseded.revision)
 	takeStatefulSet(t, c, rolloutStarted)
-	c.observeRevisioned(stale, false)
+	c.observeRevisioned(stale, false, false)
 	require.Zero(t, c.queue.Len())
 
 	// A rollback reuses the original ControllerRevision with a new number.
 	completeStatefulSet(s)
-	c.observeRevisioned(s, false)
+	c.observeRevisioned(s, false, false)
 	takeStatefulSet(t, c, rolloutSucceeded)
 	updateStatefulSet(s, "web-1")
-	c.observeRevisioned(s, false)
+	c.observeRevisioned(s, false, false)
 	require.Zero(t, c.queue.Len(), "web-1 is still revision 1 until the controller renumbers it")
 	c.observeControllerRevision(ownedRevision(s.UID, "StatefulSet", "web-1", 4))
 	rollback := takeStatefulSet(t, c, rolloutStarted)
@@ -167,15 +167,15 @@ func TestStatefulSetImagesMatchRevisionHash(t *testing.T) {
 	c := testController(t)
 	c.opts.client = fake.NewClientset(updated0, updated1, old)
 	c.observeControllerRevision(cr)
-	c.observeRevisioned(s, true)
+	c.observeRevisioned(s, false, true)
 	c.observePod(old)
 	c.observeControllerRevision(ownedRevision(s.UID, "StatefulSet", "web-2", 2))
 	updateStatefulSet(s, "web-2")
-	c.observeRevisioned(s, false)
+	c.observeRevisioned(s, false, false)
 	takeStatefulSet(t, c, rolloutStarted)
 	c.observePod(updated0)
 	completeStatefulSet(s)
-	c.observeRevisioned(s, false)
+	c.observeRevisioned(s, false, false)
 	takeStatefulSet(t, c, rolloutSucceeded)
 	event := finalizeTest(t, c)
 	require.True(t, event.Complete)
@@ -187,7 +187,7 @@ func TestStatefulSetDeletionClearsTrackingWithoutEvent(t *testing.T) {
 	s, cr := statefulSetFixture()
 	c := testController(t)
 	c.observeControllerRevision(cr)
-	c.observeRevisioned(s, true)
+	c.observeRevisioned(s, false, true)
 	c.remove(cache.DeletedFinalStateUnknown{Obj: s})
 	require.Empty(t, c.rollouts)
 	require.Empty(t, c.workloads)
@@ -240,11 +240,16 @@ func TestWatcherTracksStatefulSets(t *testing.T) {
 	case logs := <-received:
 		got := decode(t, logs)
 		require.Contains(t, got.summary, "Rollout started")
-		require.Equal(t, "statefulset", got.resource["grafana.sdlc.resource.type"])
+		require.Equal(t, "statefulset", got.resource["grafana.sdlc.provider.resource.type"])
 		require.Equal(t, strconv.Itoa(2), got.attrs["grafana.sdlc.change.version.after"])
 	case <-time.After(3 * time.Second):
 		t.Fatal("no rollout event")
 	}
+	added, _ := statefulSetFixture()
+	added.Name, added.UID = "new", "s-2"
+	_, err = client.AppsV1().StatefulSets(added.Namespace).Create(ctx, added, metav1.CreateOptions{})
+	require.NoError(t, err)
+	requireCreated(t, nextAdded(t, received), "statefulset")
 	cancel()
 	require.NoError(t, <-done)
 }

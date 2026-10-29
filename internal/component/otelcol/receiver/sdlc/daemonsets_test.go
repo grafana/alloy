@@ -46,17 +46,17 @@ func TestDaemonSetRolloutLifecycle(t *testing.T) {
 	d, cr := daemonSetFixture()
 	c := testController(t)
 	c.observeControllerRevision(cr)
-	c.observeRevisioned(d, true)
-	c.observeRevisioned(d, false)
+	c.observeRevisioned(d, false, true)
+	c.observeRevisioned(d, false, false)
 	// A new node schedules another Pod of the same revision.
 	d.Status.DesiredNumberScheduled, d.Status.UpdatedNumberScheduled, d.Status.NumberAvailable = 3, 3, 3
-	c.observeRevisioned(d, false)
+	c.observeRevisioned(d, false, false)
 	require.Zero(t, c.queue.Len())
 
 	// The workload update arrives before its ControllerRevision.
 	updateDaemonSet(d)
 	d.Spec.Template.Spec.Containers[0].Image = "agent:2"
-	c.observeRevisioned(d, false)
+	c.observeRevisioned(d, false, false)
 	require.Zero(t, c.queue.Len())
 	c.observeControllerRevision(ownedRevision(d.UID, "DaemonSet", "web-b", 2))
 	started := takeDaemonSet(t, c, rolloutStarted)
@@ -67,10 +67,10 @@ func TestDaemonSetRolloutLifecycle(t *testing.T) {
 	require.NotContains(t, started.diff, "partition")
 
 	completeDaemonSet(d)
-	c.observeRevisioned(d, false)
+	c.observeRevisioned(d, false, false)
 	succeeded := takeDaemonSet(t, c, rolloutSucceeded)
 	require.Equal(t, started.rolloutID, succeeded.rolloutID)
-	c.observeRevisioned(d, false)
+	c.observeRevisioned(d, false, false)
 	require.Zero(t, c.queue.Len())
 }
 
@@ -79,31 +79,31 @@ func TestDaemonSetSupersededStaleAndOnDelete(t *testing.T) {
 	d.Spec.UpdateStrategy = appsv1.DaemonSetUpdateStrategy{Type: appsv1.OnDeleteDaemonSetStrategyType}
 	c := testController(t)
 	c.observeControllerRevision(cr)
-	c.observeRevisioned(d, true)
+	c.observeRevisioned(d, false, true)
 	// The API server raises the generation before the controller writes the
 	// new revision and observes the generation.
 	updateDaemonSet(d)
 	d.Status.ObservedGeneration--
-	c.observeRevisioned(d, false)
+	c.observeRevisioned(d, false, false)
 	c.observeControllerRevision(ownedRevision(d.UID, "DaemonSet", "web-b", 2))
 	require.Zero(t, c.queue.Len())
 	d.Status.ObservedGeneration = d.Generation
-	c.observeRevisioned(d, false)
+	c.observeRevisioned(d, false, false)
 	require.Equal(t, "OnDelete", takeDaemonSet(t, c, rolloutStarted).diff["update_strategy"])
 	// The controller hasn't observed a newer generation yet.
 	d.Generation++
 	c.observeControllerRevision(ownedRevision(d.UID, "DaemonSet", "web-c", 3))
 	require.Zero(t, c.queue.Len())
 	d.Status.ObservedGeneration = d.Generation
-	c.observeRevisioned(d, false)
+	c.observeRevisioned(d, false, false)
 	require.EqualValues(t, 2, takeDaemonSet(t, c, rolloutSuperseded).revision)
 	takeDaemonSet(t, c, rolloutStarted)
 	// Pruning old revisions doesn't change the newest one.
 	delete(c.revisions[string(d.UID)], "web-a")
-	c.observeRevisioned(d, false)
+	c.observeRevisioned(d, false, false)
 	require.Zero(t, c.queue.Len())
 	completeDaemonSet(d)
-	c.observeRevisioned(d, false)
+	c.observeRevisioned(d, false, false)
 	takeDaemonSet(t, c, rolloutSucceeded)
 }
 
@@ -117,15 +117,15 @@ func TestDaemonSetImages(t *testing.T) {
 		c := testController(t)
 		c.opts.client = fake.NewClientset(node0, node1, old)
 		c.observeControllerRevision(cr)
-		c.observeRevisioned(d, true)
+		c.observeRevisioned(d, false, true)
 		c.observePod(old)
 		updateDaemonSet(d)
-		c.observeRevisioned(d, false)
+		c.observeRevisioned(d, false, false)
 		c.observeControllerRevision(ownedRevision(d.UID, "DaemonSet", "web-b", 2))
 		takeDaemonSet(t, c, rolloutStarted)
 		c.observePod(node0)
 		completeDaemonSet(d)
-		c.observeRevisioned(d, false)
+		c.observeRevisioned(d, false, false)
 		takeDaemonSet(t, c, rolloutSucceeded)
 		event := finalizeTest(t, c)
 		require.True(t, event.Complete)
@@ -137,10 +137,10 @@ func TestDaemonSetImages(t *testing.T) {
 		c := testController(t)
 		c.opts.client = fake.NewClientset()
 		c.observeControllerRevision(cr)
-		c.observeRevisioned(d, true)
+		c.observeRevisioned(d, false, true)
 		d.Generation++
 		d.Status.ObservedGeneration = d.Generation
-		c.observeRevisioned(d, false)
+		c.observeRevisioned(d, false, false)
 		c.observeControllerRevision(ownedRevision(d.UID, "DaemonSet", "web-b", 2))
 		takeDaemonSet(t, c, rolloutStarted)
 		takeDaemonSet(t, c, rolloutSucceeded)
@@ -152,7 +152,7 @@ func TestDaemonSetDeletionClearsTrackingWithoutEvent(t *testing.T) {
 	d, cr := daemonSetFixture()
 	c := testController(t)
 	c.observeControllerRevision(cr)
-	c.observeRevisioned(d, true)
+	c.observeRevisioned(d, false, true)
 	c.remove(cache.DeletedFinalStateUnknown{Obj: d})
 	require.Empty(t, c.rollouts)
 	require.Empty(t, c.workloads)
@@ -188,10 +188,15 @@ func TestWatcherTracksDaemonSets(t *testing.T) {
 	case logs := <-received:
 		got := decode(t, logs)
 		require.Contains(t, got.summary, "Rollout started")
-		require.Equal(t, "daemonset", got.resource["grafana.sdlc.resource.type"])
+		require.Equal(t, "daemonset", got.resource["grafana.sdlc.provider.resource.type"])
 	case <-time.After(3 * time.Second):
 		t.Fatal("no rollout event")
 	}
+	added, _ := daemonSetFixture()
+	added.Name, added.UID = "new", "ds-2"
+	_, err = client.AppsV1().DaemonSets(added.Namespace).Create(ctx, added, metav1.CreateOptions{})
+	require.NoError(t, err)
+	requireCreated(t, nextAdded(t, received), "daemonset")
 	for _, action := range client.Actions() {
 		require.NotEqual(t, "statefulsets", action.GetResource().Resource)
 	}

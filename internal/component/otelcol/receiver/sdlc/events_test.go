@@ -90,14 +90,46 @@ func takeWorkload(t *testing.T, c *controller, status, resourceType string) (*ev
 	require.True(t, got.record.SpanID().IsEmpty())
 	// The resource names the workload; the summary must not.
 	require.Equal(t, map[string]any{
-		"grafana.sdlc.provider.type": "k8s",
-		"grafana.sdlc.provider.id":   "cluster-1",
-		"grafana.sdlc.resource.type": resourceType,
-		"grafana.sdlc.resource.id":   "demo/web",
+		"grafana.sdlc.provider.type":                 "k8s",
+		"grafana.sdlc.provider.id":                   "cluster-1",
+		"grafana.sdlc.provider.resource.type":        resourceType,
+		"grafana.sdlc.provider.resource.id":          "demo/web",
+		"grafana.sdlc.provider.resource.change.type": "rollout_" + status,
 	}, got.resource)
 	require.NotContains(t, got.summary, "web")
 	return event, got
 }
+
+// nextAdded waits for the next received event about the demo/new resource,
+// skipping events of other resources.
+func nextAdded(t *testing.T, received <-chan plog.Logs) decoded {
+	t.Helper()
+	timeout := time.After(3 * time.Second)
+	for {
+		select {
+		case logs := <-received:
+			if got := decode(t, logs); got.resource["grafana.sdlc.provider.resource.id"] == "demo/new" {
+				return got
+			}
+		case <-timeout:
+			t.Fatal("no event for demo/new")
+		}
+	}
+}
+
+// requireCreated asserts got reports the creation of a workload of resourceType.
+func requireCreated(t *testing.T, got decoded, resourceType string) {
+	t.Helper()
+	require.Equal(t, resourceType, got.resource["grafana.sdlc.provider.resource.type"])
+	require.Equal(t, "created", got.resource["grafana.sdlc.provider.resource.change.type"])
+	require.Equal(t, "Created", got.summary)
+	require.Equal(t, "effect", got.attrs["grafana.sdlc.type"])
+	require.Equal(t, "1", got.attrs["grafana.sdlc.change.version.after"])
+	require.NotContains(t, got.attrs, "grafana.sdlc.change.version.before")
+	require.NotContains(t, got.attrs, "grafana.sdlc.change.diff")
+	require.True(t, got.record.TraceID().IsEmpty(), "creation isn't part of a rollout trace")
+}
+
 func revision(d *appsv1.Deployment, n int64) {
 	d.Generation++
 	d.Status.ObservedGeneration = d.Generation
@@ -290,6 +322,16 @@ func TestWatcherUsesDeploymentReplicaSetAndPodWatches(t *testing.T) {
 	case <-time.After(3 * time.Second):
 		t.Fatal("no rollout event")
 	}
+	// A Deployment added after the initial listing is reported as created, then
+	// as its first rollout.
+	added := deploymentFixture()
+	added.Name, added.UID = "new", "d-2"
+	_, err = client.AppsV1().Deployments(added.Namespace).Create(ctx, added, metav1.CreateOptions{})
+	require.NoError(t, err)
+	requireCreated(t, nextAdded(t, received), "deployment")
+	started := nextAdded(t, received)
+	require.Equal(t, "rollout_started", started.resource["grafana.sdlc.provider.resource.change.type"])
+	require.Equal(t, false, started.diff["changes_known"])
 	for _, action := range client.Actions() {
 		require.Contains(t, []string{"deployments", "replicasets", "pods"}, action.GetResource().Resource)
 	}

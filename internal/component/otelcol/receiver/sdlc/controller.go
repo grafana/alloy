@@ -107,7 +107,13 @@ func (c *controller) run(ctx context.Context) error {
 	}
 	deployments := factory.Apps().V1().Deployments().Informer()
 	_, err = deployments.AddEventHandler(cache.ResourceEventHandlerDetailedFuncs{
-		AddFunc:    func(obj any, initial bool) { c.observe(obj.(*appsv1.Deployment), initial) },
+		AddFunc: func(obj any, initial bool) {
+			d := obj.(*appsv1.Deployment)
+			if !initial {
+				c.enqueueCreated(deploymentWorkload{d})
+			}
+			c.observe(d, initial)
+		},
 		UpdateFunc: func(_, obj any) { c.observe(obj.(*appsv1.Deployment), false) },
 		DeleteFunc: c.remove,
 	})

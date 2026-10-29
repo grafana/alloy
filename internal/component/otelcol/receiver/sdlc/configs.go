@@ -21,11 +21,6 @@ const (
 	contentMetadata = "metadata"
 )
 
-const (
-	configCreated = "created"
-	configUpdated = "updated"
-)
-
 // ConfigMapsArguments configures ConfigMap change tracking.
 type ConfigMapsArguments struct {
 	Enabled bool   `alloy:"enabled,attr,optional"`
@@ -218,12 +213,12 @@ func (c *controller) observeConfig(kind configKind, old, obj any, initial bool) 
 	if !ok {
 		return
 	}
-	event, before := configCreated, metav1.ObjectMeta{}
+	event, before := changeCreated, metav1.ObjectMeta{}
 	if old != nil {
 		if before, ok = configMeta(old); !ok {
 			return
 		}
-		event = configUpdated
+		event = changeUpdated
 	}
 	changes := diffObjects(kind.rule, old, obj)
 	if _, metadataOnly := obj.(*metav1.PartialObjectMetadata); metadataOnly && old != nil && len(changes) == 0 &&
@@ -243,21 +238,22 @@ func (c *controller) observeConfig(kind configKind, old, obj any, initial bool) 
 func (c *controller) enqueueConfig(kind configKind, event, previousVersion string, m metav1.ObjectMeta, changes []fieldChange) {
 	now := c.now()
 	summary := "Created"
-	if event == configUpdated {
+	if event == changeUpdated {
 		summary = "Updated"
 	}
 	e := changeEvent{
 		resourceType: kind.name,
 		resourceID:   m.Namespace + "/" + m.Name,
 		// Every write has a unique resource version; repeated observations share an ID.
-		id:            stableID(c.opts.clusterUID, string(m.UID), m.ResourceVersion, event),
-		versionBefore: previousVersion,
-		versionAfter:  m.ResourceVersion,
-		start:         now,
-		end:           now,
-		changeType:    changeTypeEffect,
-		summary:       summary,
-		diff:          func(diff pcommon.Map) { putChanges(diff, changes) },
+		id:                 stableID(c.opts.clusterUID, string(m.UID), m.ResourceVersion, event),
+		versionBefore:      previousVersion,
+		versionAfter:       m.ResourceVersion,
+		start:              now,
+		end:                now,
+		changeType:         changeTypeEffect,
+		resourceChangeType: event,
+		summary:            summary,
+		diff:               func(diff pcommon.Map) { putChanges(diff, changes) },
 	}
 	logs := c.changeLogs(e)
 	// Exporters reject oversized records, which would otherwise retry forever.

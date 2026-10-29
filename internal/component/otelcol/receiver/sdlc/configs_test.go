@@ -50,6 +50,7 @@ func takeConfig(t *testing.T, c *controller, summary string) (*eventBatch, decod
 	c.queue.Done(event)
 	got := decode(t, event.logs)
 	require.Equal(t, summary, got.summary)
+	require.Equal(t, strings.ToLower(summary), got.resource["grafana.sdlc.provider.resource.change.type"])
 	require.Equal(t, "UNSET", got.attrs["grafana.sdlc.status"])
 	require.Equal(t, "effect", got.attrs["grafana.sdlc.type"])
 	require.Equal(t, event.id, got.attrs["grafana.sdlc.event.id"])
@@ -91,10 +92,11 @@ func TestConfigMapChangesByContentMode(t *testing.T) {
 			c.observeConfig(kind, toObj(old), toObj(next), false)
 			event, got := takeConfig(t, c, "Updated")
 			require.Equal(t, map[string]any{
-				"grafana.sdlc.provider.type": "k8s",
-				"grafana.sdlc.provider.id":   "cluster-1",
-				"grafana.sdlc.resource.type": "configmap",
-				"grafana.sdlc.resource.id":   "demo/app",
+				"grafana.sdlc.provider.type":                 "k8s",
+				"grafana.sdlc.provider.id":                   "cluster-1",
+				"grafana.sdlc.provider.resource.type":        "configmap",
+				"grafana.sdlc.provider.resource.id":          "demo/app",
+				"grafana.sdlc.provider.resource.change.type": "updated",
 			}, got.resource)
 			require.Equal(t, "1", got.attrs["grafana.sdlc.change.version.before"])
 			require.Equal(t, "2", got.attrs["grafana.sdlc.change.version.after"])
@@ -152,7 +154,7 @@ func TestSecretMetadataOnlyAndInferredDataChange(t *testing.T) {
 	bare.Annotations = nil
 	c.observeConfig(kind, nil, transformed(t, false, bare), false)
 	_, created := takeConfig(t, c, "Created")
-	require.Equal(t, "secret", created.resource["grafana.sdlc.resource.type"])
+	require.Equal(t, "secret", created.resource["grafana.sdlc.provider.resource.type"])
 	require.NotContains(t, created.attrs, "grafana.sdlc.change.diff", "creation is reported without tracked fields")
 
 	old := transformed(t, false, secretFixture())
@@ -267,14 +269,14 @@ func TestWatcherTracksConfigMapsAndSecrets(t *testing.T) {
 	_, err := client.CoreV1().ConfigMaps("demo").Update(ctx, cm, metav1.UpdateOptions{})
 	require.NoError(t, err)
 	got := next()
-	require.Equal(t, "configmap", got.resource["grafana.sdlc.resource.type"])
+	require.Equal(t, "configmap", got.resource["grafana.sdlc.provider.resource.type"])
 	require.Equal(t, map[string]any{"data.LOG_LEVEL": map[string]any{"operation": "modified"}}, got.changes())
 
 	secret := secretFixture()
 	secret.Name, secret.UID, secret.ResourceVersion = "new", "s-2", "5"
 	require.NoError(t, metadataClient.Tracker().Create(corev1.SchemeGroupVersion.WithResource("secrets"), secret, "demo"))
 	got = next()
-	require.Equal(t, "demo/new", got.resource["grafana.sdlc.resource.id"])
+	require.Equal(t, "demo/new", got.resource["grafana.sdlc.provider.resource.id"])
 	require.Equal(t, "Created", got.summary)
 
 	require.NoError(t, client.CoreV1().ConfigMaps("demo").Delete(ctx, "app", metav1.DeleteOptions{}))

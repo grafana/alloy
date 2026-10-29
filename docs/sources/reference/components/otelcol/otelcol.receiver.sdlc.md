@@ -11,7 +11,7 @@ title: otelcol.receiver.sdlc
 # `otelcol.receiver.sdlc`
 
 `otelcol.receiver.sdlc` emits Kubernetes Deployment, StatefulSet, and DaemonSet rollouts as `grafana.sdlc.change` events, encoded as OpenTelemetry logs.
-It watches workloads across all namespaces and reports four transitions: `started`, `succeeded`, `stalled`, and `superseded`.
+It watches workloads across all namespaces and reports their creation and four rollout transitions: `rollout_started`, `rollout_succeeded`, `rollout_stalled`, and `rollout_superseded`.
 Replica-only scaling doesn't start a rollout or open image collection.
 Shared Pod, ReplicaSet, and ControllerRevision watches collect runtime image identities for newly observed rollouts.
 It also watches ConfigMaps and Secrets across all namespaces and reports their creation and updates.
@@ -245,8 +245,9 @@ Send events to an ingest endpoint that is specific to your Grafana Cloud stack.
 | --- | --- |
 | `provider.type` | `k8s`. |
 | `provider.id` | The `cluster_name`, or the cluster UID when `cluster_name` isn't set. |
-| `resource.type` | `deployment`, `statefulset`, `daemonset`, `configmap`, or `secret`. |
-| `resource.id` | `<namespace>/<name>` of the object. |
+| `provider.resource.type` | `deployment`, `statefulset`, `daemonset`, `configmap`, or `secret`. |
+| `provider.resource.id` | `<namespace>/<name>` of the object. |
+| `provider.resource.change.type` | The kind of change, described in the following sections. |
 
 ### Log record fields and attributes
 
@@ -255,32 +256,39 @@ Send events to an ingest endpoint that is specific to your Grafana Cloud stack.
 | `eventName` | `grafana.sdlc.change`. |
 | `timeUnixNano` | The event end time: the watcher's observation time, not an exact Kubernetes transition time. |
 | `observedTimeUnixNano` | The same observation time. |
-| `traceId` | For rollouts, derived from the rollout ID, so all events of one rollout share one trace. Not set for ConfigMaps and Secrets. `spanId` isn't set. |
+| `traceId` | For rollouts, derived from the rollout ID, so all events of one rollout share one trace. Not set for workload `created` events, ConfigMaps, and Secrets. `spanId` isn't set. |
 | `schema.version` | `"1"`. |
 | `provider.version` | The {{< param "PRODUCT_NAME" >}} version. |
 | `event.id` | A deterministic hash that identifies the event. Retries preserve it. |
-| `status` | Always `UNSET`. The lifecycle step is in `change.summary`. |
+| `status` | Always `UNSET`. The kind of change is in `provider.resource.change.type`. |
 | `start_time_unix_nano` | The event start time. |
-| `type` | `intent` for `started`. `effect` for every other event. |
-| `change.summary` | The lifecycle step. It doesn't include the resource name. |
+| `type` | `intent` for `rollout_started`. `effect` for every other event. |
+| `change.summary` | A human-readable description of the change. It doesn't include the resource name. |
 | `change.version.before` | The previous workload revision, or the previous ConfigMap or Secret resource version. Omitted when unknown. |
-| `change.version.after` | The workload revision of this rollout, or the ConfigMap or Secret resource version. |
+| `change.version.after` | The workload revision of this rollout, the workload generation for a workload `created` event, or the ConfigMap or Secret resource version. |
 | `change.diff` | A map of change details, described in the following sections. Omitted when it has no entries. |
 
 The component doesn't set `service.ids`, `environment.id`, `owners`, `actor`, `tracing.enabled`, `logging.enabled`, `change.url`, or `change.git.*`.
 Because `tracing.enabled` isn't set, the backend emits a span for each event.
 Each rollout event is a span in the rollout's trace.
 
+### Workload creation events
+
+When the watcher observes a Deployment, StatefulSet, or DaemonSet that didn't exist in its baseline, it emits an event with `provider.resource.change.type` set to `created` and `change.summary` set to `Created`.
+The event is a point in time and has no `change.diff`.
+Its first rollout is reported separately by a `rollout_started` event.
+The `event.id` is a deterministic hash of the cluster UID, workload UID, and event type.
+
 ### Rollout events
 
 The component emits the following lifecycle events:
 
-| `change.summary` | Meaning |
-| --- | --- |
-| `Rollout started` | The watcher observes a new controller-assigned revision after the controller observes the current generation. |
-| `Rollout succeeded` | The rollout has completed, as described in the following list. |
-| `Rollout stalled: ProgressDeadlineExceeded` | Deployments only. The controller reports `Progressing=False` with reason `ProgressDeadlineExceeded`. |
-| `Rollout superseded by revision <N>` | A newer revision replaces an unfinished rollout. |
+| `provider.resource.change.type` | `change.summary` | Meaning |
+| --- | --- | --- |
+| `rollout_started` | `Rollout started` | The watcher observes a new controller-assigned revision after the controller observes the current generation. |
+| `rollout_succeeded` | `Rollout succeeded` | The rollout has completed, as described in the following list. |
+| `rollout_stalled` | `Rollout stalled: ProgressDeadlineExceeded` | Deployments only. The controller reports `Progressing=False` with reason `ProgressDeadlineExceeded`. |
+| `rollout_superseded` | `Rollout superseded by revision <N>` | A newer revision replaces an unfinished rollout. |
 
 A rollout succeeds under the following conditions:
 
@@ -296,7 +304,7 @@ A rollout succeeds under the following conditions:
 StatefulSets and DaemonSets have no progress deadline, so their rollouts never stall.
 They remain open until they succeed or are superseded.
 
-`started` is a point in time: `start_time_unix_nano` equals `timeUnixNano`.
+`rollout_started` is a point in time: `start_time_unix_nano` equals `timeUnixNano`.
 The other events start when the watcher observed the rollout start, so their duration covers the rollout.
 An in-progress rollout found during startup has no recorded start, and its events are points in time.
 
@@ -304,7 +312,7 @@ Every `change.diff` contains `revision`, `rollout_id`, `namespace`, and `contain
 When configured, it also contains `cluster_name`.
 Container entries contain `name`, `init`, and the configured `image` from that rollout's template.
 Runtime image identities are reported separately by the image collection event.
-A `superseded` event also contains `superseded_by`, the replacement rollout ID.
+A `rollout_superseded` event also contains `superseded_by`, the replacement rollout ID.
 StatefulSet and DaemonSet events also contain `update_strategy`.
 StatefulSet events also contain `partition`, the lowest ordinal that receives the update.
 
@@ -323,7 +331,7 @@ A template change while paused starts a rollout only after the controller applie
 
 ### Change details
 
-The `started` `change.diff` includes `changes_known`, which indicates whether a previous template is available for comparison.
+The `rollout_started` `change.diff` includes `changes_known`, which indicates whether a previous template is available for comparison.
 When a previous template is available, `changes` describes the changed fields.
 `changes` is omitted when no tracked field changed, including when no previous template is available.
 The baseline is the previously observed rollout template; changes aren't reconstructed from historical ReplicaSets.
@@ -361,12 +369,12 @@ For example, an image update and a CPU request increase produce this `change.dif
 
 ### ConfigMap and Secret events
 
-ConfigMap and Secret events are points in time with the following `change.summary` values:
+ConfigMap and Secret events are points in time with the following values:
 
-| `change.summary` | Meaning |
-| --- | --- |
-| `Created` | The watcher observes an object that didn't exist in its baseline. |
-| `Updated` | A tracked field of the object changes. |
+| `provider.resource.change.type` | `change.summary` | Meaning |
+| --- | --- | --- |
+| `created` | `Created` | The watcher observes an object that didn't exist in its baseline. |
+| `updated` | `Updated` | A tracked field of the object changes. |
 
 Deleting a ConfigMap or Secret doesn't emit an event.
 The `event.id` is a deterministic hash of the cluster UID, object UID, resource version, and event type.
@@ -402,6 +410,7 @@ When `content` is `all` and an event would exceed 2 MiB, the component omits the
 ### Resolved container images
 
 The component emits one image event when image collection closes for a newly observed rollout.
+Its `provider.resource.change.type` is `rollout_images_resolved`.
 Its `change.summary` is `Resolved runtime images: <container>=<image ID>, ...`, or `Partially resolved runtime images: ...` when `complete` is false.
 Init containers are prefixed with `init:`.
 The summary is limited to 1024 bytes; `change.diff` has the complete list.
@@ -432,8 +441,9 @@ Later scaling doesn't reopen collection or emit another image event.
 ### Delivery behavior
 
 The initial watch listing establishes an in-memory baseline without emitting events.
-An in-progress rollout found during startup can subsequently emit an outcome without a preceding `started` event.
+An in-progress rollout found during startup can subsequently emit an outcome without a preceding `rollout_started` event.
 Restarts and ownership changes don't replay missed events, and intermediate revisions can be missed between observations.
+Objects created while the watcher is stopped become part of the baseline and don't emit a `created` event.
 Deleting a workload emits no event and discards its tracked rollout and image collection state.
 ConfigMap and Secret changes made while the watcher is stopped aren't reported, and consecutive updates between observations are reported as one change.
 The component doesn't persist state or reconcile historical rollouts.

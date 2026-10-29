@@ -17,8 +17,8 @@ const testNamespace = "test-sdlc"
 const alloyRelease = "alloy-test-sdlc"
 const workloadNamespace = "test-sdlc-rollouts"
 
-// rolloutEvent is one grafana.sdlc.change record. name is the lifecycle step,
-// recovered from the change summary; body is the change.diff map.
+// rolloutEvent is one grafana.sdlc.change record. name is its
+// provider.resource.change.type; body is the change.diff map.
 type rolloutEvent struct {
 	name, namespace, resourceType, resourceID, pod string
 	timestamp                                      uint64
@@ -39,14 +39,18 @@ func TestK8sWorkloads(t *testing.T) {
 		_ = harness.RunCommand("kubectl", "delete", "namespace", workloadNamespace, "--ignore-not-found", "--wait=false")
 	})
 	apply(t, deployment("web", nil))
+	added := waitEvent(t, func(e rolloutEvent) bool {
+		return e.name == "created" && e.resourceID == workloadNamespace+"/web"
+	})
+	require.Equal(t, "Created", added.attrs["grafana.sdlc.change.summary"])
 	first := waitEvent(t, func(e rolloutEvent) bool {
-		return e.namespace == workloadNamespace && e.name == "started" && e.resourceID == workloadNamespace+"/web"
+		return e.namespace == workloadNamespace && e.name == "rollout_started" && e.resourceID == workloadNamespace+"/web"
 	})
 	waitEvent(t, func(e rolloutEvent) bool {
-		return e.name == "succeeded" && e.body["rollout_id"] == first.body["rollout_id"]
+		return e.name == "rollout_succeeded" && e.body["rollout_id"] == first.body["rollout_id"]
 	})
 	images := waitEvent(t, func(e rolloutEvent) bool {
-		return e.name == "images_resolved" && e.body["rollout_id"] == first.body["rollout_id"]
+		return e.name == "rollout_images_resolved" && e.body["rollout_id"] == first.body["rollout_id"]
 	})
 	require.Equal(t, true, images.body["complete"])
 	containers := images.body["resolved_containers"].([]any)
@@ -57,26 +61,26 @@ func TestK8sWorkloads(t *testing.T) {
 	require.NoError(t, harness.RunCommand("kubectl", "-n", workloadNamespace, "rollout", "status", "deployment/web", "--timeout=90s"))
 	require.NoError(t, harness.RunCommand("kubectl", "-n", workloadNamespace, "set", "image", "deployment/web", "app=unavailable.invalid/app:test"))
 	broken := waitEvent(t, func(e rolloutEvent) bool {
-		return e.namespace == workloadNamespace && e.name == "started" && e.body["rollout_id"] != first.body["rollout_id"]
+		return e.namespace == workloadNamespace && e.name == "rollout_started" && e.body["rollout_id"] != first.body["rollout_id"]
 	})
 	require.Equal(t, "intent", broken.attrs["grafana.sdlc.type"])
 	require.Contains(t, broken.body["changes"], "containers.app.image")
 	waitEvent(t, func(e rolloutEvent) bool {
-		return e.name == "stalled" && e.body["rollout_id"] == broken.body["rollout_id"]
+		return e.name == "rollout_stalled" && e.body["rollout_id"] == broken.body["rollout_id"]
 	})
 	require.NoError(t, harness.RunCommand("kubectl", "-n", workloadNamespace, "rollout", "undo", "deployment/web"))
 	superseded := waitEvent(t, func(e rolloutEvent) bool {
-		return e.name == "superseded" && e.body["rollout_id"] == broken.body["rollout_id"]
+		return e.name == "rollout_superseded" && e.body["rollout_id"] == broken.body["rollout_id"]
 	})
 	waitEvent(t, func(e rolloutEvent) bool {
-		return e.name == "succeeded" && e.body["rollout_id"] == superseded.body["superseded_by"]
+		return e.name == "rollout_succeeded" && e.body["rollout_id"] == superseded.body["superseded_by"]
 	})
 	partial := waitEvent(t, func(e rolloutEvent) bool {
-		return e.name == "images_resolved" && e.body["rollout_id"] == broken.body["rollout_id"]
+		return e.name == "rollout_images_resolved" && e.body["rollout_id"] == broken.body["rollout_id"]
 	})
 	require.Equal(t, false, partial.body["complete"])
 	waitEvent(t, func(e rolloutEvent) bool {
-		return e.name == "images_resolved" && e.body["rollout_id"] == superseded.body["superseded_by"]
+		return e.name == "rollout_images_resolved" && e.body["rollout_id"] == superseded.body["superseded_by"]
 	})
 	events, err := readEvents()
 	require.NoError(t, err)
@@ -87,31 +91,31 @@ func TestK8sWorkloads(t *testing.T) {
 		if e.resourceType != "deployment" {
 			continue
 		}
-		require.Contains(t, []string{"started", "succeeded", "stalled", "superseded", "images_resolved"}, e.name)
+		require.Contains(t, []string{"created", "rollout_started", "rollout_succeeded", "rollout_stalled", "rollout_superseded", "rollout_images_resolved"}, e.name)
 		if e.namespace == workloadNamespace {
 			owners[e.pod] = true
 			counts[e.name]++
 		}
 	}
 	require.Len(t, owners, 1)
-	require.Equal(t, map[string]int{"started": 3, "succeeded": 2, "stalled": 1, "superseded": 1, "images_resolved": 3}, counts)
+	require.Equal(t, map[string]int{"created": 1, "rollout_started": 3, "rollout_succeeded": 2, "rollout_stalled": 1, "rollout_superseded": 1, "rollout_images_resolved": 3}, counts)
 
 	const secretValue = "integration-secret-value"
 	apply(t, map[string]any{"apiVersion": "v1", "kind": "ConfigMap", "metadata": map[string]any{"name": "settings", "namespace": workloadNamespace}, "data": map[string]string{"LOG_LEVEL": "info"}})
 	apply(t, map[string]any{"apiVersion": "v1", "kind": "Secret", "metadata": map[string]any{"name": "creds", "namespace": workloadNamespace}, "stringData": map[string]string{"password": secretValue}})
-	config := func(resourceType, name, summary string) func(rolloutEvent) bool {
+	config := func(resourceType, name, changeType string) func(rolloutEvent) bool {
 		return func(e rolloutEvent) bool {
-			return e.resourceType == resourceType && e.resourceID == workloadNamespace+"/"+name && e.name == summary
+			return e.resourceType == resourceType && e.resourceID == workloadNamespace+"/"+name && e.name == changeType
 		}
 	}
-	waitEvent(t, config("configmap", "settings", "Created"))
-	waitEvent(t, config("secret", "creds", "Created"))
+	waitEvent(t, config("configmap", "settings", "created"))
+	waitEvent(t, config("secret", "creds", "created"))
 	require.NoError(t, harness.RunCommand("kubectl", "-n", workloadNamespace, "patch", "configmap/settings", "--type=merge", "-p", `{"data":{"LOG_LEVEL":"debug"}}`))
 	require.NoError(t, harness.RunCommand("kubectl", "-n", workloadNamespace, "patch", "secret/creds", "--type=merge", "-p", `{"stringData":{"password":"rotated-`+secretValue+`"}}`))
-	updated := waitEvent(t, config("configmap", "settings", "Updated"))
+	updated := waitEvent(t, config("configmap", "settings", "updated"))
 	require.Equal(t, "effect", updated.attrs["grafana.sdlc.type"])
 	require.Equal(t, map[string]any{"changes": map[string]any{"data.LOG_LEVEL": map[string]any{"operation": "modified"}}}, updated.body)
-	rotated := waitEvent(t, config("secret", "creds", "Updated"))
+	rotated := waitEvent(t, config("secret", "creds", "updated"))
 	require.Equal(t, map[string]any{"changes": map[string]any{"data": map[string]any{"operation": "modified"}}}, rotated.body)
 	events, err = readEvents()
 	require.NoError(t, err)
@@ -127,42 +131,42 @@ func TestK8sWorkloads(t *testing.T) {
 			return e.resourceType == resourceType && e.resourceID == workloadNamespace+"/"+name && e.name == step
 		}
 	}
-	created := waitEvent(t, workload("statefulset", "db", "started"))
+	created := waitEvent(t, workload("statefulset", "db", "rollout_started"))
 	waitEvent(t, func(e rolloutEvent) bool {
-		return e.name == "succeeded" && e.body["rollout_id"] == created.body["rollout_id"]
+		return e.name == "rollout_succeeded" && e.body["rollout_id"] == created.body["rollout_id"]
 	})
 	require.NoError(t, harness.RunCommand("kubectl", "-n", workloadNamespace, "set", "image", "statefulset/db", "app=nginx:1.28-alpine"))
 	updatedSet := waitEvent(t, func(e rolloutEvent) bool {
-		return e.resourceType == "statefulset" && e.name == "started" && e.body["rollout_id"] != created.body["rollout_id"]
+		return e.resourceType == "statefulset" && e.name == "rollout_started" && e.body["rollout_id"] != created.body["rollout_id"]
 	})
 	require.Equal(t, "RollingUpdate", updatedSet.body["update_strategy"])
 	require.Contains(t, updatedSet.body["changes"], "containers.app.image")
 	require.Equal(t, created.attrs["grafana.sdlc.change.version.after"], updatedSet.attrs["grafana.sdlc.change.version.before"])
 	waitEvent(t, func(e rolloutEvent) bool {
-		return e.name == "succeeded" && e.body["rollout_id"] == updatedSet.body["rollout_id"]
+		return e.name == "rollout_succeeded" && e.body["rollout_id"] == updatedSet.body["rollout_id"]
 	})
 	setImages := waitEvent(t, func(e rolloutEvent) bool {
-		return e.name == "images_resolved" && e.body["rollout_id"] == updatedSet.body["rollout_id"]
+		return e.name == "rollout_images_resolved" && e.body["rollout_id"] == updatedSet.body["rollout_id"]
 	})
 	require.Equal(t, true, setImages.body["complete"])
 
 	apply(t, daemonSet("agent"))
-	createdDaemons := waitEvent(t, workload("daemonset", "agent", "started"))
+	createdDaemons := waitEvent(t, workload("daemonset", "agent", "rollout_started"))
 	waitEvent(t, func(e rolloutEvent) bool {
-		return e.name == "succeeded" && e.body["rollout_id"] == createdDaemons.body["rollout_id"]
+		return e.name == "rollout_succeeded" && e.body["rollout_id"] == createdDaemons.body["rollout_id"]
 	})
 	require.NoError(t, harness.RunCommand("kubectl", "-n", workloadNamespace, "set", "image", "daemonset/agent", "app=nginx:1.28-alpine"))
 	updatedDaemons := waitEvent(t, func(e rolloutEvent) bool {
-		return e.resourceType == "daemonset" && e.name == "started" && e.body["rollout_id"] != createdDaemons.body["rollout_id"]
+		return e.resourceType == "daemonset" && e.name == "rollout_started" && e.body["rollout_id"] != createdDaemons.body["rollout_id"]
 	})
 	require.Equal(t, "RollingUpdate", updatedDaemons.body["update_strategy"])
 	require.Contains(t, updatedDaemons.body["changes"], "containers.app.image")
 	require.Equal(t, createdDaemons.attrs["grafana.sdlc.change.version.after"], updatedDaemons.attrs["grafana.sdlc.change.version.before"])
 	waitEvent(t, func(e rolloutEvent) bool {
-		return e.name == "succeeded" && e.body["rollout_id"] == updatedDaemons.body["rollout_id"]
+		return e.name == "rollout_succeeded" && e.body["rollout_id"] == updatedDaemons.body["rollout_id"]
 	})
 	daemonImages := waitEvent(t, func(e rolloutEvent) bool {
-		return e.name == "images_resolved" && e.body["rollout_id"] == updatedDaemons.body["rollout_id"]
+		return e.name == "rollout_images_resolved" && e.body["rollout_id"] == updatedDaemons.body["rollout_id"]
 	})
 	require.Equal(t, true, daemonImages.body["complete"])
 }
@@ -221,8 +225,9 @@ func readEvents() ([]rolloutEvent, error) {
 			for i := 0; i < logs.ResourceLogs().Len(); i++ {
 				rl := logs.ResourceLogs().At(i)
 				resource := rl.Resource().Attributes().AsRaw()
-				resourceID, _ := resource["grafana.sdlc.resource.id"].(string)
-				resourceType, _ := resource["grafana.sdlc.resource.type"].(string)
+				resourceID, _ := resource["grafana.sdlc.provider.resource.id"].(string)
+				resourceType, _ := resource["grafana.sdlc.provider.resource.type"].(string)
+				changeType, _ := resource["grafana.sdlc.provider.resource.change.type"].(string)
 				namespace, _, _ := strings.Cut(resourceID, "/")
 				for j := 0; j < rl.ScopeLogs().Len(); j++ {
 					records := rl.ScopeLogs().At(j).LogRecords()
@@ -234,30 +239,11 @@ func readEvents() ([]rolloutEvent, error) {
 						attrs := r.Attributes().AsRaw()
 						attrs["grafana.sdlc.provider.type"] = resource["grafana.sdlc.provider.type"]
 						body, _ := attrs["grafana.sdlc.change.diff"].(map[string]any)
-						summary, _ := attrs["grafana.sdlc.change.summary"].(string)
-						events = append(events, rolloutEvent{name: lifecycle(summary), namespace: namespace, resourceType: resourceType, resourceID: resourceID, pod: pod, timestamp: uint64(r.Timestamp()), body: body, attrs: attrs})
+						events = append(events, rolloutEvent{name: changeType, namespace: namespace, resourceType: resourceType, resourceID: resourceID, pod: pod, timestamp: uint64(r.Timestamp()), body: body, attrs: attrs})
 					}
 				}
 			}
 		}
 	}
 	return events, nil
-}
-
-// lifecycle maps a change summary back to its rollout step. ConfigMap and
-// Secret summaries are returned unchanged.
-func lifecycle(summary string) string {
-	for prefix, name := range map[string]string{
-		"Rollout started":                   "started",
-		"Rollout succeeded":                 "succeeded",
-		"Rollout stalled":                   "stalled",
-		"Rollout superseded":                "superseded",
-		"Resolved runtime images":           "images_resolved",
-		"Partially resolved runtime images": "images_resolved",
-	} {
-		if strings.HasPrefix(summary, prefix) {
-			return name
-		}
-	}
-	return summary
 }

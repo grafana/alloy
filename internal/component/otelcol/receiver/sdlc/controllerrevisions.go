@@ -60,16 +60,17 @@ func (c *controller) observeControllerRevision(cr *appsv1.ControllerRevision) {
 
 func (c *controller) watchRevisioned(informer cache.SharedIndexInformer) error {
 	_, err := informer.AddEventHandler(cache.ResourceEventHandlerDetailedFuncs{
-		AddFunc:    func(obj any, initial bool) { c.observeRevisioned(obj, initial) },
-		UpdateFunc: func(_, obj any) { c.observeRevisioned(obj, false) },
+		AddFunc:    func(obj any, initial bool) { c.observeRevisioned(obj, !initial, initial) },
+		UpdateFunc: func(_, obj any) { c.observeRevisioned(obj, false, false) },
 		DeleteFunc: c.remove,
 	})
 	return err
 }
 
 // observeRevisioned handles StatefulSet and DaemonSet watch events, keeping the
-// latest object for re-evaluation when its ControllerRevisions change.
-func (c *controller) observeRevisioned(obj any, initial bool) {
+// latest object for re-evaluation when its ControllerRevisions change. created
+// marks a workload added after the initial listing.
+func (c *controller) observeRevisioned(obj any, created, initial bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	w := c.revisionedWorkload(obj)
@@ -77,6 +78,9 @@ func (c *controller) observeRevisioned(obj any, initial bool) {
 		return
 	}
 	c.workloads[string(w.GetUID())] = obj
+	if created {
+		c.enqueueCreated(w)
+	}
 	c.observeRollout(w, initial)
 }
 
