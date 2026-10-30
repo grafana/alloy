@@ -291,6 +291,7 @@ The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they
 The `prometheus_exporter` block configures the embedded `mysqld_exporter` scrapers.
 The `data_source_name` is inherited from the parent block.
 Only the `stat_statements` collector is enabled by default with a `limit` defaulting to `100`.
+The embedded `perf_schema.eventsstatements` collector inherits the top-level `exclude_schemas` list, but setting `prometheus_exporter > perf_schema.eventsstatements > exclude_schemas` replaces the inherited list.
 
 Refer to [`prometheus.exporter.mysql`](../../prometheus/prometheus.exporter.mysql/) docs for the full list of supported arguments and sub-blocks.
 

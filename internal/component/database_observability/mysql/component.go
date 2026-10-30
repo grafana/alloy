@@ -188,7 +188,7 @@ var defaultEnabledCollectors = []string{eventsStatementsCollector}
 
 func defaultArguments() Arguments {
 	return Arguments{
-		ExcludeSchemas:                database_observability.DefaultExcludedSchemas(),
+		ExcludeSchemas:                database_observability.DefaultMySQLExcludedSchemas(),
 		AllowUpdatePerfSchemaSettings: false,
 
 		QueryDetailsArguments: QueryDetailsArguments{
@@ -519,7 +519,7 @@ func (c *Component) warnOnStatementLimitMismatch() {
 		return
 	}
 
-	exporterArgs := resolveExporterArgs(c.args.PrometheusExporter)
+	exporterArgs := resolveExporterArgs(c.args.PrometheusExporter, c.args.ExcludeSchemas)
 	var eventsStatementsEnabled bool
 	for _, scraper := range mysqld_exporter.GetScrapers(exporterArgs.Convert()) {
 		if scraper.Name() == eventsStatementsCollector {
@@ -823,7 +823,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	}
 
 	if len(inst.cfg.targets) == 0 {
-		exporterArgs := resolveExporterArgs(c.args.PrometheusExporter)
+		exporterArgs := resolveExporterArgs(c.args.PrometheusExporter, c.args.ExcludeSchemas)
 		exporterCfg := exporterArgs.Convert()
 		scrapers := mysqld_exporter.GetScrapers(exporterCfg)
 		exporter := mysqld_collector.New(context.Background(), string(inst.cfg.dsn), scrapers, c.opts.Logger,
@@ -867,7 +867,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	return nil
 }
 
-func resolveExporterArgs(userBlock *PrometheusExporterArguments) exporter_mysql.Arguments {
+func resolveExporterArgs(userBlock *PrometheusExporterArguments, excludeSchemas []string) exporter_mysql.Arguments {
 	exporterArgs := exporter_mysql.DefaultArguments
 	exporterArgs.PerfSchemaEventsStatements.Limit = 100
 	if userBlock != nil {
@@ -879,6 +879,14 @@ func resolveExporterArgs(userBlock *PrometheusExporterArguments) exporter_mysql.
 	if exporterArgs.PerfSchemaEventsStatements.Limit == 0 {
 		exporterArgs.PerfSchemaEventsStatements.Limit = 100
 	}
+	excludeSchemas = database_observability.ResolveExclusionOverride(
+		excludeSchemas,
+		exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas,
+	)
+	exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas = database_observability.MergeExclusions(
+		database_observability.AlwaysExcludedMySQLSchemas(),
+		excludeSchemas,
+	)
 	return exporterArgs
 }
 

@@ -6,6 +6,44 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestMergeExclusions(t *testing.T) {
+	first := []string{"system", "shared"}
+	second := []string{"shared", "configured"}
+
+	merged := MergeExclusions(first, second)
+
+	require.Equal(t, []string{"system", "shared", "configured"}, merged)
+	require.Equal(t, []string{"system", "shared"}, first)
+	require.Equal(t, []string{"shared", "configured"}, second)
+}
+
+func TestResolveExclusionOverride(t *testing.T) {
+	t.Run("inherits when override is unset", func(t *testing.T) {
+		inherited := []string{"inherited"}
+
+		resolved := ResolveExclusionOverride(inherited, nil)
+		resolved[0] = "changed"
+
+		require.Equal(t, []string{"inherited"}, inherited)
+	})
+
+	t.Run("uses explicit empty override", func(t *testing.T) {
+		resolved := ResolveExclusionOverride([]string{"inherited"}, []string{})
+
+		require.Empty(t, resolved)
+		require.NotNil(t, resolved)
+	})
+
+	t.Run("uses configured override without mutating it", func(t *testing.T) {
+		override := []string{"override"}
+
+		resolved := ResolveExclusionOverride([]string{"inherited"}, override)
+		resolved[0] = "changed"
+
+		require.Equal(t, []string{"override"}, override)
+	})
+}
+
 func TestBuildExclusionClause(t *testing.T) {
 	tests := []struct {
 		name     string
