@@ -358,6 +358,7 @@ type App struct {
 	Release     string `json:"release,omitempty"`
 	Version     string `json:"version,omitempty"`
 	Environment string `json:"environment,omitempty"`
+	BundleID    string `json:"bundleId,omitempty"`
 }
 
 // Event holds RUM event data
@@ -391,6 +392,7 @@ func (a App) KeyVal() *KeyVal {
 	KeyValAdd(kv, "release", a.Release)
 	KeyValAdd(kv, "version", a.Version)
 	KeyValAdd(kv, "environment", a.Environment)
+	KeyValAdd(kv, "bundle_id", a.BundleID)
 	return kv
 }
 

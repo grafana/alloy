@@ -142,7 +142,11 @@ func (exp *logsExporter) Export(ctx context.Context, p payload.Payload) error {
 
 	// exceptions
 	for _, exception := range p.Exceptions {
-		transformedException := transformException(exp.log, exp.sourceMaps, &exception, p.Meta.App.Release)
+		smCtx := sourceMapContext{
+			Release:  p.Meta.App.Release,
+			BundleID: p.Meta.App.BundleID,
+		}
+		transformedException := transformException(exp.log, exp.sourceMaps, &exception, smCtx)
 		if err := send(transformedException.KeyVal()); err != nil {
 			return err
 		}
