@@ -1,0 +1,45 @@
+SQL Server showplan XML generated from a conditional query shaped like:
+
+```
+IF NOT EXISTS (
+    SELECT *
+    FROM sysobjects
+    WHERE id = object_id(N'Orders')
+      AND OBJECTPROPERTY(id, N'IsUserTable') = 1
+)
+```
+
+Conditional statements with a subquery (StatementType="COND WITH QUERY") store
+their execution plan under <StmtCond><Condition><QueryPlan><RelOp> rather than
+<StmtSimple><QueryPlan><RelOp>.
+
+-- stmt_cond.xml --
+<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan">
+  <BatchSequence>
+    <Batch>
+      <Statements>
+        <StmtCond StatementText="IF NOT EXISTS (SELECT * FROM sysobjects WHERE id = object_id(N&apos;Orders&apos;) AND OBJECTPROPERTY(id, N&apos;IsUserTable&apos;) = 1)" StatementId="1" StatementCompId="1" StatementType="COND WITH QUERY">
+          <Condition>
+            <QueryPlan>
+              <RelOp PhysicalOp="Compute Scalar" LogicalOp="Compute Scalar" EstimateRows="1" EstimatedTotalSubtreeCost="0.02">
+                <ComputeScalar>
+                  <RelOp PhysicalOp="Clustered Index Seek" LogicalOp="Clustered Index Seek" EstimateRows="1" EstimatedTotalSubtreeCost="0.015">
+                    <IndexScan>
+                      <Object Database="[MyDb]" Schema="[sys]" Table="[sysschobjs]" Index="[clst]" />
+                      <Predicate>
+                        <ScalarOperator ScalarString="OBJECTPROPERTY([MyDb].[sys].[sysschobjs].[id],N&apos;IsUserTable&apos;)=(1)" />
+                      </Predicate>
+                    </IndexScan>
+                  </RelOp>
+                </ComputeScalar>
+              </RelOp>
+            </QueryPlan>
+          </Condition>
+          <Then>
+            <Statements />
+          </Then>
+        </StmtCond>
+      </Statements>
+    </Batch>
+  </BatchSequence>
+</ShowPlanXML>
