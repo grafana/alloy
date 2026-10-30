@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus"
 	"github.com/prometheus/common/model"
@@ -969,7 +970,7 @@ func normalizeLabel(k string) string {
 		}
 		return '_'
 	}, k)
-	if unicode.IsDigit(rune(name[0])) {
+	if first, _ := utf8.DecodeRuneInString(name); unicode.IsDigit(first) {
 		name = "key_" + name
 	}
 	return name

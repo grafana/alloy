@@ -368,6 +368,7 @@ Enabling `independent` lets each assigned partition be processed by its own work
 `independent` requires `autocommit.enable` to be `true`.
 
 The `max_buffered_batches` argument is deprecated and will be removed in a future release. Use `max_prefetch` > `batches` instead.
+You can't set `max_buffered_batches` and `max_prefetch` > `batches` to non-default values at the same time.
 
 #### `max_prefetch`
 

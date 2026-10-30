@@ -19,3 +19,10 @@ func TestNormalizeLabel(t *testing.T) {
 		require.Equal(t, tc.want, normalizeLabel(tc.in), tc.in)
 	}
 }
+
+func TestNormalizeLabel_MultiByteLeadingRune(t *testing.T) {
+	// A punctuation-only name ending up with a multi-byte letter must not be
+	// inspected byte-wise.
+	require.Equal(t, "é", normalizeLabel("é"))
+	require.Equal(t, "_é", normalizeLabel("!é"))
+}

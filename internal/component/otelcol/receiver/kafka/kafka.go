@@ -145,6 +145,11 @@ func (args *Arguments) Validate() error {
 		return fmt.Errorf("max_decompress_batch_bytes (%d) must be between 1 and %d", args.MaxDecompressBatchBytes, math.MaxInt32)
 	}
 
+	// Upstream rejects setting both the deprecated and the new form of the batch limit.
+	if args.PartitionProcessing.MaxBufferedBatches != 1 && args.PartitionProcessing.MaxPrefetch.Batches != 1 {
+		return fmt.Errorf("partition_processing.max_buffered_batches and partition_processing.max_prefetch.batches are mutually exclusive")
+	}
+
 	// Upstream rejects setting both forms, whatever their values.
 	if len(args.GroupRebalanceStrategies) > 0 && args.GroupRebalanceStrategy != "" {
 		return fmt.Errorf("group_rebalance_strategy and group_rebalance_strategies are mutually exclusive; group_rebalance_strategy is deprecated, prefer group_rebalance_strategies")
@@ -486,10 +491,11 @@ func (args *PartitionProcessingArguments) SetToDefault() {
 }
 
 // Convert converts args into the upstream type. The deprecated
-// max_buffered_batches takes effect only when it differs from its default.
+// max_buffered_batches is only a fallback for max_prefetch.batches and is used
+// when the latter is left at its default.
 func (args PartitionProcessingArguments) Convert() kafkareceiver.PartitionProcessing {
 	batches := args.MaxPrefetch.Batches
-	if args.MaxBufferedBatches != 1 {
+	if batches == 1 {
 		batches = args.MaxBufferedBatches
 	}
 	return kafkareceiver.PartitionProcessing{

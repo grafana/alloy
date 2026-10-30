@@ -873,8 +873,9 @@ func TestPartitionProcessing(t *testing.T) {
 		require.Equal(t, 7, otelObj.PartitionProcessing.MaxPrefetch.Batches)
 	})
 
-	t.Run("deprecated max_buffered_batches wins over max_prefetch batches", func(t *testing.T) {
-		otelObj, err := convert(t, `
+	t.Run("max_buffered_batches and max_prefetch batches are mutually exclusive", func(t *testing.T) {
+		var args kafka.Arguments
+		err := syntax.Unmarshal([]byte(`
 			brokers          = ["broker:9092"]
 			protocol_version = "2.0.0"
 
@@ -887,9 +888,8 @@ func TestPartitionProcessing(t *testing.T) {
 			}
 
 			output {}
-		`)
-		require.NoError(t, err)
-		require.Equal(t, 7, otelObj.PartitionProcessing.MaxPrefetch.Batches)
+		`), &args)
+		require.ErrorContains(t, err, "mutually exclusive")
 	})
 
 	t.Run("max_prefetch and max_in_flight are passed through", func(t *testing.T) {
