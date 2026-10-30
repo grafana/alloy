@@ -1,6 +1,8 @@
 package collector
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -12,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -124,15 +127,16 @@ func fullScanMetric(schema, digest, tableSchema, table, hasKeys string, rows flo
 
 // processPlan runs one query through processExplainPlan with the given explain
 // plan JSON, as the collector would after reading it from the digest table.
-// When the collector exposes its metric, SHOW WARNINGS returns no notes.
-func processPlan(t *testing.T, c *ExplainPlans, mock sqlmock.Sqlmock, schema, digest, planJSON string) {
+// When the collector exposes its metric, SHOW WARNINGS returns no notes. It
+// returns whether the query would be denylisted.
+func processPlan(t *testing.T, c *ExplainPlans, mock sqlmock.Sqlmock, schema, digest, planJSON string) bool {
 	t.Helper()
-	processPlanWithNote(t, c, mock, schema, digest, planJSON, "")
+	return processPlanWithNote(t, c, mock, schema, digest, planJSON, "")
 }
 
 // processPlanWithNote is processPlan with the rewritten query note that SHOW
 // WARNINGS returns after the EXPLAIN.
-func processPlanWithNote(t *testing.T, c *ExplainPlans, mock sqlmock.Sqlmock, schema, digest, planJSON, note string) {
+func processPlanWithNote(t *testing.T, c *ExplainPlans, mock sqlmock.Sqlmock, schema, digest, planJSON, note string) bool {
 	t.Helper()
 	mock.ExpectExec("USE `" + schema + "`").WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectQuery(selectExplainPlanPrefix + "select * from some_table where id = 1").
@@ -144,7 +148,69 @@ func processPlanWithNote(t *testing.T, c *ExplainPlans, mock sqlmock.Sqlmock, sc
 		}
 		mock.ExpectQuery("SHOW WARNINGS").WillReturnRows(warnings)
 	}
-	c.processExplainPlan(t.Context(), newQueryInfo(schema, digest, "select * from some_table where id = 1"))
+	return c.processExplainPlan(t.Context(), newQueryInfo(schema, digest, "select * from some_table where id = 1"))
+}
+
+// explainPlanOutputs decodes the explain plan outputs sent to Loki so far.
+func explainPlanOutputs(t *testing.T, lokiClient *loki.CollectingHandler) []database_observability.ExplainPlanOutput {
+	t.Helper()
+	var outputs []database_observability.ExplainPlanOutput
+	for _, entry := range lokiClient.Received() {
+		_, encoded, found := strings.Cut(entry.Line, `explain_plan_output="`)
+		require.True(t, found, entry.Line)
+		decoded, err := base64.StdEncoding.DecodeString(strings.TrimSuffix(encoded, `"`))
+		require.NoError(t, err)
+		var output database_observability.ExplainPlanOutput
+		require.NoError(t, json.Unmarshal(decoded, &output))
+		outputs = append(outputs, output)
+	}
+	return outputs
+}
+
+func TestExplainPlansConversionFailuresStillReportFullScans(t *testing.T) {
+	// MySQL returned this plan, but its cost can't be read, so converting it
+	// for the log output fails.
+	const unconvertiblePlan = `{"query_block": {"select_id": 1, "table": {"table_name": "invites", "access_type": "ALL", "rows_examined_per_scan": 369777, "cost_info": {"prefix_cost": "not a number"}}}}`
+
+	registry := prometheus.NewRegistry()
+	c, mock, clock := newFullScanTestCollector(t, registry)
+	registry.MustRegister(c)
+	lokiClient := c.entryHandler.(*loki.CollectingHandler)
+
+	t.Run("the query is not denylisted and its full scan is reported", func(t *testing.T) {
+		require.False(t, processPlan(t, c, mock, "grafana_net", "d1", unconvertiblePlan))
+		require.NoError(t, testutil.CollectAndCompare(registry, strings.NewReader(fullScanMetric("grafana_net", "d1", "", "invites", "false", 369777))))
+	})
+
+	t.Run("an error with a fixed reason is sent, which throttles the query", func(t *testing.T) {
+		require.Eventually(t, func() bool { return len(lokiClient.Received()) == 1 }, 5*time.Second, 10*time.Millisecond)
+		output := explainPlanOutputs(t, lokiClient)[0]
+		require.Equal(t, database_observability.ExplainProcessingResultError, output.Metadata.ProcessingResult)
+		require.Equal(t, "failed to create explain plan output", output.Metadata.ProcessingResultReason)
+		require.True(t, c.isThrottled(explainPlanQueryKey("grafana_net", "d1")))
+	})
+
+	t.Run("explaining it again keeps the full scan from expiring", func(t *testing.T) {
+		*clock = clock.Add(fullScanTTL - time.Minute)
+		require.False(t, processPlan(t, c, mock, "grafana_net", "d1", unconvertiblePlan))
+		*clock = clock.Add(2 * time.Minute)
+		require.Equal(t, 1, testutil.CollectAndCount(registry, "database_observability_mysql_explain_plan_full_scan_rows"))
+	})
+
+	t.Run("a plan that isn't valid UTF-8 is still read for full scans", func(t *testing.T) {
+		require.False(t, processPlan(t, c, mock, "grafana_net", "d2", "{\"query_block\": {\"table\": {\"table_name\": \"inv\xffites\", \"access_type\": \"ALL\", \"rows_examined_per_scan\": 7}}}"))
+		require.Equal(t, 2, testutil.CollectAndCount(registry, "database_observability_mysql_explain_plan_full_scan_rows"))
+	})
+
+	t.Run("a plan that can't be redacted is not denylisted", func(t *testing.T) {
+		require.False(t, processPlan(t, c, mock, "grafana_net", "d3", `{"query_block": `))
+	})
+
+	t.Run("a query that MySQL returns no plan for is still denylisted", func(t *testing.T) {
+		require.True(t, processPlan(t, c, mock, "grafana_net", "d4", ""))
+	})
+
+	require.NoError(t, mock.ExpectationsWereMet())
 }
 
 func newFullScanTestCollector(t *testing.T, registry *prometheus.Registry) (*ExplainPlans, sqlmock.Sqlmock, *time.Time) {

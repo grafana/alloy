@@ -801,7 +801,10 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 }
 
 // processExplainPlan processes a single query from the cache.
-// Returns true if the query encountered a non-recoverable failure and should be denylisted.
+// Returns true if the query can't be explained at all, for example because
+// access is denied or MySQL returns no plan, and should be denylisted. A plan
+// that MySQL returned but that can't be converted for the log output is not a
+// reason to denylist: its full scans are still reported.
 func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bool {
 	generatedAt := time.Now().Format(time.RFC3339)
 	logger := c.logger.With("digest", qi.digest)
@@ -871,15 +874,24 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 		return true
 	}
 
+	// From here on the query could be explained, so failures are in converting
+	// the plan for the log output, not in explaining it. The full scans are
+	// read from the plan as MySQL returned it, before any conversion, and such
+	// a query is not denylisted: it is explained again once the error output
+	// below stops throttling it, which keeps its full scans fresh.
+	c.recordFullScans(logger, qi, byteExplainPlanJSON, rewrittenQuery)
+
 	if !utf8.Valid(byteExplainPlanJSON) {
 		logger.Error("explain plan json bytes is not valid UTF-8")
-		return true
+		c.sendConversionError(qi, generatedAt, "explain plan is not valid UTF-8")
+		return false
 	}
 
 	redactedByteExplainPlanJSON, _, err := redactAttachedConditions(byteExplainPlanJSON)
 	if err != nil {
 		logger.Error("failed to redact explain plan json", "err", err)
-		return true
+		c.sendConversionError(qi, generatedAt, "failed to redact explain plan")
+		return false
 	}
 
 	msgBlock, msgDatType, _, err := jsonparser.Get(redactedByteExplainPlanJSON, "query_block", "message")
@@ -895,8 +907,6 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 		}
 	}
 
-	c.recordFullScans(logger, qi, byteExplainPlanJSON, rewrittenQuery)
-
 	logger.Debug("db native explain plan",
 		"db_native_explain_plan", base64.StdEncoding.EncodeToString(redactedByteExplainPlanJSON))
 
@@ -904,7 +914,8 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 	explainPlanOutputJSON, err := json.Marshal(explainPlanOutput)
 	if err != nil {
 		logger.Error("failed to marshal explain plan output", "err", err)
-		return true
+		c.sendConversionError(qi, generatedAt, "failed to marshal explain plan output")
+		return false
 	}
 
 	if genErr != nil {
@@ -913,7 +924,8 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 			"incomplete_explain_plan", base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
 			"err", genErr,
 		)
-		return true
+		c.sendConversionError(qi, generatedAt, "failed to create explain plan output")
+		return false
 	}
 
 	if err := c.sendExplainPlansOutput(
@@ -928,6 +940,23 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 	}
 
 	return false
+}
+
+// sendConversionError emits an error result for a plan that MySQL returned but
+// that could not be converted for the log output. The reason is a fixed text:
+// conversion errors can quote the plan's conditions, and with them the query's
+// literal values.
+func (c *ExplainPlans) sendConversionError(qi *queryInfo, generatedAt, reason string) {
+	if err := c.sendExplainPlansOutput(
+		qi.schemaName,
+		qi.digest,
+		generatedAt,
+		database_observability.ExplainProcessingResultError,
+		reason,
+		nil,
+	); err != nil {
+		c.logger.Error("failed to send explain plan conversion error output", "err", err)
+	}
 }
 
 // recordFullScans updates the full scans reported for a query from its latest
