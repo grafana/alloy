@@ -497,21 +497,47 @@ FROM volume_files`
 const selectPerformanceCounters = `
 SELECT ` + QueryMarker + `
 	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'Batch Requests/sec' THEN cntr_value END), 0)) AS batch_requests_total,
+	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'Transactions/sec' AND RTRIM(instance_name) = N'_Total' THEN cntr_value END), 0)) AS transactions_total,
 	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'SQL Compilations/sec' THEN cntr_value END), 0)) AS sql_compilations_total,
 	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'SQL Re-Compilations/sec' THEN cntr_value END), 0)) AS sql_recompilations_total,
 	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'Page life expectancy' AND RTRIM(object_name) LIKE N'%:Buffer Manager' THEN cntr_value END), 0)) AS page_life_expectancy_seconds,
+	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'Buffer cache hit ratio' AND RTRIM(object_name) LIKE N'%:Buffer Manager' THEN cntr_value END), 0)) AS buffer_cache_hit_count,
+	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'Buffer cache hit ratio base' AND RTRIM(object_name) LIKE N'%:Buffer Manager' THEN cntr_value END), 0)) AS buffer_cache_hit_base,
+	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'Checkpoint pages/sec' AND RTRIM(object_name) LIKE N'%:Buffer Manager' THEN cntr_value END), 0)) AS checkpoint_pages_total,
+	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'Lazy writes/sec' AND RTRIM(object_name) LIKE N'%:Buffer Manager' THEN cntr_value END), 0)) AS lazy_writes_total,
+	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'Free list stalls/sec' AND RTRIM(object_name) LIKE N'%:Buffer Manager' THEN cntr_value END), 0)) AS free_list_stalls_total,
+	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'Page splits/sec' AND RTRIM(object_name) LIKE N'%:Access Methods' THEN cntr_value END), 0)) AS page_splits_total,
+	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'Full Scans/sec' AND RTRIM(object_name) LIKE N'%:Access Methods' THEN cntr_value END), 0)) AS full_scans_total,
 	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'Memory Grants Pending' THEN cntr_value END), 0)) AS memory_grants_pending,
+	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'Processes blocked' AND RTRIM(object_name) LIKE N'%:General Statistics' THEN cntr_value END), 0)) AS processes_blocked,
 	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'Number of Deadlocks/sec' AND RTRIM(instance_name) = N'_Total' THEN cntr_value END), 0)) AS deadlocks_total,
-	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'Lock Waits/sec' AND RTRIM(instance_name) = N'_Total' THEN cntr_value END), 0)) AS lock_waits_total
+	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'Lock Waits/sec' AND RTRIM(instance_name) = N'_Total' THEN cntr_value END), 0)) AS lock_waits_total,
+	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'Lock Wait Time (ms)' AND RTRIM(instance_name) = N'_Total' THEN cntr_value END), 0)) / 1000.0 AS lock_wait_seconds_total,
+	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'Logins/sec' AND RTRIM(object_name) LIKE N'%:General Statistics' THEN cntr_value END), 0)) AS logins_total,
+	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'Connection Reset/sec' AND RTRIM(object_name) LIKE N'%:General Statistics' THEN cntr_value END), 0)) AS connection_resets_total,
+	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'Logouts/sec' AND RTRIM(object_name) LIKE N'%:General Statistics' THEN cntr_value END), 0)) AS logouts_total
 FROM sys.dm_os_performance_counters
 WHERE RTRIM(counter_name) IN (
 	N'Batch Requests/sec',
+	N'Transactions/sec',
 	N'SQL Compilations/sec',
 	N'SQL Re-Compilations/sec',
 	N'Page life expectancy',
+	N'Buffer cache hit ratio',
+	N'Buffer cache hit ratio base',
+	N'Checkpoint pages/sec',
+	N'Lazy writes/sec',
+	N'Free list stalls/sec',
+	N'Page splits/sec',
+	N'Full Scans/sec',
 	N'Memory Grants Pending',
+	N'Processes blocked',
 	N'Number of Deadlocks/sec',
-	N'Lock Waits/sec'
+	N'Lock Waits/sec',
+	N'Lock Wait Time (ms)',
+	N'Logins/sec',
+	N'Connection Reset/sec',
+	N'Logouts/sec'
 )`
 
 const selectFileIOStats = `
