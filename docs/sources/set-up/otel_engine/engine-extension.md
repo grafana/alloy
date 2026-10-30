@@ -9,14 +9,18 @@ weight: 200
 
 # Run the {{% param "FULL_PRODUCT_NAME" %}} Engine extension
 
-You can run the {{< param "OTEL_ENGINE" >}} and the {{< param "DEFAULT_ENGINE" >}} in the same process.
-Add the `alloyengine` extension to your OpenTelemetry Collector configuration to start a {{< param "DEFAULT_ENGINE" >}} pipeline alongside the {{< param "OTEL_ENGINE" >}} pipeline.
+The `alloyengine` extension is an escape hatch.
+Use it when you need a {{< param "DEFAULT_ENGINE" >}} component that has no OpenTelemetry Collector equivalent and you want to keep it in the same process as the {{< param "OTEL_ENGINE" >}}.
+Add it to your OpenTelemetry Collector configuration to start a {{< param "DEFAULT_ENGINE" >}} pipeline alongside the {{< param "OTEL_ENGINE" >}} pipeline.
 The two engines run in parallel and can't exchange data with each other. If required, they can still communicate over the network via components like the OTLP exporter and receiver
+
+If the extension has been useful to you, [open an issue][Issues] and tell us about your use case.
 
 Set exactly one of `config.path` or `config.inline.content`.
 The extension fails to start if you set both or neither.
 
-{{< docs/shared lookup="stability/public_preview_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
+> **EXPERIMENTAL**: The `alloyengine` extension is an [experimental][] feature.
+> Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
 
 ## Before you begin
 
@@ -104,11 +108,13 @@ If you configure more than one, the first extension to start succeeds, the rest 
 
 ## Embed the extension in another distribution
 
-You can embed the `alloyengine` extension into any other OpenTelemetry Collector distribution with the OpenTelemetry Collector Builder (OCB).
-Refer to [Include `alloyengine` extension in an OCB distribution][OCBDistribution] for instructions.
+You can add the `alloyengine` extension to another OpenTelemetry Collector distribution with the OpenTelemetry Collector Builder (OCB).
+Refer to [Include `alloyengine` extension in an OCB distribution][OCBDistribution] for the steps.
 
 [CLI]: ../cli/
 [Clustering]: ../../../get-started/clustering/
+[experimental]: https://grafana.com/docs/release-life-cycle/
+[Issues]: https://github.com/grafana/alloy/issues
 [OCBDistribution]: https://github.com/grafana/alloy/blob/main/extension/alloyengine/README.md#include-alloyengine-extension-in-an-ocb-distribution
 [PassFlags]: #pass-flags-to-the-default-engine
 [RunCommand]: ../../../reference/cli/run/

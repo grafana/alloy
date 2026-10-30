@@ -92,7 +92,7 @@ Choose the engine that best matches your existing configuration and collection w
 - **{{< param "OTEL_ENGINE" >}}**: The upstream OpenTelemetry Collector runtime embedded in {{< param "PRODUCT_NAME" >}}.
   It uses [Collector YAML configuration](https://opentelemetry.io/docs/collector/configuration/) and standard Collector command-line arguments.
   It provides a direct path for OpenTelemetry-native pipelines and existing Collector configurations.
-- **{{< param "PRODUCT_NAME" >}} Engine extension**: An OpenTelemetry Collector extension that starts a {{< param "DEFAULT_ENGINE" >}} pipeline alongside the {{< param "OTEL_ENGINE" >}}.
+- **{{< param "PRODUCT_NAME" >}} Engine extension**: An escape hatch that starts a {{< param "DEFAULT_ENGINE" >}} pipeline alongside the {{< param "OTEL_ENGINE" >}}.
   The two pipelines run in the same process, but they don't interact directly.
 
 ### Use the {{% param "OTEL_ENGINE" %}} for OpenTelemetry-native pipelines
@@ -119,12 +119,13 @@ The {{< param "DEFAULT_ENGINE" >}} is the recommended choice when you:
 The {{< param "DEFAULT_ENGINE" >}} is optimized for Prometheus pipelines and label semantics.
 It also provides Grafana-specific collection features that don't yet have OpenTelemetry-native equivalents.
 
-### Run both engines when you need both component sets
+### Run both engines as an escape hatch
 
-Use the `alloyengine` extension when one process needs both standard Collector components and {{< param "DEFAULT_ENGINE" >}} components.
-This approach can simplify small deployments.
+Use the `alloyengine` extension only when you need a {{< param "DEFAULT_ENGINE" >}} component that the {{< param "OTEL_ENGINE" >}} doesn't have, and you want it in the same process.
+If it works for you, [open an issue](https://github.com/grafana/alloy/issues) and tell us about your use case.
 
-{{< docs/shared lookup="stability/public_preview_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
+> **EXPERIMENTAL**: The `alloyengine` extension is an [experimental](https://grafana.com/docs/release-life-cycle/) feature.
+> Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
 
 For large workloads, run the engines in separate processes so you can scale and troubleshoot them independently.
 Push-based OTLP gateways and pull-based Prometheus scrapers have different load and scaling characteristics.
