@@ -1,0 +1,75 @@
+name: Bump alloy-scenarios documentation
+
+on:
+  schedule:
+    # Mondays at 09:00 UTC.
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+
+permissions: {}
+
+env:
+  ALLOYBOT_APP_NAME: grafana-alloybot
+
+concurrency:
+  group: bump-scenarios-docs
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    if: github.repository == 'grafana/alloy'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - name: Generate token 🔐
+        uses: grafana/shared-workflows/actions/create-github-app-token@46f48da11e78ebdba7a8747ae456b11062fac83e # create-github-app-token/v0.3.1
+        id: app-token
+        with:
+          github_app: ${{ env.ALLOYBOT_APP_NAME }}
+
+      - name: Checkout repository 🛎️
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Checkout alloy-scenarios 🛎️
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          repository: grafana/alloy-scenarios
+          path: alloy-scenarios
+          sparse-checkout: /docs/alloy/
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Copy the scenario tables 📋
+        id: copy
+        run: |
+          rm -f docs/sources/shared/scenarios/*.md
+          cp alloy-scenarios/docs/alloy/*.md docs/sources/shared/scenarios/
+          echo "sha=$(git -C alloy-scenarios rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          rm -rf alloy-scenarios
+
+      # create-pull-request opens nothing when the working tree has no changes,
+      # so this is a no-op whenever the tables haven't changed.
+      - name: Create or update pull request 📝
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          sign-commits: true
+          add-paths: docs/sources/shared/scenarios
+          branch: docs/bump-alloy-scenarios
+          base: ${{ github.event.repository.default_branch }}
+          commit-message: "docs: update alloy-scenarios index"
+          title: "docs: update alloy-scenarios index"
+          body: >
+            Automated copy of the scenario tables that `grafana/alloy-scenarios`
+            generates in `docs/alloy/`, at commit
+            ${{ steps.copy.outputs.sha }}.
+
+
+            alloy-scenarios validates and generates these files, so review the
+            diff for content only. A new file is a new category: add a page in
+            `docs/sources/scenarios/` that imports it before you merge.
