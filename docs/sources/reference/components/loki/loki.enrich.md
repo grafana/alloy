@@ -12,7 +12,7 @@ description: The loki.enrich component enriches logs with labels from service di
 
 # `loki.enrich`
 
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `loki.enrich` component enriches logs with additional labels from service discovery targets.
 It matches labels from incoming logs against labels from discovered targets, and copies specified labels from the matched target to the log entry.
