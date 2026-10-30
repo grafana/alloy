@@ -857,6 +857,41 @@ func TestPartitionProcessing(t *testing.T) {
 		}, otelObj.PartitionProcessing)
 	})
 
+	t.Run("deprecated max_buffered_batches is still honored", func(t *testing.T) {
+		otelObj, err := convert(t, `
+			brokers          = ["broker:9092"]
+			protocol_version = "2.0.0"
+
+			partition_processing {
+				independent          = true
+				max_buffered_batches = 7
+			}
+
+			output {}
+		`)
+		require.NoError(t, err)
+		require.Equal(t, 7, otelObj.PartitionProcessing.MaxPrefetch.Batches)
+	})
+
+	t.Run("deprecated max_buffered_batches wins over max_prefetch batches", func(t *testing.T) {
+		otelObj, err := convert(t, `
+			brokers          = ["broker:9092"]
+			protocol_version = "2.0.0"
+
+			partition_processing {
+				independent          = true
+				max_buffered_batches = 7
+				max_prefetch {
+					batches = 3
+				}
+			}
+
+			output {}
+		`)
+		require.NoError(t, err)
+		require.Equal(t, 7, otelObj.PartitionProcessing.MaxPrefetch.Batches)
+	})
+
 	t.Run("max_prefetch and max_in_flight are passed through", func(t *testing.T) {
 		otelObj, err := convert(t, `
 			brokers          = ["broker:9092"]
@@ -975,4 +1010,23 @@ func TestArguments_LogDeprecations(t *testing.T) {
 	require.NotPanics(t, func() {
 		args.LogDeprecations(nil)
 	})
+}
+
+func TestArguments_InvalidClientLimits(t *testing.T) {
+	for name, tc := range map[string]struct{ attr, errMsg string }{
+		"zero dial_timeout":               {`dial_timeout = "0s"`, "dial_timeout"},
+		"zero max_decompress_batch_bytes": {`max_decompress_batch_bytes = 0`, "max_decompress_batch_bytes"},
+		"huge max_decompress_batch_bytes": {`max_decompress_batch_bytes = 3000000000`, "max_decompress_batch_bytes"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			var args kafka.Arguments
+			err := syntax.Unmarshal([]byte(`
+				brokers          = ["broker:9092"]
+				protocol_version = "2.0.0"
+				`+tc.attr+`
+				output {}
+			`), &args)
+			require.ErrorContains(t, err, tc.errMsg)
+		})
+	}
 }

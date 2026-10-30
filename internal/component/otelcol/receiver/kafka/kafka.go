@@ -4,6 +4,7 @@ package kafka
 import (
 	"fmt"
 	"log/slog"
+	"math"
 	"time"
 
 	"github.com/go-viper/mapstructure/v2"
@@ -133,6 +134,15 @@ func (args *Arguments) Validate() error {
 		if args.ErrorBackOff.RandomizationFactor < 0 {
 			return fmt.Errorf("randomization_factor must be greater or equal to 0")
 		}
+	}
+
+	// Upstream only validates these when the nested client and consumer configs
+	// are visited, which doesn't happen for the converted config.
+	if args.DialTimeout <= 0 {
+		return fmt.Errorf("dial_timeout (%s) must be positive", args.DialTimeout)
+	}
+	if args.MaxDecompressBatchBytes < 1 || args.MaxDecompressBatchBytes > math.MaxInt32 {
+		return fmt.Errorf("max_decompress_batch_bytes (%d) must be between 1 and %d", args.MaxDecompressBatchBytes, math.MaxInt32)
 	}
 
 	// Upstream rejects setting both forms, whatever their values.
