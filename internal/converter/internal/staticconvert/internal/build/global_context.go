@@ -1,7 +1,7 @@
 package build
 
 import (
-	"github.com/grafana/alloy/internal/component/prometheus/remotewrite"
+	"github.com/grafana/alloy/internal/component/prometheus/remote_write"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 )
 

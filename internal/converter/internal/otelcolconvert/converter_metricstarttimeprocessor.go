@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/grafana/alloy/internal/component/otelcol"
-	"github.com/grafana/alloy/internal/component/otelcol/processor/metricstarttime"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/metric_start_time"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/metricstarttimeprocessor"
