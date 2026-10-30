@@ -16,6 +16,19 @@ type Consumer interface {
 	// Consume consumes batch and may modify it. The caller may reuse batch once
 	// Consume returns, so Consume must not retain any references to the batch itself
 	// after it returns. Labels and individual entries read from batch may be kept.
+	// Consume returns one of:
+	//   - nil: the batch has been accepted and the caller can commit it.
+	//   - A context error: ctx was cancelled and the batch may not have been
+	//     delivered. The caller should not commit it.
+	//   - ErrConsumerStopped: a consumer in the pipeline has stopped, usually because
+	//     of a config reload, and the batch may not have been delivered. The caller
+	//     should not commit it and should retry with a copy of the original batch
+	//     until Consume succeeds or ctx is cancelled.
+	//   - Any other error: unexpected, most likely a bug.
+	//
+	// When Consume returns an error, check ctx.Err() to tell a context error apart
+	// instead of inspecting the returned error. The entries may already have reached
+	// some consumers, so sending the batch again can produce duplicates.
 	Consume(ctx context.Context, batch Batch) error
 }
 
