@@ -1,4 +1,9 @@
-package alloyengine
+// Package engine implements the alloyengine extension without importing any
+// native Alloy components. Alloy's own OTel Collector
+// distribution uses it so that the components selected in builder-config.yaml
+// decide what is linked. Other OCB distributions should use the parent
+// alloyengine package, which includes every component.
+package engine
 
 import (
 	"context"
