@@ -25,7 +25,7 @@ func TestNewBookMarkKeepsSavedPosition(t *testing.T) {
 	require.False(t, bm.isNew)
 	require.Equal(t, saved, bm.bookmarkStr.Load())
 
-	// The target saves the bookmark periodically and on stop, also when no new event has been read since it started.
+	// Saving before a new event has been read keeps the loaded position.
 	require.NoError(t, bm.save())
 	content, err := os.ReadFile(filePath)
 	require.NoError(t, err)
