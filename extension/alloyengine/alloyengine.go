@@ -1,7 +1,6 @@
 // Package alloyengine provides the alloyengine extension, which embeds Alloy's
 // Default Engine in an OTel Collector distribution. It includes every native
-// Alloy component and the config converter, so it can be added to any OCB
-// distribution.
+// Alloy component, so it can be added to any OCB distribution.
 package alloyengine
 
 import (
@@ -9,9 +8,8 @@ import (
 
 	"github.com/grafana/alloy/extension/alloyengine/engine"
 
-	// Include every native Alloy component and the config converter.
+	// Include every native Alloy component.
 	_ "github.com/grafana/alloy/internal/component/all"
-	_ "github.com/grafana/alloy/internal/converter/install"
 )
 
 type (

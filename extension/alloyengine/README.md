@@ -121,7 +121,7 @@ extensions:
 
 Replace `<ALLOY_VERSION>` with the version you chose.
 
-The `github.com/grafana/alloy/extension/alloyengine` package includes every native Alloy component and the config converter.
+The `github.com/grafana/alloy/extension/alloyengine` package includes every native Alloy component.
 
 ### Include replace directives from Alloy
 
