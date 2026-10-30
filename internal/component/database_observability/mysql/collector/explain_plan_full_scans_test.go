@@ -30,7 +30,7 @@ func TestFullScansFromExplainJSON(t *testing.T) {
 		},
 		"read in full although an index could be used": {
 			plan: `{"query_block": {"select_id": 1, "table": {"table_name": "o", "access_type": "ALL", "possible_keys": ["organizations_slug_index"], "rows_examined_per_scan": 833423}}}`,
-			want: []fullScan{{table: "o", rows: 833423, hasPossibleKeys: true}},
+			want: []fullScan{{table: "o", rows: 833423, hasPossibleIndex: true}},
 		},
 		"empty possible_keys counts as none": {
 			plan: `{"query_block": {"table": {"table_name": "t", "access_type": "ALL", "possible_keys": [], "rows_examined_per_scan": 10}}}`,
@@ -47,7 +47,7 @@ func TestFullScansFromExplainJSON(t *testing.T) {
 			plan: `{"query_block": {"nested_loop": [
 				{"table": {"table_name": "a", "access_type": "ALL", "rows_examined_per_scan": 5}},
 				{"table": {"table_name": "b", "access_type": "ALL", "possible_keys": ["k"], "rows_examined_per_scan": 7}}]}}`,
-			want: []fullScan{{table: "a", rows: 5}, {table: "b", rows: 7, hasPossibleKeys: true}},
+			want: []fullScan{{table: "a", rows: 5}, {table: "b", rows: 7, hasPossibleIndex: true}},
 		},
 		"full index scan, range and lookups are not full table scans": {
 			plan: `{"query_block": {"nested_loop": [
@@ -65,7 +65,7 @@ func TestFullScansFromExplainJSON(t *testing.T) {
 		"the same table in a subquery keeps the larger estimate and any usable index": {
 			plan: `{"query_block": {"table": {"table_name": "t", "access_type": "ALL", "rows_examined_per_scan": 10,
 				"attached_subqueries": [{"query_block": {"table": {"table_name": "t", "access_type": "ALL", "possible_keys": ["k"], "rows_examined_per_scan": 50}}}]}}}`,
-			want: []fullScan{{table: "t", rows: 50, hasPossibleKeys: true}},
+			want: []fullScan{{table: "t", rows: 50, hasPossibleIndex: true}},
 		},
 		"access type is matched case-insensitively": {
 			plan: `{"query_block": {"table": {"table_name": "t", "access_type": "all", "rows_examined_per_scan": 4}}}`,
@@ -98,7 +98,7 @@ func TestFullScansFromRealServers(t *testing.T) {
 		// One alias, two tables: each is reported under its own name.
 		"alias_reused_in_scalar_subquery": {{tableSchema: "shop", table: "orders", rows: 4}, {tableSchema: "shop", table: "customers", rows: 3}},
 		// The derived table t is read in full, but no index could change that.
-		"derived_table": {{tableSchema: "shop", table: "customers", rows: 3, hasPossibleKeys: true}},
+		"derived_table": {{tableSchema: "shop", table: "customers", rows: 3, hasPossibleIndex: true}},
 		// Two tables named o in one block can't be told apart.
 		"same_alias_merged_by_semijoin": {{table: "o", rows: 2}},
 		"cross_schema":                  {{tableSchema: "archive", table: "events", rows: 2}},
@@ -113,16 +113,16 @@ func TestFullScansFromRealServers(t *testing.T) {
 	}
 }
 
-func fullScanMetric(schema, digest, tableSchema, table, hasKeys string, rows float64) string {
+func fullScanMetric(schema, digest, tableSchema, table, hasIndex string, rows float64) string {
 	return fmt.Sprintf(`
 	# HELP database_observability_mysql_explain_plan_full_scan_rows %s
 	# TYPE database_observability_mysql_explain_plan_full_scan_rows gauge
-	database_observability_mysql_explain_plan_full_scan_rows{digest=%q,has_possible_keys=%q,schema=%q,table=%q,table_schema=%q} %v
+	database_observability_mysql_explain_plan_full_scan_rows{digest=%q,has_possible_index=%q,schema=%q,table=%q,table_schema=%q} %v
 `, "Estimated rows the optimizer reads per scan of a table it reads in full (access type ALL), from the latest explain plan of the query. "+
 		"schema is the schema the query runs in; table_schema and table are the table's own schema and name. "+
 		"When the table's real name can't be resolved, table is the name the plan uses, which is the alias when the query gives one, and table_schema is empty. "+
-		"has_possible_keys is \"false\" when MySQL found no index it could use for the query's conditions on that table.",
-		digest, hasKeys, schema, table, tableSchema, rows)
+		"has_possible_index is \"false\" when MySQL found no index it could use for the query's conditions on that table.",
+		digest, hasIndex, schema, table, tableSchema, rows)
 }
 
 // processPlan runs one query through processExplainPlan with the given explain

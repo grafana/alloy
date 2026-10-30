@@ -24,8 +24,8 @@ var fullScanRowsDesc = prometheus.NewDesc(
 	"Estimated rows the optimizer reads per scan of a table it reads in full (access type ALL), from the latest explain plan of the query. "+
 		"schema is the schema the query runs in; table_schema and table are the table's own schema and name. "+
 		"When the table's real name can't be resolved, table is the name the plan uses, which is the alias when the query gives one, and table_schema is empty. "+
-		"has_possible_keys is \"false\" when MySQL found no index it could use for the query's conditions on that table.",
-	[]string{"schema", "digest", "table_schema", "table", "has_possible_keys"}, nil,
+		"has_possible_index is \"false\" when MySQL found no index it could use for the query's conditions on that table.",
+	[]string{"schema", "digest", "table_schema", "table", "has_possible_index"}, nil,
 )
 
 // fullScan is a table that an explain plan reads in full.
@@ -36,9 +36,9 @@ type fullScan struct {
 	table       string
 	// rows is the optimizer's estimate of the rows read per scan of the table.
 	rows float64
-	// hasPossibleKeys is whether MySQL found any index it could use. When it is
+	// hasPossibleIndex is whether MySQL found any index it could use. When it is
 	// false, no index fits the query's conditions on this table.
-	hasPossibleKeys bool
+	hasPossibleIndex bool
 }
 
 // fullScansFromExplainJSON returns the tables that an `EXPLAIN FORMAT=JSON`
@@ -73,7 +73,7 @@ func fullScansFromExplainJSON(planJSON []byte, names planTableNames) ([]fullScan
 				key := tableRef{schema: scan.tableSchema, table: scan.table}
 				if seen, dup := byTable[key]; dup {
 					scan.rows = max(scan.rows, seen.rows)
-					scan.hasPossibleKeys = scan.hasPossibleKeys || seen.hasPossibleKeys
+					scan.hasPossibleIndex = scan.hasPossibleIndex || seen.hasPossibleIndex
 				} else {
 					order = append(order, key)
 				}
@@ -114,7 +114,7 @@ func fullScanOf(node map[string]any, selectID int, names planTableNames) (fullSc
 		scan.tableSchema, scan.table = ref.schema, ref.table
 	}
 	if keys, ok := node["possible_keys"].([]any); ok && len(keys) > 0 {
-		scan.hasPossibleKeys = true
+		scan.hasPossibleIndex = true
 	}
 	if rows, ok := node["rows_examined_per_scan"].(json.Number); ok {
 		if v, err := rows.Float64(); err == nil {
@@ -186,7 +186,7 @@ func (s *fullScanStore) collect(ch chan<- prometheus.Metric) {
 		}
 		for _, scan := range e.scans {
 			ch <- prometheus.MustNewConstMetric(fullScanRowsDesc, prometheus.GaugeValue, scan.rows,
-				e.schema, e.digest, scan.tableSchema, scan.table, fmt.Sprint(scan.hasPossibleKeys))
+				e.schema, e.digest, scan.tableSchema, scan.table, fmt.Sprint(scan.hasPossibleIndex))
 		}
 	}
 }
