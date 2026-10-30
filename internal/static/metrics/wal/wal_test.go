@@ -870,7 +870,7 @@ func BenchmarkStripeSeriesSize(b *testing.B) {
 // otherwise float.
 // TODO: Refactor this so there are different data structures for different metric types.
 // Each should implement an Append function similarly to the helper structs in
-// /internal/component/prometheus/remotewrite/remote_write_test.go
+// /internal/component/prometheus/remote_write/remote_write_test.go
 type sample struct {
 	ts   int64
 	val  float64

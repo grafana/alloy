@@ -3,6 +3,7 @@
 package main
 
 import (
+	"github.com/grafana/alloy/internal/cmd/alloylint/internal/componentpath"
 	"github.com/grafana/alloy/internal/cmd/alloylint/internal/findcomponents"
 	"github.com/grafana/alloy/internal/cmd/alloylint/internal/syntaxtags"
 	"golang.org/x/tools/go/analysis/multichecker"
@@ -10,6 +11,7 @@ import (
 
 func main() {
 	multichecker.Main(
+		componentpath.Analyzer,
 		findcomponents.Analyzer,
 		syntaxtags.Analyzer,
 	)

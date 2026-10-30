@@ -97,7 +97,16 @@ func findComponentPackages(pattern string) (map[string]struct{}, error) {
 //		component.Register(component.Registration{ ... })
 //	}
 func declaresComponent(pkg *packages.Package, file *ast.File) bool {
-	// Look for an init function in the file.
+	return len(RegisterCalls(pkg.TypesInfo, file)) > 0
+}
+
+// RegisterCalls returns the calls to
+// github.com/grafana/alloy/internal/component.Register in the init functions
+// of file.
+func RegisterCalls(info *types.Info, file *ast.File) []*ast.CallExpr {
+	var calls []*ast.CallExpr
+
+	// Look for init functions in the file.
 	for _, decl := range file.Decls {
 		funcDecl, ok := decl.(*ast.FuncDecl)
 		if !ok {
@@ -108,9 +117,7 @@ func declaresComponent(pkg *packages.Package, file *ast.File) bool {
 			continue
 		}
 
-		var foundComponentDecl bool
-
-		// Given an init function, check to see if there's a function call to
+		// Given an init function, look for function calls to
 		// component.Register.
 		ast.Inspect(funcDecl.Body, func(n ast.Node) bool {
 			call, ok := n.(*ast.CallExpr)
@@ -130,22 +137,18 @@ func declaresComponent(pkg *packages.Package, file *ast.File) bool {
 
 			// Check to see if the ident refers to
 			// github.com/grafana/alloy/internal/component.
-			if pkgName, ok := pkg.TypesInfo.Uses[ident].(*types.PkgName); ok {
+			if pkgName, ok := info.Uses[ident].(*types.PkgName); ok {
 				if pkgName.Imported().Path() == "github.com/grafana/alloy/internal/component" &&
 					sel.Sel.Name == "Register" {
 
-					foundComponentDecl = true
+					calls = append(calls, call)
 					return false
 				}
 			}
 
 			return true
 		})
-
-		if foundComponentDecl {
-			return true
-		}
 	}
 
-	return false
+	return calls
 }

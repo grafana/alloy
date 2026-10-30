@@ -5,7 +5,7 @@ import (
 
 	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component/otelcol"
-	"github.com/grafana/alloy/internal/component/otelcol/processor/memorylimiter"
+	"github.com/grafana/alloy/internal/component/otelcol/processor/memory_limiter"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"go.opentelemetry.io/collector/component"

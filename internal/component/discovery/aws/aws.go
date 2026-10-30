@@ -34,6 +34,12 @@ func init() {
 // AWSArguments is the configuration for AWS unified service discovery. A single
 // role selects which AWS service to discover; see the upstream Prometheus
 // aws_sd_configs documentation for the supported roles.
+// EC2Filter is the configuration for filtering EC2 instances.
+type EC2Filter struct {
+	Name   string   `alloy:"name,attr"`
+	Values []string `alloy:"values,attr"`
+}
+
 type AWSArguments struct {
 	Role            string            `alloy:"role,attr"`
 	Endpoint        string            `alloy:"endpoint,attr,optional"`
