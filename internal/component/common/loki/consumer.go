@@ -7,8 +7,9 @@ import (
 	"sync"
 )
 
-// ErrConsumerStopped is returned by Consumer when an entry is
-// submitted after the consumer has been stopped.
+// ErrConsumerStopped is returned by a Consumer that has stopped, usually because
+// a config reload removed it. Components pass it up to their caller so that the
+// source can retry the batch, see [Consumer].
 var ErrConsumerStopped = errors.New("consumer stopped")
 
 // Consumer consumes batches of log entries.
@@ -26,9 +27,16 @@ type Consumer interface {
 	//     until Consume succeeds or ctx is cancelled.
 	//   - Any other error: unexpected, most likely a bug.
 	//
-	// When Consume returns an error, check ctx.Err() to tell a context error apart
-	// instead of inspecting the returned error. The entries may already have reached
-	// some consumers, so sending the batch again can produce duplicates.
+	// The returned error can combine several errors, so when Consume returns an
+	// error the caller checks it in this order:
+	//  1. ctx.Err() != nil: a context error. Check ctx instead of the returned
+	//     error, since a consumer can return the error it was retrying when ctx is
+	//     cancelled.
+	//  2. errors.Is(err, ErrConsumerStopped): retry.
+	//  3. Otherwise: an unexpected error, most likely a bug. Log it and do not retry.
+	//
+	// The entries may already have reached some consumers, so sending the batch
+	// again can produce duplicates.
 	Consume(ctx context.Context, batch Batch) error
 }
 

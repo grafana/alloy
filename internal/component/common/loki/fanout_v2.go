@@ -31,9 +31,10 @@ func (f *FanoutV2) Consume(ctx context.Context, batch Batch) error {
 	// This is safe because delivery is a plain function call: a consumer that has
 	// stopped returns ErrConsumerStopped instead of blocking, so delivering against
 	// a stale snapshot can never deadlock. A consumer removed concurrently with
-	// delivery simply reports that it has stopped. The
-	// snapshot stays valid because UpdateChildren replaces the slice rather than mutating it
-	// in place. Releasing the lock early also keeps a slow consumer from blocking
+	// delivery returns ErrConsumerStopped, and Consume passes it on so the caller
+	// retries against the new snapshot. The snapshot stays valid because
+	// UpdateChildren replaces the slice rather than mutating it in place.
+	// Releasing the lock early also keeps a slow consumer from blocking
 	// reconfiguration.
 
 	f.mut.RLock()
@@ -43,10 +44,6 @@ func (f *FanoutV2) Consume(ctx context.Context, batch Batch) error {
 	var errs []error
 
 	for i, consumer := range consumers {
-		if consumer == nil {
-			continue
-		}
-
 		if i == len(consumers)-1 {
 			if err := consumer.Consume(ctx, batch); err != nil {
 				errs = append(errs, err)
