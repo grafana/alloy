@@ -276,6 +276,11 @@ var (
 		"Total Transact-SQL command batches received by SQL Server.",
 		nil,
 	)
+	transactionsDesc = newServerMetricDesc(
+		"transactions_total",
+		"Total transactions started across all databases.",
+		nil,
+	)
 	sqlCompilationsDesc = newServerMetricDesc(
 		"sql_compilations_total",
 		"Total SQL compilations performed by SQL Server.",
@@ -291,9 +296,44 @@ var (
 		"Duration in seconds that a data page stays in the buffer pool without references.",
 		nil,
 	)
+	bufferCacheHitRatioDesc = newServerMetricDesc(
+		"buffer_cache_hit_ratio",
+		"Ratio of pages found in the buffer pool without reading from disk.",
+		nil,
+	)
+	checkpointPagesDesc = newServerMetricDesc(
+		"checkpoint_pages_total",
+		"Total pages flushed to disk by checkpoint operations.",
+		nil,
+	)
+	lazyWritesDesc = newServerMetricDesc(
+		"lazy_writes_total",
+		"Total pages written to disk by the lazy writer to free buffer pool pages.",
+		nil,
+	)
+	freeListStallsDesc = newServerMetricDesc(
+		"free_list_stalls_total",
+		"Total requests that had to wait for a free page in the buffer pool.",
+		nil,
+	)
+	pageSplitsDesc = newServerMetricDesc(
+		"page_splits_total",
+		"Total index page splits performed by SQL Server.",
+		nil,
+	)
+	fullScansDesc = newServerMetricDesc(
+		"full_scans_total",
+		"Total unrestricted base-table or full-index scans performed by SQL Server.",
+		nil,
+	)
 	memoryGrantsPendingDesc = newServerMetricDesc(
 		"memory_grants_pending",
 		"Current number of processes waiting for a workspace memory grant.",
+		nil,
+	)
+	processesBlockedDesc = newServerMetricDesc(
+		"processes_blocked",
+		"Current number of blocked processes.",
 		nil,
 	)
 	deadlocksDesc = newServerMetricDesc(
@@ -304,6 +344,26 @@ var (
 	lockWaitsDesc = newServerMetricDesc(
 		"lock_waits_total",
 		"Total lock requests that required the caller to wait.",
+		nil,
+	)
+	lockWaitSecondsDesc = newServerMetricDesc(
+		"lock_wait_seconds_total",
+		"Total time spent waiting for locks, in seconds.",
+		nil,
+	)
+	loginsDesc = newServerMetricDesc(
+		"logins_total",
+		"Total logins started outside the connection pool since SQL Server last started.",
+		nil,
+	)
+	connectionResetsDesc = newServerMetricDesc(
+		"connection_resets_total",
+		"Total logins started from the connection pool since SQL Server last started.",
+		nil,
+	)
+	logoutsDesc = newServerMetricDesc(
+		"logouts_total",
+		"Total logout operations since SQL Server last started.",
 		nil,
 	)
 	ioReadBytesDesc = newServerMetricDesc(
@@ -399,12 +459,24 @@ var (
 		instanceStorageAllocatedDesc,
 		instanceStorageAvailableDesc,
 		batchRequestsDesc,
+		transactionsDesc,
 		sqlCompilationsDesc,
 		sqlRecompilationsDesc,
 		pageLifeExpectancyDesc,
+		bufferCacheHitRatioDesc,
+		checkpointPagesDesc,
+		lazyWritesDesc,
+		freeListStallsDesc,
+		pageSplitsDesc,
+		fullScansDesc,
 		memoryGrantsPendingDesc,
+		processesBlockedDesc,
 		deadlocksDesc,
 		lockWaitsDesc,
+		lockWaitSecondsDesc,
+		loginsDesc,
+		connectionResetsDesc,
+		logoutsDesc,
 		ioReadBytesDesc,
 		ioWrittenBytesDesc,
 		ioReadsDesc,
@@ -962,23 +1034,49 @@ func (c *ServerMetrics) collectVolumeStorage(ctx context.Context, ch chan<- prom
 
 func (c *ServerMetrics) collectPerformanceCounters(ctx context.Context, ch chan<- prometheus.Metric) {
 	var (
-		batchRequests      float64
-		sqlCompilations    float64
-		sqlRecompilations  float64
-		pageLifeExpectancy float64
-		memoryGrants       float64
-		deadlocks          float64
-		lockWaits          float64
+		batchRequests       float64
+		transactions        float64
+		sqlCompilations     float64
+		sqlRecompilations   float64
+		pageLifeExpectancy  float64
+		bufferCacheHitCount float64
+		bufferCacheHitBase  float64
+		checkpointPages     float64
+		lazyWrites          float64
+		freeListStalls      float64
+		pageSplits          float64
+		fullScans           float64
+		memoryGrants        float64
+		processesBlocked    float64
+		deadlocks           float64
+		lockWaits           float64
+		lockWaitSeconds     float64
+		logins              float64
+		connectionResets    float64
+		logouts             float64
 	)
 
 	err := c.queryRow(ctx, selectPerformanceCounters,
 		&batchRequests,
+		&transactions,
 		&sqlCompilations,
 		&sqlRecompilations,
 		&pageLifeExpectancy,
+		&bufferCacheHitCount,
+		&bufferCacheHitBase,
+		&checkpointPages,
+		&lazyWrites,
+		&freeListStalls,
+		&pageSplits,
+		&fullScans,
 		&memoryGrants,
+		&processesBlocked,
 		&deadlocks,
 		&lockWaits,
+		&lockWaitSeconds,
+		&logins,
+		&connectionResets,
+		&logouts,
 	)
 	if err != nil {
 		c.logger.Error("failed to collect performance counter metrics", "err", err)
@@ -986,12 +1084,28 @@ func (c *ServerMetrics) collectPerformanceCounters(ctx context.Context, ch chan<
 	}
 
 	ch <- prometheus.MustNewConstMetric(batchRequestsDesc, prometheus.CounterValue, batchRequests)
+	ch <- prometheus.MustNewConstMetric(transactionsDesc, prometheus.CounterValue, transactions)
 	ch <- prometheus.MustNewConstMetric(sqlCompilationsDesc, prometheus.CounterValue, sqlCompilations)
 	ch <- prometheus.MustNewConstMetric(sqlRecompilationsDesc, prometheus.CounterValue, sqlRecompilations)
 	ch <- prometheus.MustNewConstMetric(pageLifeExpectancyDesc, prometheus.GaugeValue, pageLifeExpectancy)
+	if bufferCacheHitBase > 0 {
+		ratio := bufferCacheHitCount / bufferCacheHitBase
+		ratio = max(0, min(1, ratio))
+		ch <- prometheus.MustNewConstMetric(bufferCacheHitRatioDesc, prometheus.GaugeValue, ratio)
+	}
+	ch <- prometheus.MustNewConstMetric(checkpointPagesDesc, prometheus.CounterValue, checkpointPages)
+	ch <- prometheus.MustNewConstMetric(lazyWritesDesc, prometheus.CounterValue, lazyWrites)
+	ch <- prometheus.MustNewConstMetric(freeListStallsDesc, prometheus.CounterValue, freeListStalls)
+	ch <- prometheus.MustNewConstMetric(pageSplitsDesc, prometheus.CounterValue, pageSplits)
+	ch <- prometheus.MustNewConstMetric(fullScansDesc, prometheus.CounterValue, fullScans)
 	ch <- prometheus.MustNewConstMetric(memoryGrantsPendingDesc, prometheus.GaugeValue, memoryGrants)
+	ch <- prometheus.MustNewConstMetric(processesBlockedDesc, prometheus.GaugeValue, processesBlocked)
 	ch <- prometheus.MustNewConstMetric(deadlocksDesc, prometheus.CounterValue, deadlocks)
 	ch <- prometheus.MustNewConstMetric(lockWaitsDesc, prometheus.CounterValue, lockWaits)
+	ch <- prometheus.MustNewConstMetric(lockWaitSecondsDesc, prometheus.CounterValue, lockWaitSeconds)
+	ch <- prometheus.MustNewConstMetric(loginsDesc, prometheus.CounterValue, logins)
+	ch <- prometheus.MustNewConstMetric(connectionResetsDesc, prometheus.CounterValue, connectionResets)
+	ch <- prometheus.MustNewConstMetric(logoutsDesc, prometheus.CounterValue, logouts)
 }
 
 func (c *ServerMetrics) collectFileIOStats(ctx context.Context, ch chan<- prometheus.Metric) {
