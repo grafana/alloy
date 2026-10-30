@@ -125,6 +125,11 @@ The positions file is used to store read offsets, so that if a component or {{< 
 If the target's argument contains multiple entries with the same container ID, for example, as a result of `discovery.docker` picking up multiple exposed ports or networks, `loki.source.docker` deduplicates them, and only keeps the first of each container ID instances, based on the `__meta_docker_container_id` label.
 As such, the Docker daemon is queried for each container ID only once, and only one target is available in the component's debug info.
 
+`loki.source.docker` only reads logs from the containers in its `targets` argument.
+If you use `discovery.docker` to provide the targets, a container that starts after the last refresh isn't tailed until `discovery.docker` refreshes its container list again, which happens every `refresh_interval`, `"1m"` by default.
+Logs written before then aren't lost: when there's no stored position for a container, `loki.source.docker` reads its logs from the beginning.
+To tail new containers sooner, lower `refresh_interval` in `discovery.docker`.
+
 ## Example
 
 This example collects log entries from the files specified in the `targets` argument and forwards them to a `loki.write` component to be written to Loki.
