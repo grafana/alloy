@@ -1,0 +1,11 @@
+controller:
+  type: deployment
+  replicas: 1
+alloy:
+  # For otelcol.exporter.debug in the trace sink.
+  stabilityLevel: experimental
+  initialDelaySeconds: 1
+  extraPorts:
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
