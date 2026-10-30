@@ -1,0 +1,114 @@
+Captured from MySQL 8.0.46 and 8.4.11 Docker images, which return the same output, with schema `shop` selected:
+
+```
+EXPLAIN FORMAT=JSON SELECT t.customer_id, t.n, c.name FROM (SELECT customer_id, COUNT(*) AS n FROM orders WHERE note = 'n' GROUP BY customer_id) t JOIN customers c ON c.id = t.customer_id WHERE c.code = 'x';
+SHOW WARNINGS;
+```
+-- plan.json --
+{
+  "query_block": {
+    "select_id": 1,
+    "cost_info": {
+      "query_cost": "1.25"
+    },
+    "nested_loop": [
+      {
+        "table": {
+          "table_name": "c",
+          "access_type": "ALL",
+          "possible_keys": [
+            "PRIMARY"
+          ],
+          "rows_examined_per_scan": 3,
+          "rows_produced_per_join": 1,
+          "filtered": "33.33",
+          "cost_info": {
+            "read_cost": "0.45",
+            "eval_cost": "0.10",
+            "prefix_cost": "0.55",
+            "data_read_per_join": "288"
+          },
+          "used_columns": [
+            "id",
+            "name",
+            "code"
+          ],
+          "attached_condition": "(`shop`.`c`.`code` = 'x')"
+        }
+      },
+      {
+        "table": {
+          "table_name": "t",
+          "access_type": "ref",
+          "possible_keys": [
+            "<auto_key0>"
+          ],
+          "key": "<auto_key0>",
+          "used_key_parts": [
+            "customer_id"
+          ],
+          "key_length": "5",
+          "ref": [
+            "shop.c.id"
+          ],
+          "rows_examined_per_scan": 2,
+          "rows_produced_per_join": 2,
+          "filtered": "100.00",
+          "cost_info": {
+            "read_cost": "0.50",
+            "eval_cost": "0.20",
+            "prefix_cost": "1.25",
+            "data_read_per_join": "48"
+          },
+          "used_columns": [
+            "customer_id",
+            "n"
+          ],
+          "materialized_from_subquery": {
+            "using_temporary_table": true,
+            "dependent": false,
+            "cacheable": true,
+            "query_block": {
+              "select_id": 2,
+              "cost_info": {
+                "query_cost": "0.65"
+              },
+              "grouping_operation": {
+                "using_filesort": false,
+                "table": {
+                  "table_name": "orders",
+                  "access_type": "index",
+                  "possible_keys": [
+                    "k_customer"
+                  ],
+                  "key": "k_customer",
+                  "used_key_parts": [
+                    "customer_id"
+                  ],
+                  "key_length": "5",
+                  "rows_examined_per_scan": 4,
+                  "rows_produced_per_join": 1,
+                  "filtered": "25.00",
+                  "cost_info": {
+                    "read_cost": "0.55",
+                    "eval_cost": "0.10",
+                    "prefix_cost": "0.65",
+                    "data_read_per_join": "216"
+                  },
+                  "used_columns": [
+                    "id",
+                    "customer_id",
+                    "note"
+                  ],
+                  "attached_condition": "(`shop`.`orders`.`note` = 'n')"
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}
+-- note --
+/* select#1 */ select `t`.`customer_id` AS `customer_id`,`t`.`n` AS `n`,`shop`.`c`.`name` AS `name` from (/* select#2 */ select `shop`.`orders`.`customer_id` AS `customer_id`,count(0) AS `n` from `shop`.`orders` where (`shop`.`orders`.`note` = 'n') group by `shop`.`orders`.`customer_id`) `t` join `shop`.`customers` `c` where ((`t`.`customer_id` = `shop`.`c`.`id`) and (`shop`.`c`.`code` = 'x'))

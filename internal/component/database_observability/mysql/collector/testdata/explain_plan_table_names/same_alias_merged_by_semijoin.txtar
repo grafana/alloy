@@ -1,0 +1,81 @@
+Captured from MySQL 8.0.46 and 8.4.11 Docker images, which return the same output, with schema `shop` selected:
+
+```
+EXPLAIN FORMAT=JSON SELECT * FROM orders o WHERE o.customer_id IN (SELECT o.customer_id FROM archive.orders o WHERE o.note = 'm');
+SHOW WARNINGS;
+```
+-- plan.json --
+{
+  "query_block": {
+    "select_id": 1,
+    "cost_info": {
+      "query_cost": "2.12"
+    },
+    "nested_loop": [
+      {
+        "table": {
+          "table_name": "<subquery2>",
+          "access_type": "ALL",
+          "attached_condition": "(`<subquery2>`.`customer_id` is not null)",
+          "materialized_from_subquery": {
+            "using_temporary_table": true,
+            "query_block": {
+              "table": {
+                "table_name": "o",
+                "access_type": "ALL",
+                "rows_examined_per_scan": 2,
+                "rows_produced_per_join": 1,
+                "filtered": "50.00",
+                "cost_info": {
+                  "read_cost": "0.35",
+                  "eval_cost": "0.10",
+                  "prefix_cost": "0.45",
+                  "data_read_per_join": "216"
+                },
+                "used_columns": [
+                  "customer_id",
+                  "note"
+                ],
+                "attached_condition": "(`archive`.`o`.`note` = 'm')"
+              }
+            }
+          }
+        }
+      },
+      {
+        "table": {
+          "table_name": "o",
+          "access_type": "ref",
+          "possible_keys": [
+            "k_customer"
+          ],
+          "key": "k_customer",
+          "used_key_parts": [
+            "customer_id"
+          ],
+          "key_length": "5",
+          "ref": [
+            "<subquery2>.customer_id"
+          ],
+          "rows_examined_per_scan": 1,
+          "rows_produced_per_join": 1,
+          "filtered": "100.00",
+          "cost_info": {
+            "read_cost": "0.33",
+            "eval_cost": "0.13",
+            "prefix_cost": "2.12",
+            "data_read_per_join": "288"
+          },
+          "used_columns": [
+            "id",
+            "customer_id",
+            "note",
+            "total"
+          ]
+        }
+      }
+    ]
+  }
+}
+-- note --
+/* select#1 */ select `shop`.`o`.`id` AS `id`,`shop`.`o`.`customer_id` AS `customer_id`,`shop`.`o`.`note` AS `note`,`shop`.`o`.`total` AS `total` from `shop`.`orders` `o` semi join (`archive`.`orders` `o`) where ((`shop`.`o`.`customer_id` = `<subquery2>`.`customer_id`) and (`archive`.`o`.`note` = 'm'))
