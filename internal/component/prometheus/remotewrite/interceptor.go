@@ -51,6 +51,28 @@ func NewInterceptor(componentID string, exited *atomic.Bool, debugDataPublisher 
 		// treat the remote_write ID as a "local ID" and translate it to a "global
 		// ID" to ensure Alloy compatibility.
 
+		prometheus.WithAppendV2Hook(func(ref storage.SeriesRef, l labels.Labels, st, t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, opts storage.AppendV2Options, next storage.AppenderV2) (storage.SeriesRef, error) {
+			if exited.Load() {
+				return 0, fmt.Errorf("%s has exited", componentID)
+			}
+
+			var finalRef storage.SeriesRef
+			var err error
+			if ls.Enabled() {
+				localRef := ls.GetLocalRefID(componentID, uint64(ref))
+				newLocalRef, nextErr := next.Append(storage.SeriesRef(localRef), l, st, t, v, h, fh, opts)
+				if nextErr == nil {
+					handleLocalLink(uint64(ref), l, localRef, uint64(newLocalRef))
+				}
+				finalRef = ref
+				err = nextErr
+			} else {
+				finalRef, err = next.Append(ref, l, st, t, v, h, fh, opts)
+			}
+
+			prometheus.PublishAppendV2LiveDebugging(debugDataPublisher, liveDebuggingComponentID, l, t, v, h, fh, opts)
+			return finalRef, err
+		}),
 		prometheus.WithAppendHook(func(ref storage.SeriesRef, l labels.Labels, t int64, v float64, next storage.Appender) (storage.SeriesRef, error) {
 			if exited.Load() {
 				return 0, fmt.Errorf("%s has exited", componentID)

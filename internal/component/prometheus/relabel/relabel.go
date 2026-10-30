@@ -190,6 +190,28 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	c.receiver = prometheus.NewInterceptor(
 		c.fanout,
 		prometheus.WithComponentID(c.opts.ID),
+		prometheus.WithAppendV2Hook(func(ref storage.SeriesRef, l labels.Labels, st, t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, opts storage.AppendV2Options, next storage.AppenderV2) (storage.SeriesRef, error) {
+			if c.exited.Load() {
+				return 0, fmt.Errorf("%s has exited", o.ID)
+			}
+
+			// Like the V1 histogram hook, histograms never pass a value for staleness handling.
+			if h != nil || fh != nil {
+				v = 0
+			}
+			newLbl := c.relabel(v, l)
+			// The V1 hooks relabelled each exemplar and the metadata separately, even for dropped series.
+			// The labels are the same for all of them, so we only relabel once, but still count them like
+			// before to keep the cache and processing metrics comparable.
+			c.countExtraRelabels(len(opts.Exemplars), opts.Metadata != (metadata.Metadata{}))
+			if newLbl.IsEmpty() {
+				return 0, nil
+			}
+			c.metricsOutgoing.Inc()
+
+			// Since SeriesRefs are tied to the labels, we send zero to indicate the seriesRef should be recalculated downstream.
+			return next.Append(0, newLbl, st, t, v, h, fh, opts)
+		}),
 		prometheus.WithAppendHook(func(ref storage.SeriesRef, l labels.Labels, t int64, v float64, next storage.Appender) (storage.SeriesRef, error) {
 			if c.exited.Load() {
 				return 0, fmt.Errorf("%s has exited", o.ID)
@@ -292,6 +314,21 @@ func (c *Component) Update(args component.Arguments) error {
 	c.opts.OnStateChange(Exports{Receiver: c.receiver, Rules: newArgs.MetricRelabelConfigs})
 
 	return nil
+}
+
+// countExtraRelabels updates the metrics as if the exemplars and the metadata
+// of a sample had each been relabelled on their own, right after the sample was.
+// The sample's own relabel call has populated the cache, so those are cache hits.
+func (c *Component) countExtraRelabels(exemplars int, hasMetadata bool) {
+	extra := exemplars
+	if hasMetadata {
+		extra++
+	}
+	if extra == 0 {
+		return
+	}
+	c.metricsProcessed.Add(float64(extra))
+	c.cacheHits.Add(float64(extra))
 }
 
 func (c *Component) relabel(val float64, lbls labels.Labels) labels.Labels {
