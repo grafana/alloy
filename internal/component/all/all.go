@@ -6,7 +6,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/database_observability/mysql"             // Import database_observability.mysql
 	_ "github.com/grafana/alloy/internal/component/database_observability/postgres"          // Import database_observability.postgres
 	_ "github.com/grafana/alloy/internal/component/database_observability/sql_server"        // Import database_observability.sql_server
-	_ "github.com/grafana/alloy/internal/component/discovery/aws"                            // Import discovery.aws, discovery.ec2, and discovery.lightsail
+	_ "github.com/grafana/alloy/internal/component/discovery/aws"                            // Import discovery.aws
 	_ "github.com/grafana/alloy/internal/component/discovery/azure"                          // Import discovery.azure
 	_ "github.com/grafana/alloy/internal/component/discovery/consul"                         // Import discovery.consul
 	_ "github.com/grafana/alloy/internal/component/discovery/consulagent"                    // Import discovery.consulagent
@@ -14,6 +14,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/discovery/dns"                            // Import discovery.dns
 	_ "github.com/grafana/alloy/internal/component/discovery/docker"                         // Import discovery.docker
 	_ "github.com/grafana/alloy/internal/component/discovery/dockerswarm"                    // Import discovery.dockerswarm
+	_ "github.com/grafana/alloy/internal/component/discovery/ec2"                            // Import discovery.ec2
 	_ "github.com/grafana/alloy/internal/component/discovery/eureka"                         // Import discovery.eureka
 	_ "github.com/grafana/alloy/internal/component/discovery/file"                           // Import discovery.file
 	_ "github.com/grafana/alloy/internal/component/discovery/gce"                            // Import discovery.gce
@@ -23,6 +24,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/discovery/kubelet"                        // Import discovery.kubelet
 	_ "github.com/grafana/alloy/internal/component/discovery/kubernetes"                     // Import discovery.kubernetes
 	_ "github.com/grafana/alloy/internal/component/discovery/kuma"                           // Import discovery.kuma
+	_ "github.com/grafana/alloy/internal/component/discovery/lightsail"                      // Import discovery.lightsail
 	_ "github.com/grafana/alloy/internal/component/discovery/linode"                         // Import discovery.linode
 	_ "github.com/grafana/alloy/internal/component/discovery/marathon"                       // Import discovery.marathon
 	_ "github.com/grafana/alloy/internal/component/discovery/nerve"                          // Import discovery.nerve
@@ -46,7 +48,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/loki/rules/kubernetes"                    // Import loki.rules.kubernetes
 	_ "github.com/grafana/alloy/internal/component/loki/secretfilter"                        // Import loki.secretfilter
 	_ "github.com/grafana/alloy/internal/component/loki/source/api"                          // Import loki.source.api
-	_ "github.com/grafana/alloy/internal/component/loki/source/aws_firehose"                 // Import loki.source.awsfirehose
+	_ "github.com/grafana/alloy/internal/component/loki/source/awsfirehose"                  // Import loki.source.awsfirehose
 	_ "github.com/grafana/alloy/internal/component/loki/source/azure_event_hubs"             // Import loki.source.azure_event_hubs
 	_ "github.com/grafana/alloy/internal/component/loki/source/cloudflare"                   // Import loki.source.cloudflare
 	_ "github.com/grafana/alloy/internal/component/loki/source/docker"                       // Import loki.source.docker
@@ -105,8 +107,8 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/groupbyattrs"           // Import otelcol.processor.groupbyattrs
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/interval"               // Import otelcol.processor.interval
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/k8sattributes"          // Import otelcol.processor.k8sattributes
-	_ "github.com/grafana/alloy/internal/component/otelcol/processor/memorylimiter"          // Import otelcol.processor.memory_limiter
-	_ "github.com/grafana/alloy/internal/component/otelcol/processor/metricstarttime"        // Import otelcol.processor.metric_start_time
+	_ "github.com/grafana/alloy/internal/component/otelcol/processor/memory_limiter"         // Import otelcol.processor.memory_limiter
+	_ "github.com/grafana/alloy/internal/component/otelcol/processor/metric_start_time"      // Import otelcol.processor.metric_start_time
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/probabilistic_sampler"  // Import otelcol.processor.probabilistic_sampler
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/redaction"              // Import otelcol.processor.redaction
 	_ "github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection"      // Import otelcol.processor.resourcedetection
@@ -173,7 +175,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/prometheus/operator/servicemonitors"      // Import prometheus.operator.servicemonitors
 	_ "github.com/grafana/alloy/internal/component/prometheus/receive_http"                  // Import prometheus.receive_http
 	_ "github.com/grafana/alloy/internal/component/prometheus/relabel"                       // Import prometheus.relabel
-	_ "github.com/grafana/alloy/internal/component/prometheus/remotewrite"                   // Import prometheus.remote_write
+	_ "github.com/grafana/alloy/internal/component/prometheus/remote_write"                  // Import prometheus.remote_write
 	_ "github.com/grafana/alloy/internal/component/prometheus/scrape"                        // Import prometheus.scrape
 	_ "github.com/grafana/alloy/internal/component/pyroscope/ebpf"                           // Import pyroscope.ebpf
 	_ "github.com/grafana/alloy/internal/component/pyroscope/enrich"                         // Import pyroscope.enrich
@@ -181,7 +183,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/pyroscope/receive_http"                   // Import pyroscope.receive_http
 	_ "github.com/grafana/alloy/internal/component/pyroscope/relabel"                        // Import pyroscope.relabel
 	_ "github.com/grafana/alloy/internal/component/pyroscope/scrape"                         // Import pyroscope.scrape
-	_ "github.com/grafana/alloy/internal/component/pyroscope/write/glue"                     // Import pyroscope.write
+	_ "github.com/grafana/alloy/internal/component/pyroscope/write"                          // Import pyroscope.write
 	_ "github.com/grafana/alloy/internal/component/remote/http"                              // Import remote.http
 	_ "github.com/grafana/alloy/internal/component/remote/kubernetes/configmap"              // Import remote.kubernetes.configmap
 	_ "github.com/grafana/alloy/internal/component/remote/kubernetes/secret"                 // Import remote.kubernetes.secret
