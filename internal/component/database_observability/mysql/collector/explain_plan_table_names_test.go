@@ -11,38 +11,32 @@ import (
 	"golang.org/x/tools/txtar"
 )
 
-// tableNameFixture holds an explain plan and its rewritten query note, as one
-// MySQL version returned them for the same query.
+// tableNameFixture holds an explain plan and its rewritten query note, as
+// MySQL returned them for the same query.
 type tableNameFixture struct {
 	plan []byte
 	note string
 }
 
-// loadTableNameFixtures reads the plan and note that each MySQL version
-// returned, keyed by version, from a fixture captured from real servers.
-func loadTableNameFixtures(t *testing.T, name string) map[string]tableNameFixture {
+// loadTableNameFixture reads a plan and its note from a fixture captured from
+// real servers.
+func loadTableNameFixture(t *testing.T, name string) tableNameFixture {
 	t.Helper()
 	archive, err := txtar.ParseFile("./testdata/explain_plan_table_names/" + name + ".txtar")
 	require.NoError(t, err)
 
-	fixtures := map[string]tableNameFixture{}
+	var fixture tableNameFixture
 	for _, f := range archive.Files {
-		base := strings.TrimPrefix(f.Name, "mysql-")
-		dot := strings.LastIndex(base, ".")
-		require.Positive(t, dot, f.Name)
-		version, kind := base[:dot], base[dot+1:]
-		fixture := fixtures[version]
-		switch kind {
-		case "json":
+		switch f.Name {
+		case "plan.json":
 			fixture.plan = f.Data
 		case "note":
 			fixture.note = strings.TrimSpace(string(f.Data))
 		}
-		fixtures[version] = fixture
 	}
-	require.Contains(t, fixtures, "8.0")
-	require.Contains(t, fixtures, "8.4")
-	return fixtures
+	require.NotEmpty(t, fixture.plan, name)
+	require.NotEmpty(t, fixture.note, name)
+	return fixture
 }
 
 // resolvePlanTables resolves every table access in a plan, as "select:name"
@@ -107,20 +101,12 @@ func TestParseRewrittenQueryTablesFromRealServers(t *testing.T) {
 		"literal_that_looks_like_a_table": {"1:o": "shop.orders"},
 		"cte":                             {"1:orders": "shop.orders", "1:c": "shop.customers"},
 	} {
-		for version, fixture := range loadTableNameFixtures(t, name) {
-			t.Run(name+"/mysql-"+version, func(t *testing.T) {
-				names := parseRewrittenQueryTables(fixture.note)
-				require.Equal(t, want, resolvePlanTables(t, fixture.plan, names))
-			})
-		}
+		t.Run(name, func(t *testing.T) {
+			fixture := loadTableNameFixture(t, name)
+			names := parseRewrittenQueryTables(fixture.note)
+			require.Equal(t, want, resolvePlanTables(t, fixture.plan, names))
+		})
 	}
-}
-
-func TestParseRewrittenQueryTablesIgnoresLiterals(t *testing.T) {
-	fixture := loadTableNameFixtures(t, "literal_that_looks_like_a_table")["8.4"]
-	names := parseRewrittenQueryTables(fixture.note)
-	require.Equal(t, map[planTableKey]tableRef{{selectID: 1, name: "o"}: {schema: "shop", table: "orders"}}, names.refs)
-	require.Empty(t, names.derived)
 }
 
 func TestParseRewrittenQueryTables(t *testing.T) {

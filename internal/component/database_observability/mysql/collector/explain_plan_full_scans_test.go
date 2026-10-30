@@ -103,13 +103,12 @@ func TestFullScansFromRealServers(t *testing.T) {
 		"same_alias_merged_by_semijoin": {{table: "o", rows: 2}},
 		"cross_schema":                  {{tableSchema: "archive", table: "events", rows: 2}},
 	} {
-		for version, fixture := range loadTableNameFixtures(t, name) {
-			t.Run(name+"/mysql-"+version, func(t *testing.T) {
-				got, err := fullScansFromExplainJSON(fixture.plan, parseRewrittenQueryTables(fixture.note))
-				require.NoError(t, err)
-				require.ElementsMatch(t, want, got)
-			})
-		}
+		t.Run(name, func(t *testing.T) {
+			fixture := loadTableNameFixture(t, name)
+			got, err := fullScansFromExplainJSON(fixture.plan, parseRewrittenQueryTables(fixture.note))
+			require.NoError(t, err)
+			require.ElementsMatch(t, want, got)
+		})
 	}
 }
 

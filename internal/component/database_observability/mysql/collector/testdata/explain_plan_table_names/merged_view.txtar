@@ -1,10 +1,10 @@
-Captured from MySQL 8.0 and 8.4 Docker images with schema `shop` selected:
+Captured from MySQL 8.0.46 and 8.4.11 Docker images, which return the same output, with schema `shop` selected:
 
 ```
 EXPLAIN FORMAT=JSON SELECT v.id FROM v_named v WHERE v.code = 'y';
 SHOW WARNINGS;
 ```
--- mysql-8.0.json --
+-- plan.json --
 {
   "query_block": {
     "select_id": 1,
@@ -32,35 +32,5 @@ SHOW WARNINGS;
     }
   }
 }
--- mysql-8.0.note --
-/* select#1 */ select `shop`.`customers`.`id` AS `id` from `shop`.`customers` where ((`shop`.`customers`.`code` = 'y') and (`shop`.`customers`.`name` like 'b%'))
--- mysql-8.4.json --
-{
-  "query_block": {
-    "select_id": 1,
-    "cost_info": {
-      "query_cost": "0.55"
-    },
-    "table": {
-      "table_name": "customers",
-      "access_type": "ALL",
-      "rows_examined_per_scan": 3,
-      "rows_produced_per_join": 1,
-      "filtered": "33.33",
-      "cost_info": {
-        "read_cost": "0.45",
-        "eval_cost": "0.10",
-        "prefix_cost": "0.55",
-        "data_read_per_join": "288"
-      },
-      "used_columns": [
-        "id",
-        "name",
-        "code"
-      ],
-      "attached_condition": "((`shop`.`customers`.`code` = 'y') and (`shop`.`customers`.`name` like 'b%'))"
-    }
-  }
-}
--- mysql-8.4.note --
+-- note --
 /* select#1 */ select `shop`.`customers`.`id` AS `id` from `shop`.`customers` where ((`shop`.`customers`.`code` = 'y') and (`shop`.`customers`.`name` like 'b%'))
