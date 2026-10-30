@@ -31,9 +31,10 @@ func (f *FanoutV2) Consume(ctx context.Context, batch Batch) error {
 	// This is safe because delivery is a plain function call: a consumer that has
 	// stopped returns ErrConsumerStopped instead of blocking, so delivering against
 	// a stale snapshot can never deadlock. A consumer removed concurrently with
-	// delivery simply reports that it has stopped (see isReportableError). The
-	// snapshot stays valid because UpdateChildren replaces the slice rather than mutating it
-	// in place. Releasing the lock early also keeps a slow consumer from blocking
+	// delivery returns ErrConsumerStopped, and Consume passes it on so the caller
+	// retries against the new snapshot. The snapshot stays valid because
+	// UpdateChildren replaces the slice rather than mutating it in place.
+	// Releasing the lock early also keeps a slow consumer from blocking
 	// reconfiguration.
 
 	f.mut.RLock()
@@ -43,18 +44,14 @@ func (f *FanoutV2) Consume(ctx context.Context, batch Batch) error {
 	var errs []error
 
 	for i, consumer := range consumers {
-		if consumer == nil {
-			continue
-		}
-
 		if i == len(consumers)-1 {
-			if err := consumer.Consume(ctx, batch); isReportableError(err) {
+			if err := consumer.Consume(ctx, batch); err != nil {
 				errs = append(errs, err)
 			}
 			continue
 		}
 
-		if err := consumer.Consume(ctx, batch.Clone()); isReportableError(err) {
+		if err := consumer.Consume(ctx, batch.Clone()); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -77,15 +74,6 @@ func (f *FanoutV2) UpdateChildren(children []LogsReceiver) {
 	} else {
 		f.mut.RUnlock()
 	}
-}
-
-func isReportableError(err error) bool {
-	// We can always ignore ErrConsumerStopped.
-	// If a downstream component have been stopped due to config update
-	// we should no longer forward entries there and when alloy itself
-	// stops we shut down components from sources to sinks so we should
-	// never hit this error.
-	return err != nil && !errors.Is(err, ErrConsumerStopped)
 }
 
 func consumersFrom(children []LogsReceiver) []Consumer {
