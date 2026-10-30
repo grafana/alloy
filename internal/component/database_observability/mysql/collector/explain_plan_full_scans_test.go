@@ -79,7 +79,7 @@ func TestFullScansFromExplainJSON(t *testing.T) {
 		"not json": {plan: `not json`, wantErr: true},
 	} {
 		t.Run(name, func(t *testing.T) {
-			got, err := fullScansFromExplainJSON([]byte(tc.plan))
+			got, err := fullScansFromExplainJSON([]byte(tc.plan), planTableNames{})
 			if tc.wantErr {
 				require.Error(t, err)
 				return
@@ -90,23 +90,60 @@ func TestFullScansFromExplainJSON(t *testing.T) {
 	}
 }
 
-func fullScanMetric(schema, digest, table, hasKeys string, rows float64) string {
+func TestFullScansFromRealServers(t *testing.T) {
+	for name, want := range map[string][]fullScan{
+		// One alias, two tables: each is reported under its own name.
+		"alias_reused_in_scalar_subquery": {{tableSchema: "shop", table: "orders", rows: 4}, {tableSchema: "shop", table: "customers", rows: 3}},
+		// The derived table t is read in full, but no index could change that.
+		"derived_table": {{tableSchema: "shop", table: "customers", rows: 3, hasPossibleKeys: true}},
+		// Two tables named o in one block can't be told apart.
+		"same_alias_merged_by_semijoin": {{table: "o", rows: 2}},
+		"cross_schema":                  {{tableSchema: "archive", table: "events", rows: 2}},
+	} {
+		for version, fixture := range loadTableNameFixtures(t, name) {
+			t.Run(name+"/mysql-"+version, func(t *testing.T) {
+				got, err := fullScansFromExplainJSON(fixture.plan, parseRewrittenQueryTables(fixture.note))
+				require.NoError(t, err)
+				require.ElementsMatch(t, want, got)
+			})
+		}
+	}
+}
+
+func fullScanMetric(schema, digest, tableSchema, table, hasKeys string, rows float64) string {
 	return fmt.Sprintf(`
 	# HELP database_observability_mysql_explain_plan_full_scan_rows %s
 	# TYPE database_observability_mysql_explain_plan_full_scan_rows gauge
-	database_observability_mysql_explain_plan_full_scan_rows{digest=%q,has_possible_keys=%q,schema=%q,table=%q} %v
+	database_observability_mysql_explain_plan_full_scan_rows{digest=%q,has_possible_keys=%q,schema=%q,table=%q,table_schema=%q} %v
 `, "Estimated rows the optimizer reads per scan of a table it reads in full (access type ALL), from the latest explain plan of the query. "+
-		"has_possible_keys is \"false\" when MySQL found no index it could use for the query's conditions on that table. "+
-		"The table label is the name the plan uses, which is the alias when the query gives one.", digest, hasKeys, schema, table, rows)
+		"schema is the schema the query runs in; table_schema and table are the table's own schema and name. "+
+		"When the table's real name can't be resolved, table is the name the plan uses, which is the alias when the query gives one, and table_schema is empty. "+
+		"has_possible_keys is \"false\" when MySQL found no index it could use for the query's conditions on that table.",
+		digest, hasKeys, schema, table, tableSchema, rows)
 }
 
 // processPlan runs one query through processExplainPlan with the given explain
 // plan JSON, as the collector would after reading it from the digest table.
+// When the collector exposes its metric, SHOW WARNINGS returns no notes.
 func processPlan(t *testing.T, c *ExplainPlans, mock sqlmock.Sqlmock, schema, digest, planJSON string) {
+	t.Helper()
+	processPlanWithNote(t, c, mock, schema, digest, planJSON, "")
+}
+
+// processPlanWithNote is processPlan with the rewritten query note that SHOW
+// WARNINGS returns after the EXPLAIN.
+func processPlanWithNote(t *testing.T, c *ExplainPlans, mock sqlmock.Sqlmock, schema, digest, planJSON, note string) {
 	t.Helper()
 	mock.ExpectExec("USE `" + schema + "`").WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 0))
 	mock.ExpectQuery(selectExplainPlanPrefix + "select * from some_table where id = 1").
 		WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow([]byte(planJSON)))
+	if c.registry != nil {
+		warnings := sqlmock.NewRows([]string{"Level", "Code", "Message"})
+		if note != "" {
+			warnings.AddRow("Note", rewrittenQueryNoteCode, note)
+		}
+		mock.ExpectQuery("SHOW WARNINGS").WillReturnRows(warnings)
+	}
 	c.processExplainPlan(t.Context(), newQueryInfo(schema, digest, "select * from some_table where id = 1"))
 }
 
@@ -145,7 +182,14 @@ func TestExplainPlansReportFullScans(t *testing.T) {
 
 	t.Run("a plan with a full scan is reported", func(t *testing.T) {
 		processPlan(t, c, mock, "grafana_net", "d1", scanPlan)
-		require.NoError(t, testutil.CollectAndCompare(registry, strings.NewReader(fullScanMetric("grafana_net", "d1", "invites", "false", 369777))))
+		require.NoError(t, testutil.CollectAndCompare(registry, strings.NewReader(fullScanMetric("grafana_net", "d1", "", "invites", "false", 369777))))
+	})
+
+	t.Run("the rewritten query gives the table's real schema and name", func(t *testing.T) {
+		const aliasedPlan = `{"query_block": {"select_id": 1, "table": {"table_name": "i", "access_type": "ALL", "rows_examined_per_scan": 369777}}}`
+		processPlanWithNote(t, c, mock, "grafana_net", "d1", aliasedPlan,
+			"/* select#1 */ select `shared`.`i`.`id` AS `id` from `shared`.`invites` `i` where (`shared`.`i`.`org_id` = 123)")
+		require.NoError(t, testutil.CollectAndCompare(registry, strings.NewReader(fullScanMetric("grafana_net", "d1", "shared", "invites", "false", 369777))))
 	})
 
 	t.Run("the literal values of the query never reach the labels", func(t *testing.T) {

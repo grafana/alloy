@@ -22,14 +22,18 @@ const fullScanTTL = 3 * database_observability.EmitInterval
 var fullScanRowsDesc = prometheus.NewDesc(
 	prometheus.BuildFQName("database_observability", "mysql_explain_plan", "full_scan_rows"),
 	"Estimated rows the optimizer reads per scan of a table it reads in full (access type ALL), from the latest explain plan of the query. "+
-		"has_possible_keys is \"false\" when MySQL found no index it could use for the query's conditions on that table. "+
-		"The table label is the name the plan uses, which is the alias when the query gives one.",
-	[]string{"schema", "digest", "table", "has_possible_keys"}, nil,
+		"schema is the schema the query runs in; table_schema and table are the table's own schema and name. "+
+		"When the table's real name can't be resolved, table is the name the plan uses, which is the alias when the query gives one, and table_schema is empty. "+
+		"has_possible_keys is \"false\" when MySQL found no index it could use for the query's conditions on that table.",
+	[]string{"schema", "digest", "table_schema", "table", "has_possible_keys"}, nil,
 )
 
 // fullScan is a table that an explain plan reads in full.
 type fullScan struct {
-	table string
+	// tableSchema is empty when the table's real name could not be resolved,
+	// in which case table is the name the plan uses.
+	tableSchema string
+	table       string
 	// rows is the optimizer's estimate of the rows read per scan of the table.
 	rows float64
 	// hasPossibleKeys is whether MySQL found any index it could use. When it is
@@ -38,10 +42,11 @@ type fullScan struct {
 }
 
 // fullScansFromExplainJSON returns the tables that an `EXPLAIN FORMAT=JSON`
-// plan reads in full, that is the tables with access type ALL. Tables that
-// are not real ones, such as derived tables and union results, which MySQL
-// names with a leading '<', are left out: no index could change them.
-func fullScansFromExplainJSON(planJSON []byte) ([]fullScan, error) {
+// plan reads in full, that is the tables with access type ALL, with the real
+// names that names resolves them to. Tables that are not real ones, such as
+// derived tables, materialized CTEs and union results, which MySQL names with a
+// leading '<', are left out: no index could change them.
+func fullScansFromExplainJSON(planJSON []byte, names planTableNames) ([]fullScan, error) {
 	decoder := json.NewDecoder(bytes.NewReader(planJSON))
 	decoder.UseNumber()
 
@@ -50,44 +55,51 @@ func fullScansFromExplainJSON(planJSON []byte) ([]fullScan, error) {
 		return nil, fmt.Errorf("decode explain plan: %w", err)
 	}
 
-	byTable := map[string]fullScan{}
-	var order []string
-	var walk func(node any)
-	walk = func(node any) {
+	byTable := map[tableRef]fullScan{}
+	var order []tableRef
+	var walk func(node any, selectID int)
+	walk = func(node any, selectID int) {
 		switch n := node.(type) {
 		case map[string]any:
-			if scan, ok := fullScanOf(n); ok {
+			// A query block numbers its tables the way the rewritten query does.
+			if id, ok := n["select_id"].(json.Number); ok {
+				if v, err := id.Int64(); err == nil {
+					selectID = int(v)
+				}
+			}
+			if scan, ok := fullScanOf(n, selectID, names); ok {
 				// The same table can appear in more than one block, for example
 				// in a subquery; keep the larger estimate and any usable index.
-				if seen, dup := byTable[scan.table]; dup {
+				key := tableRef{schema: scan.tableSchema, table: scan.table}
+				if seen, dup := byTable[key]; dup {
 					scan.rows = max(scan.rows, seen.rows)
 					scan.hasPossibleKeys = scan.hasPossibleKeys || seen.hasPossibleKeys
 				} else {
-					order = append(order, scan.table)
+					order = append(order, key)
 				}
-				byTable[scan.table] = scan
+				byTable[key] = scan
 			}
 			for _, child := range n {
-				walk(child)
+				walk(child, selectID)
 			}
 		case []any:
 			for _, child := range n {
-				walk(child)
+				walk(child, selectID)
 			}
 		}
 	}
-	walk(plan)
+	walk(plan, 0)
 
 	scans := make([]fullScan, 0, len(order))
-	for _, table := range order {
-		scans = append(scans, byTable[table])
+	for _, key := range order {
+		scans = append(scans, byTable[key])
 	}
 	return scans, nil
 }
 
 // fullScanOf reads a plan node as a table access; ok is false when the node is
-// not a table read in full.
-func fullScanOf(node map[string]any) (fullScan, bool) {
+// not a real table read in full.
+func fullScanOf(node map[string]any, selectID int, names planTableNames) (fullScan, bool) {
 	table, hasName := node["table_name"].(string)
 	accessType, hasAccess := node["access_type"].(string)
 	if !hasName || !hasAccess || !strings.EqualFold(accessType, "ALL") || strings.HasPrefix(table, "<") {
@@ -95,6 +107,12 @@ func fullScanOf(node map[string]any) (fullScan, bool) {
 	}
 
 	scan := fullScan{table: table}
+	switch ref, kind := names.resolve(selectID, table); kind {
+	case planTableDerived:
+		return fullScan{}, false
+	case planTableReal:
+		scan.tableSchema, scan.table = ref.schema, ref.table
+	}
 	if keys, ok := node["possible_keys"].([]any); ok && len(keys) > 0 {
 		scan.hasPossibleKeys = true
 	}
@@ -152,7 +170,7 @@ func (s *fullScanStore) collect(ch chan<- prometheus.Metric) {
 		}
 		for _, scan := range e.scans {
 			ch <- prometheus.MustNewConstMetric(fullScanRowsDesc, prometheus.GaugeValue, scan.rows,
-				e.schema, e.digest, scan.table, fmt.Sprint(scan.hasPossibleKeys))
+				e.schema, e.digest, scan.tableSchema, scan.table, fmt.Sprint(scan.hasPossibleKeys))
 		}
 	}
 }

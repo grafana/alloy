@@ -855,7 +855,7 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 
 	logger = logger.With("schema_name", qi.schemaName)
 
-	byteExplainPlanJSON, err := c.fetchExplainPlanJSON(ctx, *qi)
+	byteExplainPlanJSON, rewrittenQuery, err := c.fetchExplainPlanJSON(ctx, *qi)
 	if err != nil {
 		logger.Debug("failed to fetch explain plan json bytes", "err", err)
 		for _, code := range unrecoverableSQLCodes {
@@ -895,7 +895,7 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 		}
 	}
 
-	c.recordFullScans(logger, qi, byteExplainPlanJSON)
+	c.recordFullScans(logger, qi, byteExplainPlanJSON, rewrittenQuery)
 
 	logger.Debug("db native explain plan",
 		"db_native_explain_plan", base64.StdEncoding.EncodeToString(redactedByteExplainPlanJSON))
@@ -931,26 +931,41 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 }
 
 // recordFullScans updates the full scans reported for a query from its latest
-// plan. A plan that can't be read leaves the previous ones in place.
-func (c *ExplainPlans) recordFullScans(logger *slog.Logger, qi *queryInfo, planJSON []byte) {
-	scans, err := fullScansFromExplainJSON(planJSON)
+// plan, naming tables from the rewritten query when it is available. A plan
+// that can't be read leaves the previous ones in place.
+func (c *ExplainPlans) recordFullScans(logger *slog.Logger, qi *queryInfo, planJSON []byte, rewrittenQuery string) {
+	var names planTableNames
+	if rewrittenQuery != "" {
+		names = parseRewrittenQueryTables(rewrittenQuery)
+	}
+
+	scans, err := fullScansFromExplainJSON(planJSON, names)
 	if err != nil {
 		logger.Debug("failed to find full scans in explain plan", "err", err)
 		return
 	}
+	for _, scan := range scans {
+		if scan.tableSchema == "" {
+			logger.Debug("full scan table not resolved to its real name", "table", scan.table)
+		}
+	}
 	c.fullScans.set(qi.schemaName, qi.digest, scans)
 }
 
-func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([]byte, error) {
+// fetchExplainPlanJSON returns the explain plan of a query and, when the full
+// scans are exposed as a metric, the query as the optimizer rewrote it, read
+// from `SHOW WARNINGS` on the same connection. A missing rewritten query is not
+// an error: the full scans then keep the names the plan uses.
+func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([]byte, string, error) {
 	conn, err := c.dbConnection.Conn(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get connection: %w", err)
+		return nil, "", fmt.Errorf("failed to get connection: %w", err)
 	}
 	defer conn.Close()
 
 	useStatement := fmt.Sprintf("USE `%s`", qi.schemaName)
 	if _, err := conn.ExecContext(ctx, useStatement); err != nil {
-		return nil, fmt.Errorf("failed to set schema: %w", err)
+		return nil, "", fmt.Errorf("failed to set schema: %w", err)
 	}
 	defer func() {
 		// Switch to performance_schema to avoid that when the connection
@@ -960,15 +975,53 @@ func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) (
 
 	rsExplain := conn.QueryRowContext(ctx, selectExplainPlanPrefix+qi.queryText)
 	if err := rsExplain.Err(); err != nil {
-		return nil, fmt.Errorf("failed to run explain plan: %w", err)
+		return nil, "", fmt.Errorf("failed to run explain plan: %w", err)
 	}
 
 	var byteExplainPlanJSON []byte
 	if err := rsExplain.Scan(&byteExplainPlanJSON); err != nil {
-		return nil, fmt.Errorf("failed to scan explain plan json: %w", err)
+		return nil, "", fmt.Errorf("failed to scan explain plan json: %w", err)
 	}
 
-	return byteExplainPlanJSON, nil
+	if c.registry == nil {
+		return byteExplainPlanJSON, "", nil
+	}
+
+	// SHOW WARNINGS must run right after EXPLAIN: any other statement clears them.
+	rewrittenQuery, err := fetchRewrittenQuery(ctx, conn)
+	if err != nil {
+		c.logger.Debug("failed to read the rewritten query", "digest", qi.digest, "err", err)
+	}
+	return byteExplainPlanJSON, rewrittenQuery, nil
+}
+
+// fetchRewrittenQuery reads the rewritten query note that EXPLAIN leaves in
+// `SHOW WARNINGS`. It is empty when the server records no notes
+// (sql_notes = 0) or keeps no warnings (max_error_count = 0).
+func fetchRewrittenQuery(ctx context.Context, conn *sql.Conn) (string, error) {
+	rs, err := conn.QueryContext(ctx, "SHOW WARNINGS")
+	if err != nil {
+		return "", fmt.Errorf("failed to show warnings: %w", err)
+	}
+	defer rs.Close()
+
+	var rewrittenQuery string
+	for rs.Next() {
+		var (
+			level, message string
+			code           int
+		)
+		if err := rs.Scan(&level, &code, &message); err != nil {
+			return "", fmt.Errorf("failed to scan warning: %w", err)
+		}
+		if code == rewrittenQueryNoteCode {
+			rewrittenQuery = message
+		}
+	}
+	if err := rs.Err(); err != nil {
+		return "", fmt.Errorf("failed to read warnings: %w", err)
+	}
+	return rewrittenQuery, nil
 }
 
 func redactAttachedConditions(explainPlanJSON []byte) ([]byte, int, error) {
