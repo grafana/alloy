@@ -20,7 +20,7 @@ func init() {
 		Exports:   otelcol.ConsumerExports{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			fact := splunkhecexporter.NewFactory()
-			return exporter.New(opts, fact, args.(config.SplunkHecArguments), exporter.TypeSignalConstFunc(exporter.TypeAll))
+			return exporter.New(opts, fact, args.(config.SplunkHecArguments), exporter.TypeSignalConstFunc(exporter.TypeStable))
 		},
 	})
 }

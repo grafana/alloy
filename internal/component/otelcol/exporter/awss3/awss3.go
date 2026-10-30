@@ -30,7 +30,7 @@ func init() {
 				case "sumo_ic":
 					return exporter.TypeLogs
 				default:
-					return exporter.TypeAll
+					return exporter.TypeStable
 				}
 			}
 
