@@ -207,11 +207,13 @@ func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
 ```
 
 Now that you have implemented a wrapper around the OpenTelemetry processor you want to add to Alloy, you need to add it to the list of all components to ensure that the `init()` function is called that registers the definition with the runtime.
-To do this, import the wrapper in the `internal/component/all.go` file.
+To do this, add the component name to `collector/alloy-components.yaml` and run `make generate-otel-collector-distro`, which generates the import in `internal/component/all/all.go`:
 
-```go
-_ "github.com/grafana/alloy/internal/component/otelcol/processor/example"                 // Import otelcol.processor.example
+```yaml
+  - otelcol.processor.example
 ```
+
+The component must be defined in the package that matches its name, in this case `internal/component/otelcol/processor/example`.
 
 ## Add the component to the OTel engine
 

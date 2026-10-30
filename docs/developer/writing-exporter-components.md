@@ -63,7 +63,9 @@ prometheus.exporter.blackbox "example" {
 
 ## Registering the component
 
-In order to make the component visible to Alloy configurations, it needs to be added to [all.go](../../internal/component/all/all.go) file.
+In order to make the component visible to Alloy configurations, add its name to [alloy-components.yaml](../../collector/alloy-components.yaml) and run `make generate-otel-collector-distro`.
+This generates the import in [all.go](../../internal/component/all/all.go).
+The component must be defined in the package that matches its name, for example `internal/component/prometheus/exporter/example` for `prometheus.exporter.example`.
 
 ## Documentation
 

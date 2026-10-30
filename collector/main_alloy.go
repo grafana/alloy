@@ -14,6 +14,11 @@ import (
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/otelcol"
+
+	// Native Alloy components listed in alloy-components.yaml.
+	_ "github.com/grafana/alloy/internal/component/all"
+	// Config converters for `alloy convert` and `alloy run --config.format`.
+	_ "github.com/grafana/alloy/internal/converter/install"
 )
 
 func newAlloyCommand(params otelcol.CollectorSettings) *cobra.Command {
