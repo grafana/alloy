@@ -12,15 +12,6 @@ import (
 	_ "github.com/grafana/alloy/internal/component/all"
 )
 
-type (
-	// Config is the configuration of the alloyengine extension.
-	Config = engine.Config
-	// AlloyConfig is the Alloy configuration source of the extension.
-	AlloyConfig = engine.AlloyConfig
-	// InlineAlloyConfig is an Alloy configuration set inline.
-	InlineAlloyConfig = engine.InlineAlloyConfig
-)
-
 // NewFactory creates a factory for the alloyengine extension.
 func NewFactory() extension.Factory {
 	return engine.NewFactory()
