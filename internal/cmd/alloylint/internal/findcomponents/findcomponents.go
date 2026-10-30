@@ -58,7 +58,7 @@ func run(p *analysis.Pass) (any, error) {
 		if _, imported := imports[componentPackage]; !imported {
 			p.Report(analysis.Diagnostic{
 				Pos:     p.Files[0].Pos(),
-				Message: fmt.Sprintf("package does not import component %s", componentPackage),
+				Message: fmt.Sprintf("package does not import component %s; add it to collector/alloy-components.yaml and run `make generate-otel-collector-distro`", componentPackage),
 			})
 		}
 	}

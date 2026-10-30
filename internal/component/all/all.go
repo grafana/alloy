@@ -1,4 +1,7 @@
-// Package all imports all known component packages.
+// Code generated from collector/alloy-components.yaml by collector/generator. DO NOT EDIT.
+
+// Package all imports the native Alloy components listed in
+// collector/alloy-components.yaml.
 package all
 
 import (
@@ -82,7 +85,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/encoding/azure"                   // Import otelcol.encoding.azure
 	_ "github.com/grafana/alloy/internal/component/otelcol/encoding/jsonlog"                 // Import otelcol.encoding.jsonlog
 	_ "github.com/grafana/alloy/internal/component/otelcol/encoding/text"                    // Import otelcol.encoding.text
-	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/awss3"                   // Import otelcol.exporter.awss3exporter
+	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/awss3"                   // Import otelcol.exporter.awss3
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/datadog"                 // Import otelcol.exporter.datadog
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/debug"                   // Import otelcol.exporter.debug
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/faro"                    // Import otelcol.exporter.faro
