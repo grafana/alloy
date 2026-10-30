@@ -20,11 +20,14 @@ type Consumer struct {
 
 	componentID string
 
-	// pauseMut and pausedWg are used to implement Pause & Resume semantics. See Pause method for more info.
-	pauseMut sync.RWMutex
+	// mut guards pausedWg and the consumers below. Consume* methods hold it
+	// for reading while they forward data, so Pause, which takes it for
+	// writing, waits for the calls already forwarding data to return.
+	mut sync.RWMutex
+
+	// pausedWg is used to implement Pause & Resume semantics. See Pause method for more info.
 	pausedWg *sync.WaitGroup
 
-	mut             sync.RWMutex
 	metricsConsumer otelconsumer.Metrics
 	logsConsumer    otelconsumer.Logs
 	tracesConsumer  otelconsumer.Traces
@@ -73,9 +76,7 @@ func (c *Consumer) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 		return c.ctx.Err()
 	}
 
-	c.waitUntilResumed()
-
-	c.mut.RLock()
+	c.rLockWhenResumed()
 	defer c.mut.RUnlock()
 
 	if c.tracesConsumer == nil {
@@ -96,9 +97,7 @@ func (c *Consumer) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error
 		return c.ctx.Err()
 	}
 
-	c.waitUntilResumed()
-
-	c.mut.RLock()
+	c.rLockWhenResumed()
 	defer c.mut.RUnlock()
 
 	if c.metricsConsumer == nil {
@@ -119,9 +118,7 @@ func (c *Consumer) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 		return c.ctx.Err()
 	}
 
-	c.waitUntilResumed()
-
-	c.mut.RLock()
+	c.rLockWhenResumed()
 	defer c.mut.RUnlock()
 
 	if c.logsConsumer == nil {
@@ -136,11 +133,17 @@ func (c *Consumer) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 	return c.logsConsumer.ConsumeLogs(ctx, ld)
 }
 
-func (c *Consumer) waitUntilResumed() {
-	c.pauseMut.RLock()
-	pausedWg := c.pausedWg
-	c.pauseMut.RUnlock()
-	if pausedWg != nil {
+// rLockWhenResumed waits until the consumer is not paused and returns with
+// c.mut held for reading. Checking the pause state under the same lock that
+// Pause takes means no call can slip past a Pause that is in progress.
+func (c *Consumer) rLockWhenResumed() {
+	for {
+		c.mut.RLock()
+		pausedWg := c.pausedWg
+		if pausedWg == nil {
+			return
+		}
+		c.mut.RUnlock()
 		pausedWg.Wait()
 	}
 }
@@ -157,10 +160,12 @@ func (c *Consumer) SetConsumers(t otelconsumer.Traces, m otelconsumer.Metrics, l
 }
 
 // Pause will stop the consumer until Resume is called. While paused, the calls to Consume* methods will block.
+// Pause waits for the Consume* calls that are already forwarding data to return, so once it returns, no data
+// reaches the current consumers until Resume is called. This lets the caller shut those consumers down safely.
 // Pause can be called multiple times, but a single call to Resume will un-pause this consumer. Thread-safe.
 func (c *Consumer) Pause() {
-	c.pauseMut.Lock()
-	defer c.pauseMut.Unlock()
+	c.mut.Lock()
+	defer c.mut.Unlock()
 
 	if c.pausedWg != nil {
 		return // already paused
@@ -172,8 +177,8 @@ func (c *Consumer) Pause() {
 
 // Resume will revert the Pause call and the consumer will continue to work. See Pause for more details.
 func (c *Consumer) Resume() {
-	c.pauseMut.Lock()
-	defer c.pauseMut.Unlock()
+	c.mut.Lock()
+	defer c.mut.Unlock()
 
 	if c.pausedWg == nil {
 		return // already resumed
@@ -185,7 +190,7 @@ func (c *Consumer) Resume() {
 
 // IsPaused returns whether the consumer is currently paused. See Pause for details.
 func (c *Consumer) IsPaused() bool {
-	c.pauseMut.RLock()
-	defer c.pauseMut.RUnlock()
+	c.mut.RLock()
+	defer c.mut.RUnlock()
 	return c.pausedWg != nil
 }
