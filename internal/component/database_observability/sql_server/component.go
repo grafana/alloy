@@ -155,6 +155,10 @@ type QueryDetailsArguments struct {
 type QuerySamplesArguments struct {
 	CollectInterval       time.Duration `alloy:"collect_interval,attr,optional"`
 	DisableQueryRedaction bool          `alloy:"disable_query_redaction,attr,optional"`
+	SampleMinDuration     time.Duration `alloy:"sample_min_duration,attr,optional"`
+	WaitEventMinDuration  time.Duration `alloy:"wait_event_min_duration,attr,optional"`
+	MaxSamplesPerQuery    int           `alloy:"max_samples_per_query,attr,optional"`
+	MaxSamplesPerCollect  int           `alloy:"max_samples_per_collect,attr,optional"`
 }
 
 type ExplainPlansArguments struct {
@@ -193,7 +197,11 @@ func defaultArguments() Arguments {
 		},
 
 		QuerySamplesArguments: QuerySamplesArguments{
-			CollectInterval: 10 * time.Second,
+			CollectInterval:      10 * time.Second,
+			SampleMinDuration:    0,
+			WaitEventMinDuration: 1 * time.Millisecond,
+			MaxSamplesPerQuery:   5,
+			MaxSamplesPerCollect: 50,
 		},
 
 		ExplainPlansArguments: ExplainPlansArguments{
@@ -313,6 +321,18 @@ func (a *Arguments) Validate() error {
 	if enableOrDisableCollectors(*a)[collector.QuerySamplesCollector] {
 		if a.QuerySamplesArguments.CollectInterval <= 0 {
 			return fmt.Errorf("query_samples.collect_interval must be greater than zero")
+		}
+		if a.QuerySamplesArguments.SampleMinDuration < 0 {
+			return fmt.Errorf("query_samples.sample_min_duration must be non-negative")
+		}
+		if a.QuerySamplesArguments.WaitEventMinDuration < 0 {
+			return fmt.Errorf("query_samples.wait_event_min_duration must be non-negative")
+		}
+		if a.QuerySamplesArguments.MaxSamplesPerQuery < 0 {
+			return fmt.Errorf("query_samples.max_samples_per_query must be non-negative")
+		}
+		if a.QuerySamplesArguments.MaxSamplesPerCollect < 0 {
+			return fmt.Errorf("query_samples.max_samples_per_collect must be non-negative")
 		}
 	}
 
@@ -958,6 +978,10 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 	}
 
 	if collectors[collector.QuerySamplesCollector] {
+		if c.args.QuerySamplesArguments.SampleMinDuration > 0 && c.args.QuerySamplesArguments.WaitEventMinDuration > c.args.QuerySamplesArguments.SampleMinDuration {
+			c.opts.Logger.Warn("wait_event_min_duration is greater than sample_min_duration, which may result in query samples with no associated wait events")
+		}
+
 		qsArgs := collector.QuerySamplesArguments{
 			DB:                    inst.dbConnection,
 			CollectInterval:       c.args.QuerySamplesArguments.CollectInterval,
@@ -965,6 +989,10 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 			EntryHandler:          entryHandler,
 			Logger:                c.opts.Logger,
 			DisableQueryRedaction: c.args.QuerySamplesArguments.DisableQueryRedaction,
+			SampleMinDuration:     c.args.QuerySamplesArguments.SampleMinDuration,
+			WaitEventMinDuration:  c.args.QuerySamplesArguments.WaitEventMinDuration,
+			MaxSamplesPerQuery:    c.args.QuerySamplesArguments.MaxSamplesPerQuery,
+			MaxSamplesPerCollect:  c.args.QuerySamplesArguments.MaxSamplesPerCollect,
 			ExcludeDatabases:      c.args.ExcludeDatabases,
 			ExcludeUsers:          effectiveExcludeUsers,
 			ExcludeCurrentUser:    c.args.ExcludeCurrentUser,

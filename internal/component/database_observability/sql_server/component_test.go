@@ -485,6 +485,10 @@ func TestQuerySamplesDefaults(t *testing.T) {
 
 	assert.Equal(t, 10*time.Second, args.QuerySamplesArguments.CollectInterval)
 	assert.False(t, args.QuerySamplesArguments.DisableQueryRedaction)
+	assert.Equal(t, time.Duration(0), args.QuerySamplesArguments.SampleMinDuration)
+	assert.Equal(t, time.Millisecond, args.QuerySamplesArguments.WaitEventMinDuration)
+	assert.Equal(t, 5, args.QuerySamplesArguments.MaxSamplesPerQuery)
+	assert.Equal(t, 50, args.QuerySamplesArguments.MaxSamplesPerCollect)
 	assert.True(t, args.ExcludeCurrentUser)
 	assert.Equal(t, []string{
 		"azuresu",
@@ -525,10 +529,38 @@ func TestValidateQuerySamples(t *testing.T) {
 		require.ErrorContains(t, args.Validate(), "query_samples.collect_interval")
 	})
 
+	t.Run("negative sample_min_duration is rejected", func(t *testing.T) {
+		args := base()
+		args.QuerySamplesArguments.SampleMinDuration = -time.Millisecond
+		require.ErrorContains(t, args.Validate(), "query_samples.sample_min_duration")
+	})
+
+	t.Run("negative wait_event_min_duration is rejected", func(t *testing.T) {
+		args := base()
+		args.QuerySamplesArguments.WaitEventMinDuration = -time.Millisecond
+		require.ErrorContains(t, args.Validate(), "query_samples.wait_event_min_duration")
+	})
+
+	t.Run("negative max_samples_per_query is rejected", func(t *testing.T) {
+		args := base()
+		args.QuerySamplesArguments.MaxSamplesPerQuery = -1
+		require.ErrorContains(t, args.Validate(), "query_samples.max_samples_per_query")
+	})
+
+	t.Run("negative max_samples_per_collect is rejected", func(t *testing.T) {
+		args := base()
+		args.QuerySamplesArguments.MaxSamplesPerCollect = -1
+		require.ErrorContains(t, args.Validate(), "query_samples.max_samples_per_collect")
+	})
+
 	t.Run("invalid values are ignored when disabled", func(t *testing.T) {
 		args := base()
 		args.DisableCollectors = []string{collector.QuerySamplesCollector}
 		args.QuerySamplesArguments.CollectInterval = 0
+		args.QuerySamplesArguments.SampleMinDuration = -time.Second
+		args.QuerySamplesArguments.WaitEventMinDuration = -time.Second
+		args.QuerySamplesArguments.MaxSamplesPerQuery = -1
+		args.QuerySamplesArguments.MaxSamplesPerCollect = -1
 		require.NoError(t, args.Validate())
 	})
 }
@@ -542,6 +574,10 @@ func TestQuerySamplesConfigParsing(t *testing.T) {
 		query_samples {
 			collect_interval        = "5s"
 			disable_query_redaction = true
+			sample_min_duration     = "25ms"
+			wait_event_min_duration = "5ms"
+			max_samples_per_query   = 10
+			max_samples_per_collect = 100
 		}
 	`
 
@@ -549,6 +585,10 @@ func TestQuerySamplesConfigParsing(t *testing.T) {
 	require.NoError(t, syntax.Unmarshal([]byte(config), &args))
 	assert.Equal(t, 5*time.Second, args.QuerySamplesArguments.CollectInterval)
 	assert.True(t, args.QuerySamplesArguments.DisableQueryRedaction)
+	assert.Equal(t, 25*time.Millisecond, args.QuerySamplesArguments.SampleMinDuration)
+	assert.Equal(t, 5*time.Millisecond, args.QuerySamplesArguments.WaitEventMinDuration)
+	assert.Equal(t, 10, args.QuerySamplesArguments.MaxSamplesPerQuery)
+	assert.Equal(t, 100, args.QuerySamplesArguments.MaxSamplesPerCollect)
 	assert.Equal(t, []string{"app_reader", "batch_user"}, args.ExcludeUsers)
 	assert.False(t, args.ExcludeCurrentUser)
 }
