@@ -1,11 +1,13 @@
 package collector
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"database/sql/driver"
 	"encoding/base64"
 	"fmt"
+	"log/slog"
 	"strings"
 	"testing"
 	"time"
@@ -305,4 +307,55 @@ func TestExplainPlans_PrunesStaleKeys(t *testing.T) {
 	require.NotContains(t, c.lastEmittedAt, key)
 	require.NotContains(t, c.lastEmittedHash, key)
 	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestExplainPlans_ThrottlesParseErrorLogsToEmitInterval(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	var logBuf bytes.Buffer
+	c, err := NewExplainPlans(ExplainPlansArguments{
+		DB:              db,
+		CollectInterval: time.Minute,
+		Tracker:         trackerFor(testHash),
+		EntryHandler:    lokiClient,
+		Logger:          slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelError})),
+	})
+	require.NoError(t, err)
+
+	base := time.Now()
+	c.now = func() time.Time { return base }
+
+	noStatementsXML := `<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan"><BatchSequence><Batch><Statements></Statements></Batch></BatchSequence></ShowPlanXML>`
+	poll := func() {
+		t.Helper()
+		expectExplainPlans(t, mock, []string{testHash}, []driver.Value{queryHashBytes, noStatementsXML})
+		require.NoError(t, c.collect(context.Background()))
+	}
+
+	// First cycle: emits skip entry and logs error once.
+	poll()
+	require.Equal(t, 1, strings.Count(logBuf.String(), `msg="failed to parse showplan xml"`))
+
+	// Subsequent cycles within EmitInterval: neither re-logs nor re-emits.
+	c.now = func() time.Time { return base.Add(time.Minute) }
+	poll()
+	c.now = func() time.Time { return base.Add(2 * time.Minute) }
+	poll()
+	require.Equal(t, 1, strings.Count(logBuf.String(), `msg="failed to parse showplan xml"`))
+
+	// Once EmitInterval has elapsed: logs and emits again.
+	c.now = func() time.Time { return base.Add(database_observability.EmitInterval + time.Minute) }
+	poll()
+	require.Equal(t, 2, strings.Count(logBuf.String(), `msg="failed to parse showplan xml"`))
+
+	require.NoError(t, mock.ExpectationsWereMet())
+	lokiClient.Stop()
+	require.Len(t, lokiClient.Received(), 2)
 }
