@@ -1,0 +1,58 @@
+otelcol.receiver.otlp "profiles" {
+  grpc {
+    endpoint = "0.0.0.0:4317"
+  }
+
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+
+  output {
+    profiles = [otelcol.processor.memory_limiter.profiles.input, otelcol.exporter.otlp.direct.input]
+  }
+}
+
+otelcol.processor.memory_limiter "profiles" {
+  check_interval = "1s"
+  limit = "2GiB"
+
+  output {
+    profiles = [otelcol.exporter.otlp.profiles.input]
+  }
+}
+
+otelcol.exporter.otlp "direct" {
+  client {
+    endpoint = "sink-direct:4317"
+
+    tls {
+      insecure = true
+    }
+  }
+
+  sending_queue {
+    enabled = false
+  }
+
+  retry_on_failure {
+    enabled = false
+  }
+}
+
+otelcol.exporter.otlp "profiles" {
+  client {
+    endpoint = "sink:4317"
+
+    tls {
+      insecure = true
+    }
+  }
+
+  sending_queue {
+    enabled = false
+  }
+
+  retry_on_failure {
+    enabled = false
+  }
+}

@@ -5,6 +5,7 @@ package receiver
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -13,6 +14,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/pipeline"
 	otelreceiver "go.opentelemetry.io/collector/receiver"
+	"go.opentelemetry.io/collector/receiver/xreceiver"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/sdk/metric"
 
@@ -129,6 +131,11 @@ func (r *Receiver) Update(args component.Arguments) error {
 	if dl, ok := r.args.(otelcol.DeprecationLogger); ok {
 		dl.LogDeprecations(r.opts.Logger)
 	}
+	next := r.args.NextConsumers()
+	if err := next.ValidateStabilityLevel(r.opts.MinStability); err != nil {
+		return err
+	}
+
 	host := scheduler.NewHost(
 		scheduler.WithHostExtensions(r.args.Extensions()),
 		scheduler.WithHostExporters(r.args.Exporters()),
@@ -170,8 +177,6 @@ func (r *Receiver) Update(args component.Arguments) error {
 	if err != nil {
 		return err
 	}
-
-	next := r.args.NextConsumers()
 
 	// Create instances of the receiver from our factory for each of our
 	// supported telemetry signals.
@@ -222,6 +227,21 @@ func (r *Receiver) Update(args component.Arguments) error {
 			return err
 		} else if logsReceiver != nil {
 			components = append(components, logsReceiver)
+		}
+	}
+
+	if len(next.Profiles) > 0 {
+		profilesFactory, ok := r.factory.(xreceiver.Factory)
+		if !ok {
+			return fmt.Errorf("profiles are not supported by %s: %w", r.factory.Type(), pipeline.ErrSignalNotSupported)
+		}
+
+		fanout := fanoutconsumer.Profiles(next.Profiles)
+		profilesReceiver, err := profilesFactory.CreateProfiles(r.ctx, settings, receiverConfig, fanout)
+		if err != nil {
+			return fmt.Errorf("creating profiles receiver: %w", err)
+		} else if profilesReceiver != nil {
+			components = append(components, profilesReceiver)
 		}
 	}
 

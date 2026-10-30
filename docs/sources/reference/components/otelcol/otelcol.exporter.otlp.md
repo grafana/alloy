@@ -183,7 +183,9 @@ The following fields are exported and can be referenced by other components:
 |---------|--------------------|------------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
-`input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).
+`input` accepts `otelcol.Consumer` data for metrics, logs, and traces.
+It also accepts profiles when Alloy starts with `--stability.level=experimental`.
+Profiles support is experimental.
 
 ## Component health
 
