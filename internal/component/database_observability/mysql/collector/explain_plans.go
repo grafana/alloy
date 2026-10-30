@@ -756,6 +756,10 @@ func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 			continue
 		}
 
+		// The query ran since the last poll, so its full scans are still
+		// current even when it isn't explained again this time.
+		c.fullScans.seen(schemaName, digest)
+
 		if c.isThrottled(qi.uniqueKey) {
 			continue
 		}

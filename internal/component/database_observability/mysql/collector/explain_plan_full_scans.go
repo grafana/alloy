@@ -13,11 +13,11 @@ import (
 	"github.com/grafana/alloy/internal/component/database_observability"
 )
 
-// fullScanTTL is how long the full scans found in a query's explain plan are
-// exposed without a newer plan. A query's plan is refreshed at most once per
-// EmitInterval while the query keeps running, so a longer silence means the query
-// stopped running, and its scans should stop being reported.
-const fullScanTTL = 3 * database_observability.EmitInterval
+// fullScanIdleTimeout is how long the full scans of a query are exposed after
+// the query was last seen running in the digest table. While it keeps running,
+// its scans stay exposed however long it waits for its next explain plan; once
+// it stops, they stop being reported.
+const fullScanIdleTimeout = 3 * database_observability.EmitInterval
 
 var fullScanRowsDesc = prometheus.NewDesc(
 	prometheus.BuildFQName("database_observability", "mysql_explain_plan", "full_scan_rows"),
@@ -125,7 +125,7 @@ func fullScanOf(node map[string]any, selectID int, names planTableNames) (fullSc
 }
 
 // fullScanStore keeps, for each query, the full scans of its latest explain
-// plan.
+// plan and when the query was last seen running.
 type fullScanStore struct {
 	mu      sync.Mutex
 	now     func() time.Time
@@ -136,7 +136,9 @@ type fullScanEntry struct {
 	schema string
 	digest string
 	scans  []fullScan
-	at     time.Time
+	// lastSeen is when the query was last explained or seen in the digest
+	// table, whichever is later.
+	lastSeen time.Time
 }
 
 func newFullScanStore(now func() time.Time) *fullScanStore {
@@ -154,17 +156,31 @@ func (s *fullScanStore) set(schema, digest string, scans []fullScan) {
 		delete(s.entries, key)
 		return
 	}
-	s.entries[key] = fullScanEntry{schema: schema, digest: digest, scans: scans, at: s.now()}
+	s.entries[key] = fullScanEntry{schema: schema, digest: digest, scans: scans, lastSeen: s.now()}
 }
 
-// collect emits the scans that have not expired, and forgets the ones that have.
+// seen records that a query is still running, which keeps its scans exposed
+// until its next explain plan replaces them.
+func (s *fullScanStore) seen(schema, digest string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	key := explainPlanQueryKey(schema, digest)
+	if e, ok := s.entries[key]; ok {
+		e.lastSeen = s.now()
+		s.entries[key] = e
+	}
+}
+
+// collect emits the scans of the queries seen running recently, and forgets
+// the ones of queries that stopped.
 func (s *fullScanStore) collect(ch chan<- prometheus.Metric) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	now := s.now()
 	for key, e := range s.entries {
-		if now.Sub(e.at) > fullScanTTL {
+		if now.Sub(e.lastSeen) > fullScanIdleTimeout {
 			delete(s.entries, key)
 			continue
 		}

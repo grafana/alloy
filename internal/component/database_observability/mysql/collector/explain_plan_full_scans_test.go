@@ -191,7 +191,7 @@ func TestExplainPlansConversionFailuresStillReportFullScans(t *testing.T) {
 	})
 
 	t.Run("explaining it again keeps the full scan from expiring", func(t *testing.T) {
-		*clock = clock.Add(fullScanTTL - time.Minute)
+		*clock = clock.Add(fullScanIdleTimeout - time.Minute)
 		require.False(t, processPlan(t, c, mock, "grafana_net", "d1", unconvertiblePlan))
 		*clock = clock.Add(2 * time.Minute)
 		require.Equal(t, 1, testutil.CollectAndCount(registry, "database_observability_mysql_explain_plan_full_scan_rows"))
@@ -275,12 +275,21 @@ func TestExplainPlansReportFullScans(t *testing.T) {
 		require.Equal(t, 0, testutil.CollectAndCount(registry, "database_observability_mysql_explain_plan_full_scan_rows"))
 	})
 
-	t.Run("a scan that nothing refreshes expires", func(t *testing.T) {
+	t.Run("a scan stays reported while the query keeps running, however long until its next plan", func(t *testing.T) {
 		processPlan(t, c, mock, "grafana_net", "d1", scanPlan)
 		require.Equal(t, 1, testutil.CollectAndCount(registry, "database_observability_mysql_explain_plan_full_scan_rows"))
 
-		*clock = clock.Add(fullScanTTL - time.Minute)
-		require.Equal(t, 1, testutil.CollectAndCount(registry, "database_observability_mysql_explain_plan_full_scan_rows"), "still within the time to live")
+		for range 3 {
+			*clock = clock.Add(fullScanIdleTimeout - time.Minute)
+			pollDigests(t, c, mock, "d1")
+		}
+		require.Equal(t, 1, testutil.CollectAndCount(registry, "database_observability_mysql_explain_plan_full_scan_rows"))
+	})
+
+	t.Run("a scan stops being reported once the query stops running", func(t *testing.T) {
+		*clock = clock.Add(fullScanIdleTimeout - time.Minute)
+		pollDigests(t, c, mock, "another digest")
+		require.Equal(t, 1, testutil.CollectAndCount(registry, "database_observability_mysql_explain_plan_full_scan_rows"), "seen running recently")
 
 		*clock = clock.Add(2 * time.Minute)
 		require.Equal(t, 0, testutil.CollectAndCount(registry, "database_observability_mysql_explain_plan_full_scan_rows"))
@@ -295,6 +304,20 @@ func TestExplainPlansReportFullScans(t *testing.T) {
 	})
 
 	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// pollDigests runs the collector's poll of the digest table, which returns the
+// given digests as having run since the last poll.
+func pollDigests(t *testing.T, c *ExplainPlans, mock sqlmock.Sqlmock, digests ...string) {
+	t.Helper()
+	rows := sqlmock.NewRows([]string{"schema_name", "digest", "query_sample_text", "last_seen"})
+	for _, digest := range digests {
+		rows.AddRow("grafana_net", digest, "select * from some_table where id = 1", time.Now())
+	}
+	mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(sqlmock.AnyArg()).RowsWillBeClosed().WillReturnRows(rows)
+	require.NoError(t, c.populateQueryCache(t.Context()))
+	// Only the poll is under test: leave explaining the queries out.
+	clear(c.queryCache)
 }
 
 func TestExplainPlansRegistersAndUnregistersItsMetric(t *testing.T) {
