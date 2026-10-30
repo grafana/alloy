@@ -26,7 +26,7 @@ func TestEnricher(t *testing.T) {
 		expectedLabels map[string]string
 	}{
 		{
-			name: "label enrichment with target_labels and metrics_match_label",
+			name: "label enrichment with target_labels and differing label names",
 			args: Arguments{
 				Targets: []discovery.Target{
 					discovery.NewTargetFromMap(map[string]string{
@@ -36,9 +36,8 @@ func TestEnricher(t *testing.T) {
 						"foo":     "bar",
 					}),
 				},
-				TargetMatchLabel:  "service",
-				MetricsMatchLabel: "service_name",
-				LabelsToCopy:      []string{"env", "owner"},
+				TargetToMetricMatch: map[string]string{"service": "service_name"},
+				LabelsToCopy:        []string{"env", "owner"},
 			},
 			inputLabels: map[string]string{
 				"service_name": "test-service",
@@ -60,9 +59,8 @@ func TestEnricher(t *testing.T) {
 						"foo":     "bar",
 					}),
 				},
-				TargetMatchLabel:  "service",
-				MetricsMatchLabel: "service_name",
-				LabelsToCopy:      []string{"env", "owner"},
+				TargetToMetricMatch: map[string]string{"service": "service_name"},
+				LabelsToCopy:        []string{"env", "owner"},
 			},
 			inputLabels: map[string]string{
 				"service_name": "test-service",
@@ -72,7 +70,7 @@ func TestEnricher(t *testing.T) {
 			},
 		},
 		{
-			name: "match using target_match_label when metrics_match_label is not specified",
+			name: "match when the label name is the same in targets and metrics",
 			args: Arguments{
 				Targets: []discovery.Target{
 					discovery.NewTargetFromMap(map[string]string{
@@ -82,7 +80,7 @@ func TestEnricher(t *testing.T) {
 						"foo":     "bar",
 					}),
 				},
-				TargetMatchLabel: "service",
+				TargetToMetricMatch: map[string]string{"service": "service"},
 			},
 			inputLabels: map[string]string{
 				"service": "test-service",
@@ -97,8 +95,8 @@ func TestEnricher(t *testing.T) {
 		{
 			name: "copy as is, when targets is empty",
 			args: Arguments{
-				Targets:          []discovery.Target{},
-				TargetMatchLabel: "service",
+				Targets:             []discovery.Target{},
+				TargetToMetricMatch: map[string]string{"service": "service"},
 			},
 			inputLabels: map[string]string{
 				"service": "test-service",
@@ -212,19 +210,6 @@ func TestValidate(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name: "valid legacy",
-			args: Arguments{
-				TargetMatchLabel: "service",
-			},
-		},
-		{
-			name: "valid legacy with metrics_match_label",
-			args: Arguments{
-				TargetMatchLabel:  "service",
-				MetricsMatchLabel: "svc",
-			},
-		},
-		{
 			name: "valid new match",
 			args: Arguments{
 				TargetToMetricMatch: map[string]string{"ns": "namespace", "pod_name": "pod"},
@@ -233,21 +218,21 @@ func TestValidate(t *testing.T) {
 		{
 			name:    "error: no match mechanism",
 			args:    Arguments{},
-			wantErr: "at least one match mechanism must be specified",
+			wantErr: "target_to_metric_match must contain at least one label pair",
 		},
 		{
-			name: "new takes precedence over legacy",
+			name: "error: empty target label",
 			args: Arguments{
-				TargetMatchLabel:    "service",
-				TargetToMetricMatch: map[string]string{"ns": "namespace"},
+				TargetToMetricMatch: map[string]string{"": "namespace"},
 			},
+			wantErr: "target_to_metric_match must not contain empty label names",
 		},
 		{
-			name: "error: metrics_match_label without target_match_label",
+			name: "error: empty metric label",
 			args: Arguments{
-				MetricsMatchLabel: "svc",
+				TargetToMetricMatch: map[string]string{"namespace": ""},
 			},
-			wantErr: "target_match_label must be set",
+			wantErr: "target_to_metric_match must not contain empty label names",
 		},
 	}
 	for _, tt := range tests {
@@ -274,9 +259,9 @@ func TestEnrichConcurrentUpdate(t *testing.T) {
 		Targets: []discovery.Target{
 			discovery.NewTargetFromMap(map[string]string{"service": "svc", "env": "prod"}),
 		},
-		TargetMatchLabel: "service",
-		LabelsToCopy:     []string{"env"},
-		ForwardTo:        []storage.AppendableV2{fanout},
+		TargetToMetricMatch: map[string]string{"service": "service"},
+		LabelsToCopy:        []string{"env"},
+		ForwardTo:           []storage.AppendableV2{fanout},
 	}
 
 	c, err := New(component.Options{

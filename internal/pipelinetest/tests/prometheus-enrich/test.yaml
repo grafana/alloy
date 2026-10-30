@@ -44,9 +44,8 @@ config: |
       },
     ]
 
-    target_match_label  = "hostname"
-    metrics_match_label = "instance"
-    labels_to_copy      = ["datacenter", "environment"]
+    target_to_metric_match = {"hostname" = "instance"}
+    labels_to_copy         = ["datacenter", "environment"]
 
     forward_to = [pipelinetest.prometheus.receiver]
   }
