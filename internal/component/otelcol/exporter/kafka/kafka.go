@@ -78,6 +78,7 @@ type Arguments struct {
 	SignalHeader                         bool          `alloy:"signal_header,attr,optional"`
 	Timeout                              time.Duration `alloy:"timeout,attr,optional"`
 	ConnIdleTimeout                      time.Duration `alloy:"conn_idle_timeout,attr,optional"`
+	DialTimeout                          time.Duration `alloy:"dial_timeout,attr,optional"`
 	IncludeMetadataKeys                  []string      `alloy:"include_metadata_keys,attr,optional"`
 
 	Logs    *KafkaExporterSignalConfig `alloy:"logs,block,optional"`
@@ -250,6 +251,7 @@ func (args *Arguments) SetToDefault() {
 		ClientID:        "otel-collector",
 		Timeout:         5 * time.Second,
 		ConnIdleTimeout: 9 * time.Minute,
+		DialTimeout:     10 * time.Second,
 		Metadata: otelcol.KafkaMetadataArguments{
 			Full:            true,
 			RefreshInterval: 10 * time.Minute,
@@ -329,6 +331,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		Timeout: args.Timeout,
 	}
 	result.ClientConfig.ConnIdleTimeout = args.ConnIdleTimeout
+	result.ClientConfig.DialTimeout = args.DialTimeout
 	result.ClientConfig.Metadata = args.Metadata.Convert()
 	result.BackOffConfig = *args.Retry.Convert()
 
