@@ -30,6 +30,8 @@ var (
 )
 
 type BuildersOptions struct {
+	TimeNanos     int64
+	DurationNanos int64
 	SampleRate    int64
 	PerPIDProfile bool
 	ProfileType   *samples.TypeMetadata
@@ -100,10 +102,11 @@ func (b *ProfileBuilders) BuilderForSample(
 			Mapping: []*profile.Mapping{
 				dummyMapping,
 			},
-			SampleType: sampleType,
-			Period:     period,
-			PeriodType: periodType,
-			TimeNanos:  time.Now().UnixNano(),
+			SampleType:    sampleType,
+			Period:        period,
+			PeriodType:    periodType,
+			TimeNanos:     b.opt.TimeNanos,
+			DurationNanos: b.opt.DurationNanos,
 		},
 		dummyMapping: dummyMapping,
 	}
