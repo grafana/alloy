@@ -730,7 +730,6 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 
 	if len(inst.cfg.targets) == 0 {
 		exporterArgs := resolveExporterArgs(c.args.PrometheusExporter)
-		effectiveExcludeDatabases := database_observability.MergeExclusions(database_observability.AlwaysExcludedPostgresDatabases(), c.args.ExcludeDatabases)
 		exporterArgs = applyExporterExclusions(exporterArgs, c.args.ExcludeDatabases, effectiveExcludeUsers, currentUser)
 		dsn := string(inst.cfg.dsn)
 
@@ -762,7 +761,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 			}
 			col, err := pg_collector.NewPostgresCollector(
 				c.opts.Logger,
-				effectiveExcludeDatabases,
+				exporterArgs.AutoDiscovery.DatabaseDenylist,
 				dsn,
 				exporterArgs.EnabledCollectors,
 				collectorOpts...,
