@@ -288,8 +288,17 @@ The login requires `VIEW DATABASE STATE` on the connected database. On SQL Serve
 |---------------------------|------------|---------------------------------------------------------------|---------|----------|
 | `collect_interval`        | `duration` | How frequently to collect query samples.                      | `"10s"` | no       |
 | `disable_query_redaction` | `bool`     | Collect unredacted SQL query text (might include parameters). | `false` | no       |
+| `sample_min_duration`     | `duration` | Minimum elapsed duration for a completed query sample to be emitted. Set to `"0s"` to disable filtering. | `"0s"`  | no       |
+| `wait_event_min_duration` | `duration` | Minimum duration for a wait event occurrence to be emitted. Set to `"0s"` to disable filtering. | `"1ms"` | no       |
+| `max_samples_per_query`   | `int`      | Maximum number of completed query samples emitted per `(database, query_hash)` in a single collection cycle. Set to `0` for no per-query limit. | `5`     | no       |
+| `max_samples_per_collect` | `int`      | Maximum total number of completed query samples emitted across all tracked queries in a single collection cycle. Set to `0` for no per-collection limit. | `50`    | no       |
 
 The `query_samples` collector only collects requests whose query hash is tracked by the `query_metrics` collector.
+
+When requests finish between polls, the collector filters out any request whose final elapsed time is shorter than `sample_min_duration`.
+Remaining completed requests are ranked by elapsed duration and then CPU time, and capped by `max_samples_per_query` and `max_samples_per_collect`.
+When a request is dropped by `sample_min_duration`, `max_samples_per_query`, or `max_samples_per_collect`, neither the query sample nor its wait event occurrences are emitted.
+For emitted samples, only wait event occurrences with a final duration of at least `wait_event_min_duration` are logged.
 
 The collector polls live requests and can miss queries shorter than `collect_interval`, wait events that start and finish between collections, and a query's first execution before Query Store admits its hash.
 For completed requests, the emitted resource counters contain the values from the final observation and can omit work performed after that observation.
