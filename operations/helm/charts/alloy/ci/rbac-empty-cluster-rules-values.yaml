@@ -1,0 +1,4 @@
+# Test case for an empty RBAC clusterRules array
+rbac:
+  create: true
+  clusterRules: []
