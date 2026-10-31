@@ -67,11 +67,6 @@ func TestFileRotation(t *testing.T) {
 			// Delete the file and recreate it after a short gap, as a log
 			// rotator would.
 			name: "delete",
-			// FIXME(https://github.com/grafana/alloy/issues/7510): on ext4 the
-			// recreated file often gets the old inode back, so the tailer
-			// treats it as unchanged and whole generations are lost. Unskip
-			// once fixed.
-			skip: "loses whole generations of lines when the inode is reused",
 			rotate: func(t *testing.T, w *rotationWriter) (*os.File, string) {
 				require.NoError(t, w.file.Close())
 				require.NoError(t, os.Remove(w.path))

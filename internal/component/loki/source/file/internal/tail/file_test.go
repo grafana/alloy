@@ -126,6 +126,30 @@ func TestFile(t *testing.T) {
 		verifyResult(t, file, nil, io.EOF)
 	})
 
+	t.Run("truncate in place keeps file handle", func(t *testing.T) {
+		name := createFile(t, "truncate-in-place", "before-truncate\n")
+		defer removeFile(t, name)
+
+		file, err := NewFile(logging.NewSlogNop(), &Config{
+			Filename: name,
+			WatcherConfig: WatcherConfig{
+				MinPollFrequency: 50 * time.Millisecond,
+				MaxPollFrequency: 50 * time.Millisecond,
+			},
+		})
+		require.NoError(t, err)
+		defer file.Close()
+
+		verifyResult(t, file, &Line{Text: "before-truncate", Offset: 16}, nil)
+		verifyResult(t, file, nil, io.EOF)
+
+		original := file.file
+		truncateFile(t, name, "after-truncate\n")
+		require.NoError(t, file.Wait(t.Context()))
+		require.Same(t, original, file.file, "truncation should not close and reopen the file")
+		verifyResult(t, file, &Line{Text: "after-truncate", Offset: 15}, nil)
+	})
+
 	t.Run("truncate", func(t *testing.T) {
 		name := createFile(t, "truncate", "a really long string goes here\nhello\nworld\n")
 		defer removeFile(t, name)
