@@ -3,6 +3,7 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -155,19 +156,28 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 			fmt.Sprintf(`schema=%q parseable="%t" digest=%q digest_text=%q`, schema, parserErr == nil, digest, digestText),
 		)
 
+		if len(tables) == 0 {
+			continue
+		}
+		parsedTables := make([]database_observability.ParsedTable, 0, len(tables))
 		for _, table := range tables {
 			validated := false
 			resolvedTable := table
 			if c.tableRegistry != nil {
 				resolvedTable, validated = c.tableRegistry.IsValid(schema, table)
 			}
-
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-				logging.LevelInfo,
-				database_observability.OP_QUERY_PARSED_TABLE_NAME,
-				fmt.Sprintf(`schema=%q digest=%q table=%q validated="%t"`, schema, digest, resolvedTable, validated),
-			)
+			parsedTables = append(parsedTables, database_observability.ParsedTable{Table: resolvedTable, Validated: validated})
 		}
+		tablesJSON, err := json.Marshal(parsedTables)
+		if err != nil {
+			c.logger.Error("failed to encode parsed tables", "err", err)
+			continue
+		}
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+			logging.LevelInfo,
+			database_observability.OP_QUERY_PARSED_TABLE_NAMES_V2,
+			fmt.Sprintf(`schema=%q digest=%q tables=%q`, schema, digest, tablesJSON),
+		)
 	}
 
 	if err := rs.Err(); err != nil {

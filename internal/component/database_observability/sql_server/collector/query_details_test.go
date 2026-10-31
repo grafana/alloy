@@ -175,17 +175,15 @@ func TestQueryDetails_ObfuscatesAndTrimsQueryTextWithoutNormalizingStructure(t *
 	require.NoError(t, mock.ExpectationsWereMet())
 
 	require.Eventually(t, func() bool {
-		return len(lokiClient.Received()) == 3
+		return len(lokiClient.Received()) == 2
 	}, 5*time.Second, 20*time.Millisecond)
 
 	entries := lokiClient.Received()
 	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, entries[0].Labels)
 	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" querytext="SELECT *\n\tFROM [dbo].[orders] o  \n\tJOIN customers c ON c.id = o.customer_id\n\tWHERE o.total > ?"`, entries[0].Line)
 
-	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, entries[1].Labels)
-	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" table="dbo.orders" validated="true"`, entries[1].Line)
-	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, entries[2].Labels)
-	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" table="customers" validated="true"`, entries[2].Line)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAMES_V2}, entries[1].Labels)
+	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" tables="[{\"table\":\"dbo.orders\",\"validated\":true},{\"table\":\"customers\",\"validated\":true}]"`, entries[1].Line)
 }
 
 func TestQueryDetailsMarksUpdateAliasAsNotValidated(t *testing.T) {
@@ -214,15 +212,14 @@ func TestQueryDetailsMarksUpdateAliasAsNotValidated(t *testing.T) {
 		) target ON r.id = target.id`)
 
 	require.Eventually(t, func() bool {
-		return len(lokiClient.Received()) == 3
+		return len(lokiClient.Received()) == 2
 	}, 5*time.Second, 20*time.Millisecond)
 
 	entries := lokiClient.Received()
 	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, entries[0].Labels)
-	require.ElementsMatch(t, []string{
-		`level="info" database="books_store" query_hash="0011223344556677" table="rentals" validated="true"`,
-		`level="info" database="books_store" query_hash="0011223344556677" table="r" validated="false"`,
-	}, []string{entries[1].Line, entries[2].Line})
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAMES_V2}, entries[1].Labels)
+	require.Contains(t, entries[1].Line, `\"table\":\"rentals\",\"validated\":true`)
+	require.Contains(t, entries[1].Line, `\"table\":\"r\",\"validated\":false`)
 }
 
 func TestSQLServerQueryTextSanitizationPreservesStructure(t *testing.T) {
@@ -467,8 +464,8 @@ func TestQueryDetails_RetriesWhenSchemaRegistryIsNotReady(t *testing.T) {
 
 	entries := lokiClient.Received()
 	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, entries[0].Labels)
-	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, entries[1].Labels)
-	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" table="foo" validated="false"`, entries[1].Line)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAMES_V2}, entries[1].Labels)
+	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" tables="[{\"table\":\"foo\",\"validated\":false}]"`, entries[1].Line)
 
 	// Poll 2: within EmitInterval and database still absent (e.g. excluded or failing);
 	// throttled so it does not re-emit on every cycle.
@@ -493,8 +490,8 @@ func TestQueryDetails_RetriesWhenSchemaRegistryIsNotReady(t *testing.T) {
 
 	entries = lokiClient.Received()
 	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, entries[2].Labels)
-	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAME}, entries[3].Labels)
-	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" table="foo" validated="true"`, entries[3].Line)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAMES_V2}, entries[3].Labels)
+	require.Equal(t, `level="info" database="books_store" query_hash="0011223344556677" tables="[{\"table\":\"foo\",\"validated\":true}]"`, entries[3].Line)
 
 	// Poll 4: within EmitInterval and already validated; throttled normally.
 	c.now = func() time.Time { return base.Add(3 * time.Minute) }

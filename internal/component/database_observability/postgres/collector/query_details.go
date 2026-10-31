@@ -3,6 +3,7 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -194,19 +195,28 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 			continue
 		}
 
+		if len(tables) == 0 {
+			continue
+		}
+		parsedTables := make([]database_observability.ParsedTable, 0, len(tables))
 		for _, table := range tables {
 			validated := false
 			resolvedTable := table
 			if c.tableRegistry != nil {
 				resolvedTable, validated = c.tableRegistry.IsValid(databaseName, table)
 			}
-
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-				logging.LevelInfo,
-				database_observability.OP_QUERY_PARSED_TABLE_NAME,
-				fmt.Sprintf(`queryid=%q datname=%q table=%q validated="%t"`, queryID, databaseName, resolvedTable, validated),
-			)
+			parsedTables = append(parsedTables, database_observability.ParsedTable{Table: resolvedTable, Validated: validated})
 		}
+		tablesJSON, err := json.Marshal(parsedTables)
+		if err != nil {
+			c.logger.Error("failed to encode parsed tables", "err", err)
+			continue
+		}
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+			logging.LevelInfo,
+			database_observability.OP_QUERY_PARSED_TABLE_NAMES_V2,
+			fmt.Sprintf(`queryid=%q datname=%q tables=%q`, queryID, databaseName, tablesJSON),
+		)
 	}
 
 	if err := rs.Err(); err != nil {

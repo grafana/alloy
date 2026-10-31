@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -225,7 +226,7 @@ func (c *QueryDetails) collect(ctx context.Context) error {
 }
 
 // emit strips comments and obfuscates literals while preserving the query's
-// structure, then emits the query_association and query_parsed_table_name logs.
+// structure, then emits the query_association and query_parsed_table_names_v2 logs.
 // It returns true when parsed tables were emitted without schema data for the
 // database, indicating the query should be re-emitted once schema collection
 // populates tableRegistry.
@@ -254,19 +255,28 @@ func (c *QueryDetails) emit(database, queryHash, queryText string) bool {
 	}
 
 	hasDatabase := c.tableRegistry != nil && c.tableRegistry.HasDatabase(database)
+	parsedTables := make([]database_observability.ParsedTable, 0, len(metadata.Tables))
 	for _, table := range metadata.Tables {
 		validated := false
 		resolvedTable := table
 		if hasDatabase {
 			resolvedTable, validated = c.tableRegistry.IsValid(database, table)
 		}
-
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-			logging.LevelInfo,
-			database_observability.OP_QUERY_PARSED_TABLE_NAME,
-			fmt.Sprintf(`database=%q query_hash=%q table=%q validated="%t"`, database, queryHash, resolvedTable, validated),
-		)
+		parsedTables = append(parsedTables, database_observability.ParsedTable{
+			Table:     resolvedTable,
+			Validated: validated,
+		})
 	}
+	tablesJSON, err := json.Marshal(parsedTables)
+	if err != nil {
+		c.logger.Error("failed to encode parsed tables", "err", err)
+		return false
+	}
+	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+		logging.LevelInfo,
+		database_observability.OP_QUERY_PARSED_TABLE_NAMES_V2,
+		fmt.Sprintf(`database=%q query_hash=%q tables=%q`, database, queryHash, tablesJSON),
+	)
 
 	return c.tableRegistry != nil && !hasDatabase
 }
