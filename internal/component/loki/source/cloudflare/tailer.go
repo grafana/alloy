@@ -1,10 +1,5 @@
 package cloudflare
 
-// This code is copied from Promtail (a1c1152b79547a133cc7be520a0b2e6db8b84868).
-// The cloudflaretarget package is used to configure and run a target that can
-// read from the Cloudflare Logpull API and forward entries to other loki
-// components.
-
 import (
 	"context"
 	"log/slog"
@@ -13,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/cloudflare-go"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/concurrency"
 	"github.com/grafana/dskit/multierror"
@@ -58,7 +52,7 @@ type tailer struct {
 	config    *tailerConfig
 	metrics   *metrics
 
-	client  Client
+	client  *client
 	ctx     context.Context
 	cancel  context.CancelFunc
 	wg      sync.WaitGroup
@@ -73,10 +67,13 @@ func newTailer(metrics *metrics, logger *slog.Logger, handler loki.LogsReceiver,
 	if err != nil {
 		return nil, err
 	}
-	client, err := getClient(config.APIURL, config.APIToken, config.ZoneID, fields)
-	if err != nil {
-		return nil, err
-	}
+	client := newClient(clientConfig{
+		apiURL:   config.APIURL,
+		apiToken: config.APIToken,
+		zoneID:   config.ZoneID,
+		fields:   fields,
+		backoff:  requestBackoff,
+	})
 	pos, err := position.Get(positions.CursorKey(config.ZoneID), config.Labels.String())
 	if err != nil {
 		return nil, err
@@ -154,7 +151,7 @@ func (t *tailer) pull(ctx context.Context, start, end time.Time) error {
 	var (
 		backoff = backoff.New(ctx, t.config.Backoff)
 		errs    = multierror.New()
-		it      cloudflare.LogpullReceivedIterator
+		it      *logpullIterator
 		err     error
 	)
 
@@ -164,13 +161,11 @@ func (t *tailer) pull(ctx context.Context, start, end time.Time) error {
 			t.logger.Warn("failed iterating over logs, out of cloudflare range, not retrying", "err", err, "start", start, "end", end, "retries", backoff.NumRetries())
 			return nil
 		} else if err != nil {
-			if it != nil {
-				it.Close()
-			}
 			errs.Add(err)
 			backoff.Wait()
 			continue
 		}
+
 		if err := func() error {
 			defer it.Close()
 			var lineRead int64
