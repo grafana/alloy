@@ -3,11 +3,14 @@ package stages
 import (
 	"bytes"
 	"encoding/json"
+	"log/slog"
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/require"
 )
 
 func TestStructuredMetadataStage(t *testing.T) {
@@ -417,6 +420,117 @@ func TestStructuredMetadataStage(t *testing.T) {
 			runPipelineTest(t, loadConfig(tt.config), tt.entries, tt.expected, tt.checks)
 		})
 	}
+}
+
+func TestStructuredMetadataConfigValidate(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		config    string
+		expectErr bool
+	}{
+		{
+			name:   "valid values",
+			config: `values = { "app" = "", "pod_name" = "pod" }`,
+		},
+		{
+			name:   "null value uses label name",
+			config: `values = { "app" = null }`,
+		},
+		{
+			name:   "valid regex",
+			config: `regex = "label_.*"`,
+		},
+		{
+			name: "valid values and regex",
+			config: `
+			values = { "pod_name" = "pod" }
+			regex  = "label_.*"
+			`,
+		},
+		{
+			name:   "empty config",
+			config: ``,
+		},
+		{
+			name:      "invalid regex returns err",
+			config:    `regex = "[unclosed"`,
+			expectErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var cfg StructuredMetadataConfig
+			err := syntax.Unmarshal([]byte(tt.config), &cfg)
+
+			if tt.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+// TestStructuredMetadataConfigValidateLabelNames calls Validate directly
+// because Alloy syntax rejects invalid UTF-8 before Validate is reached.
+func TestStructuredMetadataConfigValidateLabelNames(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		values    map[string]*string
+		expectErr bool
+	}{
+		{
+			name:   "valid label names",
+			values: map[string]*string{"app": nil, "pod_name": new("pod")},
+		},
+		{
+			name:   "nil values",
+			values: nil,
+		},
+		{
+			name:      "invalid label name returns err",
+			values:    map[string]*string{"\xfd": new("source")},
+			expectErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := StructuredMetadataConfig{Values: tt.values}
+			err := cfg.Validate()
+
+			if tt.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+// TestStructuredMetadataStageDoesNotMutateConfig guards against filling in
+// default sources on the caller's config. loki.process compares stored stage
+// configs with reflect.DeepEqual on update, so mutating them would cause the
+// pipeline to be rebuilt on every reload.
+func TestStructuredMetadataStageDoesNotMutateConfig(t *testing.T) {
+	t.Parallel()
+
+	var cfg StructuredMetadataConfig
+	require.NoError(t, syntax.Unmarshal([]byte(`values = { "app" = "", "stream" = null, "pod_name" = "pod" }`), &cfg))
+
+	want := map[string]*string{"app": new(""), "stream": nil, "pod_name": new("pod")}
+	require.Equal(t, want, cfg.Values)
+
+	newStructuredMetadataStage(cfg, stageOpts{slogger: slog.New(slog.DiscardHandler)})
+
+	require.Equal(t, want, cfg.Values)
 }
 
 func canonicalStructuredMetadataCheck(expected, actual push.LabelsAdapter) bool {

@@ -10,6 +10,10 @@ loki.process "valid" {
 	stage.logfmt {
 		regex = "^pod_"
 	}
+
+	stage.structured_metadata {
+		regex = "^label_"
+	}
 }
 
 loki.process "invalid_regex" {
@@ -21,5 +25,9 @@ loki.process "invalid_regex" {
 
 	stage.multiline {
 		firstline = "[unclosed"
+	}
+
+	stage.structured_metadata {
+		regex = "[unclosed"
 	}
 }
