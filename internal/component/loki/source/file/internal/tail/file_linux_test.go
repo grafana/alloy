@@ -32,7 +32,8 @@ func TestFileRecreatedAtPath(t *testing.T) {
 	require.NoError(t, err)
 	defer f.Close()
 
-	require.Equal(t, []string{"first-generation"}, readLinesUntilEOF(t, f))
+	verifyResult(t, f, &Line{Text: "first-generation", Offset: 17}, nil)
+	verifyResult(t, f, nil, io.EOF)
 
 	go func() {
 		time.Sleep(50 * time.Millisecond)
@@ -46,7 +47,8 @@ func TestFileRecreatedAtPath(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 	require.NoError(t, f.Wait(ctx))
-	require.Equal(t, []string{"second-generation"}, readLinesUntilEOF(t, f))
+	verifyResult(t, f, &Line{Text: "second-generation", Offset: 18}, nil)
+	verifyResult(t, f, nil, io.EOF)
 }
 
 // pathHeld reports whether any file descriptor in this process still refers
@@ -67,17 +69,4 @@ func pathHeld(path string) bool {
 		}
 	}
 	return false
-}
-
-func readLinesUntilEOF(t *testing.T, f *File) []string {
-	t.Helper()
-	var lines []string
-	for {
-		line, err := f.Next()
-		if err != nil {
-			require.ErrorIs(t, err, io.EOF)
-			return lines
-		}
-		lines = append(lines, line.Text)
-	}
 }
