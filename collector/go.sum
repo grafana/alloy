@@ -1841,6 +1841,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsc
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.162.0/go.mod h1:Tu7vsHoXPTQpcjOkE5Rq3mZKhRJAK03f7BdFbuMUvFM=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.162.0 h1:+9K/aSkEbIo6L67QYuwqjmw/lB0d9fYy15x/rV5mdB8=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.162.0/go.mod h1:upxhqhD1jMQN4aQwCqGJaoQ8vTSydxOW0kZOWLfYiRk=
+github.com/open-telemetry/opentelemetry-collector-contrib/exporter/clickhouseexporter v0.162.0 h1:99zvX07ddVP91GZzRlbo2YTGBTjKmEsgzpaA7iD7nCY=
+github.com/open-telemetry/opentelemetry-collector-contrib/exporter/clickhouseexporter v0.162.0/go.mod h1:w3sd+oVch62FTb5/cgpnyCju2oGXrFpWjtzfE5H1XOc=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter v0.162.0 h1:KzCbF86sXZFfK2WVgLgWyvHGlmpSelpSp7OUUyhEBjs=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter v0.162.0/go.mod h1:gMoqKL+N2neEQe8lNys1TGTo7vK8AoB8r12OK204B08=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter v0.162.0 h1:8ayLtbkMg3vWe7gv39bQhXjsF6Ntc4Hn57EJCLYmVNI=
