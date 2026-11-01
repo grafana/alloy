@@ -5,7 +5,7 @@ import (
 	"io"
 	"net/url"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // RemoteWriteConfig is used to specify a remote write endpoint
@@ -15,7 +15,7 @@ type RemoteWriteConfig struct {
 
 // CreateRuleGroup creates a new rule group
 func (r *MimirClient) CreateRuleGroup(ctx context.Context, namespace string, rg MimirRuleGroup) error {
-	payload, err := yaml.Marshal(&rg)
+	payload, err := marshalYAML(&rg)
 	if err != nil {
 		return err
 	}
