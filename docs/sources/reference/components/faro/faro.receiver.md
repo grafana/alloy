@@ -91,15 +91,15 @@ The `output` block specifies where to forward collected logs and traces.
 The `server` block configures the HTTP server managed by the `faro.receiver` component.
 Clients using the [Grafana Faro Web SDK][faro-sdk] forward telemetry data to this HTTP server for processing.
 
-| Name                       | Type           | Description                                                     | Default       | Required |
-|----------------------------|----------------|-----------------------------------------------------------------|---------------|----------|
-| `listen_address`           | `string`       | Address to listen for HTTP traffic on.                          | `"127.0.0.1"` | no       |
-| `listen_port`              | `number`       | Port to listen for HTTP traffic on.                             | `12347`       | no       |
-| `cors_extra_allowed_headers` | `list(string)` | Additional request headers to allow for cross-origin requests. | `[]` | no |
-| `cors_allowed_origins`     | `list(string)` | Origins for which cross-origin requests are permitted.          | `[]`          | no       |
-| `api_key`                  | `secret`       | Optional API key to validate client requests with.              | `""`          | no       |
-| `max_allowed_payload_size` | `string`       | Maximum size (in bytes) for client requests.                    | `"5MiB"`      | no       |
-| `include_metadata`         | `bool`         | Propagate incoming connection metadata to downstream consumers. | `false`       | no       |
+| Name                         | Type           | Description                                                     | Default       | Required |
+|------------------------------|----------------|-----------------------------------------------------------------|---------------|----------|
+| `listen_address`             | `string`       | Address to listen for HTTP traffic on.                          | `"127.0.0.1"` | no       |
+| `listen_port`                | `number`       | Port to listen for HTTP traffic on.                             | `12347`       | no       |
+| `cors_allowed_origins`       | `list(string)` | Origins for which cross-origin requests are permitted.          | `[]`          | no       |
+| `cors_extra_allowed_headers` | `list(string)` | Additional request headers to allow for cross-origin requests.  | `[]`          | no       |
+| `api_key`                    | `secret`       | Optional API key to validate client requests with.              | `""`          | no       |
+| `max_allowed_payload_size`   | `string`       | Maximum size (in bytes) for client requests.                    | `"5MiB"`      | no       |
+| `include_metadata`           | `bool`         | Propagate incoming connection metadata to downstream consumers. | `false`       | no       |
 
 By default, telemetry data is only accepted from applications on the same local network as the browser.
 To accept telemetry data from a wider set of clients, modify the `listen_address` attribute to the IP address of the appropriate network interface to use.
