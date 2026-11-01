@@ -95,6 +95,7 @@ Clients using the [Grafana Faro Web SDK][faro-sdk] forward telemetry data to thi
 |----------------------------|----------------|-----------------------------------------------------------------|---------------|----------|
 | `listen_address`           | `string`       | Address to listen for HTTP traffic on.                          | `"127.0.0.1"` | no       |
 | `listen_port`              | `number`       | Port to listen for HTTP traffic on.                             | `12347`       | no       |
+| `cors_extra_allowed_headers` | `list(string)` | Additional request headers to allow for cross-origin requests. | `[]` | no |
 | `cors_allowed_origins`     | `list(string)` | Origins for which cross-origin requests are permitted.          | `[]`          | no       |
 | `api_key`                  | `secret`       | Optional API key to validate client requests with.              | `""`          | no       |
 | `max_allowed_payload_size` | `string`       | Maximum size (in bytes) for client requests.                    | `"5MiB"`      | no       |
@@ -109,6 +110,24 @@ To support requests from all origins, set `cors_allowed_origins` to `["*"]`.
 The `*` character indicates a wildcard.
 
 You can use the following headers for cross-domain requests: `Content-Type`, `Content-Encoding`, `Idempotency-Key`, `Traceparent`, `X-API-Key`, `X-Faro-Session-Id`, or `X-Scope-OrgID`.
+
+Use `cors_extra_allowed_headers` to allow additional request headers alongside these built-in headers.
+Omitting the argument or setting it to `[]` preserves the built-in allowlist.
+Header names are case-insensitive.
+Setting it to `["*"]` allows any request header.
+This argument doesn't change `cors_allowed_origins` or enable CORS when it's disabled.
+
+For example, allow an application-specific header from an allowed origin:
+
+```alloy
+faro.receiver "default" {
+  server {
+    cors_allowed_origins       = ["https://example.com"]
+    cors_extra_allowed_headers = ["X-Custom-Header"]
+  }
+  output {}
+}
+```
 
 Browser clients can read the `Retry-After` response header when it's present.
 `faro.receiver` doesn't generate this header or deduplicate requests based on `Idempotency-Key`.

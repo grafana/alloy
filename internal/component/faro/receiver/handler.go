@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"slices"
 	"sync"
 	"time"
 
@@ -95,7 +96,7 @@ func (h *handler) Update(args ServerArguments) {
 	if len(args.CORSAllowedOrigins) > 0 {
 		h.cors = cors.New(cors.Options{
 			AllowedOrigins: args.CORSAllowedOrigins,
-			AllowedHeaders: defaultAllowedHeaders,
+			AllowedHeaders: slices.Concat(defaultAllowedHeaders, args.CORSExtraAllowedHeaders),
 			ExposedHeaders: []string{"Retry-After"},
 		})
 	} else {

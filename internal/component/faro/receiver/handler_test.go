@@ -310,6 +310,96 @@ func TestCORSPreflightWithAllowedHeader(t *testing.T) {
 	}
 }
 
+func TestCORSExtraAllowedHeaders(t *testing.T) {
+	for _, tc := range []struct {
+		name           string
+		extraHeaders   []string
+		requestHeaders string
+		origin         string
+		disabled       bool
+		allowed        bool
+	}{
+		{name: "default", requestHeaders: "content-type,idempotency-key", allowed: true},
+		{name: "empty", extraHeaders: []string{}, requestHeaders: "content-type,idempotency-key", allowed: true},
+		{name: "default rejects extra", requestHeaders: "x-custom-header"},
+		{name: "extra preserves defaults", extraHeaders: []string{"X-Custom-Header"}, requestHeaders: "content-type,idempotency-key,x-custom-header", allowed: true},
+		{name: "case insensitive", extraHeaders: []string{"X-CuStOm-HeAdEr"}, requestHeaders: "x-custom-header", allowed: true},
+		{name: "unconfigured header", extraHeaders: []string{"X-Custom-Header"}, requestHeaders: "x-other-header"},
+		{name: "mixed allowed and disallowed", extraHeaders: []string{"X-Custom-Header"}, requestHeaders: "x-custom-header,x-other-header"},
+		{name: "disallowed origin", extraHeaders: []string{"X-Custom-Header"}, requestHeaders: "x-custom-header", origin: "https://other.example.com"},
+		{name: "disabled", extraHeaders: []string{"X-Custom-Header"}, requestHeaders: "x-custom-header", disabled: true},
+		{name: "wildcard", extraHeaders: []string{"*"}, requestHeaders: "x-other-header", allowed: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			out := &testExporter{name: "test"}
+			h := newHandler(util.TestAlloyLogger(t).Slog(), prometheus.NewRegistry(), []exporter{out})
+			args := ServerArguments{CORSExtraAllowedHeaders: tc.extraHeaders}
+			if !tc.disabled {
+				args.CORSAllowedOrigins = []string{"https://example.com"}
+			}
+			h.Update(args)
+			origin := tc.origin
+			if origin == "" {
+				origin = "https://example.com"
+			}
+
+			preflight := httptest.NewRequest(http.MethodOptions, "/collect", nil)
+			preflight.Header.Set("Origin", origin)
+			preflight.Header.Set("Access-Control-Request-Method", http.MethodPost)
+			preflight.Header.Set("Access-Control-Request-Headers", tc.requestHeaders)
+			response := httptest.NewRecorder()
+			h.ServeHTTP(response, preflight)
+			require.Empty(t, out.payloads)
+			if !tc.allowed {
+				require.Empty(t, response.Header().Get("Access-Control-Allow-Headers"))
+				if tc.disabled || tc.origin != "" {
+					require.Empty(t, response.Header().Get("Access-Control-Allow-Origin"))
+				}
+				return
+			}
+			require.Equal(t, http.StatusNoContent, response.Code)
+			require.Equal(t, origin, response.Header().Get("Access-Control-Allow-Origin"))
+			require.Equal(t, tc.requestHeaders, response.Header().Get("Access-Control-Allow-Headers"))
+
+			request := httptest.NewRequest(http.MethodPost, "/collect", strings.NewReader(emptyPayload))
+			request.Header.Set("Origin", origin)
+			for _, header := range strings.Split(tc.requestHeaders, ",") {
+				request.Header.Set(header, "test")
+			}
+			response = httptest.NewRecorder()
+			h.ServeHTTP(response, request)
+			require.Equal(t, http.StatusAccepted, response.Code)
+			require.Equal(t, origin, response.Header().Get("Access-Control-Allow-Origin"))
+			require.Len(t, out.payloads, 1)
+		})
+	}
+}
+
+func TestCORSExtraAllowedHeadersUpdate(t *testing.T) {
+	h := newHandler(util.TestAlloyLogger(t).Slog(), prometheus.NewRegistry(), nil)
+	args := ServerArguments{
+		CORSAllowedOrigins:      []string{"https://example.com"},
+		CORSExtraAllowedHeaders: []string{"X-Custom-Header"},
+	}
+	for _, extraHeaders := range [][]string{args.CORSExtraAllowedHeaders, nil} {
+		args.CORSExtraAllowedHeaders = extraHeaders
+		h.Update(args)
+		request := httptest.NewRequest(http.MethodOptions, "/collect", nil)
+		request.Header.Set("Origin", "https://example.com")
+		request.Header.Set("Access-Control-Request-Method", http.MethodPost)
+		request.Header.Set("Access-Control-Request-Headers", "x-custom-header")
+		response := httptest.NewRecorder()
+		h.ServeHTTP(response, request)
+		require.Equal(t, http.StatusNoContent, response.Code)
+		if len(extraHeaders) > 0 {
+			require.Equal(t, "x-custom-header", response.Header().Get("Access-Control-Allow-Headers"))
+		} else {
+			require.Empty(t, response.Header().Get("Access-Control-Allow-Headers"))
+		}
+	}
+}
+
 func TestCORSFaroSDKIngestion(t *testing.T) {
 	for _, tc := range []struct {
 		name       string

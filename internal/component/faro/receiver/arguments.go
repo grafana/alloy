@@ -36,11 +36,12 @@ func (args *Arguments) SetToDefault() {
 // ServerArguments configures the HTTP server where telemetry information will
 // be sent from Faro clients.
 type ServerArguments struct {
-	Host                  string            `alloy:"listen_address,attr,optional"`
-	Port                  int               `alloy:"listen_port,attr,optional"`
-	CORSAllowedOrigins    []string          `alloy:"cors_allowed_origins,attr,optional"`
-	APIKey                alloytypes.Secret `alloy:"api_key,attr,optional"`
-	MaxAllowedPayloadSize units.Base2Bytes  `alloy:"max_allowed_payload_size,attr,optional"`
+	Host                    string            `alloy:"listen_address,attr,optional"`
+	Port                    int               `alloy:"listen_port,attr,optional"`
+	CORSAllowedOrigins      []string          `alloy:"cors_allowed_origins,attr,optional"`
+	CORSExtraAllowedHeaders []string          `alloy:"cors_extra_allowed_headers,attr,optional"`
+	APIKey                  alloytypes.Secret `alloy:"api_key,attr,optional"`
+	MaxAllowedPayloadSize   units.Base2Bytes  `alloy:"max_allowed_payload_size,attr,optional"`
 
 	RateLimiting    RateLimitingArguments `alloy:"rate_limiting,block,optional"`
 	IncludeMetadata bool                  `alloy:"include_metadata,attr,optional"`
