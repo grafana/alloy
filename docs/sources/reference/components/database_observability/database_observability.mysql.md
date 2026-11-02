@@ -297,9 +297,6 @@ Refer to [`prometheus.exporter.mysql`](../../prometheus/prometheus.exporter.mysq
 
 ## Example
 
-This example monitors one MySQL database and sends the collected data to Grafana Cloud.
-The component runs an embedded `mysqld_exporter`, so you don't need a separate `prometheus.exporter.mysql` component or the `targets` argument:
-
 ```alloy
 database_observability.mysql "orders_db" {
   data_source_name = "user:pass@tcp(mysql:3306)/"

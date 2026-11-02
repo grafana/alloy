@@ -319,9 +319,6 @@ Refer to the [PostgreSQL setup documentation](https://grafana.com/docs/grafana-c
 
 ## Example
 
-This example monitors one PostgreSQL database and sends the collected data to Grafana Cloud.
-The component runs an embedded `postgres_exporter`, so you don't need a separate `prometheus.exporter.postgres` component or the `targets` argument:
-
 ```alloy
 database_observability.postgres "orders_db" {
   data_source_name = "postgres://user:pass@localhost:5432/dbname"
