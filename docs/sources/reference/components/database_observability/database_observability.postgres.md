@@ -323,17 +323,11 @@ Refer to the [PostgreSQL setup documentation](https://grafana.com/docs/grafana-c
 database_observability.postgres "orders_db" {
   data_source_name = "postgres://user:pass@localhost:5432/dbname"
   forward_to       = [loki.relabel.orders_db.receiver]
-  targets          = prometheus.exporter.postgres.orders_db.targets
 
   // Enable per-query error telemetry from the processed PostgreSQL logs.
   logs {
     enable_error_logs_processing = true
   }
-}
-
-prometheus.exporter.postgres "orders_db" {
-  data_source_name   = "postgres://user:pass@localhost:5432/dbname"
-  enabled_collectors = ["stat_statements"]
 }
 
 // OPTIONAL: read PostgreSQL log files and forward to logs collector

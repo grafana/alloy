@@ -306,7 +306,6 @@ The statement metrics then don't have a `digest_text` label, because the `query_
 database_observability.mysql "orders_db" {
   data_source_name = "user:pass@tcp(mysql:3306)/"
   forward_to       = [loki.relabel.orders_db.receiver]
-  targets          = prometheus.exporter.mysql.orders_db.targets
 
   enable_collectors = ["query_samples", "explain_plans"]
 
@@ -315,11 +314,6 @@ database_observability.mysql "orders_db" {
       arn = "your-rds-db-arn"
     }
   }
-}
-
-prometheus.exporter.mysql "orders_db" {
-  data_source_name  = "user:pass@tcp(mysql:3306)/"
-  enable_collectors = ["perf_schema.eventsstatements"]
 }
 
 loki.relabel "orders_db" {
