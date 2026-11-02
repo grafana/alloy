@@ -1637,16 +1637,21 @@ func TestMySQL_Clustering_ReconcileMovesOnlyChangedDatabases(t *testing.T) {
 }
 
 func Test_resolveExporterArgs(t *testing.T) {
-	t.Run("no block at all defaults to eventsstatements only with default limit", func(t *testing.T) {
+	// The collectors whose metrics Database Observability reads.
+	wantDefaultCollectors := []string{eventsStatementsCollector, "global_status", "global_variables", "slave_status"}
+
+	t.Run("no block at all defaults to the collectors Database Observability reads with default limit", func(t *testing.T) {
 		cfg := `
 			data_source_name = "user:pass@tcp(localhost:3306)/db"
 			forward_to = []
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
-		assert.Equal(t, []string{eventsStatementsCollector}, exporterArgs.SetCollectors)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
+		assert.Equal(t, wantDefaultCollectors, exporterArgs.SetCollectors)
+		assert.ElementsMatch(t, wantDefaultCollectors, scraperNames(exporterArgs))
 		assert.Equal(t, 100, exporterArgs.PerfSchemaEventsStatements.Limit)
+		assert.Equal(t, 0, exporterArgs.PerfSchemaEventsStatements.TextLimit)
 	})
 
 	t.Run("block present with sub-block settings but set collectors untouched", func(t *testing.T) {
@@ -1661,9 +1666,25 @@ func Test_resolveExporterArgs(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
-		assert.Equal(t, []string{eventsStatementsCollector}, exporterArgs.SetCollectors)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
+		assert.Equal(t, wantDefaultCollectors, exporterArgs.SetCollectors)
 		assert.Equal(t, 50, exporterArgs.PerfSchemaEventsStatements.Limit)
+		assert.Equal(t, 0, exporterArgs.PerfSchemaEventsStatements.TextLimit)
+	})
+
+	t.Run("explicit text_limit is kept", func(t *testing.T) {
+		cfg := `data_source_name = "user:pass@tcp(localhost:3306)/db"
+			forward_to = []
+			prometheus_exporter {
+				perf_schema.eventsstatements {
+					text_limit = 120
+				}
+			}
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
+		assert.Equal(t, 120, exporterArgs.PerfSchemaEventsStatements.TextLimit)
 	})
 
 	t.Run("explicit enabled_collectors wins outright", func(t *testing.T) {
@@ -1676,7 +1697,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
 		assert.Equal(t, []string{"global_status"}, exporterArgs.SetCollectors)
 	})
 
@@ -1690,11 +1711,11 @@ func Test_resolveExporterArgs(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
-		assert.Equal(t, []string{eventsStatementsCollector}, exporterArgs.SetCollectors)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
+		assert.Equal(t, wantDefaultCollectors, exporterArgs.SetCollectors)
 	})
 
-	t.Run("disable_collectors removes the default collector", func(t *testing.T) {
+	t.Run("disable_collectors removes a default collector", func(t *testing.T) {
 		cfg := `
 		data_source_name = "user:pass@tcp(localhost:3306)/db"
 		forward_to = []
@@ -1705,8 +1726,8 @@ func Test_resolveExporterArgs(t *testing.T) {
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
-		assert.Empty(t, mysqld_exporter.GetScrapers(exporterArgs.Convert()))
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
+		assert.ElementsMatch(t, []string{"global_status", "global_variables", "slave_status"}, scraperNames(exporterArgs))
 	})
 
 	t.Run("sub-block without limit preserves default limit", func(t *testing.T) {
@@ -1719,11 +1740,11 @@ func Test_resolveExporterArgs(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
 		assert.Equal(t, 100, exporterArgs.PerfSchemaEventsStatements.Limit)
 	})
 
-	t.Run("explicit empty set_collectors defaults to eventsstatements collector", func(t *testing.T) {
+	t.Run("explicit empty set_collectors defaults to the default collectors", func(t *testing.T) {
 		cfg := `data_source_name = "user:pass@tcp(localhost:3306)/db"
 			forward_to = []
 			prometheus_exporter {
@@ -1732,29 +1753,90 @@ func Test_resolveExporterArgs(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
 		assert.Equal(t, 100, exporterArgs.PerfSchemaEventsStatements.Limit)
-		assert.Equal(t, []string{eventsStatementsCollector}, exporterArgs.SetCollectors)
+		assert.Equal(t, wantDefaultCollectors, exporterArgs.SetCollectors)
 	})
 
-	t.Run("collectors present in enable_collectors are added to the default eventsstatements", func(t *testing.T) {
+	t.Run("collectors present in enable_collectors are added to the default collectors", func(t *testing.T) {
 		cfg := `data_source_name = "user:pass@tcp(localhost:3306)/db"
 			forward_to = []
 			prometheus_exporter {
-				enable_collectors = ["global_status"]
+				enable_collectors = ["perf_schema.eventswaits"]
 			}
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
 		assert.Equal(t, 100, exporterArgs.PerfSchemaEventsStatements.Limit)
-		var collectors []string
-		for _, scraper := range mysqld_exporter.GetScrapers(exporterArgs.Convert()) {
-			collectors = append(collectors, scraper.Name())
-		}
-		assert.ElementsMatch(t, []string{eventsStatementsCollector, "global_status"}, collectors)
+		assert.ElementsMatch(t,
+			[]string{eventsStatementsCollector, "global_status", "global_variables", "slave_status", "perf_schema.eventswaits"},
+			scraperNames(exporterArgs),
+		)
 	})
+
+	t.Run("schema exclusions inherit top-level exclusions when nested exclusions are unset", func(t *testing.T) {
+		userBlock := &PrometheusExporterArguments{
+			PerfSchemaEventsStatements: exporter_mysql.PerfSchemaEventsStatements{
+				Limit: 50,
+			},
+		}
+
+		exporterArgs := resolveExporterArgs(userBlock, []string{"top_level"})
+
+		assert.Equal(t, []string{"mysql", "performance_schema", "sys", "information_schema", "top_level"}, exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas)
+		assert.Nil(t, userBlock.PerfSchemaEventsStatements.ExcludeSchemas)
+	})
+
+	t.Run("nested schema exclusions override top-level exclusions", func(t *testing.T) {
+		userBlock := &PrometheusExporterArguments{
+			PerfSchemaEventsStatements: exporter_mysql.PerfSchemaEventsStatements{
+				ExcludeSchemas: []string{"exporter_only"},
+			},
+		}
+
+		exporterArgs := resolveExporterArgs(userBlock, []string{"top_level"})
+
+		assert.Equal(t, []string{"mysql", "performance_schema", "sys", "information_schema", "exporter_only"}, exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas)
+		assert.Equal(t, []string{"exporter_only"}, userBlock.PerfSchemaEventsStatements.ExcludeSchemas)
+	})
+
+	t.Run("explicit empty nested schema exclusions override top-level exclusions", func(t *testing.T) {
+		cfg := `
+			data_source_name = "user:pass@tcp(localhost:3306)/db"
+			forward_to = []
+			prometheus_exporter {
+				perf_schema.eventsstatements {
+					exclude_schemas = []
+				}
+			}
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		require.NotNil(t, args.PrometheusExporter)
+		require.NotNil(t, args.PrometheusExporter.PerfSchemaEventsStatements.ExcludeSchemas)
+
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, []string{"top_level"})
+
+		assert.Equal(t, []string{"mysql", "performance_schema", "sys", "information_schema"}, exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas)
+	})
+
+	t.Run("schema exclusions preserve mandatory system schema exclusion without configuration", func(t *testing.T) {
+		exporterArgs := resolveExporterArgs(nil, nil)
+
+		assert.Equal(t, []string{"mysql", "performance_schema", "sys", "information_schema"}, exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas)
+	})
+}
+
+// scraperNames returns the names of the scrapers that the embedded exporter
+// enables for the given arguments.
+func scraperNames(args exporter_mysql.Arguments) []string {
+	var names []string
+	for _, scraper := range mysqld_exporter.GetScrapers(args.Convert()) {
+		names = append(names, scraper.Name())
+	}
+	return names
 }
 
 func Test_query_details_eventsstatements_different_limits_warning(t *testing.T) {
