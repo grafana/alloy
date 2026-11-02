@@ -3,6 +3,8 @@ package client
 import (
 	"context"
 
+	"gopkg.in/yaml.v3"
+
 	alertmgr_cfg "github.com/grafana/alloy/internal/mimir/alertmanager"
 )
 
@@ -24,7 +26,7 @@ func (r *MimirClient) CreateAlertmanagerConfigs(ctx context.Context, conf *alert
 		AlertmanagerConfig: confStr,
 		TemplateFiles:      templateFiles,
 	}
-	payloadStr, err := marshalYAML(&payload)
+	payloadStr, err := yaml.Marshal(&payload)
 	if err != nil {
 		return err
 	}

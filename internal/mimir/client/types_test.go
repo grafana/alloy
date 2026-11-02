@@ -6,7 +6,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/prometheus/prometheus/model/rulefmt"
 	"github.com/stretchr/testify/require"
-	"go.yaml.in/yaml/v3"
+	"gopkg.in/yaml.v3"
 )
 
 func TestRuleGroup_Marshal(t *testing.T) {

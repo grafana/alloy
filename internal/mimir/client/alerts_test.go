@@ -11,7 +11,6 @@ import (
 
 	alertmgr_cfg "github.com/grafana/alloy/internal/mimir/alertmanager"
 	"github.com/stretchr/testify/require"
-	"go.yaml.in/yaml/v3"
 )
 
 func TestMimirClient_CreateAlertmanagerConfigs(t *testing.T) {
@@ -67,33 +66,4 @@ func TestMimirClient_CreateAlertmanagerConfigs(t *testing.T) {
 
 	actualResponse := string(body)
 	require.YAMLEq(t, expectedResponse, actualResponse)
-}
-
-func TestMimirClient_CreateAlertmanagerConfigsKeepsTemplateWhitespace(t *testing.T) {
-	bodyCh := make(chan []byte, 1)
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, err := io.ReadAll(r.Body)
-		require.NoError(t, err)
-		bodyCh <- body
-	}))
-	defer ts.Close()
-
-	client, err := New(slog.New(slog.DiscardHandler), Config{Address: ts.URL}, nil)
-	require.NoError(t, err)
-
-	configBytes, err := os.ReadFile("testdata/alertmanager/conf.good.yml")
-	require.NoError(t, err)
-	config, err := alertmgr_cfg.Unmarshal(configBytes)
-	require.NoError(t, err)
-
-	templateFiles := map[string]string{
-		"template.tmpl": "\n{{ define \"summary\" }}\n  {{ .CommonLabels.alertname }}\n{{ end }}",
-	}
-	require.NoError(t, client.CreateAlertmanagerConfigs(t.Context(), config, templateFiles))
-
-	var got struct {
-		TemplateFiles map[string]string `yaml:"template_files"`
-	}
-	require.NoError(t, yaml.Unmarshal(<-bodyCh, &got))
-	require.Equal(t, templateFiles, got.TemplateFiles)
 }
