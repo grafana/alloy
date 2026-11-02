@@ -18,11 +18,13 @@ const (
 	lastAppliedAnnotation = "kubectl.kubernetes.io/last-applied-configuration"
 )
 
-// ExtractArguments selects labels and annotations of the changed object to
-// attach to its events. Rules follow otelcol.processor.k8sattributes.
+// ExtractArguments selects metadata fields, labels and annotations of the
+// changed object to attach to its events. Rules follow
+// otelcol.processor.k8sattributes.
 type ExtractArguments struct {
-	Labels      []ExtractRule `alloy:"label,block,optional"`
-	Annotations []ExtractRule `alloy:"annotation,block,optional"`
+	Fields      []ExtractFieldRule `alloy:"field,block,optional"`
+	Labels      []ExtractRule      `alloy:"label,block,optional"`
+	Annotations []ExtractRule      `alloy:"annotation,block,optional"`
 }
 
 // ExtractRule selects one key, or every key matching a regular expression.
@@ -30,6 +32,12 @@ type ExtractRule struct {
 	Key      string `alloy:"key,attr,optional"`
 	KeyRegex string `alloy:"key_regex,attr,optional"`
 	TagName  string `alloy:"tag_name,attr,optional"`
+}
+
+// ExtractFieldRule selects one metadata field: name or namespace.
+type ExtractFieldRule struct {
+	Key     string `alloy:"key,attr"`
+	TagName string `alloy:"tag_name,attr,optional"`
 }
 
 // Validate implements syntax.Validator.
@@ -47,13 +55,12 @@ type extractRule struct {
 
 // extractor applies extraction rules. The zero value extracts nothing.
 type extractor struct {
-	labelRules, annotationRules []extractRule
+	fieldRules, labelRules, annotationRules []extractRule
 }
 
 func newExtractor(args ExtractArguments) (extractor, error) {
 	var out extractor
-	names := map[string]bool{}
-	compile := func(block string, rules []ExtractRule) ([]extractRule, error) {
+	compile := func(block string, rules []ExtractRule, names map[string]bool) ([]extractRule, error) {
 		compiled := make([]extractRule, 0, len(rules))
 		for _, rule := range rules {
 			if (rule.Key == "") == (rule.KeyRegex == "") {
@@ -82,25 +89,52 @@ func newExtractor(args ExtractArguments) (extractor, error) {
 		}
 		return compiled, nil
 	}
+	fields := make([]ExtractRule, 0, len(args.Fields))
+	for _, field := range args.Fields {
+		if field.Key != "name" && field.Key != "namespace" {
+			return extractor{}, fmt.Errorf(`field: key must be "name" or "namespace"`)
+		}
+		if strings.Contains(field.TagName, "$") {
+			return extractor{}, fmt.Errorf("field: tag_name can't reference capture groups")
+		}
+		fields = append(fields, ExtractRule{Key: field.Key, TagName: field.TagName})
+	}
 	var err error
-	if out.labelRules, err = compile("label", args.Labels); err != nil {
+	// Field tag names are checked apart, so labels and annotations can
+	// override fields as fallbacks.
+	if out.fieldRules, err = compile("field", fields, map[string]bool{}); err != nil {
 		return extractor{}, err
 	}
-	if out.annotationRules, err = compile("annotation", args.Annotations); err != nil {
+	names := map[string]bool{}
+	if out.labelRules, err = compile("label", args.Labels, names); err != nil {
+		return extractor{}, err
+	}
+	if out.annotationRules, err = compile("annotation", args.Annotations, names); err != nil {
 		return extractor{}, err
 	}
 	return out, nil
 }
 
-func (e extractor) empty() bool { return len(e.labelRules) == 0 && len(e.annotationRules) == 0 }
+func (e extractor) empty() bool {
+	return len(e.fieldRules) == 0 && len(e.labelRules) == 0 && len(e.annotationRules) == 0
+}
 
-// labels returns the extracted labels of m by name. Labels are applied before
-// annotations, and later rules overwrite earlier ones.
+// labels returns the extracted labels of m by name. Fields are applied before
+// labels, labels before annotations, and later rules overwrite earlier ones.
 func (e extractor) labels(m metav1.Object) map[string]string {
 	if e.empty() {
 		return nil
 	}
 	out := map[string]string{}
+	if len(e.fieldRules) > 0 {
+		fields := map[string]string{}
+		for key, value := range map[string]string{"name": m.GetName(), "namespace": m.GetNamespace()} {
+			if value != "" {
+				fields[key] = value
+			}
+		}
+		apply(e.fieldRules, fields, out)
+	}
 	apply(e.labelRules, m.GetLabels(), out)
 	annotations := m.GetAnnotations()
 	if _, ok := annotations[lastAppliedAnnotation]; ok {

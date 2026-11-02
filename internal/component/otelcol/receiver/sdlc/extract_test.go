@@ -15,6 +15,10 @@ func TestExtractArgumentsUnmarshal(t *testing.T) {
 	var args Arguments
 	require.NoError(t, syntax.Unmarshal([]byte(`
 		extract {
+			field {
+				key      = "name"
+				tag_name = "service"
+			}
 			label {
 				key_regex = "app\\.kubernetes\\.io/(.*)"
 				tag_name  = "app.$1"
@@ -31,6 +35,7 @@ func TestExtractArgumentsUnmarshal(t *testing.T) {
 		output {}
 	`), &args))
 	require.Equal(t, ExtractArguments{
+		Fields:      []ExtractFieldRule{{Key: "name", TagName: "service"}},
 		Labels:      []ExtractRule{{KeyRegex: `app\.kubernetes\.io/(.*)`, TagName: "app.$1"}, {Key: "team"}},
 		Annotations: []ExtractRule{{Key: "kubernetes.io/change-cause", TagName: "change_cause"}},
 	}, args.Extract)
@@ -48,6 +53,11 @@ func TestExtractArgumentsValidate(t *testing.T) {
 		"tag without group":   {args: ExtractArguments{Labels: []ExtractRule{{KeyRegex: "app.*", TagName: "app"}}}, err: "requires a capture group"},
 		"reference with key":  {args: ExtractArguments{Labels: []ExtractRule{{Key: "app", TagName: "$1"}}}, err: "require key_regex"},
 		"duplicate tag names": {args: ExtractArguments{Labels: []ExtractRule{{Key: "a", TagName: "x"}}, Annotations: []ExtractRule{{Key: "b", TagName: "x"}}}, err: `annotation: duplicate tag_name "x"`},
+		"unknown field":       {args: ExtractArguments{Fields: []ExtractFieldRule{{Key: "uid"}}}, err: `field: key must be "name" or "namespace"`},
+		"missing field key":   {args: ExtractArguments{Fields: []ExtractFieldRule{{TagName: "x"}}}, err: `field: key must be "name" or "namespace"`},
+		"field reference":     {args: ExtractArguments{Fields: []ExtractFieldRule{{Key: "name", TagName: "$1"}}}, err: "field: tag_name can't reference capture groups"},
+		"duplicate field tag": {args: ExtractArguments{Fields: []ExtractFieldRule{{Key: "name", TagName: "x"}, {Key: "namespace", TagName: "x"}}}, err: `field: duplicate tag_name "x"`},
+		"field fallback":      {args: ExtractArguments{Fields: []ExtractFieldRule{{Key: "name", TagName: "x"}}, Labels: []ExtractRule{{Key: "a", TagName: "x"}}}},
 		"repeated references": {args: ExtractArguments{Labels: []ExtractRule{{KeyRegex: "a/(.*)", TagName: "$1"}, {KeyRegex: "b/(.*)", TagName: "$1"}}}},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -66,7 +76,13 @@ func TestExtractArgumentsValidate(t *testing.T) {
 
 func TestExtractorAttributes(t *testing.T) {
 	e, err := newExtractor(ExtractArguments{
+		Fields: []ExtractFieldRule{
+			{Key: "name", TagName: "service"},
+			{Key: "namespace"},
+		},
 		Labels: []ExtractRule{
+			// Fields are applied first, so the label wins.
+			{Key: "app.kubernetes.io/component", TagName: "service"},
 			{KeyRegex: `app\.kubernetes\.io/(?P<field>.*)`, TagName: "app.${field}"},
 			{Key: "team"},
 			{KeyRegex: "tier"},
@@ -84,8 +100,9 @@ func TestExtractorAttributes(t *testing.T) {
 	})
 	require.NoError(t, err)
 	m := &metav1.ObjectMeta{
+		Name: "checkout-v2", Namespace: "shop",
 		Labels: map[string]string{
-			"app.kubernetes.io/name": "checkout", "app.kubernetes.io/part-of": "shop",
+			"app.kubernetes.io/component": "api", "app.kubernetes.io/name": "checkout", "app.kubernetes.io/part-of": "shop",
 			"team": "payments", "tier": "", "empty": "", "owner": "label", "pod-template-hash": "abc",
 		},
 		Annotations: map[string]string{
@@ -94,6 +111,9 @@ func TestExtractorAttributes(t *testing.T) {
 		},
 	}
 	require.Equal(t, map[string]string{
+		"service":                    "api",
+		"namespace":                  "shop",
+		"app.component":              "api",
 		"app.name":                   "checkout",
 		"app.part-of":                "shop",
 		"team":                       "payments",
@@ -108,12 +128,17 @@ func TestExtractorAttributes(t *testing.T) {
 	require.False(t, e.keepAnnotation(lastAppliedAnnotation))
 	require.False(t, e.keepAnnotation("other"))
 	require.Nil(t, extractor{}.labels(m))
+
+	names, err := newExtractor(ExtractArguments{Fields: []ExtractFieldRule{{Key: "name", TagName: "service"}, {Key: "namespace"}}})
+	require.NoError(t, err)
+	require.Equal(t, map[string]string{"service": "checkout"}, names.labels(&metav1.ObjectMeta{Name: "checkout"}), "empty fields are skipped")
 }
 
 func TestExtractedLabelsOnEvents(t *testing.T) {
 	c := testController(t)
 	var err error
 	c.opts.extract, err = newExtractor(ExtractArguments{
+		Fields:      []ExtractFieldRule{{Key: "namespace"}},
 		Labels:      []ExtractRule{{Key: "team"}},
 		Annotations: []ExtractRule{{Key: "owner"}},
 	})
@@ -127,7 +152,7 @@ func TestExtractedLabelsOnEvents(t *testing.T) {
 	}
 	want := func(t *testing.T, got decoded) {
 		t.Helper()
-		require.Equal(t, map[string]any{"team": "payments", "owner": "alice"}, got.attrs["grafana.sdlc.labels"])
+		require.Equal(t, map[string]any{"namespace": "demo", "team": "payments", "owner": "alice"}, got.attrs["grafana.sdlc.labels"])
 	}
 	// drain checks every queued event: created, and for Deployments the rollout.
 	drain := func(t *testing.T, events int) {
@@ -153,6 +178,7 @@ func TestExtractedLabelsOnEvents(t *testing.T) {
 	c.enqueueCreated(daemonSetWorkload{DaemonSet: ds})
 	drain(t, 1)
 	unlabeled, _ := daemonSetFixture()
+	unlabeled.Namespace = ""
 	c.enqueueCreated(daemonSetWorkload{DaemonSet: unlabeled})
 	event, _ := c.queue.Get()
 	c.queue.Done(event)

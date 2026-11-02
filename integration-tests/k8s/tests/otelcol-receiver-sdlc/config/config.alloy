@@ -13,6 +13,9 @@ otelcol.receiver.sdlc "test" {
 	}
 
 	extract {
+		field {
+			key = "namespace"
+		}
 		label {
 			key = "team"
 		}
