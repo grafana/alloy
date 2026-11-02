@@ -1143,6 +1143,15 @@ The exported targets use the configured [in-memory traffic][] address specified 
 `beyla.ebpf` runs Beyla as a separate child process.
 This isolates failures in Beyla from {{< param "PRODUCT_NAME" >}} but changes how {{< param "PRODUCT_NAME" >}} exposes resource usage and profile data.
 
+### Configuration updates
+
+When you change the `beyla.ebpf` arguments, {{< param "PRODUCT_NAME" >}} restarts the Beyla child process to apply them.
+When only the services selected in the `discovery` block change, {{< param "PRODUCT_NAME" >}} applies the change to the running Beyla process instead.
+Beyla then instruments the newly selected services, stops instrumenting the services that are no longer selected, and keeps instrumenting the rest.
+
+{{< param "PRODUCT_NAME" >}} still restarts Beyla when a change in the `discovery` block alters how Beyla reports an already selected service, for example its name, namespace, sampler, routes, exports, or metric features.
+Changes to `survey`, and changes outside the `discovery` block, also restart Beyla.
+
 ### Resource metrics
 
 {{< param "PRODUCT_NAME" >}} exposes process-level metrics for the Beyla process under the same name as its own, with a `subprocess="beyla"` label:
