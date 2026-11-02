@@ -4,7 +4,6 @@ package kafka
 import (
 	"fmt"
 	"log/slog"
-	"math"
 	"time"
 
 	"github.com/go-viper/mapstructure/v2"
@@ -18,6 +17,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configretry"
+	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -136,15 +136,6 @@ func (args *Arguments) Validate() error {
 		}
 	}
 
-	// Upstream only validates these when the nested client and consumer configs
-	// are visited, which doesn't happen for the converted config.
-	if args.DialTimeout <= 0 {
-		return fmt.Errorf("dial_timeout (%s) must be positive", args.DialTimeout)
-	}
-	if args.MaxDecompressBatchBytes < 1 || args.MaxDecompressBatchBytes > math.MaxInt32 {
-		return fmt.Errorf("max_decompress_batch_bytes (%d) must be between 1 and %d", args.MaxDecompressBatchBytes, math.MaxInt32)
-	}
-
 	// Upstream rejects setting both the deprecated and the new form of the batch limit.
 	if args.PartitionProcessing.MaxBufferedBatches != 1 && args.PartitionProcessing.MaxPrefetch.Batches != 1 {
 		return fmt.Errorf("partition_processing.max_buffered_batches and partition_processing.max_prefetch.batches are mutually exclusive")
@@ -181,7 +172,13 @@ func (args *Arguments) Validate() error {
 		}
 	}
 
-	return nil
+	// Run the upstream validation on the whole config tree, including the
+	// nested client and consumer configs.
+	otelCfg, err := args.Convert()
+	if err != nil {
+		return err
+	}
+	return confmap.Validate(otelCfg.(*kafkareceiver.Config))
 }
 
 const defaultGroupRebalanceStrategy = "range"

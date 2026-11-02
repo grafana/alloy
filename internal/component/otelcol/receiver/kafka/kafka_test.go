@@ -113,7 +113,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				heartbeat_interval = "4s"
 				group_id = "test_group_id"
 				client_id = "test_client_id"
-				initial_offset = "test_offset"
+				initial_offset = "earliest"
 				group_rebalance_strategy = "roundrobin"
 				max_fetch_wait = "2s"
 				logs {
@@ -208,7 +208,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					SessionTimeout:    11 * time.Second,
 					HeartbeatInterval: 4 * time.Second,
 					GroupID:           "test_group_id",
-					InitialOffset:     "test_offset",
+					InitialOffset:     "earliest",
 					AutoCommit: configkafka.AutoCommitConfig{
 						Enable:   true,
 						Interval: 12 * time.Second,
@@ -349,7 +349,7 @@ func TestArguments_Auth(t *testing.T) {
 					sasl {
 						username = "test_username"
 						password = "test_password"
-						mechanism = "test_mechanism"
+						mechanism = "SCRAM-SHA-512"
 						version = 9
 						aws_msk {
 							region = "test_region"
@@ -416,7 +416,7 @@ func TestArguments_Auth(t *testing.T) {
 					"sasl": map[string]any{
 						"username":  "test_username",
 						"password":  "test_password",
-						"mechanism": "test_mechanism",
+						"mechanism": "SCRAM-SHA-512",
 						"version":   9,
 						"aws_msk": map[string]any{
 							"region": "test_region",
@@ -788,9 +788,11 @@ func TestGroupRebalanceStrategies(t *testing.T) {
 }
 
 func TestPartitionProcessing(t *testing.T) {
-	convert := func(t *testing.T, cfg string) (*kafkareceiver.Config, error) {
+	convert := func(cfg string) (*kafkareceiver.Config, error) {
 		var args kafka.Arguments
-		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		if err := syntax.Unmarshal([]byte(cfg), &args); err != nil {
+			return nil, err
+		}
 		converted, err := args.Convert()
 		if err != nil {
 			return nil, err
@@ -799,7 +801,7 @@ func TestPartitionProcessing(t *testing.T) {
 	}
 
 	t.Run("defaults to disabled with max_buffered_batches of 1", func(t *testing.T) {
-		otelObj, err := convert(t, `
+		otelObj, err := convert(`
 			brokers          = ["broker:9092"]
 			protocol_version = "2.0.0"
 
@@ -813,7 +815,7 @@ func TestPartitionProcessing(t *testing.T) {
 	})
 
 	t.Run("independent processing can be enabled", func(t *testing.T) {
-		otelObj, err := convert(t, `
+		otelObj, err := convert(`
 			brokers          = ["broker:9092"]
 			protocol_version = "2.0.0"
 
@@ -833,7 +835,7 @@ func TestPartitionProcessing(t *testing.T) {
 	})
 
 	t.Run("partially set nested blocks keep their defaults", func(t *testing.T) {
-		otelObj, err := convert(t, `
+		otelObj, err := convert(`
 			brokers          = ["broker:9092"]
 			protocol_version = "2.0.0"
 
@@ -858,7 +860,7 @@ func TestPartitionProcessing(t *testing.T) {
 	})
 
 	t.Run("deprecated max_buffered_batches is still honored", func(t *testing.T) {
-		otelObj, err := convert(t, `
+		otelObj, err := convert(`
 			brokers          = ["broker:9092"]
 			protocol_version = "2.0.0"
 
@@ -874,8 +876,7 @@ func TestPartitionProcessing(t *testing.T) {
 	})
 
 	t.Run("max_buffered_batches and max_prefetch batches are mutually exclusive", func(t *testing.T) {
-		var args kafka.Arguments
-		err := syntax.Unmarshal([]byte(`
+		_, err := convert(`
 			brokers          = ["broker:9092"]
 			protocol_version = "2.0.0"
 
@@ -888,12 +889,12 @@ func TestPartitionProcessing(t *testing.T) {
 			}
 
 			output {}
-		`), &args)
+		`)
 		require.ErrorContains(t, err, "mutually exclusive")
 	})
 
 	t.Run("max_prefetch and max_in_flight are passed through", func(t *testing.T) {
-		otelObj, err := convert(t, `
+		otelObj, err := convert(`
 			brokers          = ["broker:9092"]
 			protocol_version = "2.0.0"
 
@@ -921,7 +922,7 @@ func TestPartitionProcessing(t *testing.T) {
 	})
 
 	t.Run("independent processing without autocommit is rejected by upstream validation", func(t *testing.T) {
-		_, err := convert(t, `
+		_, err := convert(`
 			brokers          = ["broker:9092"]
 			protocol_version = "2.0.0"
 
