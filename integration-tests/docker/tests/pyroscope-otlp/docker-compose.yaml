@@ -1,0 +1,37 @@
+services:
+  otel-collector: &fixture
+    build:
+      context: ../../../..
+      dockerfile: integration-tests/docker/tests/pyroscope-otlp/Dockerfile
+    ports:
+      - "14321:8080"
+    healthcheck:
+      test: ["CMD", "/otlp-profiles-sink", "-healthcheck"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+  workload:
+    <<: *fixture
+    entrypoint: ["/profile-workload"]
+    ports: []
+    healthcheck:
+      disable: true
+
+  alloy:
+    image: alloy-integration-tests
+    privileged: true
+    pid: host
+    depends_on:
+      otel-collector:
+        condition: service_healthy
+      workload:
+        condition: service_started
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --stability.level=experimental
+      - --disable-reporting
+    volumes:
+      - ./config.alloy:/etc/alloy/config.alloy:ro
+      - /sys/kernel/tracing:/sys/kernel/tracing:ro

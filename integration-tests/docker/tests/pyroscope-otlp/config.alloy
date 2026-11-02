@@ -1,0 +1,40 @@
+discovery.process "all" { }
+
+discovery.relabel "profiled_processes" {
+	targets = discovery.process.all.targets
+
+	rule {
+		action        = "keep"
+		source_labels = ["__meta_process_exe"]
+		regex         = ".*/profile-workload"
+	}
+
+	rule {
+		action        = "replace"
+		source_labels = ["__meta_process_exe"]
+		regex         = ".*/([^/]+)$"
+		replacement   = "$1"
+		target_label  = "service_name"
+	}
+}
+
+pyroscope.ebpf "default" {
+	targets    = discovery.relabel.profiled_processes.output
+	forward_to = [otelcol.receiver.pyroscope.default.receiver]
+}
+
+otelcol.receiver.pyroscope "default" {
+	output {
+		profiles = [otelcol.exporter.otlp.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "otel-collector:4317"
+
+		tls {
+			insecure = true
+		}
+	}
+}

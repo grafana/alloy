@@ -8,8 +8,10 @@ import (
 
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelconsumer "go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/consumer/xconsumer"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
+	"go.opentelemetry.io/collector/pdata/pprofile"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/pipeline"
 )
@@ -24,16 +26,18 @@ type Consumer struct {
 	pauseMut sync.RWMutex
 	pausedWg *sync.WaitGroup
 
-	mut             sync.RWMutex
-	metricsConsumer otelconsumer.Metrics
-	logsConsumer    otelconsumer.Logs
-	tracesConsumer  otelconsumer.Traces
+	mut              sync.RWMutex
+	metricsConsumer  otelconsumer.Metrics
+	logsConsumer     otelconsumer.Logs
+	tracesConsumer   otelconsumer.Traces
+	profilesConsumer xconsumer.Profiles
 }
 
 var (
 	_ otelconsumer.Traces       = (*Consumer)(nil)
 	_ otelconsumer.Metrics      = (*Consumer)(nil)
 	_ otelconsumer.Logs         = (*Consumer)(nil)
+	_ xconsumer.Profiles        = (*Consumer)(nil)
 	_ otelcol.ComponentMetadata = (*Consumer)(nil)
 )
 
@@ -136,6 +140,29 @@ func (c *Consumer) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 	return c.logsConsumer.ConsumeLogs(ctx, ld)
 }
 
+// ConsumeProfiles implements xconsumer.Profiles.
+func (c *Consumer) ConsumeProfiles(ctx context.Context, pd pprofile.Profiles) error {
+	if c.ctx.Err() != nil {
+		return c.ctx.Err()
+	}
+
+	c.waitUntilResumed()
+
+	c.mut.RLock()
+	defer c.mut.RUnlock()
+
+	if c.profilesConsumer == nil {
+		return pipeline.ErrSignalNotSupported
+	}
+
+	if c.profilesConsumer.Capabilities().MutatesData {
+		newProfiles := pprofile.NewProfiles()
+		pd.CopyTo(newProfiles)
+		pd = newProfiles
+	}
+	return c.profilesConsumer.ConsumeProfiles(ctx, pd)
+}
+
 func (c *Consumer) waitUntilResumed() {
 	c.pauseMut.RLock()
 	pausedWg := c.pausedWg
@@ -146,14 +173,15 @@ func (c *Consumer) waitUntilResumed() {
 }
 
 // SetConsumers updates the internal consumers that Consumer will forward data
-// to. It is valid for any combination of m, l, and t to be nil.
-func (c *Consumer) SetConsumers(t otelconsumer.Traces, m otelconsumer.Metrics, l otelconsumer.Logs) {
+// to. It is valid for any combination of t, m, l, and p to be nil.
+func (c *Consumer) SetConsumers(t otelconsumer.Traces, m otelconsumer.Metrics, l otelconsumer.Logs, p xconsumer.Profiles) {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
 	c.metricsConsumer = m
 	c.logsConsumer = l
 	c.tracesConsumer = t
+	c.profilesConsumer = p
 }
 
 // Pause will stop the consumer until Resume is called. While paused, the calls to Consume* methods will block.

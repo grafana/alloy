@@ -32,9 +32,10 @@ otelcol.receiver.otlp "<LABEL>" {
   http { ... }
 
   output {
-    metrics = [...]
-    logs    = [...]
-    traces  = [...]
+    metrics  = [...]
+    logs     = [...]
+    traces   = [...]
+    profiles = [...]
   }
 }
 ```
@@ -180,6 +181,11 @@ To send telemetry signals to `otelcol.receiver.otlp` with HTTP/JSON, POST to:
 * `[endpoint][traces_url_path]` for traces.
 * `[endpoint][metrics_url_path]` for metrics.
 * `[endpoint][logs_url_path]` for logs.
+* `[endpoint]/v1development/profiles` for profiles.
+
+Receiving profiles requires `--stability.level=experimental` and at least one consumer in `output.profiles`.
+The upstream OpenTelemetry Collector receiver fixes the profiles path to `/v1development/profiles`.
+You can't configure this path.
 
 ### `keepalive` http
 
@@ -232,7 +238,9 @@ If `allowed_headers` includes `"*"`, all headers are permitted.
 * `rpc_server_response_size_bytes` (histogram): Measures size of RPC response messages (uncompressed).
 * `rpc_server_responses_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
 
-## Example
+## Examples
+
+### Send metrics, logs, and traces
 
 This example forwards received telemetry data through a batch processor before finally sending it to an OTLP-capable endpoint:
 
@@ -262,6 +270,29 @@ otelcol.exporter.otlphttp "default" {
   }
 }
 ```
+
+### Receive and export profiles
+
+Start Alloy with `--stability.level=experimental` to receive profiles over OTLP gRPC or HTTP and export them over OTLP gRPC:
+
+```alloy
+otelcol.receiver.otlp "profiles" {
+  grpc {}
+  http {}
+
+  output {
+    profiles = [otelcol.exporter.otlp.profiles.input]
+  }
+}
+
+otelcol.exporter.otlp "profiles" {
+  client {
+    endpoint = "<OTLP_GRPC_ENDPOINT>"
+  }
+}
+```
+
+Replace _`<OTLP_GRPC_ENDPOINT>`_ with the address of an OTLP gRPC endpoint that accepts profiles.
 
 ## Technical details
 
