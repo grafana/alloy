@@ -46,31 +46,40 @@ func sendToV2(logger *slog.Logger, c loki.Consumer) sendFunc {
 	return func(ctx context.Context, entry loki.Entry) error {
 		var retry *backoff.Backoff
 		for {
+			// Rebuild the batch on every attempt, since downstream may have modified it.
 			batch.Reset()
 			batch.AddEntry(entry.Labels, entry.Created(), entry.Entry)
 
+			// The error handling must follow the Consume contract, including the order of the checks.
 			err := c.Consume(ctx, batch)
-			if err == nil {
-				return nil
+			if err != nil {
+				if ctx.Err() != nil {
+					return err
+				}
+
+				if !errors.Is(err, loki.ErrConsumerStopped) {
+					return fmt.Errorf("unexpected error from consumer, this is most likely a bug: %w", err)
+				}
+
+				if retry == nil {
+					retry = backoff.New(ctx, consumerBackoffConfig)
+				}
+
+				if retry.NumRetries() == 0 {
+					logger.Warn("consumer stopped, retrying until it accepts the entry")
+				} else {
+					logger.Debug("consumer stopped, still retrying", "retries", retry.NumRetries())
+				}
+
+				retry.Wait()
+				if !retry.Ongoing() {
+					return retry.Err()
+				}
+
+				continue
 			}
 
-			if ctx.Err() != nil || !errors.Is(err, loki.ErrConsumerStopped) {
-				return err
-			}
-
-			if retry == nil {
-				retry = backoff.New(ctx, consumerBackoffConfig)
-			}
-
-			if retry.NumRetries() == 0 {
-				logger.Warn("consumer stopped, retrying until it accepts the entry")
-			} else {
-				logger.Debug("consumer stopped, still retrying", "retries", retry.NumRetries())
-			}
-			retry.Wait()
-			if !retry.Ongoing() {
-				return retry.Err()
-			}
+			return nil
 		}
 	}
 }
