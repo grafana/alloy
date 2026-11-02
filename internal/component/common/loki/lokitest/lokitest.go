@@ -15,7 +15,7 @@ import (
 	"github.com/grafana/alloy/internal/service/lokipipelinev2"
 )
 
-// Test runs fn as a subtest for each Loki pipeline, with an Env set up for
+// Test runs fn as a subtest for V1 and V2 Loki pipelines, with an Env set up for
 // that pipeline.
 func Test(t *testing.T, fn func(t *testing.T, env Env)) {
 	t.Helper()
