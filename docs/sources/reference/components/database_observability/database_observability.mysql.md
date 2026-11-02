@@ -295,6 +295,9 @@ The embedded `perf_schema.eventsstatements` collector inherits the top-level `ex
 
 Refer to [`prometheus.exporter.mysql`](../../prometheus/prometheus.exporter.mysql/) docs for the full list of supported arguments and sub-blocks.
 
+Unlike in `prometheus.exporter.mysql`, the `text_limit` argument of the `perf_schema.eventsstatements` block defaults to `0`.
+The statement metrics then don't have a `digest_text` label, because the `query_details` collector sends the statement text as logs.
+
 ## Example
 
 ```alloy
