@@ -122,6 +122,8 @@ extensions:
 Replace `<ALLOY_VERSION>` with the version you chose.
 
 The `github.com/grafana/alloy/extension/alloyengine` package includes every native Alloy component.
+Stock OCB doesn't read Alloy's own `collector/alloy-components.yaml`, so you can't select individual native components in your own distribution.
+To build Alloy with only some native components, build it from the Alloy repository as described in [`collector/README.md`](../../collector/README.md#selecting-native-alloy-components).
 
 ### Include replace directives from Alloy
 

@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/alloy/internal/component/discovery/aws"
+	"github.com/grafana/alloy/internal/component/discovery/ec2"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/build"
@@ -24,12 +24,12 @@ func ValidateDiscoveryEC2(sdConfig *prom_aws.EC2SDConfig) diag.Diagnostics {
 	return common.ValidateHttpClientConfig(&sdConfig.HTTPClientConfig)
 }
 
-func toDiscoveryEC2(sdConfig *prom_aws.EC2SDConfig) *aws.EC2Arguments {
+func toDiscoveryEC2(sdConfig *prom_aws.EC2SDConfig) *ec2.EC2Arguments {
 	if sdConfig == nil {
 		return nil
 	}
 
-	return &aws.EC2Arguments{
+	return &ec2.EC2Arguments{
 		Endpoint:         sdConfig.Endpoint,
 		Region:           sdConfig.Region,
 		AccessKey:        sdConfig.AccessKey,
@@ -43,11 +43,11 @@ func toDiscoveryEC2(sdConfig *prom_aws.EC2SDConfig) *aws.EC2Arguments {
 	}
 }
 
-func toEC2Filters(filtersConfig []*prom_aws.Filter) []*aws.EC2Filter {
-	filters := make([]*aws.EC2Filter, 0)
+func toEC2Filters(filtersConfig []*prom_aws.Filter) []*ec2.EC2Filter {
+	filters := make([]*ec2.EC2Filter, 0)
 
 	for _, filter := range filtersConfig {
-		filters = append(filters, &aws.EC2Filter{
+		filters = append(filters, &ec2.EC2Filter{
 			Name:   filter.Name,
 			Values: filter.Values,
 		})

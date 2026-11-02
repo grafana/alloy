@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/alloy/internal/component/discovery/aws"
+	"github.com/grafana/alloy/internal/component/discovery/lightsail"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/build"
@@ -24,12 +24,12 @@ func ValidateDiscoveryLightsail(sdConfig *prom_aws.LightsailSDConfig) diag.Diagn
 	return common.ValidateHttpClientConfig(&sdConfig.HTTPClientConfig)
 }
 
-func toDiscoveryLightsail(sdConfig *prom_aws.LightsailSDConfig) *aws.LightsailArguments {
+func toDiscoveryLightsail(sdConfig *prom_aws.LightsailSDConfig) *lightsail.LightsailArguments {
 	if sdConfig == nil {
 		return nil
 	}
 
-	return &aws.LightsailArguments{
+	return &lightsail.LightsailArguments{
 		Endpoint:         sdConfig.Endpoint,
 		Region:           sdConfig.Region,
 		AccessKey:        sdConfig.AccessKey,
