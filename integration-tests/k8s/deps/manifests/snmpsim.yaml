@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: snmpsim
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: snmpsim
+  template:
+    metadata:
+      labels:
+        app: snmpsim
+    spec:
+      containers:
+        - name: snmpsim
+          # Only published for linux/amd64.
+          image: tandrup/snmpsim:v0.4
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 161
+              protocol: UDP
+              name: snmp
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: snmpsim
+  labels:
+    app: snmpsim
+spec:
+  selector:
+    app: snmpsim
+  ports:
+    - port: 161
+      targetPort: 161
+      protocol: UDP
+      name: snmp
