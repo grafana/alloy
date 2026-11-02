@@ -49,7 +49,6 @@ loki.source.docker "fun" {
 			insecure_skip_verify = true
 		}
 	}
-	refresh_interval = "10s"
 }
 
 discovery.docker "fun_2" {
@@ -96,5 +95,4 @@ loki.source.docker "fun_2" {
 			tls_config { }
 		}
 	}
-	refresh_interval = "10s"
 }

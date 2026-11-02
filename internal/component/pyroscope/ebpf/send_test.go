@@ -104,6 +104,26 @@ func TestSendProfilesConcurrently(t *testing.T) {
 	}
 }
 
+func TestSendProfilesMetrics(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	c := new(Component)
+	c.metrics = newMetrics(reg)
+	c.logger = util.TestAlloyLogger(t).Slog()
+	c.args.CollectInterval = time.Second
+	c.appendable = pyroscope.NewFanout([]pyroscope.Appendable{
+		pyroscope.NoopAppendable,
+	}, "", reg)
+
+	serviceLabels := labels.FromMap(map[string]string{"service_name": "service_a"})
+	c.sendProfiles(t.Context(), []reporter.PPROF{
+		{Raw: []byte("short"), Samples: 2, Labels: serviceLabels},
+		{Raw: []byte("a longer profile"), Samples: 7, Labels: serviceLabels},
+	})
+
+	assert.Equal(t, float64(9), gatherCounter(t, reg, "pyroscope_ebpf_pprof_samples_total", serviceLabels))
+	assert.Equal(t, float64(len("short")+len("a longer profile")), gatherCounter(t, reg, "pyroscope_ebpf_pprof_bytes_total", serviceLabels))
+}
+
 func gatherDrops(t *testing.T, reg *prometheus.Registry) float64 {
 	gather, err := reg.Gather()
 	require.NoError(t, err)
@@ -116,5 +136,25 @@ func gatherDrops(t *testing.T, reg *prometheus.Registry) float64 {
 		}
 	}
 	require.Fail(t, "metric not found")
+	return 0
+}
+
+func gatherCounter(t *testing.T, reg *prometheus.Registry, name string, expectedLabels labels.Labels) float64 {
+	gather, err := reg.Gather()
+	require.NoError(t, err)
+
+	for _, f := range gather {
+		if *f.Name != name {
+			continue
+		}
+		require.Len(t, f.Metric, 1)
+		metricLabels := make([]labels.Label, 0, len(f.Metric[0].Label))
+		for _, label := range f.Metric[0].Label {
+			metricLabels = append(metricLabels, labels.Label{Name: label.GetName(), Value: label.GetValue()})
+		}
+		assert.Equal(t, expectedLabels, labels.New(metricLabels...))
+		return f.Metric[0].GetCounter().GetValue()
+	}
+	require.Failf(t, "metric not found", "metric %q", name)
 	return 0
 }

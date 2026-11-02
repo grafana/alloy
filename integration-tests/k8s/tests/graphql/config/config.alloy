@@ -1,0 +1,14 @@
+logging {
+  level = "debug"
+}
+
+prometheus.exporter.self "default" { }
+
+prometheus.scrape "self_metrics" {
+  targets    = prometheus.exporter.self.default.targets
+  forward_to = [prometheus.relabel.noop.receiver]
+}
+
+prometheus.relabel "noop" {
+  forward_to = []
+}

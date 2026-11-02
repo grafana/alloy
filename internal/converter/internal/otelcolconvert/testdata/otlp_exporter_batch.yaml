@@ -1,0 +1,38 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+
+exporters:
+  otlp/no_batch:
+    endpoint: database:4317
+
+  otlp/default_batch:
+    endpoint: database:4317
+    sending_queue:
+      batch:
+
+  otlp/explicit_batch:
+    endpoint: database:4317
+    sending_queue:
+      batch:
+        flush_timeout: 100ms
+        min_size: 4096
+        max_size: 16384
+        sizer: bytes
+
+  otlp/partitioned_batch:
+    endpoint: database:4317
+    sending_queue:
+      batch:
+        partition:
+          metadata_keys: [tenant, region]
+          cache_size: 20
+          idle_timeout: 2m
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: []
+      exporters: [otlp/no_batch, otlp/default_batch, otlp/explicit_batch, otlp/partitioned_batch]

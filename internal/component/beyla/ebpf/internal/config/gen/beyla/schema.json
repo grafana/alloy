@@ -122,6 +122,20 @@
       },
       "type": "object"
     },
+    "AzureNameResolverConfig": {
+      "properties": {
+        "resource_group": {
+          "type": "string",
+          "x-env-var": "BEYLA_NAME_RESOLVER_AZURE_RESOURCE_GROUP"
+        },
+        "subscription_id": {
+          "type": "string",
+          "description": "Empty values use the subscription and resource group detected from Azure metadata.",
+          "x-env-var": "BEYLA_NAME_RESOLVER_AZURE_SUBSCRIPTION_ID"
+        }
+      },
+      "type": "object"
+    },
     "BedrockConfig": {
       "properties": {
         "enabled": {
@@ -156,9 +170,13 @@
           "items": {
             "type": "string",
             "enum": [
+              "dotnet",
               "go",
               "java",
-              "nodejs"
+              "nodejs",
+              "php",
+              "python",
+              "ruby"
             ]
           },
           "type": "array"
@@ -192,6 +210,11 @@
         "instrument": {
           "$ref": "#/$defs/GlobDefinitionCriteria",
           "description": "Instrument selects the services to instrument via Globs. If this section is set, both the Services and ExcludeServices section is ignored. If the user defined the BEYLA_AUTO_TARGET_EXE or BEYLA_OPEN_PORT variables, they will be automatically added to the instrument criteria, with the lowest preference."
+        },
+        "instrument_all_local": {
+          "type": "boolean",
+          "description": "InstrumentAllLocal selects socket-using applications with survey's non-root policy.",
+          "x-env-var": "BEYLA_DISCOVERY_INSTRUMENT_ALL_LOCAL"
         },
         "min_process_age": {
           "type": "string",
@@ -250,7 +273,7 @@
           "x-env-var": "BEYLA_SKIP_GO_SPECIFIC_TRACERS"
         },
         "survey": {
-          "$ref": "#/$defs/GlobDefinitionCriteria",
+          "$ref": "#/$defs/SurveyDefinitionCriteria",
           "description": "Survey selection. Same as services selection, however, it generates only the target info (survey_info) instead of instrumenting the services"
         }
       },
@@ -272,6 +295,12 @@
           "type": "array"
         },
         "gen_ai_client_token_usage_histogram": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "jvm_gc_duration_histogram": {
           "items": {
             "type": "number"
           },
@@ -300,6 +329,32 @@
             "type": "number"
           },
           "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "CloudMetadataConfig": {
+      "properties": {
+        "cluster_name": {
+          "type": "string",
+          "x-env-var": "OTEL_EBPF_CLUSTER_NAME"
+        },
+        "refresh_interval": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_CLOUD_META_REFRESH_INTERVAL"
+        },
+        "region": {
+          "type": "string",
+          "x-env-var": "OTEL_EBPF_CLOUD_REGION"
+        },
+        "route53": {
+          "$ref": "#/$defs/Route53MetadataConfig"
         }
       },
       "type": "object"
@@ -402,6 +457,31 @@
       },
       "type": "array",
       "description": "A list of CIDRs to be set as the \"src.cidr\" and \"dst.cidr\" attribute as a function of the source and destination IP addresses. Each entry can be a plain CIDR string or an object with \"cidr\" and \"name\" fields."
+    },
+    "DotnetRuntimeMetricsConfig": {
+      "properties": {
+        "sampling_interval": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OBI_DOTNET_RUNTIME_METRICS_SAMPLING_INTERVAL"
+        },
+        "timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OBI_DOTNET_RUNTIME_METRICS_TIMEOUT"
+        }
+      },
+      "type": "object"
     },
     "EBPFBufferSizes": {
       "properties": {
@@ -526,6 +606,20 @@
           "type": "integer",
           "x-env-var": "OTEL_EBPF_INSTRUMENT_CUDA"
         },
+        "kafka_consumer_group_cache_size": {
+          "type": "integer",
+          "x-env-var": "OTEL_KAFKA_CONSUMER_GROUP_CACHE_SIZE"
+        },
+        "kafka_consumer_group_ttl": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_BPF_KAFKA_CONSUMER_GROUP_TTL"
+        },
         "kafka_topic_uuid_cache_size": {
           "type": "integer",
           "x-env-var": "OTEL_KAFKA_TOPIC_UUID_CACHE_SIZE"
@@ -564,6 +658,10 @@
         },
         "payload_extraction": {
           "$ref": "#/$defs/PayloadExtraction"
+        },
+        "populate_trace_context": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_BPF_POPULATE_TRACE_CONTEXT"
         },
         "postgres_prepared_statements_cache_size": {
           "type": "integer",
@@ -672,8 +770,10 @@
               "application",
               "application_host",
               "application_process",
+              "application_red",
               "application_runtime",
               "application_service_graph",
+              "application_sizes",
               "application_span_otel",
               "ebpf",
               "network",
@@ -683,7 +783,8 @@
               "stats_tcp_failed_connections",
               "stats_tcp_io",
               "stats_tcp_retransmits",
-              "stats_tcp_rtt"
+              "stats_tcp_rtt",
+              "stats_tcp_successful_connections"
             ]
           },
           {
@@ -699,6 +800,25 @@
       },
       "type": "array",
       "description": "List of metric features to enable."
+    },
+    "GCENameResolverConfig": {
+      "properties": {
+        "endpoint": {
+          "type": "string",
+          "description": "Endpoint overrides the Compute API base URL for an emulator or API proxy.",
+          "x-env-var": "BEYLA_NAME_RESOLVER_GCE_ENDPOINT"
+        },
+        "project_id": {
+          "type": "string",
+          "description": "Empty project and zone values use the identity detected from GCE metadata.",
+          "x-env-var": "BEYLA_NAME_RESOLVER_GCE_PROJECT_ID"
+        },
+        "zone": {
+          "type": "string",
+          "x-env-var": "BEYLA_NAME_RESOLVER_GCE_ZONE"
+        }
+      },
+      "type": "object"
     },
     "GeminiConfig": {
       "properties": {
@@ -1613,6 +1733,9 @@
     },
     "NameResolverConfig": {
       "properties": {
+        "azure": {
+          "$ref": "#/$defs/AzureNameResolverConfig"
+        },
         "cache_expiry": {
           "type": "string",
           "pattern": "^[0-9]+(ms|s|m)$",
@@ -1627,22 +1750,30 @@
           "type": "integer",
           "x-env-var": "OTEL_EBPF_NAME_RESOLVER_CACHE_LEN"
         },
+        "gce": {
+          "$ref": "#/$defs/GCENameResolverConfig"
+        },
         "sources": {
           "items": {
             "type": "string",
             "enum": [
+              "azure",
               "dns",
+              "ecs",
+              "gce",
               "k8s",
               "kube",
               "kubernetes",
-              "rdns"
+              "rdns",
+              "route53"
             ]
           },
           "type": "array",
           "x-env-var": "OTEL_EBPF_NAME_RESOLVER_SOURCES"
         }
       },
-      "type": "object"
+      "type": "object",
+      "description": "NameResolverConfig configures service name resolution, its metadata sources, the resolver cache, and cloud discovery scopes."
     },
     "NativeHistogramConfig": {
       "properties": {
@@ -2228,6 +2359,28 @@
       },
       "type": "object"
     },
+    "Route53MetadataConfig": {
+      "properties": {
+        "hosted_zone_ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "x-env-var": "OTEL_EBPF_NAME_RESOLVER_ROUTE53_HOSTED_ZONE_IDS"
+        },
+        "refresh_interval": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OTEL_EBPF_NAME_RESOLVER_ROUTE53_REFRESH_INTERVAL"
+        }
+      },
+      "type": "object"
+    },
     "RouteHarvestingConfig": {
       "properties": {
         "java_harvest_delay": {
@@ -2450,6 +2603,18 @@
       },
       "type": "object"
     },
+    "SocketAppSelector": {
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "non_root": {
+          "type": "boolean",
+          "description": "NonRoot excludes all services that have been started with user:0 (root) except those that bind ports < 1024"
+        }
+      },
+      "type": "object"
+    },
     "StatsConfig": {
       "properties": {
         "agent_ip": {
@@ -2486,6 +2651,107 @@
         }
       },
       "type": "object"
+    },
+    "SurveyDefinitionCriteria": {
+      "items": {
+        "$ref": "#/$defs/SurveySelector"
+      },
+      "type": "array"
+    },
+    "SurveySelector": {
+      "properties": {
+        "cmd_args": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "container_name": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "containers_only": {
+          "type": "boolean"
+        },
+        "exe_path": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "exports": {
+          "$ref": "#/$defs/ExportModes"
+        },
+        "k8s_container_name": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "k8s_cronjob_name": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "k8s_daemonset_name": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "k8s_deployment_name": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "k8s_job_name": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "k8s_namespace": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "k8s_owner_name": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "k8s_pod_annotations": {
+          "additionalProperties": {
+            "$ref": "#/$defs/GlobAttr"
+          },
+          "type": "object"
+        },
+        "k8s_pod_labels": {
+          "additionalProperties": {
+            "$ref": "#/$defs/GlobAttr"
+          },
+          "type": "object"
+        },
+        "k8s_pod_name": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "k8s_replicaset_name": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "k8s_statefulset_name": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "languages": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "metrics": {
+          "$ref": "#/$defs/SvcMetricsConfig"
+        },
+        "name": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "open_ports": {
+          "$ref": "#/$defs/IntEnum"
+        },
+        "routes": {
+          "$ref": "#/$defs/CustomRoutesConfig"
+        },
+        "sampler": {
+          "$ref": "#/$defs/SamplerConfig"
+        },
+        "socket_apps": {
+          "$ref": "#/$defs/SocketAppSelector",
+          "description": "SocketApps requires observed socket activity for this survey selector. Other matching survey selectors can admit the process without sockets."
+        },
+        "target_pids": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array",
+          "x-env-var": "BEYLA_TARGET_PID"
+        }
+      },
+      "type": "object",
+      "description": "SurveySelector extends OBI's glob selection with additional survey specific criteria."
     },
     "SvcMetricsConfig": {
       "properties": {
@@ -2555,6 +2821,14 @@
             "1ms"
           ],
           "x-env-var": "OTEL_EBPF_OTLP_TRACES_BATCH_TIMEOUT"
+        },
+        "compression": {
+          "type": "string",
+          "enum": [
+            "gzip",
+            "none"
+          ],
+          "x-env-var": "OTEL_EXPORTER_OTLP_TRACES_COMPRESSION"
         },
         "endpoint": {
           "type": "string",
@@ -2663,9 +2937,15 @@
       "type": "boolean",
       "x-env-var": "BEYLA_CHANNEL_SEND_TIMEOUT_PANIC"
     },
+    "cloud_metadata": {
+      "$ref": "#/$defs/CloudMetadataConfig"
+    },
     "discovery": {
       "$ref": "#/$defs/BeylaDiscoveryConfig",
       "description": "Discovery configuration"
+    },
+    "dotnet_runtime_metrics": {
+      "$ref": "#/$defs/DotnetRuntimeMetricsConfig"
     },
     "ebpf": {
       "$ref": "#/$defs/EBPFTracer"

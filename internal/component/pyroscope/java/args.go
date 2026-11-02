@@ -15,7 +15,7 @@ type Arguments struct {
 	TmpDir          string          `alloy:"tmp_dir,attr,optional"`
 	ProfilingConfig ProfilingConfig `alloy:"profiling_config,block,optional"`
 
-	// undocumented
+	// Intentionally undocumented: internal escape hatch for testing alternate async-profiler distributions.
 	Dist string `alloy:"dist,attr,optional"`
 }
 

@@ -124,13 +124,11 @@ func TestRequiresReset(t *testing.T) {
 				Host:             "tcp://127.0.0.1:9375",
 				RelabelRules:     alloy_relabel.Rules{{Action: alloy_relabel.Drop, TargetLabel: "foo", Regex: mustNewRegexp(t, "f(.*)")}},
 				HTTPClientConfig: &types.HTTPClientConfig{BasicAuth: &types.BasicAuth{Username: "user", Password: "password"}},
-				RefreshInterval:  time.Minute,
 			},
 			b: Arguments{
 				Host:             "tcp://127.0.0.1:9375",
 				RelabelRules:     alloy_relabel.Rules{{Action: alloy_relabel.Drop, TargetLabel: "foo", Regex: mustNewRegexp(t, "f(.*)")}},
 				HTTPClientConfig: &types.HTTPClientConfig{BasicAuth: &types.BasicAuth{Username: "user", Password: "password"}},
-				RefreshInterval:  time.Minute,
 			},
 			expected: false,
 		},
@@ -150,7 +148,7 @@ func TestRequiresReset(t *testing.T) {
 			desc:     "different refresh interval",
 			a:        Arguments{RefreshInterval: time.Minute},
 			b:        Arguments{RefreshInterval: 2 * time.Minute},
-			expected: true,
+			expected: false,
 		},
 		{
 			desc:     "different targets",

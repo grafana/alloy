@@ -43,11 +43,11 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		}),
 		pprofBytesTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "pyroscope_ebpf_pprof_bytes_total",
-			Help: "Total number of pprof profiles collected by the ebpf component",
+			Help: "Total number of bytes in pprof profiles collected by the ebpf component",
 		}, []string{"service_name"}),
 		pprofSamplesTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "pyroscope_ebpf_pprof_samples_total",
-			Help: "Total number of pprof profiles collected by the ebpf component",
+			Help: "Total number of samples in pprof profiles collected by the ebpf component",
 		}, []string{"service_name"}),
 	}
 

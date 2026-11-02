@@ -57,9 +57,9 @@ func (args *Arguments) Validate() error {
 
 // Convert implements processor.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	return &groupbyattrsprocessor.Config{
-		GroupByKeys: args.Keys,
-	}, nil
+	cfg := groupbyattrsprocessor.NewFactory().CreateDefaultConfig().(*groupbyattrsprocessor.Config)
+	cfg.GroupByKeys = args.Keys
+	return cfg, nil
 }
 
 // Extensions implements processor.Arguments.

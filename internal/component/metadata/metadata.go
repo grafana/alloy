@@ -54,10 +54,10 @@ var (
 	TypePromMetricsReceiver = Type{
 		Name: "Prometheus `MetricsReceiver`",
 		existsInArgsFn: func(args component.Arguments) bool {
-			return hasFieldOfType(args, reflect.TypeOf([]storage.Appendable{}))
+			return hasFieldOfType(args, reflect.TypeOf([]storage.AppendableV2{}))
 		},
 		existsInExportsFn: func(exports component.Exports) bool {
-			var a *storage.Appendable = nil
+			var a *storage.AppendableV2 = nil
 			return hasFieldOfType(exports, reflect.TypeOf(a).Elem())
 		},
 	}

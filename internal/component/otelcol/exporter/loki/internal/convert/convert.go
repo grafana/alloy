@@ -92,6 +92,7 @@ func (conv *Converter) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 		for _, receiver := range conv.next {
 			select {
 			case <-ctx.Done():
+				conv.mut.RUnlock()
 				return nil
 			case receiver.Chan() <- entry:
 				// no-op, send the entry along

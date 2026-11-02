@@ -1,293 +1,336 @@
 package stages
 
 import (
-	"bytes"
-	"errors"
-	"fmt"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/assert"
-
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/loki/pkg/push"
+	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/syntax"
 )
 
-var testLabelsYaml = ` stage.json {
-                           expressions = { level = "", app_rename = "app" }
-                       }
-                       stage.labels { 
-                           values = {"level" = "", "app" = "app_rename" }
-                       }`
+func TestLabelsStage(t *testing.T) {
+	now := time.Now()
 
-var testLabelsLogLine = `
-{
-	"time":"2012-11-01T22:08:41+00:00",
-	"app":"loki",
-	"component": ["parser","type"],
-	"level" : "WARN"
-}
-`
-var testLabelsLogLineWithMissingKey = `
-{
-	"time":"2012-11-01T22:08:41+00:00",
-	"app":"loki",
-	"component": ["parser","type"]
-}
-`
-
-var testLabelsStrucuturedMetadataYaml = `
-// Create strucutured metadata
-stage.static_labels {
-	values = {
-	  "foo" = "bar",
-	}
-}
-stage.structured_metadata {
-	values = {
-	  "baz" = "foo",
-	}
-}
-
-// Create label from structured metadata
-stage.labels {
-    source_type = "structured_metadata"
-	values      = {
-	  "from_structured" = "baz",
-	}
-}
-`
-
-func TestLabelsPipeline_LabelsFromExtracted(t *testing.T) {
-	pl, err := NewPipeline(logging.NewSlogNop(), loadConfig(testLabelsYaml), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
-	if err != nil {
-		t.Fatal(err)
-	}
-	expectedLbls := model.LabelSet{
-		"level": "WARN",
-		"app":   "loki",
+	type testCase struct {
+		name     string
+		config   string
+		entries  []Entry
+		expected []Entry
 	}
 
-	out := processEntries(pl, newEntry(nil, nil, testLabelsLogLine, time.Now()))[0]
-	assert.Equal(t, expectedLbls, out.Labels)
-}
-
-func TestLabelsPipeline_LabelsFromStructuredMetadata(t *testing.T) {
-	pl, err := NewPipeline(logging.NewSlogNop(), loadConfig(testLabelsStrucuturedMetadataYaml), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
-	if err != nil {
-		t.Fatal(err)
-	}
-	expectedLbls := model.LabelSet{
-		"from_structured": "bar",
-	}
-
-	out := processEntries(pl, newEntry(nil, nil, "", time.Now()))[0]
-	assert.Equal(t, expectedLbls, out.Labels)
-}
-
-func TestLabelsPipelineWithMissingKey_Labels(t *testing.T) {
-	var buf bytes.Buffer
-	alloyLogger, err := logging.New(&buf, logging.Options{Level: logging.LevelDebug, Format: logging.FormatLogfmt})
-	assert.NoError(t, err)
-	pl, err := NewPipeline(alloyLogger.Slog(), loadConfig(testLabelsYaml), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_ = processEntries(pl, newEntry(nil, nil, testLabelsLogLineWithMissingKey, time.Now()))
-
-	expectedLog := "level=debug msg=\"failed to convert extracted label value to string\" stage=labels err=\"can't convert <nil> to string\" type=<nil>"
-	if !strings.Contains(buf.String(), expectedLog) {
-		t.Errorf("\nexpected: %s\n+actual: %s", expectedLog, buf.String())
-	}
-}
-
-var (
-	lv1 = "lv1"
-	lv3 = ""
-)
-
-var emptyLabelsConfig = LabelsConfig{nil, ""}
-
-func TestLabels(t *testing.T) {
-	tests := map[string]struct {
-		config       LabelsConfig
-		err          error
-		expectedCfgs map[string]string
-	}{
-		"missing config": {
-			config:       emptyLabelsConfig,
-			err:          errors.New(ErrEmptyLabelStageConfig),
-			expectedCfgs: nil,
-		},
-		"invalid label name": {
-			config: LabelsConfig{
-				Values: map[string]*string{"\xfd": nil},
+	tests := []testCase{
+		{
+			name: "labels from extracted",
+			config: `
+			stage.json {
+				expressions = { level = "", app_rename = "app" }
+			}
+			stage.labels {
+				values = { "level" = "", "app" = "app_rename" }
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, `{"time":"2012-11-01T22:08:41+00:00", "app":"loki", "component": ["parser","type"], "level" : "WARN"}`, now),
 			},
-			err:          fmt.Errorf(ErrInvalidLabelName, "\xfd"),
-			expectedCfgs: nil,
-		},
-		"invalid source type": {
-			config: LabelsConfig{
-				Values:     map[string]*string{"l1": ptr("")},
-				SourceType: "invalid_source_type",
-			},
-			err:          fmt.Errorf("invalid labels source_type: %s. Can only be 'extracted' or 'structured_metadata'", "invalid_source_type"),
-			expectedCfgs: nil,
-		},
-		"label value is set from name for extracted": {
-			config: LabelsConfig{
-				SourceType: SourceTypeExtractedMap,
-				Values: map[string]*string{
-					"l1": &lv1,
-					"l2": nil,
-					"l3": &lv3,
-				}},
-			err: nil,
-			expectedCfgs: map[string]string{
-				"l1": lv1,
-				"l2": "l2",
-				"l3": "l3",
+			expected: []Entry{
+				newEntry(map[string]any{
+					"level":      "WARN",
+					"app_rename": "loki",
+				}, model.LabelSet{
+					"level": "WARN",
+					"app":   "loki",
+				}, `{"time":"2012-11-01T22:08:41+00:00", "app":"loki", "component": ["parser","type"], "level" : "WARN"}`, now),
 			},
 		},
-		"label value is set from name for structured_metadata": {
-			config: LabelsConfig{
-				SourceType: SourceTypeStructuredMetadata,
-				Values: map[string]*string{
-					"l1": &lv1,
-					"l2": nil,
-					"l3": &lv3,
-				}},
-			err: nil,
-			expectedCfgs: map[string]string{
-				"l1": lv1,
-				"l2": "l2",
-				"l3": "l3",
+		{
+			name: "missing key skips label conversion",
+			config: `
+			stage.json {
+				expressions = { level = "", app_rename = "app" }
+			}
+			stage.labels {
+				values = { "level" = "", "app" = "app_rename" }
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, `{"time":"2012-11-01T22:08:41+00:00", "app":"loki", "component": ["parser","type"]}`, now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{
+					"app_rename": "loki",
+					"level":      nil,
+				}, model.LabelSet{
+					"app": "loki",
+				}, `{"time":"2012-11-01T22:08:41+00:00", "app":"loki", "component": ["parser","type"]}`, now),
+			},
+		},
+		{
+			name: "labels from structured metadata",
+			config: `
+			stage.static_labels {
+				values = { "foo" = "bar" }
+			}
+			stage.structured_metadata {
+				values = { "baz" = "foo" }
+			}
+			stage.labels {
+				source_type = "structured_metadata"
+				values = { "from_structured" = "baz" }
+			}
+			`,
+			entries: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{}, push.Entry{}),
+			},
+			expected: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{
+					"from_structured": "bar",
+				}, push.Entry{
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "baz", Value: "bar"},
+					},
+				}),
+			},
+		},
+		{
+			name: "extract success extracted",
+			config: `
+			stage.labels {
+				values = { "testLabel" = "" }
+			}
+			`,
+			entries: []Entry{
+				newTestEntry(map[string]any{"testLabel": "testValue"}, model.LabelSet{}, push.Entry{}),
+			},
+			expected: []Entry{
+				newTestEntry(map[string]any{"testLabel": "testValue"}, model.LabelSet{
+					"testLabel": "testValue",
+				}, push.Entry{}),
+			},
+		},
+		{
+			name: "extract success structured metadata",
+			config: `
+			stage.labels {
+				source_type = "structured_metadata"
+				values = { "testLabel" = "testStrucuturedMetadata" }
+			}
+			`,
+			entries: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{}, push.Entry{
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "testStrucuturedMetadata", Value: "testValue"},
+					},
+				}),
+			},
+			expected: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{
+					"testLabel": "testValue",
+				}, push.Entry{
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "testStrucuturedMetadata", Value: "testValue"},
+					},
+				}),
+			},
+		},
+		{
+			name: "different source name extracted",
+			config: `
+			stage.labels {
+				values = { "testLabel" = "diff_source" }
+			}
+			`,
+			entries: []Entry{
+				newTestEntry(map[string]any{"diff_source": "testValue"}, model.LabelSet{}, push.Entry{}),
+			},
+			expected: []Entry{
+				newTestEntry(map[string]any{"diff_source": "testValue"}, model.LabelSet{
+					"testLabel": "testValue",
+				}, push.Entry{}),
+			},
+		},
+		{
+			name: "different source name structured metadata",
+			config: `
+			stage.labels {
+				source_type = "structured_metadata"
+				values = { "testLabel" = "diff_source" }
+			}
+			`,
+			entries: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{}, push.Entry{
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "diff_source", Value: "testValue"},
+					},
+				}),
+			},
+			expected: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{
+					"testLabel": "testValue",
+				}, push.Entry{
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "diff_source", Value: "testValue"},
+					},
+				}),
+			},
+		},
+		{
+			name: "default source names extracted",
+			config: `
+			stage.labels {
+				values = { "l1" = "source", "l2" = null, "l3" = "" }
+			}
+			`,
+			entries: []Entry{
+				newTestEntry(map[string]any{"source": "v1", "l2": "v2", "l3": "v3"}, model.LabelSet{}, push.Entry{}),
+			},
+			expected: []Entry{
+				newTestEntry(map[string]any{"source": "v1", "l2": "v2", "l3": "v3"}, model.LabelSet{
+					"l1": "v1",
+					"l2": "v2",
+					"l3": "v3",
+				}, push.Entry{}),
+			},
+		},
+		{
+			name: "default source names structured metadata",
+			config: `
+			stage.labels {
+				source_type = "structured_metadata"
+				values = { "l1" = "source", "l2" = null, "l3" = "" }
+			}
+			`,
+			entries: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{}, push.Entry{
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "source", Value: "v1"},
+						{Name: "l2", Value: "v2"},
+						{Name: "l3", Value: "v3"},
+					},
+				}),
+			},
+			expected: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{
+					"l1": "v1",
+					"l2": "v2",
+					"l3": "v3",
+				}, push.Entry{
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "source", Value: "v1"},
+						{Name: "l2", Value: "v2"},
+						{Name: "l3", Value: "v3"},
+					},
+				}),
+			},
+		},
+		{
+			name: "empty extracted data",
+			config: `
+			stage.labels {
+				values = { "testLabel" = "diff_source" }
+			}
+			`,
+			entries: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{}, push.Entry{}),
+			},
+			expected: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{}, push.Entry{}),
+			},
+		},
+		{
+			name: "empty structured metadata",
+			config: `
+			stage.labels {
+				source_type = "structured_metadata"
+				values = { "testLabel" = "diff_source" }
+			}
+			`,
+			entries: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{}, push.Entry{}),
+			},
+			expected: []Entry{
+				newTestEntry(map[string]any{}, model.LabelSet{}, push.Entry{}),
 			},
 		},
 	}
-	for name, test := range tests {
-		test := test
-		t.Run(name, func(t *testing.T) {
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			actual, err := validateLabelsConfig(&test.config)
-			if (err != nil) != (test.err != nil) {
-				t.Errorf("validateLabelsConfig() expected error = %v, actual error = %v", test.err, err)
-				return
-			}
-			if (err != nil) && (err.Error() != test.err.Error()) {
-				t.Errorf("validateLabelsConfig() expected error = %v, actual error = %v", test.err, err)
-				return
-			}
-			if test.expectedCfgs != nil {
-				assert.Equal(t, test.expectedCfgs, actual)
-			}
+
+			runPipelineTest(t, loadConfig(tt.config), tt.entries, tt.expected)
 		})
 	}
 }
 
-func TestLabelsStage_Process(t *testing.T) {
-	sourceName := "diff_source"
-	tests := map[string]struct {
-		config            LabelsConfig
-		extractedData     map[string]any
-		strcturedMetadata push.LabelsAdapter
-		inputLabels       model.LabelSet
-		expectedLabels    model.LabelSet
+func TestValidateLabelsConfig(t *testing.T) {
+	tests := []struct {
+		name      string
+		config    string
+		expectErr bool
 	}{
-		"extract_success_extracted": {
-			LabelsConfig{Values: map[string]*string{
-				"testLabel": nil,
-			}},
-			map[string]any{
-				"testLabel": "testValue",
-			},
-			push.LabelsAdapter{},
-			model.LabelSet{},
-			model.LabelSet{
-				"testLabel": "testValue",
-			},
+		{
+			name:   "valid",
+			config: `values = { "testLabel" = "source" }`,
 		},
-		"extract_success_structured_metadata": {
-			LabelsConfig{
-				SourceType: SourceTypeStructuredMetadata,
-				Values: map[string]*string{
-					"testLabel": ptr("testStrucuturedMetadata"),
-				}},
-			map[string]any{},
-			push.LabelsAdapter{
-				push.LabelAdapter{Name: "testStrucuturedMetadata", Value: "testValue"},
-			},
-			model.LabelSet{},
-			model.LabelSet{
-				"testLabel": "testValue",
-			},
+		{
+			name:   "null value uses label name",
+			config: `values = { "testLabel" = null }`,
 		},
-		"different_source_name_extracted": {
-			LabelsConfig{Values: map[string]*string{
-				"testLabel": &sourceName,
-			}},
-			map[string]any{
-				sourceName: "testValue",
-			},
-			push.LabelsAdapter{},
-			model.LabelSet{},
-			model.LabelSet{
-				"testLabel": "testValue",
-			},
+		{
+			name:   "empty value uses label name",
+			config: `values = { "testLabel" = "" }`,
 		},
-		"different_source_name_structured_metadata": {
-			LabelsConfig{
-				SourceType: SourceTypeStructuredMetadata,
-				Values: map[string]*string{
-					"testLabel": &sourceName,
-				}},
-			map[string]any{},
-			push.LabelsAdapter{
-				push.LabelAdapter{Name: sourceName, Value: "testValue"},
-			},
-			model.LabelSet{},
-			model.LabelSet{
-				"testLabel": "testValue",
-			},
+		{
+			name:      "missing config",
+			config:    ``,
+			expectErr: true,
 		},
-		"empty_extracted_data": {
-			LabelsConfig{Values: map[string]*string{
-				"testLabel": &sourceName,
-			}},
-			map[string]any{},
-			push.LabelsAdapter{},
-			model.LabelSet{},
-			model.LabelSet{},
+		{
+			name:      "null config",
+			config:    `values = null`,
+			expectErr: true,
 		},
-		"empty_structured_metadata": {
-			LabelsConfig{
-				SourceType: SourceTypeStructuredMetadata,
-				Values: map[string]*string{
-					"testLabel": &sourceName,
-				}},
-			map[string]any{},
-			push.LabelsAdapter{},
-			model.LabelSet{},
-			model.LabelSet{},
+		{
+			name:      "invalid label name",
+			config:    "values = { \"\xfd\" = \"source\" }",
+			expectErr: true,
+		},
+		{
+			name: "extracted source type",
+			config: `
+			values = { "testLabel" = "source" }
+			source_type = "extracted"
+			`,
+		},
+		{
+			name: "structured metadata source type",
+			config: `
+			values = { "testLabel" = "source" }
+			source_type = "structured_metadata"
+			`,
+		},
+		{
+			name: "invalid source type",
+			config: `
+			values = { "testLabel" = "source" }
+			source_type = "invalid_source_type"
+			`,
+			expectErr: true,
 		},
 	}
-	for name, test := range tests {
-		test := test
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			st, err := newLabelStage(logging.NewSlogNop(), test.config)
-			if err != nil {
-				t.Fatal(err)
-			}
 
-			entry := newEntry(test.extractedData, test.inputLabels, "", time.Time{})
-			entry.StructuredMetadata = test.strcturedMetadata
-			out := processEntries(st, entry)[0]
-			assert.Equal(t, test.expectedLabels, out.Labels)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var cfg LabelsConfig
+			err := syntax.Unmarshal([]byte(tt.config), &cfg)
+			if tt.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }

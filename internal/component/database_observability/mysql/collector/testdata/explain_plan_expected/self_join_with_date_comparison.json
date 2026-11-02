@@ -1,0 +1,56 @@
+{
+  "operation": "Unique Key Lookup",
+  "details": {
+    "estimatedRows": 13706961,
+    "estimatedCost": 13711097,
+    "alias": "e2",
+    "accessType": "eq_ref",
+    "keyUsed": "PRIMARY",
+    "joinAlgorithm": "nested_loop",
+    "condition": "( `employees` . `e2` . `hire_date` = `employees` . `e1` . `hire_date` )"
+  },
+  "children": [
+    {
+      "operation": "Hash Join",
+      "details": {
+        "estimatedRows": 0,
+        "joinAlgorithm": "hash"
+      },
+      "children": [
+        {
+          "operation": "Unique Key Lookup",
+          "details": {
+            "estimatedRows": 33114,
+            "estimatedCost": 36397.7,
+            "alias": "e1",
+            "accessType": "eq_ref",
+            "keyUsed": "PRIMARY",
+            "joinAlgorithm": "nested_loop"
+          },
+          "children": [
+            {
+              "operation": "Full Table Scan",
+              "details": {
+                "estimatedRows": 33114,
+                "estimatedCost": 33851.3,
+                "alias": "de1",
+                "accessType": "all",
+                "condition": "( `employees` . `de1` . `to_date` = date ? )"
+              }
+            }
+          ]
+        },
+        {
+          "operation": "Full Table Scan",
+          "details": {
+            "estimatedRows": 137069612,
+            "estimatedCost": 110272619.42,
+            "alias": "de2",
+            "accessType": "all",
+            "condition": "( ( `employees` . `de2` . `dept_no` = `employees` . `de1` . `dept_no` ) and ( `employees` . `de2` . `to_date` = date ? ) and ( `employees` . `de1` . `emp_no` \u003c `employees` . `de2` . `emp_no` ) )"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -140,7 +140,7 @@ func TestTailerStartStopStressTest(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	tgt.startIfNotRunning()
+	tgt.startIfNotRunning(t.Context())
 
 	// Stress test the concurrency of StartIfNotRunning and Stop
 	wg := sync.WaitGroup{}
@@ -148,7 +148,7 @@ func TestTailerStartStopStressTest(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			tgt.startIfNotRunning()
+			tgt.startIfNotRunning(t.Context())
 		}()
 
 		wg.Add(1)
@@ -564,4 +564,89 @@ func (sw *stdWriter) Write(p []byte) (int, error) {
 		return 0, err
 	}
 	return sw.Writer.Write(p)
+}
+
+// newStallingDockerServer returns a Docker API server whose log stream and
+// container inspect responses only complete once release is closed.
+func newStallingDockerServer(release <-chan struct{}) *httptest.Server {
+	h := func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/logs"):
+			w.WriteHeader(http.StatusOK)
+			w.(http.Flusher).Flush()
+			select {
+			case <-release:
+				_, _ = w.Write([]byte("done"))
+			case <-r.Context().Done():
+			}
+		case strings.HasSuffix(r.URL.Path, "/json"):
+			select {
+			case <-release:
+			case <-r.Context().Done():
+			}
+		default:
+			_, _ = w.Write([]byte("OK"))
+		}
+	}
+	return httptest.NewServer(http.HandlerFunc(h))
+}
+
+func TestNewClientDoesNotTimeOutLogStreams(t *testing.T) {
+	release := make(chan struct{})
+	server := newStallingDockerServer(release)
+	defer server.Close()
+
+	args := GetDefaultArguments()
+	args.Host = server.URL
+
+	cli, err := newClient(args)
+	require.NoError(t, err)
+
+	logs, err := cli.ContainerLogs(t.Context(), "flog", client.ContainerLogsOptions{ShowStdout: true, Follow: true})
+	require.NoError(t, err)
+	defer logs.Close()
+
+	// Keep the stream open for a while before ending it.
+	time.AfterFunc(500*time.Millisecond, func() { close(release) })
+
+	body, err := io.ReadAll(logs)
+	require.NoError(t, err)
+	require.Equal(t, "done", string(body))
+}
+
+func TestTailerStartStopsWhenContextIsCanceled(t *testing.T) {
+	release := make(chan struct{})
+	server := newStallingDockerServer(release)
+	defer server.Close()
+	defer close(release)
+
+	args := GetDefaultArguments()
+	args.Host = server.URL
+
+	cli, err := newClient(args)
+	require.NoError(t, err)
+
+	tailer, _ := setupTailer(t, clientMock{})
+	tailer.client = cli
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	time.AfterFunc(100*time.Millisecond, cancel)
+
+	done := make(chan struct{})
+	go func() {
+		tailer.startIfNotRunning(ctx)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("startIfNotRunning did not return after its context was canceled")
+	}
+
+	tailer.mu.Lock()
+	defer tailer.mu.Unlock()
+	require.False(t, tailer.running)
+	require.NoError(t, tailer.err, "a canceled start is a normal stop, not an error")
 }

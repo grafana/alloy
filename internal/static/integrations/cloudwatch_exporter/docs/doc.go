@@ -46,13 +46,7 @@ func syncServicesDoc(path string, expectedDoc string) (bool, error) {
 		return false, nil
 	}
 
-	mode := os.FileMode(0o644)
-	if fileInfo, err := os.Stat(path); err == nil {
-		mode = fileInfo.Mode().Perm()
-	} else if !os.IsNotExist(err) {
-		return false, fmt.Errorf("stat file: %w", err)
-	}
-	if err := os.WriteFile(path, []byte(expectedDoc), mode); err != nil {
+	if err := os.WriteFile(path, []byte(expectedDoc), 0o644); err != nil {
 		return false, fmt.Errorf("write file: %w", err)
 	}
 	return true, nil

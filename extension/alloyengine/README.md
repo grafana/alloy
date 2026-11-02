@@ -6,6 +6,10 @@ This extension allows you to run a Default Engine pipeline set up with Alloy con
 
 If the Alloy configuration fails to load for whatever reason, the extension continues retrying at most every 15 seconds.
 
+## Stability
+
+This extension is currently marked as **experimental** stability level. The API and behavior may change in future releases.
+
 ## Configuration
 
 The extension accepts the following configuration fields:
@@ -75,10 +79,6 @@ If `config.inline.module_path` isn't defined, `config.inline` resolves the `modu
 The `remotecfg` Alloy configuration block can't be used with the alloyengine extension. Use OpenTelemetry OpAMP for Collector configuration management instead.
 
 The compiled UI assets aren't included in the Alloy Go module, so an OCB build needs an extra step to serve the web UI. See [Build with the UI embedded](#build-with-the-ui-embedded) for details.
-
-## Stability
-
-This extension is currently marked as **experimental** stability level. The API and behavior may change in future releases.
 
 ## Include `alloyengine` extension in an OCB distribution
 

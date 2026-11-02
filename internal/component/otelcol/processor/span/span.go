@@ -101,7 +101,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		}
 	}
 
-	var result spanprocessor.Config
+	result := *spanprocessor.NewFactory().CreateDefaultConfig().(*spanprocessor.Config)
 	err := mapstructure.Decode(input, &result)
 
 	if err != nil {

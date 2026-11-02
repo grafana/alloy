@@ -14,6 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/model/metadata"
 	promql_parser "github.com/prometheus/prometheus/promql/parser"
 	"github.com/prometheus/prometheus/storage"
 	promremote "github.com/prometheus/prometheus/storage/remote"
@@ -23,6 +24,7 @@ import (
 	alloyprom "github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/loki/util"
+	"github.com/grafana/alloy/internal/service/lokipipelinev2"
 )
 
 const (
@@ -46,10 +48,10 @@ func init() {
 type SinkArguments struct{}
 
 type SinkExports struct {
-	LokiPushUrl              string             `alloy:"loki_push_url,attr"`
-	LokiReceiver             loki.LogsReceiver  `alloy:"loki_receiver,attr"`
-	PrometheusRemoteWriteURL string             `alloy:"prometheus_remote_write_url,attr"`
-	PrometheusReceiver       storage.Appendable `alloy:"prometheus_receiver,attr"`
+	LokiPushUrl              string               `alloy:"loki_push_url,attr"`
+	LokiReceiver             loki.LogsReceiver    `alloy:"loki_receiver,attr"`
+	PrometheusRemoteWriteURL string               `alloy:"prometheus_remote_write_url,attr"`
+	PrometheusReceiver       storage.AppendableV2 `alloy:"prometheus_receiver,attr"`
 }
 
 // PrometheusSample is one sample captured by the sink. Histogram is set only for
@@ -59,6 +61,7 @@ type PrometheusSample struct {
 	Timestamp time.Time
 	Value     float64
 	Histogram *histogram.FloatHistogram
+	Metadata  *metadata.Metadata
 }
 
 type Sink struct {
@@ -67,23 +70,38 @@ type Sink struct {
 
 	server   *httptest.Server
 	lokirecv loki.LogsReceiver
-	promrecv storage.Appendable
+	promrecv storage.AppendableV2
 
-	mux         sync.Mutex
-	lokiEntries []loki.Entry
-	promSamples []PrometheusSample
+	mux          sync.Mutex
+	lokiEntries  []loki.Entry
+	promSamples  []PrometheusSample
+	promMetadata map[string]metadata.Metadata
+
+	pipelineV2 bool
 }
 
 func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
+	svc, err := opts.GetServiceData(lokipipelinev2.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
 	s := &Sink{
-		opts:     opts,
-		args:     args,
-		lokirecv: loki.NewLogsReceiver(loki.WithComponentID(opts.ID)),
+		opts:         opts,
+		args:         args,
+		promMetadata: make(map[string]metadata.Metadata),
+		pipelineV2:   svc.(lokipipelinev2.Data).PipelineV2Enabled(),
+	}
+
+	if s.pipelineV2 {
+		s.lokirecv = loki.NewLogsReceiverV2(s, opts.ID)
+	} else {
+		s.lokirecv = loki.NewLogsReceiver(loki.WithComponentID(opts.ID))
 	}
 
 	// An Interceptor with no next Appendable terminates the chain, so appended
 	// samples land in the snapshot and go no further.
-	s.promrecv = alloyprom.NewInterceptor(
+	promrecv := alloyprom.NewInterceptor(
 		nil,
 		alloyprom.WithComponentID(opts.ID),
 		alloyprom.WithAppendHook(func(_ storage.SeriesRef, l labels.Labels, t int64, v float64, _ storage.Appender) (storage.SeriesRef, error) {
@@ -102,7 +120,12 @@ func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
 			})
 			return 0, nil
 		}),
+		alloyprom.WithMetadataHook(func(_ storage.SeriesRef, l labels.Labels, m metadata.Metadata, _ storage.Appender) (storage.SeriesRef, error) {
+			s.storePrometheusMetadata(l, m)
+			return 0, nil
+		}),
 	)
+	s.promrecv = promrecv
 
 	router := mux.NewRouter()
 	router.HandleFunc(lokiPushPath, func(w http.ResponseWriter, r *http.Request) {
@@ -134,7 +157,7 @@ func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
 	// TODO: These could be configurable per test.
 	var (
 		acceptedMsgs            = remoteapi.MessageTypes{remoteapi.WriteV1MessageType, remoteapi.WriteV2MessageType}
-		appendMetadata          = false
+		appendMetadata          = true
 		ingestSTZeroSample      = false
 		enableTypeAndUnitLabels = false
 	)
@@ -143,7 +166,7 @@ func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
 		promremote.NewWriteHandler(
 			opts.Logger,
 			prometheus.NewRegistry(),
-			s.promrecv, acceptedMsgs,
+			promrecv, acceptedMsgs,
 			ingestSTZeroSample,
 			enableTypeAndUnitLabels,
 			appendMetadata,
@@ -162,10 +185,18 @@ func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
 	return s, nil
 }
 
-var _ component.Component = (*Sink)(nil)
+var (
+	_ component.Component = (*Sink)(nil)
+	_ loki.Consumer       = (*Sink)(nil)
+)
 
 func (s *Sink) Run(ctx context.Context) error {
 	defer s.server.Close()
+
+	if s.pipelineV2 {
+		<-ctx.Done()
+		return nil
+	}
 
 	for {
 		select {
@@ -184,10 +215,35 @@ func (s *Sink) Update(args component.Arguments) error {
 	return nil
 }
 
+func (s *Sink) Consume(_ context.Context, batch loki.Batch) error {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+
+	for _, stream := range batch.Streams() {
+		for _, e := range stream.Entries {
+			s.lokiEntries = append(
+				s.lokiEntries,
+				loki.NewEntryWithCreatedUnixMicro(stream.Labels, stream.Created(), e),
+			)
+		}
+	}
+	return nil
+}
+
 func (s *Sink) appendPrometheusSample(sample PrometheusSample) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	s.promSamples = append(s.promSamples, sample)
+}
+
+func (s *Sink) storePrometheusMetadata(l labels.Labels, m metadata.Metadata) {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+
+	// For simplicity metadata is keyed by full series labels, which is what
+	// scrape and remote write v2 send. Metadata written per family, like
+	// otelcol.exporter.prometheus does, will not match any sample.
+	s.promMetadata[l.String()] = m
 }
 
 type snapshot struct {
@@ -202,8 +258,21 @@ func (s *Sink) snapshot() snapshot {
 	entries := make([]loki.Entry, len(s.lokiEntries))
 	copy(entries, s.lokiEntries)
 
-	samples := make([]PrometheusSample, len(s.promSamples))
-	copy(samples, s.promSamples)
+	samples := make([]PrometheusSample, 0, len(s.promSamples))
+	for _, sample := range s.promSamples {
+		var m *metadata.Metadata
+		if stored, ok := s.promMetadata[sample.Labels.String()]; ok {
+			m = &stored
+		}
+
+		samples = append(samples, PrometheusSample{
+			Labels:    sample.Labels,
+			Timestamp: sample.Timestamp,
+			Value:     sample.Value,
+			Histogram: sample.Histogram,
+			Metadata:  m,
+		})
+	}
 
 	return snapshot{
 		loki:       entries,

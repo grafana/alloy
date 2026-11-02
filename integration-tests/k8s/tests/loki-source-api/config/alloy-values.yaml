@@ -1,0 +1,9 @@
+controller:
+  type: deployment
+  replicas: 1
+alloy:
+  initialDelaySeconds: 1
+  extraPorts:
+    - name: loki-api
+      port: 1515
+      targetPort: 1515

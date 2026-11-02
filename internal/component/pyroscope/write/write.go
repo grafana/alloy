@@ -21,7 +21,6 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope/util"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
-	"github.com/grafana/alloy/internal/component/pyroscope/write/promhttp2"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
@@ -29,6 +28,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/api/model/labelset"
 	"github.com/prometheus/client_golang/prometheus"
+	promconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -53,7 +53,7 @@ var (
 type Arguments struct {
 	ExternalLabels map[string]string  `alloy:"external_labels,attr,optional"`
 	Endpoints      []*EndpointOptions `alloy:"endpoint,block,optional"`
-	Tracing        TracingOptions     `alloy:"tracing,block,optional"`
+	Tracing        TracingOptions     `alloy:"tracing,block,optional"` // Intentionally undocumented: temporary troubleshooting hooks that may change or be removed.
 }
 
 type TracingOptions struct {
@@ -72,7 +72,7 @@ type EndpointOptions struct {
 	Name                   string                   `alloy:"name,attr,optional"`
 	URL                    string                   `alloy:"url,attr"`
 	RemoteTimeout          time.Duration            `alloy:"remote_timeout,attr,optional"`
-	DebugInfoUploadTimeout time.Duration            `alloy:"debug_info_upload_timeout,attr,optional"`
+	DebugInfoUploadTimeout time.Duration            `alloy:"debug_info_upload_timeout,attr,optional"` // Intentionally undocumented: controls the experimental debug-info upload path.
 	Headers                map[string]string        `alloy:"headers,attr,optional"`
 	HTTPClientConfig       *config.HTTPClientConfig `alloy:",squash"`
 	MinBackoff             time.Duration            `alloy:"min_backoff_period,attr,optional"`  // start backoff at this level
@@ -270,7 +270,7 @@ func newFanOut(logger *slog.Logger, tracer trace.Tracer, config Arguments, metri
 			endpoint.Headers = map[string]string{}
 		}
 		endpoint.Headers["X-Alloy-Id"] = uid
-		httpClient, err := promhttp2.NewClientFromConfig(*endpoint.HTTPClientConfig.Convert(), endpoint.Name)
+		httpClient, err := promconfig.NewClientFromConfig(*endpoint.HTTPClientConfig.Convert(), endpoint.Name)
 		if err != nil {
 			return nil, err
 		}

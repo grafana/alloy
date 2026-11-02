@@ -124,9 +124,6 @@ func TestComponent(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 
 	runTests(t, func(t *testing.T, match FileMatch) {
-		ctx, cancel := context.WithCancel(componenttest.TestContext(t))
-		defer cancel()
-
 		// Create file to log to.
 		f, err := os.CreateTemp(t.TempDir(), "example")
 		require.NoError(t, err)
@@ -137,8 +134,8 @@ func TestComponent(t *testing.T) {
 
 		ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
 
-		go func() {
-			err := ctrl.Run(ctx, Arguments{
+		componenttest.RunInBackground(t, func(ctx context.Context) error {
+			return ctrl.Run(ctx, Arguments{
 				Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
 					"__path__": f.Name(),
 					"foo":      "bar",
@@ -146,8 +143,7 @@ func TestComponent(t *testing.T) {
 				ForwardTo: []loki.LogsReceiver{ch1, ch2},
 				FileMatch: match,
 			})
-			require.NoError(t, err)
-		}()
+		})
 
 		ctrl.WaitRunning(time.Minute)
 
@@ -180,9 +176,6 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 
 	runTests(t, func(t *testing.T, match FileMatch) {
-		ctx, cancel := context.WithCancel(componenttest.TestContext(t))
-		defer cancel()
-
 		// Create file to log to.
 		f, err := os.CreateTemp(t.TempDir(), "example")
 		require.NoError(t, err)
@@ -193,8 +186,8 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 
 		ch1 := loki.NewLogsReceiver()
 
-		go func() {
-			err := ctrl.Run(ctx, Arguments{
+		componenttest.RunInBackground(t, func(ctx context.Context) error {
+			return ctrl.Run(ctx, Arguments{
 				Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
 					"__path__": f.Name(),
 					"foo":      "bar",
@@ -202,12 +195,11 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 				ForwardTo: []loki.LogsReceiver{ch1},
 				FileMatch: match,
 			})
-			require.NoError(t, err)
-		}()
+		})
 
 		ctrl.WaitRunning(time.Minute)
 
-		workerCtx, cancelWorkers := context.WithCancel(ctx)
+		workerCtx, cancelWorkers := context.WithCancel(componenttest.TestContext(t))
 		var wg sync.WaitGroup
 		wg.Add(2)
 
@@ -325,9 +317,6 @@ func TestUpdate_NoLeak(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 
 	runTests(t, func(t *testing.T, match FileMatch) {
-		ctx, cancel := context.WithCancel(componenttest.TestContext(t))
-		defer cancel()
-
 		// Create file to tail.
 		f, err := os.CreateTemp(t.TempDir(), "example")
 		require.NoError(t, err)
@@ -345,10 +334,9 @@ func TestUpdate_NoLeak(t *testing.T) {
 			FileMatch: match,
 		}
 
-		go func() {
-			err := ctrl.Run(ctx, args)
-			require.NoError(t, err)
-		}()
+		componenttest.RunInBackground(t, func(ctx context.Context) error {
+			return ctrl.Run(ctx, args)
+		})
 
 		ctrl.WaitRunning(time.Minute)
 
@@ -398,8 +386,7 @@ func TestTwoTargets(t *testing.T) {
 		c, err := New(opts, args)
 		require.NoError(t, err)
 
-		ctx, cancel := context.WithCancel(t.Context())
-		go c.Run(ctx)
+		stop := componenttest.RunInBackground(t, c.Run)
 		time.Sleep(100 * time.Millisecond)
 
 		_, err = f.Write([]byte("text\n"))
@@ -426,15 +413,9 @@ func TestTwoTargets(t *testing.T) {
 		}
 		require.True(t, foundF1)
 		require.True(t, foundF2)
-		cancel()
-		// Verify that positions.yml is written. NOTE: if we didn't wait for it, there would be a race condition between
-		// temporary directory being cleaned up and this file being created.
-		require.Eventually(t, func() bool {
-			if _, err := os.Stat(filepath.Join(opts.DataPath, "positions.yml")); errors.Is(err, os.ErrNotExist) {
-				return false
-			}
-			return true
-		}, 5*time.Second, 10*time.Millisecond, "expected positions.yml file to be written eventually")
+		// Shutting down the component writes positions.yml.
+		stop()
+		require.FileExists(t, filepath.Join(opts.DataPath, "positions.yml"))
 	})
 }
 
@@ -453,46 +434,48 @@ func TestEncoding(t *testing.T) {
 		"2025-03-11 11:11:02.72 Server      Server process ID is 4708.",
 	}
 
-	noDecompress := DecompressionConfig{}
-	gzDecompress := DecompressionConfig{
-		Enabled: true,
-		Format:  "gz",
+	encodingCases := []struct {
+		name     string
+		filename string
+		encoding string
+	}{
+		{"CRLF default encoding", "/CRLF/UTF-8.txt", ""},
+		{"CRLF UTF-8", "/CRLF/UTF-8.txt", "UTF-8"},
+		{"CRLF UTF-16", "/CRLF/UTF-16.txt", "UTF-16"},
+		{"CRLF UTF-16 LE", "/CRLF/UTF-16_LE.txt", "UTF-16LE"},
+		{"CRLF UTF-16 BE", "/CRLF/UTF-16_BE.txt", "UTF-16BE"},
+		{"CRLF UTF-16 LE with BOM", "/CRLF/UTF-16_LE_BOM.txt", "UTF-16"},
+		{"CRLF UTF-16 BE with BOM", "/CRLF/UTF-16_BE_BOM.txt", "UTF-16"},
+		{"LF default encoding", "/LF/UTF-8.txt", ""},
+		{"LF UTF-8", "/LF/UTF-8.txt", "UTF-8"},
+		{"LF UTF-16", "/LF/UTF-16.txt", "UTF-16"},
+		{"LF UTF-16 LE", "/LF/UTF-16_LE.txt", "UTF-16LE"},
+		{"LF UTF-16 BE", "/LF/UTF-16_BE.txt", "UTF-16BE"},
+		{"LF UTF-16 LE with BOM", "/LF/UTF-16_LE_BOM.txt", "UTF-16"},
+		{"LF UTF-16 BE with BOM", "/LF/UTF-16_BE_BOM.txt", "UTF-16"},
 	}
 
-	testCases := []struct {
+	// Each fixture is stored uncompressed and once per supported
+	// decompression format, with the format as its file extension.
+	compressionFormats := []CompressionFormat{"", "gz", "z", "bz2"}
+
+	type testCase struct {
 		name                string
 		filename            string
 		encoding            string
 		decompressionConfig DecompressionConfig
-	}{
-		{"CRLF default encoding", "/CRLF/UTF-8.txt", "", noDecompress},
-		{"CRLF UTF-8", "/CRLF/UTF-8.txt", "UTF-8", noDecompress},
-		{"CRLF UTF-16", "/CRLF/UTF-16.txt", "UTF-16", noDecompress},
-		{"CRLF UTF-16 LE", "/CRLF/UTF-16_LE.txt", "UTF-16LE", noDecompress},
-		{"CRLF UTF-16 BE", "/CRLF/UTF-16_BE.txt", "UTF-16BE", noDecompress},
-		{"CRLF UTF-16 LE with BOM", "/CRLF/UTF-16_LE_BOM.txt", "UTF-16", noDecompress},
-		{"CRLF UTF-16 BE with BOM", "/CRLF/UTF-16_BE_BOM.txt", "UTF-16", noDecompress},
-		{"LF default encoding", "/LF/UTF-8.txt", "", noDecompress},
-		{"LF UTF-8", "/LF/UTF-8.txt", "UTF-8", noDecompress},
-		{"LF UTF-16", "/LF/UTF-16.txt", "UTF-16", noDecompress},
-		{"LF UTF-16 LE", "/LF/UTF-16_LE.txt", "UTF-16LE", noDecompress},
-		{"LF UTF-16 BE", "/LF/UTF-16_BE.txt", "UTF-16BE", noDecompress},
-		{"LF UTF-16 LE with BOM", "/LF/UTF-16_LE_BOM.txt", "UTF-16", noDecompress},
-		{"LF UTF-16 BE with BOM", "/LF/UTF-16_BE_BOM.txt", "UTF-16", noDecompress},
-		{"CRLF default encoding (gzipped)", "/CRLF/UTF-8.txt.gz", "", gzDecompress},
-		{"CRLF UTF-8 (gzipped)", "/CRLF/UTF-8.txt.gz", "UTF-8", gzDecompress},
-		{"CRLF UTF-16 (gzipped)", "/CRLF/UTF-16.txt.gz", "UTF-16", gzDecompress},
-		{"CRLF UTF-16 LE (gzipped)", "/CRLF/UTF-16_LE.txt.gz", "UTF-16LE", gzDecompress},
-		{"CRLF UTF-16 BE (gzipped)", "/CRLF/UTF-16_BE.txt.gz", "UTF-16BE", gzDecompress},
-		{"CRLF UTF-16 LE with BOM (gzipped)", "/CRLF/UTF-16_LE_BOM.txt.gz", "UTF-16", gzDecompress},
-		{"CRLF UTF-16 BE with BOM (gzipped)", "/CRLF/UTF-16_BE_BOM.txt.gz", "UTF-16", gzDecompress},
-		{"LF default encoding (gzipped)", "/LF/UTF-8.txt.gz", "", gzDecompress},
-		{"LF UTF-8 (gzipped)", "/LF/UTF-8.txt.gz", "UTF-8", gzDecompress},
-		{"LF UTF-16 (gzipped)", "/LF/UTF-16.txt.gz", "UTF-16", gzDecompress},
-		{"LF UTF-16 LE (gzipped)", "/LF/UTF-16_LE.txt.gz", "UTF-16LE", gzDecompress},
-		{"LF UTF-16 BE (gzipped)", "/LF/UTF-16_BE.txt.gz", "UTF-16BE", gzDecompress},
-		{"LF UTF-16 LE with BOM (gzipped)", "/LF/UTF-16_LE_BOM.txt.gz", "UTF-16", gzDecompress},
-		{"LF UTF-16 BE with BOM (gzipped)", "/LF/UTF-16_BE_BOM.txt.gz", "UTF-16", gzDecompress},
+	}
+	var testCases []testCase
+	for _, format := range compressionFormats {
+		for _, ec := range encodingCases {
+			tc := testCase{name: ec.name, filename: ec.filename, encoding: ec.encoding}
+			if format != "" {
+				tc.name += " (" + string(format) + ")"
+				tc.filename += "." + string(format)
+				tc.decompressionConfig = DecompressionConfig{Enabled: true, Format: format}
+			}
+			testCases = append(testCases, tc)
+		}
 	}
 
 	runTests(t, func(t *testing.T, match FileMatch) {
@@ -599,8 +582,6 @@ func TestDeleteRecreateFile(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 
 	runTests(t, func(t *testing.T, match FileMatch) {
-		ctx, cancel := context.WithCancel(componenttest.TestContext(t))
-
 		// Create file to log to.
 		dir := t.TempDir()
 		f, err := os.Create(filepath.Join(dir, "example"))
@@ -610,20 +591,9 @@ func TestDeleteRecreateFile(t *testing.T) {
 		require.NoError(t, err)
 
 		ch1 := loki.NewLogsReceiver()
-		runErr := make(chan error, 1)
 
-		t.Cleanup(func() {
-			cancel()
-			select {
-			case err := <-runErr:
-				require.NoError(t, err)
-			case <-time.After(10 * time.Second):
-				require.FailNow(t, "timed out waiting for ctrl.Run to exit")
-			}
-		})
-
-		go func() {
-			runErr <- ctrl.Run(ctx, Arguments{
+		componenttest.RunInBackground(t, func(ctx context.Context) error {
+			return ctrl.Run(ctx, Arguments{
 				Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
 					"__path__": f.Name(),
 					"foo":      "bar",
@@ -631,7 +601,7 @@ func TestDeleteRecreateFile(t *testing.T) {
 				ForwardTo: []loki.LogsReceiver{ch1},
 				FileMatch: match,
 			})
-		}()
+		})
 
 		ctrl.WaitRunning(time.Minute)
 
@@ -665,7 +635,9 @@ func TestDeleteRecreateFile(t *testing.T) {
 		_, err = f.Write([]byte("writing some new text\n"))
 		require.NoError(t, err)
 
-		checkMsg(t, ch1, "writing some new text", 5*time.Second, wantLabelSet)
+		// With file match enabled the recreated file may only be picked up on the next sync tick,
+		// so wait longer than SyncPeriod.
+		checkMsg(t, ch1, "writing some new text", 2*match.SyncPeriod, wantLabelSet)
 	})
 }
 

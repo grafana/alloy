@@ -53,11 +53,11 @@ func (args *Arguments) SetToDefault() {
 }
 
 func (args Arguments) convert() (otelcomponent.Config, error) {
-	return &bearertokenauthextension.Config{
-		Scheme:      args.Scheme,
-		BearerToken: configopaque.String(args.Token),
-		Header:      args.Header,
-	}, nil
+	cfg := bearertokenauthextension.NewFactory().CreateDefaultConfig().(*bearertokenauthextension.Config)
+	cfg.Scheme = args.Scheme
+	cfg.BearerToken = configopaque.String(args.Token)
+	cfg.Header = args.Header
+	return cfg, nil
 }
 
 // ConvertClient implements auth.Arguments.

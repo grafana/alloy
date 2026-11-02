@@ -234,8 +234,9 @@ type BooleanAttributeConfig struct {
 
 func (booleanAttributeConfig BooleanAttributeConfig) Convert() tsp.BooleanAttributeCfg {
 	return tsp.BooleanAttributeCfg{
-		Key:   booleanAttributeConfig.Key,
-		Value: booleanAttributeConfig.Value,
+		Key:         booleanAttributeConfig.Key,
+		Value:       booleanAttributeConfig.Value,
+		InvertMatch: booleanAttributeConfig.InvertMatch,
 	}
 }
 

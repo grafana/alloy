@@ -1128,7 +1128,7 @@ func Benchmark_Targets_TypicalPipeline(b *testing.B) {
 		}
 
 		// prometheus.scrape: distributing targets for clustering
-		dt := NewDistributedTargets(true, cluster, targets)
+		dt := NewDistributedTargets(true, cluster, targets, TargetHashing{})
 		_ = dt.LocalTargets()
 		_ = dt.MovedToRemoteInstance(prevDistTargets)
 		// Sending LabelSet to Prometheus library for scraping

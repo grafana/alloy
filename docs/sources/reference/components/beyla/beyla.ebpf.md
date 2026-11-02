@@ -26,9 +26,18 @@ The component exposes metrics that can be collected by a Prometheus scrape compo
 {{< param "PRODUCT_NAME" >}} spawns Beyla as a child process and transfers the required capabilities through the kernel's inheritable and ambient capability sets.
 You don't need `SETPCAP`.
 
-The required capabilities are: `BPF`, `NET_ADMIN`, `NET_RAW`, `PERFMON`, `DAC_READ_SEARCH`, `SYS_PTRACE`, `CHECKPOINT_RESTORE`, `SYS_RESOURCE` on kernels earlier than 5.11, and `SYS_ADMIN` for library-level instrumentation only.
+The required capabilities are: `BPF`, `NET_ADMIN`, `NET_RAW`, `PERFMON`, `DAC_READ_SEARCH`, `SYS_PTRACE`, and `CHECKPOINT_RESTORE`, plus `SYS_RESOURCE` on kernels earlier than 5.11.
+The `tracefs` probe attachment fallback can also require `DAC_OVERRIDE`.
 The exact set depends on your use case.
 Refer to [Beyla capabilities][] for more information.
+
+On kernels 5.8 and later, Beyla can attach uprobes without `SYS_ADMIN`.
+When access to the performance monitoring unit (PMU) is denied, Beyla falls back to attaching probes through `tracefs`.
+For this fallback, provide a read-write `tracefs` mount visible to Beyla, such as `/sys/kernel/tracing`.
+`DAC_OVERRIDE` lets Beyla bypass file permission checks when writing probe events to `tracefs`.
+
+Go library-level context propagation on kernels 5.10 and later, and log injection, require `SYS_ADMIN` because they use `bpf_probe_write_user`.
+If you enable these features, add `SYS_ADMIN` to the capabilities in the following examples.
 
 In Kubernetes, set `hostPID: true` in the Pod spec and configure an [Unconfined AppArmor profile][].
 
@@ -39,7 +48,7 @@ On a standard Linux system, root processes inherit all capabilities from the bou
 If systemd or another tool restricts the bounding set, grant the required capabilities explicitly:
 
 ```bash
-setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_read_search,cap_sys_ptrace,cap_checkpoint_restore,cap_sys_resource,cap_sys_admin+ep' /path/to/alloy
+setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_override,cap_dac_read_search,cap_sys_ptrace,cap_checkpoint_restore,cap_sys_resource+ep' /path/to/alloy
 ```
 
 ### Standalone: non-root
@@ -48,7 +57,7 @@ Set file capabilities on the {{< param "PRODUCT_NAME" >}} binary with the `+ip` 
 This seeds the permitted set but doesn't grant effective capabilities to {{< param "PRODUCT_NAME" >}}, so {{< param "PRODUCT_NAME" >}} holds them only to pass to Beyla:
 
 ```bash
-setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_read_search,cap_sys_ptrace,cap_checkpoint_restore,cap_sys_resource,cap_sys_admin+ip' /path/to/alloy
+setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_override,cap_dac_read_search,cap_sys_ptrace,cap_checkpoint_restore,cap_sys_resource+ip' /path/to/alloy
 ```
 
 {{< admonition type="note" >}}
@@ -80,11 +89,11 @@ spec:
             - NET_ADMIN
             - NET_RAW
             - PERFMON
+            - DAC_OVERRIDE  # tracefs probe attachment fallback
             - DAC_READ_SEARCH
             - SYS_PTRACE
             - CHECKPOINT_RESTORE
             - SYS_RESOURCE  # kernels < 5.11
-            - SYS_ADMIN  # only for library-level instrumentation
 ```
 
 Unlike `privileged: true`, this keeps `seccomp` and AppArmor profiles active.
@@ -95,7 +104,7 @@ For the most restrictive posture, run as a non-root UID.
 Add `setcap +ip` to the binary when you build a custom image:
 
 ```dockerfile
-RUN setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_read_search,cap_sys_ptrace,cap_checkpoint_restore,cap_sys_resource,cap_sys_admin+ip' /bin/alloy
+RUN setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_override,cap_dac_read_search,cap_sys_ptrace,cap_checkpoint_restore,cap_sys_resource+ip' /bin/alloy
 ```
 
 Then configure the Pod security context:
@@ -116,11 +125,11 @@ spec:
             - NET_ADMIN
             - NET_RAW
             - PERFMON
+            - DAC_OVERRIDE  # tracefs probe attachment fallback
             - DAC_READ_SEARCH
             - SYS_PTRACE
             - CHECKPOINT_RESTORE
             - SYS_RESOURCE  # kernels < 5.11
-            - SYS_ADMIN  # only for library-level instrumentation
 ```
 
 ## Usage
@@ -168,6 +177,8 @@ You can use the following blocks with `beyla.ebpf`:
 | `attributes` > [`kubernetes`][kubernetes attributes]                   | Configures decorating of the metrics and traces with Kubernetes metadata of the instrumented Pods. | no       |
 | `attributes` > [`instance_id`][instance_id]                            | Configures instance ID settings.                                                                   | no       |
 | `attributes` > [`select`][select]                                      | Configures which attributes to include or exclude for specific sections.                           | no       |
+| [`cloud_metadata`][cloud_metadata]                                     | Configures overrides for detected cloud metadata.                                                 | no       |
+| `cloud_metadata` > [`route53`][route53 metadata] | Configures Route 53 DNS record discovery. | no |
 | [`discovery`][discovery]                                               | Configures the discovery for processes to instrument matching given criteria.                      | no       |
 | `discovery` > [`instrument`][services]                                 | Configures the services to discover and instrument for the component.                              | no       |
 | `discovery` > `instrument` > [`kubernetes`][kubernetes services]       | Configures the Kubernetes services to discover and instrument for the component.                   | no       |
@@ -178,6 +189,7 @@ You can use the following blocks with `beyla.ebpf`:
 | `discovery` > `default_exclude_instrument` > [`kubernetes`][kubernetes services] | Configures the default Kubernetes services to exclude from instrumentation for the component.     | no       |
 | `discovery` > [`survey`][services]                                     | Configures the surveying mechanism for the component.                                              | no       |
 | `discovery` > `survey` > [`kubernetes`][kubernetes services]           | Configures the Kubernetes surveying mechanism for the component.                                   | no       |
+| `discovery` > `survey` > [`socket_apps`][socket apps] | Filters surveyed services by socket activity. | no |
 | [`ebpf`][ebpf]                                                         | Configures eBPF-specific settings.                                                                 | no       |
 | `ebpf` > [`payload_extraction`][payload extraction]                    | Configures HTTP payload extraction for protocol-aware parsing.                                     | no       |
 | `ebpf` > `payload_extraction` > `http` > [`openai`][openai payload extraction] | Configures OpenAI payload extraction.                                                      | no       |
@@ -194,7 +206,12 @@ You can use the following blocks with `beyla.ebpf`:
 | `filters` > [`application`][application filters]                       | Configures filtering of application attributes.                                                    | no       |
 | `filters` > [`network`][network filters]                               | Configures filtering of network attributes.                                                        | no       |
 | [`metrics`][metrics]                                                   | Configures which metrics Beyla exposes.                                                            | no       |
+| `metrics` > [`buckets`][buckets]                                      | Configures histogram bucket boundaries.                                                           | no       |
 | `metrics` > [`network`][network metrics]                               | Configures network metrics options for Beyla.                                                      | no       |
+| [`name_resolver`][name_resolver]                                     | Configures service name resolution.                                                               | no       |
+| `name_resolver` > [`gce`][gce resolver] | Configures Google Compute Engine service name resolution. | no |
+| `name_resolver` > [`azure`][azure resolver] | Configures Azure Virtual Machine Scale Set service name resolution. | no |
+| `name_resolver` > [`ecs`][ecs name resolution]                        | Configures Amazon ECS task inventory refreshes for service name resolution.                         | no       |
 | [`traces`][traces]                                                     | Configures trace collection and sampling options for all services instrumented by the component.   | no       |
 | `traces` > [`sampler`][sampler]                                        | Configures global trace sampling settings                                                          | no       |
 | [`routes`][routes]                                                     | Configures the routes to match HTTP paths into user-provided HTTP routes.                          | no       |
@@ -207,6 +224,7 @@ You can use the following blocks with `beyla.ebpf`:
 | `injector` > [`webhook`][injector webhook]                             | Configures delegation of SDK injection to an external webhook controller.                          | no       |
 | [`stats`][stats]                                                       | Configures stats observability options for Beyla.                                                  | no       |
 | [`jvm_runtime_metrics`][jvm_runtime_metrics]                           | Configures collection of JVM runtime metrics from instrumented Java processes.                     | no       |
+| [`dotnet_runtime_metrics`][dotnet_runtime_metrics]                     | Configures collection of .NET runtime metrics from instrumented processes.                         | no       |
 
 [routes]: #routes
 [traces]: #traces
@@ -242,6 +260,15 @@ You can use the following blocks with `beyla.ebpf`:
 [injector resources]: #resources
 [stats]: #stats
 [jvm_runtime_metrics]: #jvm_runtime_metrics
+[dotnet_runtime_metrics]: #dotnet_runtime_metrics
+[route53 metadata]: #route53
+[socket apps]: #socket_apps
+[gce resolver]: #gce
+[azure resolver]: #azure
+[cloud_metadata]: #cloud_metadata
+[name_resolver]: #name_resolver
+[ecs name resolution]: #ecs
+[buckets]: #buckets
 
 {{< /docs/alloy-config >}}
 
@@ -370,10 +397,23 @@ The `discovery` block configures the discovery for processes to instrument match
 
 | Name                                 | Type   | Description                                                        | Default | Required |
 |--------------------------------------|--------|--------------------------------------------------------------------|---------|----------|
+| `disabled_route_harvesters`          | `list(string)` | Languages to exclude from automatic HTTP route harvesting. | `[]` | no |
 | `exclude_otel_instrumented_services` | `bool` | Exclude services that are already instrumented with OpenTelemetry. | `true`  | no       |
+| `instrument_all_local` | `bool` | Discover and instrument local applications based on socket activity. Experimental. | `false` | no |
 | `skip_go_specific_tracers`           | `bool` | Skip Go-specific tracers during discovery.                         | `false` | no       |
 
-It contains the following blocks:
+`disabled_route_harvesters` accepts `dotnet`, `go`, `java`, `nodejs`, `php`, `python`, and `ruby`.
+Use it to disable automatic HTTP route harvesting for specific languages while retaining their instrumentation.
+
+Set `instrument_all_local = true` to discover applications without individual instrumentation selectors.
+Non-root processes qualify when Beyla observes socket activity.
+Root processes require a listener on a port below 1024.
+Beyla also detects sockets already open at startup, and a process stays eligible until it exits.
+This experimental mode applies discovery exclusions and survey's default system-process exclusions.
+It is mutually exclusive with `instrument`, legacy `services`, `open_port`, and `executable_name` selectors.
+Configure `survey` separately to emit `survey_info` metrics.
+
+The `discovery` block contains the following blocks:
 
 #### `instrument`
 
@@ -402,7 +442,7 @@ If the executable matches only one of the ports in the list, it's considered to 
 
 `exports` specifies what types of telemetry data to export for the matching service.
 You can specify `"metrics"`, `"traces"`, or both.
-If empty, the service will export both metrics and traces by default.
+If empty, the service exports both metrics and traces by default.
 
 #### `exclude_instrument`
 
@@ -420,10 +460,24 @@ Set to empty to allow Alloy to instrument itself as well as these other componen
 #### `survey`
 
 The `survey` block configures services for discovery without instrumentation using glob patterns.
-Instead of instrumenting matching services, the component will only emit a `survey_info` metric for each discovered service.
+The component emits a `survey_info` metric for each discovered service without instrumenting it.
 This can be helpful for informing external applications of the services available for instrumentation.
 
-The `survey` block uses the same configuration options as the `instrument` block.
+The `survey` block uses the same configuration options as the `instrument` block and accepts a `socket_apps` block.
+
+##### `socket_apps`
+
+The `socket_apps` block filters survey candidates by socket activity.
+
+| Name | Type | Description | Default | Required |
+|------|------|-------------|---------|----------|
+| `enabled` | `bool` | Require observed socket activity for this survey entry. | `false` | no |
+| `non_root` | `bool` | Require root-owned processes to listen on a port below 1024. Requires `enabled = true`. | `false` | no |
+
+Beyla observes connection and listen attempts, including Unix sockets, and sockets already open at startup.
+A process stays eligible until it exits, even if its sockets close.
+These settings affect only their survey entry. Another matching entry can admit the same process without socket activity.
+You can use `socket_apps { enabled = true }` as the only criterion in a survey entry.
 
 #### `kubernetes` services
 
@@ -581,20 +635,36 @@ The `ebpf` block configures eBPF-specific settings.
 
 | Name                    | Type       | Description                                                                   | Default      | Required |
 |-------------------------|------------|-------------------------------------------------------------------------------|--------------|----------|
-| `wakeup_len`            | `int`      | Number of messages to accumulate before wakeup request.                       | `""`         | no       |
-| `track_request_headers` | `bool`     | Enable tracking of request headers for Traceparent fields.                    | `false`      | no       |
+| `wakeup_len`            | `int`      | Number of messages to accumulate before notifying the consumer.                       | `""`         | no       |
+| `track_request_headers` | `bool`     | Enable tracking of request headers for **Traceparent** fields.                | `false`      | no       |
 | `http_request_timeout`  | `duration` | Timeout for HTTP requests.                                                    | `"30s"`      | no       |
-| `context_propagation`   | `string`   | Enables injecting of the Traceparent header value for outgoing HTTP requests. | `"disabled"` | no       |
+| `context_propagation`   | `string`   | Enables injecting of the **Traceparent** header value for outgoing HTTP requests. | `"disabled"` | no       |
 | `high_request_volume`   | `bool`     | Optimize for immediate request information when response is seen.             | `false`      | no       |
 | `heuristic_sql_detect`  | `bool`     | Enable heuristic-based detection of SQL requests.                             | `false`      | no       |
+| `go_http_client_buffer_timeout` | `duration` | Inactivity period before enriching and emitting a pending Go HTTP client event with its captured buffers. | `"1s"` | no |
+| `kafka_consumer_group_cache_size` | `int` | Maximum number of processes whose Kafka consumer-group membership Beyla caches. | `4096` | no |
+| `kafka_consumer_group_ttl` | `duration` | Lifetime of cached Kafka consumer-group membership. | `"2m"` | no |
+| `populate_trace_context` | `bool` | Populate the pinned trace-context map for external readers, such as the **OpenTelemetry profiler**. | `false` | no |
 
+Omit `go_http_client_buffer_timeout` to use the default of `"1s"` as defined in Beyla.
+Set it to `"0s"` to disable Go HTTP client event deferral.
+
+`kafka_consumer_group_cache_size` and `kafka_consumer_group_ttl` control the cache that supplies `messaging.consumer.group.name` on Kafka consumer spans and metrics.
+Keep the TTL above the consumer heartbeat interval and the longest expected re-balance.
+For classic consumers that share a process with another consumer group, consider a TTL above `max.poll.interval.ms`.
+A longer TTL delays attribution for newly observed processes.
+Unset or zero values use the defaults defined in Beyla.
+
+Set `populate_trace_context` to `true` when an external reader needs the trace and span IDs of the request each thread serves.
+Keeping this map populated adds work on runtime context switches.
+Beyla populates the map automatically when log enrichment is active, even if `populate_trace_context` is `false`.
 
 #### `context_propagation`
 
 `context_propagation` allows Beyla to propagate any incoming context to downstream services. 
 This context propagation support works for any programming language.
 
-For TLS encrypted HTTP requests (HTTPS), the Traceparent header value is encoded at TCP packet level, 
+For TLS encrypted HTTP requests (HTTPS), the **Traceparent** header value is encoded at TCP packet level, 
 and requires that Beyla is present on both sides of the communication.
 
 The TCP packet level encoding uses Linux Traffic Control (TC). 
@@ -774,17 +844,20 @@ The accepted values are `always_on`, `always_off`, and `trace_based`.
 `features` is a list of features to enable for the metrics. The following features are available:
 
 * `*` or `all` enables all features.
-* `application` exports application-level metrics.
+* `application` exports application-level RED metrics and HTTP request and response body-size histograms.
+* `application_red` exports application-level RED metrics without HTTP body-size histograms.
+* `application_sizes` exports HTTP request and response body-size histograms. Include `application` or `application_red` in the same feature list.
 * `application_process` exports metrics about the processes that run the instrumented application.
 * `application_service_graph` exports application-level service graph metrics.
 * `application_span` exports application-level metrics in traces span metrics format.
 * `application_span_otel` exports OpenTelemetry-compatible span metrics.
 * `application_span_sizes` exports span size metrics for trace analysis.
 * `application_host` exports application-level host metrics for host-based pricing.
-* `application_runtime` exports language-runtime metrics (for example JVM, Go, and Node.js runtime metrics) from instrumented processes.
+* `application_runtime` exports language-runtime metrics (for example JVM, .NET, Go, and Node.js runtime metrics) from instrumented processes.
 * `network` exports network-level metrics.
 * `network_inter_zone` exports network-level inter-zone metrics.
 * `stats` exports kernel-level connection statistics per service.
+* `stats_tcp_successful_connections` exports successful TCP connection counts. The `stats` feature also enables these counts.
 
 `instrumentations` is a list of instrumentations to enable for the metrics. The following instrumentations are available:
 
@@ -812,6 +885,27 @@ on the service, that you want to include on the span metrics. The default list i
 
 The default list of `extra_span_resource_labels` is set to match the defaults chosen by Application Observability plugin in 
 Grafana Cloud.
+
+#### `buckets`
+
+The `buckets` block configures explicit histogram bucket boundaries for Prometheus metrics.
+
+| Name | Type | Description | Default | Required |
+|------|------|-------------|---------|----------|
+| `duration_histogram` | `list(number)` | Application request duration boundaries, in seconds. | `[]` | no |
+| `gen_ai_client_operation_duration_histogram` | `list(number)` | GenAI client operation duration boundaries, in seconds. | `[]` | no |
+| `gen_ai_client_token_usage_histogram` | `list(number)` | GenAI token usage boundaries, in tokens. | `[]` | no |
+| `jvm_gc_duration_histogram` | `list(number)` | JVM garbage collection duration boundaries, in seconds. | `[]` | no |
+| `request_size_histogram` | `list(number)` | HTTP request body-size boundaries, in bytes. | `[]` | no |
+| `response_size_histogram` | `list(number)` | HTTP response body-size boundaries, in bytes. | `[]` | no |
+| `stat_tcp_rtt_histogram` | `list(number)` | TCP round-trip time boundaries, in seconds. | `[]` | no |
+| `v8js_gc_duration_histogram` | `list(number)` | Node.js V8 garbage collection duration boundaries, in seconds. | `[]` | no |
+
+An empty list uses the default boundaries defined in Beyla.
+For `jvm_gc_duration_histogram`, the default boundaries are `[0.01, 0.1, 1, 10]` seconds.
+JVM GC duration metrics require `application_runtime` in `metrics.features` and the Java agent enabled.
+For `v8js_gc_duration_histogram`, the default boundaries are `[0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10]` seconds.
+Node.js V8 GC duration metrics require `application_runtime` in `metrics.features` and Node.js instrumentation enabled.
 
 #### `network` metrics
 
@@ -929,7 +1023,8 @@ The `injector` block configures the Beyla SDK injection feature, which automatic
 | `image_version`          | `string`       | OCI image version to inject.                                                                     | `""`    | no       |
 | `trace_propagators`      | `list(string)` | Context propagation formats for injected SDKs, for example `["tracecontext", "baggage"]`.       | `[]`    | no       |
 
-`enabled_sdks` accepts the following values: `java`, `dotnet`, `nodejs`, `python`.
+`enabled_sdks` accepts the following values: `java`, `dotnet`, `nodejs`, `python`, `ruby`.
+When the list is empty, Beyla enables all five SDK instrumentations by default.
 
 `exporter_otlp_endpoint` overrides the OTLP endpoint that injected SDKs use to export telemetry, for cases where Beyla isn't configured to export traces. When set, it overrides the global OTLP endpoint for SDK-injected services.
 
@@ -997,6 +1092,126 @@ When `sampling_interval` is unset, Beyla uses its own default interval.
 {{< admonition type="note" >}}
 The `enabled` attribute is deprecated and has no effect. Add `application_runtime` to `metrics.features` instead.
 {{< /admonition >}}
+
+### `dotnet_runtime_metrics`
+
+The `dotnet_runtime_metrics` block configures collection of .NET runtime metrics from instrumented processes.
+Add `application_runtime` to `metrics.features` to enable collection.
+
+| Name | Type | Description | Default | Required |
+|------|------|-------------|---------|----------|
+| `sampling_interval` | `duration` | Collection interval requested from .NET runtime event counters and delay before reconnecting after a collection session ends. | `"1s"` | no |
+| `timeout` | `duration` | Timeout for diagnostic IPC setup and collection session shutdown. | `"10s"` | no |
+
+Unset or zero values use the defaults defined in Beyla.
+
+### `cloud_metadata`
+
+The `cloud_metadata` block configures cloud inventory refreshes and overrides automatically detected cloud metadata.
+
+| Name | Type | Description | Default | Required |
+|------|------|-------------|---------|----------|
+| `cluster_name` | `string` | Overrides the detected cloud cluster name. | `""` | no |
+| `region` | `string` | Overrides the detected cloud region. | `""` | no |
+| `refresh_interval` | `duration` | How often Beyla refreshes cloud inventories for service name resolution. | `"30s"` | no |
+
+Empty cluster and region values use automatically detected metadata.
+An unset or zero refresh interval uses the default defined in Beyla.
+
+#### `route53`
+
+The `route53` block configures Amazon Route 53 DNS record discovery.
+Include `route53` in `name_resolver.sources` to enable it.
+
+| Name | Type | Description | Default | Required |
+|------|------|-------------|---------|----------|
+| `hosted_zone_ids` | `list(string)` | Hosted zones to query. Required when the `route53` source is enabled. | `[]` | no |
+| `refresh_interval` | `duration` | How often Beyla refreshes Route 53 records. | `"5m"` | no |
+
+The resolver requires `route53:ListResourceRecordSets` permission on the configured zones.
+It resolves A and AAAA records and excludes aliases, `CNAME` records, and wildcard records.
+Its refresh interval is independent of `cloud_metadata.refresh_interval`.
+
+### `name_resolver`
+
+The `name_resolver` block configures how Beyla resolves service names.
+
+| Name | Type | Description | Default | Required |
+|------|------|-------------|---------|----------|
+| `cache_expiry` | `duration` | Lifetime of cached IP-to-hostname entries. | `"5m"` | no |
+| `cache_len` | `int` | Maximum number of cached IP-to-hostname entries. | `1024` | no |
+| `sources` | `list(string)` | Backends for resolving service names. | `["k8s", "rdns"]` | no |
+
+`sources` accepts `azure`, `dns`, `ecs`, `gce`, `k8s`, `kube`, `kubernetes`, `rdns`, and `route53`.
+The values `k8s`, `kube`, and `kubernetes` select the same Kubernetes resolver.
+An empty list uses the default sources defined in Beyla.
+Unset or zero cache values use the defaults defined in Beyla.
+
+Include `ecs` in `sources` to enable Amazon ECS service name resolution.
+This requires `ecs:ListTasks` and `ecs:DescribeTasks` permissions.
+The `cloud_metadata` block lets you override automatic cluster and region detection and configure inventory refreshes.
+
+Include `gce` to resolve services in Google Compute Engine zonal managed instance groups.
+This requires `compute.instanceGroupManagers.list`, `compute.instanceGroupManagers.get`, and `compute.instances.get` permissions in the configured project.
+The [Compute Viewer role][] provides these permissions.
+
+Include `azure` to resolve services in Azure Uniform and Flexible Virtual Machine Scale Sets on Azure VMs outside Kubernetes.
+This requires read access to scale sets, their virtual machines and instance views, and network interfaces in the configured resource group.
+The [Azure Reader role][] provides this access.
+
+Include `route53` on Amazon EC2 to resolve addresses using records in the configured Route 53 hosted zones.
+
+For example, this block adds ECS resolution while retaining the default sources:
+
+```alloy
+name_resolver {
+  sources = ["k8s", "rdns", "ecs"]
+}
+
+cloud_metadata {
+  refresh_interval = "30s"
+}
+```
+
+#### `ecs`
+
+The `ecs` block provides the deprecated ECS refresh interval setting.
+Include `ecs` in `name_resolver.sources` to enable it.
+
+| Name | Type | Description | Default | Required |
+|------|------|-------------|---------|----------|
+| `refresh_interval` | `duration` | Deprecated. Use `cloud_metadata.refresh_interval` to configure cloud inventory refreshes. | `"30s"` | no |
+
+Alloy translates this setting to `cloud_metadata.refresh_interval`.
+An explicit nonzero `cloud_metadata.refresh_interval` takes precedence.
+The translated interval applies to cloud inventories that share this setting.
+
+#### `gce`
+
+The `gce` block configures the scope for Google Compute Engine service name resolution.
+Include `gce` in `name_resolver.sources` to enable it.
+
+| Name | Type | Description | Default | Required |
+|------|------|-------------|---------|----------|
+| `project_id` | `string` | Google Cloud project containing the managed instance groups. | `""` | no |
+| `zone` | `string` | Zone containing the managed instance groups. | `""` | no |
+| `endpoint` | `string` | Compute API base URL for an emulator or API proxy. | `""` | no |
+
+Empty project and zone values use the identity detected from GCE metadata.
+An empty endpoint uses the Google Compute API endpoint.
+
+#### `azure`
+
+The `azure` block configures the scope for Azure Virtual Machine Scale Set service name resolution.
+Include `azure` in `name_resolver.sources` to enable it.
+
+| Name | Type | Description | Default | Required |
+|------|------|-------------|---------|----------|
+| `subscription_id` | `string` | Subscription containing the scale sets. | `""` | no |
+| `resource_group` | `string` | Resource group containing the scale sets. | `""` | no |
+
+Empty values use the subscription and resource group detected from Azure metadata.
+Beyla uses the default Azure SDK credential chain for API access.
 
 ## Exported fields
 
@@ -1194,6 +1409,8 @@ Replace the following:
 [Beyla exported metrics]: /docs/beyla/latest/metrics/
 [Beyla capabilities]: https://grafana.com/docs/beyla/latest/security/#list-of-capabilities-required-by-beyla
 [Unconfined AppArmor profile]: https://kubernetes.io/docs/tutorials/security/apparmor/#securing-a-pod
+[Compute Viewer role]: https://docs.cloud.google.com/iam/docs/roles-permissions/compute#compute.viewer
+[Azure Reader role]: https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles/general#reader
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

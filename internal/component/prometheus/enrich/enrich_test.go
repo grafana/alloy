@@ -178,8 +178,8 @@ func TestEnricher(t *testing.T) {
 					return ref, nil
 				}))
 
-			var entry storage.Appendable
-			tt.args.ForwardTo = []storage.Appendable{fanout}
+			var entry storage.AppendableV2
+			tt.args.ForwardTo = []storage.AppendableV2{fanout}
 			_, err := New(component.Options{
 				ID:     "1",
 				Logger: util.TestAlloyLogger(t).Slog(),
@@ -194,7 +194,7 @@ func TestEnricher(t *testing.T) {
 			require.NoError(t, err)
 
 			lbls := labels.FromMap(tt.inputLabels)
-			app := entry.Appender(t.Context())
+			app := entry.(storage.Appendable).Appender(t.Context())
 
 			_, err = app.Append(0, lbls, time.Now().UnixMilli(), 0)
 			require.NoError(t, err)
@@ -276,7 +276,7 @@ func TestEnrichConcurrentUpdate(t *testing.T) {
 		},
 		TargetMatchLabel: "service",
 		LabelsToCopy:     []string{"env"},
-		ForwardTo:        []storage.Appendable{fanout},
+		ForwardTo:        []storage.AppendableV2{fanout},
 	}
 
 	c, err := New(component.Options{

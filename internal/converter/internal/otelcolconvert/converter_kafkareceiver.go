@@ -2,9 +2,11 @@ package otelcolconvert
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/kafka"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
@@ -32,9 +34,28 @@ func (kafkaReceiverConverter) ConvertAndAppend(state *State, id componentstatus.
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
+	overrideHook := func(val any) any {
+		switch value := val.(type) {
+		case extension.ExtensionHandler:
+			ext := state.LookupExtension(value.ID)
+			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
+		}
+		return common.GetAlloyTypesOverrideHook()(val)
+	}
 
-	args := toKafkaReceiver(state, id, cfg.(*kafkareceiver.Config))
-	block := common.NewBlockWithOverride([]string{"otelcol", "receiver", "kafka"}, label, args)
+	kafkaCfg := cfg.(*kafkareceiver.Config)
+	for _, enc := range []string{kafkaCfg.Logs.Encoding, kafkaCfg.Metrics.Encoding, kafkaCfg.Traces.Encoding} {
+		if enc == "azure_resource_logs" {
+			diags.Add(
+				diag.SeverityLevelWarn,
+				fmt.Sprintf("%s: the azure_resource_logs encoding is deprecated, consider using otelcol.encoding.azure with encoding_extension instead", StringifyInstanceID(id)),
+			)
+			break
+		}
+	}
+
+	args := toKafkaReceiver(state, id, kafkaCfg)
+	block := common.NewBlockWithOverrideFn([]string{"otelcol", "receiver", "kafka"}, label, args, overrideHook)
 
 	diags.Add(
 		diag.SeverityLevelInfo,
@@ -47,6 +68,7 @@ func (kafkaReceiverConverter) ConvertAndAppend(state *State, id componentstatus.
 
 func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkareceiver.Config) *kafka.Arguments {
 	var (
+		defaults    = kafkareceiver.NewFactory().CreateDefaultConfig().(*kafkareceiver.Config)
 		nextMetrics = state.Next(id, pipeline.SignalMetrics)
 		nextLogs    = state.Next(id, pipeline.SignalLogs)
 		nextTraces  = state.Next(id, pipeline.SignalTraces)
@@ -58,7 +80,7 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 		tlsCfgPtr = &tlsCfg
 	}
 
-	rebalanceStrategy, rebalanceStrategies := toKafkaRebalance(cfg.ConsumerConfig)
+	rebalanceStrategies := toKafkaRebalance(cfg.ConsumerConfig)
 	return &kafka.Arguments{
 		Brokers:           cfg.ClientConfig.Brokers,
 		ProtocolVersion:   cfg.ClientConfig.ProtocolVersion,
@@ -69,19 +91,20 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 		InitialOffset:     cfg.ConsumerConfig.InitialOffset,
 		ConnIdleTimeout:   cfg.ClientConfig.ConnIdleTimeout,
 
-		ResolveCanonicalBootstrapServersOnly: cfg.ClientConfig.ResolveCanonicalBootstrapServersOnly,
+		// ResolveCanonicalBootstrapServersOnly is deprecated and no longer exists upstream to read back.
 
-		Authentication:   toKafkaAuthentication(encodeMapstruct(cfg.ClientConfig.Authentication)),
-		Metadata:         toKafkaMetadata(cfg.ClientConfig.Metadata),
-		AutoCommit:       toKafkaAutoCommit(cfg.ConsumerConfig.AutoCommit),
-		MessageMarking:   toKafkaMessageMarking(cfg.MessageMarking),
-		HeaderExtraction: toKafkaHeaderExtraction(cfg.HeaderExtraction),
+		Authentication:      toKafkaAuthentication(encodeMapstruct(cfg.ClientConfig.Authentication)),
+		Metadata:            toKafkaMetadata(cfg.ClientConfig.Metadata),
+		AutoCommit:          toKafkaAutoCommit(cfg.ConsumerConfig.AutoCommit),
+		MessageMarking:      toKafkaMessageMarking(cfg.MessageMarking),
+		HeaderExtraction:    toKafkaHeaderExtraction(cfg.HeaderExtraction),
+		PartitionProcessing: toKafkaPartitionProcessing(cfg.PartitionProcessing),
 
 		TLS: tlsCfgPtr,
 
-		Logs:    toKafkaTopicEncodingConfig(cfg.Logs),
-		Metrics: toKafkaTopicEncodingConfig(cfg.Metrics),
-		Traces:  toKafkaTopicEncodingConfig(cfg.Traces),
+		Logs:    toKafkaTopicEncodingConfig(state, cfg.Logs, defaults.Logs),
+		Metrics: toKafkaTopicEncodingConfig(state, cfg.Metrics, defaults.Metrics),
+		Traces:  toKafkaTopicEncodingConfig(state, cfg.Traces, defaults.Traces),
 
 		MinFetchSize:             cfg.ConsumerConfig.MinFetchSize,
 		MaxFetchSize:             cfg.ConsumerConfig.MaxFetchSize,
@@ -89,7 +112,6 @@ func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkarece
 		MaxFetchWait:             cfg.ConsumerConfig.MaxFetchWait,
 		RackID:                   cfg.ClientConfig.RackID,
 		UseLeaderEpoch:           cfg.ClientConfig.UseLeaderEpoch,
-		GroupRebalanceStrategy:   rebalanceStrategy,
 		GroupRebalanceStrategies: rebalanceStrategies,
 		GroupInstanceID:          cfg.ConsumerConfig.GroupInstanceID,
 
@@ -116,12 +138,27 @@ func toKafkaErrorBackOff(cfg configretry.BackOffConfig) kafka.ErrorBackOffArgume
 	}
 }
 
-func toKafkaTopicEncodingConfig(cfg kafkareceiver.TopicEncodingConfig) kafka.KafkaReceiverTopicEncodingConfig {
-	return kafka.KafkaReceiverTopicEncodingConfig{
+func toKafkaTopicEncodingConfig(state *State, cfg, defaults kafkareceiver.TopicEncodingConfig) kafka.KafkaReceiverTopicEncodingConfig {
+	out := kafka.KafkaReceiverTopicEncodingConfig{
 		Topics:        cfg.Topics,
-		Encoding:      cfg.Encoding,
 		ExcludeTopics: cfg.ExcludeTopics,
 	}
+
+	// Upstream treats an encoding naming a configured extension as that
+	// extension, taking precedence over built-in encodings.
+	var extID component.ID
+	if err := extID.UnmarshalText([]byte(cfg.Encoding)); err == nil {
+		if _, ok := state.TryLookupExtension(extID); ok {
+			out.EncodingExtension = &extension.ExtensionHandler{ID: extID}
+			return out
+		}
+	}
+
+	// Leave the upstream default unset to keep the output minimal.
+	if cfg.Encoding != defaults.Encoding {
+		out.Encoding = &cfg.Encoding
+	}
+	return out
 }
 
 func toKafkaAuthentication(cfg map[string]any) otelcol.KafkaAuthenticationArguments {
@@ -153,8 +190,8 @@ func toKafkaSASL(cfg map[string]any) *otelcol.KafkaSASLArguments {
 		Username:  cfg["username"].(string),
 		Password:  alloytypes.Secret(cfg["password"].(string)),
 		Mechanism: cfg["mechanism"].(string),
-		Version:   cfg["version"].(int),
-		AWSMSK:    toKafkaAWSMSK(encodeMapstruct(cfg["aws_msk"])),
+		// Version is deprecated and no longer exists upstream to read back.
+		AWSMSK: toKafkaAWSMSK(encodeMapstruct(cfg["aws_msk"])),
 	}
 }
 
@@ -244,17 +281,22 @@ func toKafkaHeaderExtraction(cfg kafkareceiver.HeaderExtraction) kafka.HeaderExt
 	}
 }
 
-func toKafkaRebalance(cfg configkafka.ConsumerConfig) (strategy string, strategies []string) {
-	switch {
-	case len(cfg.GroupRebalanceStrategies) > 0:
-		strategies = make([]string, 0, len(cfg.GroupRebalanceStrategies))
+func toKafkaPartitionProcessing(cfg kafkareceiver.PartitionProcessing) kafka.PartitionProcessingArguments {
+	return kafka.PartitionProcessingArguments{
+		Independent:        cfg.Independent,
+		MaxBufferedBatches: cfg.MaxBufferedBatches,
+	}
+}
+
+// toKafkaRebalance always returns the plural strategies form; upstream removed the singular
+// GroupRebalanceStrategy field, so the deprecated singular Alloy argument is never populated here.
+func toKafkaRebalance(cfg configkafka.ConsumerConfig) []string {
+	if len(cfg.GroupRebalanceStrategies) > 0 {
+		strategies := make([]string, 0, len(cfg.GroupRebalanceStrategies))
 		for _, s := range cfg.GroupRebalanceStrategies {
 			strategies = append(strategies, string(s))
 		}
-		return "", strategies
-	case cfg.GroupRebalanceStrategy != "":
-		return string(cfg.GroupRebalanceStrategy), nil
-	default:
-		return string(configkafka.CooperativeStickyBalanceStrategy), nil
+		return strategies
 	}
+	return []string{string(configkafka.CooperativeStickyBalanceStrategy)}
 }

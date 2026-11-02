@@ -13,7 +13,6 @@ otelcol.receiver.otlp "default" {
 			max_age         = 7200
 		}
 		compression_algorithms = ["zlib"]
-		idle_timeout           = "0s"
 		write_timeout          = "0s"
 		read_header_timeout    = "0s"
 	}

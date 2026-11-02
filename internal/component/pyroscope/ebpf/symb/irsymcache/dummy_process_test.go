@@ -19,7 +19,7 @@ type dummyProcess struct {
 	mappingsError error
 }
 
-func (d *dummyProcess) GetProcessMeta(config process.MetaConfig) process.ProcessMeta {
+func (d *dummyProcess) GetProcessMeta(_ []process.MetaEnricher) process.Meta {
 	panic("implement me")
 }
 

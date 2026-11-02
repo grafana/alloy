@@ -17,6 +17,16 @@ import (
 
 // Metrics creates a new fanout consumer for metrics.
 func Metrics(in []otelcol.Consumer) otelconsumer.Metrics {
+	consumers := make([]otelconsumer.Metrics, len(in))
+	for i, c := range in {
+		consumers[i] = c
+	}
+	return MetricsFromConsumers(consumers)
+}
+
+// MetricsFromConsumers creates a new fanout consumer for metrics from
+// metrics-only consumers.
+func MetricsFromConsumers(in []otelconsumer.Metrics) otelconsumer.Metrics {
 	if len(in) == 0 {
 		return &metricsFanout{}
 	} else if len(in) == 1 {

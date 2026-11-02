@@ -2,15 +2,18 @@ package write
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/grafana/loki/pkg/push"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
@@ -27,104 +30,6 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 )
-
-func TestAlloyConfig(t *testing.T) {
-	var exampleAlloyConfig = `
-	endpoint {
-		name           = "test-url"
-		url            = "http://0.0.0.0:11111/loki/api/v1/push"
-		remote_timeout = "100ms"
-	}
-`
-
-	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
-	require.NoError(t, err)
-}
-
-func TestBadAlloyConfig(t *testing.T) {
-	var exampleAlloyConfig = `
-	endpoint {
-		name           = "test-url"
-		url            = "http://0.0.0.0:11111/loki/api/v1/push"
-		remote_timeout = "100ms"
-		bearer_token = "token"
-		bearer_token_file = "/path/to/file.token"
-	}
-`
-
-	// Make sure the squashed HTTPClientConfig Validate function is being utilized correctly
-	var args Arguments
-	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
-	require.ErrorContains(t, err, "at most one of basic_auth, authorization, oauth2, bearer_token & bearer_token_file must be configured")
-}
-
-func TestUnmarshallWalAttrributes(t *testing.T) {
-	type testcase struct {
-		raw           string
-		errorExpected bool
-		expected      WalArguments
-	}
-
-	for name, tc := range map[string]testcase{
-		"min read frequency higher than max": {
-			raw: `
-			enabled = true
-			min_read_frequency = "1h"
-			max_read_frequency = "1m"
-			`,
-			errorExpected: true,
-		},
-		"default config is wal disabled": {
-			raw: "",
-			expected: WalArguments{
-				Enabled:          false,
-				MaxSegmentAge:    wal.DefaultMaxSegmentAge,
-				MinReadFrequency: wal.DefaultWatchConfig.MinReadFrequency,
-				MaxReadFrequency: wal.DefaultWatchConfig.MaxReadFrequency,
-				DrainTimeout:     wal.DefaultWatchConfig.DrainTimeout,
-			},
-		},
-		"wal enabled with defaults": {
-			raw: `
-			enabled = true
-			`,
-			expected: WalArguments{
-				Enabled:          true,
-				MaxSegmentAge:    wal.DefaultMaxSegmentAge,
-				MinReadFrequency: wal.DefaultWatchConfig.MinReadFrequency,
-				MaxReadFrequency: wal.DefaultWatchConfig.MaxReadFrequency,
-				DrainTimeout:     wal.DefaultWatchConfig.DrainTimeout,
-			},
-		},
-		"wal enabled with some overrides": {
-			raw: `
-			enabled = true
-			max_segment_age = "10m"
-			min_read_frequency = "11ms"
-			drain_timeout = "5m"
-			`,
-			expected: WalArguments{
-				Enabled:          true,
-				MaxSegmentAge:    time.Minute * 10,
-				MinReadFrequency: time.Millisecond * 11,
-				MaxReadFrequency: wal.DefaultWatchConfig.MaxReadFrequency,
-				DrainTimeout:     time.Minute * 5,
-			},
-		},
-	} {
-		t.Run(name, func(t *testing.T) {
-			cfg := WalArguments{}
-			err := syntax.Unmarshal([]byte(tc.raw), &cfg)
-			if tc.errorExpected {
-				require.Error(t, err)
-				return
-			}
-			require.NoError(t, err)
-			require.Equal(t, tc.expected, cfg)
-		})
-	}
-}
 
 func TestWriteToSingleEndpoint(t *testing.T) {
 	t.Run("wal disabled", func(t *testing.T) {
@@ -340,7 +245,7 @@ func TestComponentExperimentalConfig(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("should not be able to create component with experimental config without correct flag", func(t *testing.T) {
+	t.Run("should not be able to create component with experimental config without required stability level", func(t *testing.T) {
 		var args Arguments
 		err := syntax.Unmarshal([]byte(`
 			endpoint {
@@ -361,7 +266,7 @@ func TestComponentExperimentalConfig(t *testing.T) {
 		require.Error(t, err)
 	})
 
-	t.Run("should be able to create component with experimental config correct flag", func(t *testing.T) {
+	t.Run("should be able to create component with experimental config with required stability level", func(t *testing.T) {
 		var args Arguments
 		err := syntax.Unmarshal([]byte(`
 			endpoint {
@@ -380,6 +285,73 @@ func TestComponentExperimentalConfig(t *testing.T) {
 		}, args)
 
 		require.NoError(t, err)
+	})
+
+	t.Run("should be able to create component with disabled wal without required stability level", func(t *testing.T) {
+		var args Arguments
+		err := syntax.Unmarshal([]byte(`
+			endpoint {
+				url = "test.com"
+			}
+			wal {
+				enabled = false
+			}
+		`), &args)
+		require.NoError(t, err)
+
+		_, err = New(component.Options{
+			Logger:        logging.NewSlogNop(),
+			MinStability:  featuregate.StabilityGenerallyAvailable,
+			OnStateChange: func(e component.Exports) {},
+		}, args)
+		require.NoError(t, err)
+	})
+
+	t.Run("should not be able to create component with enabled wal without required stability level", func(t *testing.T) {
+		var args Arguments
+		err := syntax.Unmarshal([]byte(`
+			endpoint {
+				url = "test.com"
+			}
+			wal {
+				enabled = true
+			}
+		`), &args)
+		require.NoError(t, err)
+
+		_, err = New(component.Options{
+			Logger:        logging.NewSlogNop(),
+			MinStability:  featuregate.StabilityGenerallyAvailable,
+			OnStateChange: func(e component.Exports) {},
+		}, args)
+		require.ErrorContains(t, err, "enabling wal requires stability.level flag to be experimental")
+	})
+
+	t.Run("should be able to create component with enabled wal with required stability level", func(t *testing.T) {
+		var args Arguments
+		err := syntax.Unmarshal([]byte(`
+			endpoint {
+				url = "test.com"
+			}
+			wal {
+				enabled = true
+			}
+		`), &args)
+		require.NoError(t, err)
+
+		c, err := New(component.Options{
+			Logger:        logging.NewSlogNop(),
+			MinStability:  featuregate.StabilityExperimental,
+			DataPath:      t.TempDir(),
+			OnStateChange: func(e component.Exports) {},
+		}, args)
+		require.NoError(t, err)
+
+		// Run with a canceled context to close the WAL. Windows cannot remove
+		// the TempDir while a WAL segment is open.
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+		require.NoError(t, c.Run(ctx))
 	})
 }
 
@@ -584,3 +556,225 @@ func blockedEndpointArgs(t *testing.T, url string, walEnabled bool) Arguments {
 	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 	return args
 }
+
+func TestFailedUpdateKeepsPreviousConsumer(t *testing.T) {
+	for _, walEnabled := range []bool{false, true} {
+		t.Run(fmt.Sprintf("wal_enabled=%t", walEnabled), func(t *testing.T) {
+			firstReceived := make(chan loki_util.RemoteWriteRequest, 100)
+			firstSrv := loki_util.NewRemoteWriteServer(firstReceived, http.StatusOK)
+			defer firstSrv.Close()
+
+			secondReceived := make(chan loki_util.RemoteWriteRequest, 100)
+			secondSrv := loki_util.NewRemoteWriteServer(secondReceived, http.StatusOK)
+			defer secondSrv.Close()
+
+			firstEndpoint := fmt.Sprintf(`
+				endpoint {
+					url        = "%s"
+					batch_wait = "10ms"
+				}
+			`, firstSrv.URL)
+
+			secondEndpoint := fmt.Sprintf(`
+				endpoint {
+					url        = "%s"
+					batch_wait = "10ms"
+				}
+			`, secondSrv.URL)
+
+			var firstArgs Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(firstEndpoint), &firstArgs))
+			firstArgs.WAL.Enabled = walEnabled
+
+			// Moves to the second server, but both endpoints hash to the same name so
+			// building the consumer fails.
+			var failingArgs Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(secondEndpoint+secondEndpoint), &failingArgs))
+			failingArgs.WAL.Enabled = walEnabled
+
+			var secondArgs Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(secondEndpoint), &secondArgs))
+			secondArgs.WAL.Enabled = walEnabled
+
+			ctrl, err := componenttest.NewControllerFromID(logging.NewSlogNop(), "loki.write")
+			require.NoError(t, err)
+
+			go func() { require.NoError(t, ctrl.Run(componenttest.TestContext(t), firstArgs)) }()
+			require.NoError(t, ctrl.WaitExports(5*time.Second))
+
+			recv := ctrl.Exports().(Exports).Receiver.Chan()
+
+			recv <- loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "first"})
+			waitForLine(t, firstReceived, "first")
+
+			require.Error(t, ctrl.Update(failingArgs))
+
+			// The failed update left the previous consumer in place.
+			recv <- loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "second"})
+			waitForLine(t, firstReceived, "second")
+
+			require.NoError(t, ctrl.Update(secondArgs))
+
+			recv <- loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "third"})
+			waitForLine(t, secondReceived, "third")
+		})
+	}
+}
+
+func TestUpdateTogglesWAL(t *testing.T) {
+	received := make(chan loki_util.RemoteWriteRequest, 100)
+	srv := loki_util.NewRemoteWriteServer(received, http.StatusOK)
+	defer srv.Close()
+
+	endpoint := fmt.Sprintf(`
+		endpoint {
+			url        = "%s"
+			batch_wait = "10ms"
+		}
+	`, srv.URL)
+
+	var walArgs Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(endpoint), &walArgs))
+	walArgs.WAL.Enabled = true
+
+	var noWalArgs Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(endpoint), &noWalArgs))
+
+	ctrl, err := componenttest.NewControllerFromID(logging.NewSlogNop(), "loki.write")
+	require.NoError(t, err)
+
+	go func() { require.NoError(t, ctrl.Run(componenttest.TestContext(t), walArgs)) }()
+	require.NoError(t, ctrl.WaitExports(5*time.Second))
+
+	recv := ctrl.Exports().(Exports).Receiver.Chan()
+
+	recv <- loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "with wal"})
+	waitForLine(t, received, "with wal")
+
+	require.NoError(t, ctrl.Update(noWalArgs))
+
+	recv <- loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "without wal"})
+	waitForLine(t, received, "without wal")
+
+	require.NoError(t, ctrl.Update(walArgs))
+
+	recv <- loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "with wal again"})
+	waitForLine(t, received, "with wal again")
+}
+
+// waitForLine waits until an entry with the wanted line is received. Lines are matched
+// instead of asserting on the next request, a reload can re-deliver entries that the
+// previous consumer had already sent.
+func waitForLine(t *testing.T, received chan loki_util.RemoteWriteRequest, want string) {
+	t.Helper()
+
+	timeout := time.After(10 * time.Second)
+	for {
+		select {
+		case req := <-received:
+			for _, stream := range req.Request.Streams {
+				for _, entry := range stream.Entries {
+					if entry.Line == want {
+						return
+					}
+				}
+			}
+		case <-timeout:
+			t.Fatalf("timed out waiting for entry %q", want)
+		}
+	}
+}
+
+func TestConsumeEntryRetriesFailedWALWrite(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		c, wl := newFakeWALComponent(t, 2)
+
+		ts := time.Now()
+		c.consumeEntry(t.Context(), loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: ts, Line: "after retry"}))
+
+		require.Equal(t, int64(3), wl.calls.Load())
+		require.Len(t, wl.entries, 1)
+	})
+}
+
+func TestConsumeEntryCanceledWhileWaitingForRetry(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithCancel(t.Context())
+
+		c, wl := newFakeWALComponent(t, math.MaxInt64)
+
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			c.consumeEntry(ctx, loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "never written"}))
+		}()
+
+		// Blocks until consumeEntry is waiting for the backoff.
+		synctest.Wait()
+		require.Equal(t, int64(1), wl.calls.Load())
+
+		cancel()
+		<-done
+
+		// Wait returns once ctx is canceled and the entry gets one last attempt.
+		require.Equal(t, int64(2), wl.calls.Load())
+		require.Len(t, wl.entries, 0)
+	})
+}
+
+// newFakeWALComponent returns a component with a started WAL consumer where the
+// first failures WAL writes fail.
+func newFakeWALComponent(t *testing.T, failures int64) (*Component, *fakeWAL) {
+	t.Helper()
+
+	wl := &fakeWAL{dir: t.TempDir(), failures: failures}
+
+	var args Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(`
+		endpoint {
+			url = "http://localhost:1"
+		}
+	`), &args))
+	args.WAL.Enabled = true
+
+	c := &Component{
+		opts: component.Options{
+			Logger:     logging.NewSlogNop(),
+			Registerer: prometheus.NewRegistry(),
+		},
+		wal: wl,
+	}
+
+	consumer, err := c.newWALConsumer(args, args.convertEndpointConfigs())
+	require.NoError(t, err)
+	c.consumer = consumer
+
+	consumer.Start()
+	t.Cleanup(consumer.Stop)
+
+	return c, wl
+}
+
+// fakeWAL fails the first failures writes and keeps the entries of the rest.
+type fakeWAL struct {
+	dir      string
+	failures int64
+	calls    atomic.Int64
+	entries  []push.Entry
+}
+
+func (w *fakeWAL) Log(r *wal.Record) error {
+	if w.calls.Inc() <= w.failures {
+		return errors.New("no space left on device")
+	}
+	// The record is reused after Log returns, so the entries are copied out.
+	for _, e := range r.RefEntries {
+		w.entries = append(w.entries, e.Entries...)
+	}
+	return nil
+}
+
+func (w *fakeWAL) Sync() error               { return nil }
+func (w *fakeWAL) Dir() string               { return w.dir }
+func (w *fakeWAL) Close()                    {}
+func (w *fakeWAL) NextSegment() (int, error) { return 0, nil }

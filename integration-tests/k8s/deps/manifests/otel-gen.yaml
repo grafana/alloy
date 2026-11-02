@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-gen
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-gen
+  template:
+    metadata:
+      labels:
+        app: otel-gen
+    spec:
+      containers:
+        - name: otel-gen
+          image: otel-gen:latest
+          imagePullPolicy: Never
+          env:
+            - name: OTEL_EXPORTER_ENDPOINT
+              value: __OTEL_EXPORTER_ENDPOINT__

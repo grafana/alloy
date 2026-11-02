@@ -21,7 +21,7 @@ func TestLoadSNMPConfig(t *testing.T) {
 		{
 			name: "passing a config file",
 			cfg: Config{
-				SnmpConfigFile:          "common/snmp.yml",
+				SnmpConfigFiles:         []string{"common/snmp.yml"},
 				SnmpConfigMergeStrategy: "replace",
 				SnmpTargets:             []SNMPTarget{{Name: "test", Target: "localhost"}}},
 			expectedNumModules: embeddedModulesCount,
@@ -111,7 +111,7 @@ func TestLoadSNMPConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg, err := LoadSNMPConfig(tt.cfg.SnmpConfigFile, &tt.cfg.SnmpConfig, tt.cfg.SnmpConfigMergeStrategy)
+			cfg, err := LoadSNMPConfig(tt.cfg.SnmpConfigFiles, &tt.cfg.SnmpConfig, tt.cfg.SnmpConfigMergeStrategy)
 			require.NoError(t, err)
 
 			require.Equal(t, tt.expectedNumModules, len(cfg.Modules))

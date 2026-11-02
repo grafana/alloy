@@ -31,6 +31,25 @@ func init() {
 	})
 }
 
+// ValidateStabilityLevel implements otelcol.StabilityValidator.
+func (args Arguments) ValidateStabilityLevel(minStability featuregate.Stability) error {
+	if usesSharedCache(args) && !minStability.Permits(featuregate.StabilityExperimental) {
+		return fmt.Errorf("shared_cache is experimental and requires setting the stability.level flag to experimental")
+	}
+	return nil
+}
+
+func usesSharedCache(args Arguments) bool {
+	for _, stmts := range [][]ContextStatements{args.TraceStatements, args.MetricStatements, args.LogStatements} {
+		for _, s := range stmts {
+			if s.SharedCache {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 type ContextID string
 
 const (
@@ -63,6 +82,9 @@ type ContextStatements struct {
 	Conditions []string       `alloy:"conditions,attr,optional"`
 	Statements Statements     `alloy:"statements,attr"`
 	ErrorMode  ottl.ErrorMode `alloy:"error_mode,attr,optional"`
+
+	// SharedCache is experimental upstream and subject to change or removal in the future.
+	SharedCache bool `alloy:"shared_cache,attr,optional"`
 }
 
 type NoContextStatements struct {
@@ -150,10 +172,11 @@ func (args *ContextStatements) convert() map[string]any {
 	}
 
 	return map[string]any{
-		"context":    args.Context,
-		"statements": args.Statements,
-		"conditions": args.Conditions,
-		"error_mode": args.ErrorMode,
+		"context":      args.Context,
+		"statements":   args.Statements,
+		"conditions":   args.Conditions,
+		"error_mode":   args.ErrorMode,
+		"shared_cache": args.SharedCache,
 	}
 }
 

@@ -76,16 +76,16 @@ func (args *Arguments) Validate() error {
 
 // Convert implements processor.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	return &probabilisticsamplerprocessor.Config{
-		SamplingPercentage: args.SamplingPercentage,
-		HashSeed:           args.HashSeed,
-		Mode:               probabilisticsamplerprocessor.SamplerMode(args.Mode),
-		FailClosed:         args.FailClosed,
-		SamplingPrecision:  args.SamplingPrecision,
-		AttributeSource:    probabilisticsamplerprocessor.AttributeSource(args.AttributeSource),
-		FromAttribute:      args.FromAttribute,
-		SamplingPriority:   args.SamplingPriority,
-	}, nil
+	cfg := probabilisticsamplerprocessor.NewFactory().CreateDefaultConfig().(*probabilisticsamplerprocessor.Config)
+	cfg.SamplingPercentage = args.SamplingPercentage
+	cfg.HashSeed = args.HashSeed
+	cfg.Mode = probabilisticsamplerprocessor.SamplerMode(args.Mode)
+	cfg.FailClosed = args.FailClosed
+	cfg.SamplingPrecision = args.SamplingPrecision
+	cfg.AttributeSource = probabilisticsamplerprocessor.AttributeSource(args.AttributeSource)
+	cfg.FromAttribute = args.FromAttribute
+	cfg.SamplingPriority = args.SamplingPriority
+	return cfg, nil
 }
 
 // Extensions implements processor.Arguments.

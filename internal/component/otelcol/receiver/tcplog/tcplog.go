@@ -8,6 +8,7 @@ import (
 	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/textutils"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
@@ -18,6 +19,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza/split"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/tcplogreceiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
+	otelconfigauth "go.opentelemetry.io/collector/config/configauth"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -48,6 +50,10 @@ type Arguments struct {
 	OneLogPerPacket bool                        `alloy:"one_log_per_packet,attr,optional"`
 	Encoding        string                      `alloy:"encoding,attr,optional"`
 	MultilineConfig *MultilineConfig            `alloy:"multiline,block,optional"`
+
+	// Authentication is a binding to an otelcol.auth.* component extension which
+	// authenticates each accepted TCP connection before logs are read from it.
+	Authentication *auth.Handler `alloy:"auth,attr,optional"`
 
 	ConsumerRetry otelcol.ConsumerRetryArguments `alloy:"retry_on_failure,block,optional"`
 
@@ -93,6 +99,16 @@ func (args *Arguments) SetToDefault() {
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 	c := stanzainputtcp.NewConfig()
 	tls := args.TLS.Convert()
+
+	var authCfg *helper.AuthConfig
+	if args.Authentication != nil {
+		ext, err := args.Authentication.GetExtension(auth.Server)
+		if err != nil {
+			return nil, err
+		}
+		authCfg = &helper.AuthConfig{Config: otelconfigauth.Config{AuthenticatorID: ext.ID}}
+	}
+
 	c.BaseConfig = stanzainputtcp.BaseConfig{
 		MaxLogSize:      helper.ByteSize(args.MaxLogSize),
 		ListenAddress:   args.ListenAddress,
@@ -100,6 +116,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		AddAttributes:   args.AddAttributes,
 		OneLogPerPacket: args.OneLogPerPacket,
 		Encoding:        args.Encoding,
+		Auth:            authCfg,
 	}
 	split := args.MultilineConfig.Convert()
 	if split != nil {
@@ -121,7 +138,16 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 // Extensions implements receiver.Arguments, returning any needed extensions.
 func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
-	return nil
+	m := make(map[otelcomponent.ID]otelcomponent.Component)
+	if args.Authentication != nil {
+		ext, err := args.Authentication.GetExtension(auth.Server)
+		// Extension will not be registered if there was an error.
+		if err != nil {
+			return m
+		}
+		m[ext.ID] = ext.Extension
+	}
+	return m
 }
 
 // Exporters implements receiver.Arguments, returning exporters by signal type.

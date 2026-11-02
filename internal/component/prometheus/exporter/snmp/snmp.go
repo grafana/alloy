@@ -147,6 +147,7 @@ func (a *Arguments) SetToDefault() {
 
 type Arguments struct {
 	ConfigFile          string                    `alloy:"config_file,attr,optional"`
+	ConfigFiles         []string                  `alloy:"config_files,attr,optional"`
 	SnmpConcurrency     int                       `alloy:"concurrency,attr,optional"`
 	Config              alloytypes.OptionalSecret `alloy:"config,attr,optional"`
 	ConfigMergeStrategy string                    `alloy:"config_merge_strategy,attr,optional"`
@@ -219,8 +220,12 @@ func (a *Arguments) UnmarshalAlloy(f func(any) error) error {
 		return err
 	}
 
-	if a.ConfigFile != "" && a.Config.Value != "" {
-		return errors.New("config and config_file are mutually exclusive")
+	if len(a.ConfigFiles) != 0 && a.ConfigFile != "" {
+		return errors.New("config_files and config_file are mutually exclusive")
+	}
+
+	if (a.ConfigFile != "" || len(a.ConfigFiles) > 0) && a.Config.Value != "" {
+		return errors.New("config and config_files are mutually exclusive")
 	}
 
 	if a.ConfigMergeStrategy != "replace" && a.ConfigMergeStrategy != "merge" {
@@ -256,8 +261,14 @@ func (a *Arguments) Convert() *snmp_exporter.Config {
 	} else {
 		targets = a.TargetsList.Convert()
 	}
+
+	configFiles := a.ConfigFiles
+	if a.ConfigFile != "" {
+		configFiles = append(configFiles, a.ConfigFile)
+	}
+
 	return &snmp_exporter.Config{
-		SnmpConfigFile:          a.ConfigFile,
+		SnmpConfigFiles:         configFiles,
 		SnmpConfigMergeStrategy: a.ConfigMergeStrategy,
 		SnmpConcurrency:         a.SnmpConcurrency,
 		SnmpTargets:             targets,

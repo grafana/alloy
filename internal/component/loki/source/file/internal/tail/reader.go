@@ -9,7 +9,6 @@ import (
 	"errors"
 	"io"
 	"log/slog"
-	"os"
 	"unsafe"
 
 	"golang.org/x/text/encoding"
@@ -18,8 +17,7 @@ import (
 const defaultBufSize = 4096
 
 // newReader creates a new reader that is used to read from file.
-// It is important that the provided file is positioned at the start of the file.
-func newReader(logger *slog.Logger, f *os.File, offset int64, enc encoding.Encoding, compression string, startFromEnd bool) (*reader, error) {
+func newReader(logger *slog.Logger, f io.ReadSeeker, offset int64, enc encoding.Encoding, compression string, startFromEnd bool) (*reader, error) {
 	rr, err := newReaderAt(f, compression, 0)
 	if err != nil {
 		return nil, err
@@ -60,13 +58,14 @@ func newReader(logger *slog.Logger, f *os.File, offset int64, enc encoding.Encod
 	}
 
 	return &reader{
-		pos:     offset,
-		br:      bufio.NewReader(rr),
-		decoder: decoder,
-		nl:      nl,
-		lastNl:  nl[len(nl)-1],
-		cr:      cr,
-		pending: make([]byte, 0, defaultBufSize),
+		pos:         offset,
+		br:          bufio.NewReader(rr),
+		decoder:     decoder,
+		nl:          nl,
+		lastNl:      nl[len(nl)-1],
+		cr:          cr,
+		compression: compression,
+		pending:     make([]byte, 0, defaultBufSize),
 	}, nil
 }
 
@@ -131,17 +130,15 @@ func (r *reader) decode(line []byte) (string, error) {
 	return unsafe.String(unsafe.SliceData(converted), len(converted)), nil
 }
 
-// consumeLine checks pending for the delimiter; if found, it splits
-// pending into line and remainder.
+// consumeLine checks if pending ends with the delimiter; if so, it returns
+// the line without the delimiter and resets pending.
 func (r *reader) consumeLine() ([]byte, bool) {
-	// Check if pending contains a full line.
-	i := bytes.Index(r.pending, r.nl)
-	if i < 0 {
+	if !bytes.HasSuffix(r.pending, r.nl) {
 		return nil, false
 	}
 
 	// Extract everything up until newline.
-	line := r.pending[:i]
+	line := r.pending[:len(r.pending)-len(r.nl)]
 
 	// Reset pending. We never buffer beyond newline so it is safe to reset.
 	r.pending = r.pending[:0]
@@ -158,8 +155,7 @@ func (r *reader) position() int64 {
 }
 
 // reset prepares the reader for a new file handle, assuming the same encoding.
-// It is important that the provided file is positioned at the start of the file.
-func (r *reader) reset(f *os.File, offset int64) error {
+func (r *reader) reset(f io.ReadSeeker, offset int64) error {
 	rr, err := newReaderAt(f, r.compression, 0)
 	if err != nil {
 		return err
@@ -177,7 +173,7 @@ func (r *reader) reset(f *os.File, offset int64) error {
 	return nil
 }
 
-func newReaderAt(f *os.File, compression string, offset int64) (io.Reader, error) {
+func newReaderAt(f io.ReadSeeker, compression string, offset int64) (io.Reader, error) {
 	// NOTE: If compression is used we always need to read from the beginning.
 	if compression != "" {
 		if _, err := f.Seek(0, io.SeekStart); err != nil {

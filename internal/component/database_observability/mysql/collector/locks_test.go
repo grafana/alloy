@@ -12,6 +12,7 @@ import (
 	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -118,7 +119,7 @@ func TestLocks(t *testing.T) {
 
 		require.NoError(t, mock.ExpectationsWereMet())
 		lokiEntries := lokiClient.Received()
-		assert.Equal(t, model.LabelSet{"op": OP_DATA_LOCKS}, lokiEntries[0].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_DATA_LOCKS}, lokiEntries[0].Labels)
 		assert.Equal(t, `level="info" waiting_digest="abc123" waiting_digest_text="SELECT * FROM users WHERE id = ?" blocking_digest="def456" blocking_digest_text="UPDATE users SET name = ? WHERE id = ?" waiting_timer_wait="1500.000000ms" waiting_lock_time="1000.000000ms" blocking_timer_wait="2000.000000ms" blocking_lock_time="1700.000000ms"`, lokiEntries[0].Line)
 	})
 
@@ -186,9 +187,9 @@ func TestLocks(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 		lokiEntries := lokiClient.Received()
 		require.Len(t, lokiEntries, 2)
-		assert.Equal(t, model.LabelSet{"op": OP_DATA_LOCKS}, lokiEntries[0].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_DATA_LOCKS}, lokiEntries[0].Labels)
 		assert.Equal(t, `level="info" waiting_digest="abc123" waiting_digest_text="SELECT * FROM users WHERE id = ?" blocking_digest="def456" blocking_digest_text="UPDATE users SET name = ? WHERE id = ?" waiting_timer_wait="1500.000000ms" waiting_lock_time="1000.000000ms" blocking_timer_wait="2000.000000ms" blocking_lock_time="1700.000000ms"`, lokiEntries[0].Line)
-		assert.Equal(t, model.LabelSet{"op": OP_DATA_LOCKS}, lokiEntries[1].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_DATA_LOCKS}, lokiEntries[1].Labels)
 		assert.Equal(t, `level="info" waiting_digest="xyz789" waiting_digest_text="SELECT * FROM orders WHERE user_id = ?" blocking_digest="ghi012" blocking_digest_text="DELETE FROM sessions WHERE expired = ?" waiting_timer_wait="2500.000000ms" waiting_lock_time="2000.000000ms" blocking_timer_wait="3000.000000ms" blocking_lock_time="2700.000000ms"`, lokiEntries[1].Line)
 	})
 
@@ -246,7 +247,7 @@ func TestLocks(t *testing.T) {
 
 		require.NoError(t, mock.ExpectationsWereMet())
 		lokiEntries := lokiClient.Received()
-		assert.Equal(t, model.LabelSet{"op": OP_DATA_LOCKS}, lokiEntries[0].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_DATA_LOCKS}, lokiEntries[0].Labels)
 		assert.Equal(t, `level="info" waiting_digest="" waiting_digest_text="" blocking_digest="" blocking_digest_text="" waiting_timer_wait="1500.000000ms" waiting_lock_time="1000.000000ms" blocking_timer_wait="2000.000000ms" blocking_lock_time="1700.000000ms"`, lokiEntries[0].Line)
 	})
 
@@ -306,7 +307,7 @@ func TestLocks(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Len(t, lokiEntries, 1)
-		assert.Equal(t, model.LabelSet{"op": OP_DATA_LOCKS}, lokiEntries[0].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_DATA_LOCKS}, lokiEntries[0].Labels)
 		assert.Equal(t, `level="info" waiting_digest="abc123" waiting_digest_text="SELECT * FROM users WHERE id = ?" blocking_digest="def456" blocking_digest_text="UPDATE users SET name = ? WHERE id = ?" waiting_timer_wait="1500.000000ms" waiting_lock_time="1000.000000ms" blocking_timer_wait="2000.000000ms" blocking_lock_time="1700.000000ms"`, lokiEntries[0].Line)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -374,7 +375,7 @@ func TestLocks(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 		lokiEntries := lokiClient.Received()
 		require.Len(t, lokiEntries, 1)
-		assert.Equal(t, model.LabelSet{"op": OP_DATA_LOCKS}, lokiEntries[0].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_DATA_LOCKS}, lokiEntries[0].Labels)
 		assert.Equal(t, `level="info" waiting_digest="abc123" waiting_digest_text="SELECT * FROM users WHERE id = ?" blocking_digest="def456" blocking_digest_text="UPDATE users SET name = ? WHERE id = ?" waiting_timer_wait="1500.000000ms" waiting_lock_time="1000.000000ms" blocking_timer_wait="2000.000000ms" blocking_lock_time="1700.000000ms"`, lokiEntries[0].Line)
 	})
 
@@ -442,7 +443,7 @@ func TestLocks(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Len(t, lokiEntries, 1)
-		assert.Equal(t, model.LabelSet{"op": OP_DATA_LOCKS}, lokiEntries[0].Labels)
+		assert.Equal(t, model.LabelSet{"op": database_observability.OP_DATA_LOCKS}, lokiEntries[0].Labels)
 		assert.Equal(t, `level="info" waiting_digest="abc123" waiting_digest_text="SELECT * FROM users WHERE id = ?" blocking_digest="def456" blocking_digest_text="UPDATE users SET name = ? WHERE id = ?" waiting_timer_wait="1500.000000ms" waiting_lock_time="1000.000000ms" blocking_timer_wait="2000.000000ms" blocking_lock_time="1700.000000ms"`, lokiEntries[0].Line)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})

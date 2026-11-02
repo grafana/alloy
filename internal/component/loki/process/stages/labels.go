@@ -1,6 +1,7 @@
 package stages
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -8,16 +9,14 @@ import (
 
 	"github.com/prometheus/common/model"
 
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/loki/pkg/push"
 )
 
 const (
-	ErrEmptyLabelStageConfig = "label stage config cannot be empty"
-	ErrInvalidLabelName      = "invalid label name: %s"
-	ErrInvalidSourceType     = "invalid labels source_type: %s. Can only be 'extracted' or 'structured_metadata'"
-
-	LabelsSourceStructuredMetadata string = "structured_metadata"
-	LabelsSourceExtractedMap       string = "extracted"
+	errEmptyLabelStageConfig = "label stage config cannot be empty"
+	errInvalidLabelName      = "invalid label name: %s"
+	errInvalidSourceType     = "invalid labels source_type: %s. Can only be 'extracted' or 'structured_metadata'"
 )
 
 // LabelsConfig is a set of labels to be extracted
@@ -26,80 +25,76 @@ type LabelsConfig struct {
 	SourceType SourceType         `alloy:"source_type,attr,optional"`
 }
 
-// validateLabelsConfig validates the Label stage configuration
-func validateLabelsConfig(cfg *LabelsConfig) (map[string]string, error) {
-	if cfg.Values == nil {
-		return nil, errors.New(ErrEmptyLabelStageConfig)
+var _ syntax.Validator = (*LabelsConfig)(nil)
+
+func (lc *LabelsConfig) Validate() error {
+	if lc.Values == nil {
+		return errors.New(errEmptyLabelStageConfig)
 	}
 
-	if cfg.SourceType == "" {
-		cfg.SourceType = SourceTypeExtractedMap
+	if lc.SourceType == "" {
+		lc.SourceType = SourceTypeExtractedMap
 	}
 
-	switch cfg.SourceType {
+	switch lc.SourceType {
 	case SourceTypeExtractedMap, SourceTypeStructuredMetadata:
 	default:
-		return nil, fmt.Errorf(ErrInvalidSourceType, cfg.SourceType)
+		return fmt.Errorf(errInvalidSourceType, lc.SourceType)
 	}
 
 	// We must not mutate the c.Values, create a copy with changes we need.
-	ret := map[string]string{}
-	if cfg.Values == nil {
-		return nil, errors.New(ErrEmptyLabelStageConfig)
-	}
-	for labelName, labelSrc := range cfg.Values {
+	for labelName := range lc.Values {
 		// TODO: add support for different validation schemes.
 		//nolint:staticcheck
 		if !model.LabelName(labelName).IsValid() {
-			return nil, fmt.Errorf(ErrInvalidLabelName, labelName)
-		}
-		// If no label source was specified, use the key name
-		if labelSrc == nil || *labelSrc == "" {
-			ret[labelName] = labelName
-		} else {
-			ret[labelName] = *labelSrc
+			return fmt.Errorf(errInvalidLabelName, labelName)
 		}
 	}
 
-	return ret, nil
+	return nil
 }
 
+var _ entryProcessor = (*labelStage)(nil)
+
 // newLabelStage creates a new label stage to set labels from extracted data
-func newLabelStage(logger *slog.Logger, configs LabelsConfig) (Stage, error) {
-	labelsConfig, err := validateLabelsConfig(&configs)
-	if err != nil {
-		return nil, err
+func newLabelStage(configs LabelsConfig, opts stageOpts) *labelStage {
+	labelsConfig := map[string]string{}
+	for labelName, labelSrc := range configs.Values {
+		if labelSrc == nil || *labelSrc == "" {
+			labelsConfig[labelName] = labelName
+		} else {
+			labelsConfig[labelName] = *labelSrc
+		}
 	}
+
 	return &labelStage{
+		next:         opts.next,
 		cfg:          &configs,
 		labelsConfig: labelsConfig,
-		logger:       logger.With("stage", "labels"),
-	}, nil
+		logger:       opts.slogger.With("stage", "labels"),
+	}
 }
 
 // labelStage sets labels from extracted data
 type labelStage struct {
+	next         nextFn
 	cfg          *LabelsConfig
 	labelsConfig map[string]string
 	logger       *slog.Logger
 }
 
-// Run implements Stage
-func (l *labelStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		for e := range in {
-			switch l.cfg.SourceType {
-			case SourceTypeExtractedMap:
-				l.addLabelFromExtractedMap(e.Labels, e.Extracted)
-			case SourceTypeStructuredMetadata:
-				l.addLabelsFromStructuredMetadata(e.Labels, e.StructuredMetadata)
-			}
-			out <- e
+func (l *labelStage) process(ctx context.Context, entries []Entry) error {
+	for _, e := range entries {
+		// FIXME(kallep): The function we call could be determined
+		// when the stage is created and we can avoid this switch.
+		switch l.cfg.SourceType {
+		case SourceTypeExtractedMap:
+			l.addLabelFromExtractedMap(e.Labels, e.Extracted)
+		case SourceTypeStructuredMetadata:
+			l.addLabelsFromStructuredMetadata(e.Labels, e.StructuredMetadata)
 		}
-	}()
-	return out
+	}
+	return l.next(ctx, entries)
 }
 
 func (l *labelStage) addLabelFromExtractedMap(labels model.LabelSet, extracted map[string]any) {
@@ -144,9 +139,4 @@ func (l *labelStage) addLabelsFromStructuredMetadata(labels model.LabelSet, meta
 			break
 		}
 	}
-}
-
-// Cleanup implements Stage.
-func (*labelStage) Cleanup() {
-	// no-op
 }

@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -10,7 +11,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/client/internal/marker"
+	"github.com/grafana/alloy/internal/component/common/loki/client/internal/savepoint"
 )
 
 func NewFanoutConsumer(logger *slog.Logger, reg prometheus.Registerer, cfgs ...Config) (*FanoutConsumer, error) {
@@ -31,15 +32,13 @@ func NewFanoutConsumer(logger *slog.Logger, reg prometheus.Registerer, cfgs ...C
 		// Don't allow duplicate endpoints, we have endpoint specific metrics that need at least one unique label value (name).
 		name := getEndpointName(cfg)
 		if _, ok := endpointsCheck[name]; ok {
-			c.Stop()
 			return nil, fmt.Errorf("duplicate endpoint configs are not allowed, found duplicate for name: %s", cfg.Name)
 		}
 
 		endpointsCheck[name] = struct{}{}
-		endpoint, err := newEndpoint(metrics, cfg, logger, marker.NewNopTracker())
+		endpoint, err := newEndpoint(metrics, cfg, logger, savepoint.NewNopTracker())
 		if err != nil {
-			c.Stop()
-			return nil, fmt.Errorf("error starting endpoint: %w", err)
+			return nil, fmt.Errorf("failed to create endpoint %s: %w", name, err)
 		}
 
 		c.endpoints = append(c.endpoints, endpoint)
@@ -52,6 +51,12 @@ var _ Consumer = (*FanoutConsumer)(nil)
 
 type FanoutConsumer struct {
 	endpoints []*endpoint
+}
+
+func (c *FanoutConsumer) Start() {
+	for _, e := range c.endpoints {
+		e.start()
+	}
 }
 
 func (c *FanoutConsumer) ConsumeEntry(ctx context.Context, entry loki.Entry) error {
@@ -82,4 +87,16 @@ func (c *FanoutConsumer) Stop() {
 
 	// Wait for all endpoints to stop.
 	stopWG.Wait()
+}
+
+// getEndpointName computes the specific name for each endpoint config. The name is either the configured Name setting in Config,
+// or a hash of the config as whole, this allows us to detect repeated configs.
+func getEndpointName(cfg Config) string {
+	if cfg.Name != "" {
+		return cfg.Name
+	}
+
+	h := sha256.New()
+	_, _ = fmt.Fprintf(h, "%v", cfg)
+	return fmt.Sprintf("%x", h.Sum(nil))[:6]
 }

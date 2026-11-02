@@ -19,7 +19,6 @@ import (
 
 const (
 	HealthCheckCollector = "health_check"
-	OP_HEALTH_STATUS     = "health_status"
 )
 
 const showGrantsQuery = `SHOW GRANTS`
@@ -128,10 +127,10 @@ func (c *HealthCheck) fetchHealthChecks(ctx context.Context) {
 			c.logger.Error("health check failed", "check", result.name, "err", result.err)
 			continue
 		}
-		msg := fmt.Sprintf(`check="%s" result="%v" value="%s"`, result.name, result.result, result.value)
+		msg := fmt.Sprintf(`check=%q result="%v" value=%q`, result.name, result.result, result.value)
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
-			OP_HEALTH_STATUS,
+			database_observability.OP_HEALTH_STATUS,
 			msg,
 		)
 	}

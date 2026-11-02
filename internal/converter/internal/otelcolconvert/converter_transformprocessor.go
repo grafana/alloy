@@ -70,10 +70,11 @@ func toContextStatements(in []map[string]any) []transform.ContextStatements {
 	res := make([]transform.ContextStatements, 0, len(in))
 	for _, s := range in {
 		res = append(res, transform.ContextStatements{
-			Context:    transform.ContextID(encodeString(s["context"])),
-			Statements: s["statements"].([]string),
-			Conditions: s["conditions"].([]string),
-			ErrorMode:  s["error_mode"].(ottl.ErrorMode),
+			Context:     transform.ContextID(encodeString(s["context"])),
+			Statements:  s["statements"].([]string),
+			Conditions:  s["conditions"].([]string),
+			ErrorMode:   s["error_mode"].(ottl.ErrorMode),
+			SharedCache: s["shared_cache"].(bool),
 		})
 	}
 

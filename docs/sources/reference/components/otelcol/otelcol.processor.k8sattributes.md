@@ -150,7 +150,7 @@ The following attributes are supported:
 
 | Name                              | Type           | Description                                                                              | Default     | Required |
 |-----------------------------------|----------------|------------------------------------------------------------------------------------------|-------------|----------|
-| `deployment_name_from_replicaset` | `bool`         | Whether to set the deployment name by trimming the hash from the end of the replica set. | `true`      | no       |
+| `deployment_name_from_replicaset` | `bool`         | (Deprecated, no-op) Whether to set the deployment name by trimming the hash from the end of the replica set. | `true`      | no       |
 | `metadata`                        | `list(string)` | Pre-configured metadata keys to add.                                                     | _See below_ | no       |
 | `otel_annotations`                | `bool`         | Whether to set the [recommended resource attributes][semantic conventions].              | `false`     | no       |
 
@@ -158,7 +158,8 @@ The supported `metadata` keys are:
 
 * `container.id`
 * `container.image.name`
-* `container.image.tag`
+* `container.image.tag` (No-op by default, use `container.image.tags` instead; see the note below)
+* `container.image.tags`
 * `k8s.container.name`
 * `k8s.cronjob.name`
 * `k8s.cronjob.uid`
@@ -187,7 +188,7 @@ The `service.*` metadata are calculated following the OpenTelemetry [semantic co
 By default, if `metadata` isn't specified, the following fields are extracted and added to spans, metrics, and logs as resource attributes:
 
 * `container.image.name` (requires one of the following additional attributes to be set: `container.id` or `k8s.container.name`)
-* `container.image.tag` (requires one of the following additional attributes to be set: `container.id` or `k8s.container.name`)
+* `container.image.tags` (requires one of the following additional attributes to be set: `container.id` or `k8s.container.name`)
 * `k8s.deployment.name` (if the Pod is controlled by a deployment)
 * `k8s.namespace.name`
 * `k8s.node.name`
@@ -197,7 +198,16 @@ By default, if `metadata` isn't specified, the following fields are extracted an
 
 When `otel_annotations` is set to `true`, annotations such as `resource.opentelemetry.io/exampleResource` will be translated to the `exampleResource` resource attribute, etc.
 
-When `deployment_name_from_replicaset` is set to `true`, the processor extracts the deployment name from the ReplicaSet name by trimming the Pod template hash. This disables watching for ReplicaSet resources, which can be useful in environments with limited RBAC permissions as the processor doesn't need `get`, `watch`, and `list` permissions for ReplicaSets.
+The `deployment_name_from_replicaset` configuration was removed from the processor. The processor now always extracts the deployment name from the ReplicaSet name by trimming the Pod template hash. This disables watching for ReplicaSet resources, which can be useful in environments with limited RBAC permissions as the processor doesn't need `get`, `watch`, and `list` permissions for ReplicaSets. Setting `deployment_name_from_replicaset` to `false` no longer has any effect.
+
+{{< admonition type="caution" >}}
+This processor's default attribute names changed to follow the [semantic conventions][], and `container.image.tag` is now a no-op:
+
+* `container.image.tag` no longer has any effect. Configuring it in `extract.metadata` is accepted but emits nothing; the processor now extracts `container.image.tags` instead, which is a **list**, not a string.
+* When `tag_name` isn't set on a [`label`][extract_label] or [`annotation`][annotation] block whose `from` is `pod`, `namespace`, or `node`, the default attribute name changes from the deprecated plural form (for example `k8s.pod.labels.<key>`) to the singular form (`k8s.pod.label.<key>`).
+
+There's no configuration option in `otelcol.processor.k8sattributes` to restore the previous behavior.
+{{< /admonition >}}
 
 [semantic conventions]: https://opentelemetry.io/docs/specs/semconv/non-normative/k8s-attributes
 
@@ -261,6 +271,10 @@ The `pod_association` block configures rules on how to associate logs/traces/met
 The `pod_association` block doesn't support any arguments and is configured fully through child blocks.
 
 The `pod_association` block can be repeated multiple times, to configure additional rules.
+
+{{< admonition type="note" >}}
+Configuring two `pod_association` blocks with the same set of `source` blocks, regardless of order, fails to load with a `duplicate pod association` error.
+{{< /admonition >}}
 
 #### Example
 

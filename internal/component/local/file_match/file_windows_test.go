@@ -4,7 +4,9 @@ package file_match
 
 import (
 	"os"
+	"os/exec"
 	"path"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -58,4 +60,53 @@ func TestCaseInsensitiveGlobMatchingUppercasePattern(t *testing.T) {
 	foundFiles := c.getWatchedFiles()
 	require.Len(t, foundFiles, 1, "Windows should be case-insensitive: *.LOG should match test.log")
 	require.True(t, testutil.PathEndsWith(foundFiles, "test.log"))
+}
+
+func TestGlobMatchingThroughJunction(t *testing.T) {
+	root := t.TempDir()
+
+	// The junction target lives outside of the directory being globbed, so the
+	// only way to reach it is through the junction.
+	target := filepath.Join(root, "target")
+	require.NoError(t, os.MkdirAll(filepath.Join(target, "Documents"), 0755))
+	testutil.WriteFile(t, filepath.Join(target, "Documents"), "junction.log")
+
+	dir := filepath.Join(root, "users")
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "ordinary", "Documents"), 0755))
+	testutil.WriteFile(t, filepath.Join(dir, "ordinary", "Documents"), "ordinary.log")
+
+	junction := filepath.Join(dir, "junction")
+	out, err := exec.Command("cmd", "/c", "mklink", "/J", junction, target).CombinedOutput()
+	require.NoError(t, err, "failed to create junction: %s", out)
+
+	// Sanity check that Go sees the junction the way the issue describes.
+	entries, err := os.ReadDir(dir)
+	require.NoError(t, err)
+	for _, e := range entries {
+		if e.Name() == "junction" {
+			require.False(t, e.IsDir(), "expected ReadDir to not report the junction as a directory")
+		}
+	}
+
+	tt := []struct {
+		name    string
+		pattern string
+	}{
+		{"wildcard", filepath.Join(dir, "*", "Documents", "*.log")},
+		{"recursive", filepath.Join(dir, "**", "*.log")},
+	}
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			c := testCreateComponent(t, dir, []string{tc.pattern}, nil)
+			c.args.SyncPeriod = 10 * time.Millisecond
+			require.NoError(t, c.Update(c.args))
+
+			foundFiles := c.getWatchedFiles()
+			require.Len(t, foundFiles, 2, "expected files from both the ordinary directory and the junction: %v", foundFiles)
+			require.True(t, testutil.PathEndsWith(foundFiles, filepath.Join("users", "ordinary", "Documents", "ordinary.log")))
+			// The file must be reported via the junction path, not the resolved target path.
+			require.True(t, testutil.PathEndsWith(foundFiles, filepath.Join("users", "junction", "Documents", "junction.log")))
+			require.False(t, testutil.PathEndsWith(foundFiles, filepath.Join("target", "Documents", "junction.log")))
+		})
+	}
 }

@@ -179,8 +179,9 @@ Multiple `log_statements` blocks can be specified.
 |--------------|----------------|--------------------------------------------------------------------|---------|----------|
 | `context`    | `string`       | OTTL Context to use when interpreting the associated statements.   |         | yes      |
 | `statements` | `list(string)` | A list of OTTL statements.                                         |         | yes      |
-| `conditions` | `list(string)` | Conditions for the statements to be executed.                      |         | no       |
-| `error_mode` | `string`       | How to react to errors if they occur while processing a statement. |         | no       |
+| `conditions`   | `list(string)` | Conditions for the statements to be executed.                      |         | no       |
+| `error_mode`   | `string`       | How to react to errors if they occur while processing a statement. |         | no       |
+| `shared_cache` | `bool`         | Share this block's OTTL `cache` with other blocks.  | `false` | no       |
 
 The supported values for `context` are:
 
@@ -197,6 +198,10 @@ The conditions are ORed together, which means only one condition needs to evalua
 The allowed values for `error_mode` are the same as the ones documented in the [Arguments][] section.
 If `error_mode` is not specified in `log_statements`, the top-level `error_mode` is applied.
 
+> **EXPERIMENTAL**: `shared_cache` is an experimental upstream feature.
+> Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
+> To enable and use `shared_cache`, you must set the `stability.level` [flag][] to `experimental`.
+
 [OTTL Context]: #ottl-context
 
 ### `metric_statements`
@@ -208,8 +213,9 @@ Multiple `metric_statements` blocks can be specified.
 |--------------|----------------|--------------------------------------------------------------------|---------|----------|
 | `context`    | `string`       | OTTL Context to use when interpreting the associated statements.   |         | yes      |
 | `statements` | `list(string)` | A list of OTTL statements.                                         |         | yes      |
-| `conditions` | `list(string)` | Conditions for the statements to be executed.                      |         | no       |
-| `error_mode` | `string`       | How to react to errors if they occur while processing a statement. |         | no       |
+| `conditions`   | `list(string)` | Conditions for the statements to be executed.                      |         | no       |
+| `error_mode`   | `string`       | How to react to errors if they occur while processing a statement. |         | no       |
+| `shared_cache` | `bool`         | Share this block's OTTL `cache` with other blocks.  | `false` | no       |
 
 The supported values for `context` are:
 
@@ -226,6 +232,10 @@ The conditions are ORed together, which means only one condition needs to evalua
 
 The allowed values for `error_mode` are the same as the ones documented in the [Arguments][] section.
 If `error_mode` is not specified in `metric_statements`, the top-level `error_mode` is applied.
+
+> **EXPERIMENTAL**: `shared_cache` is an experimental upstream feature.
+> Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
+> To enable and use `shared_cache`, you must set the `stability.level` [flag][] to `experimental`.
 
 ### `statements`
 
@@ -277,8 +287,9 @@ Multiple `trace_statements` blocks can be specified.
 |--------------|----------------|--------------------------------------------------------------------|---------|----------|
 | `context`    | `string`       | OTTL Context to use when interpreting the associated statements.   |         | yes      |
 | `statements` | `list(string)` | A list of OTTL statements.                                         |         | yes      |
-| `conditions` | `list(string)` | Conditions for the statements to be executed.                      |         | no       |
-| `error_mode` | `string`       | How to react to errors if they occur while processing a statement. |         | no       |
+| `conditions`   | `list(string)` | Conditions for the statements to be executed.                      |         | no       |
+| `error_mode`   | `string`       | How to react to errors if they occur while processing a statement. |         | no       |
+| `shared_cache` | `bool`         | Share this block's OTTL `cache` with other blocks.  | `false` | no       |
 
 The supported values for `context` are:
 
@@ -295,6 +306,12 @@ The conditions are ORed together, which means only one condition needs to evalua
 
 The allowed values for `error_mode` are the same as the ones documented in the [Arguments][] section.
 If `error_mode` is not specified in `trace_statements`, the top-level `error_mode` is applied.
+
+> **EXPERIMENTAL**: `shared_cache` is an experimental upstream feature.
+> Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
+> To enable and use `shared_cache`, you must set the `stability.level` [flag][] to `experimental`.
+
+[flag]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/
 
 ### OTTL Context
 
@@ -358,6 +375,15 @@ The protobuf definitions for OTLP signals are maintained on GitHub:
 Whenever possible, associate your statements to the context which the statement intens to transform.
 The contexts are nested, and the higher-level contexts don't have to iterate through any of the contexts at a lower level.
 For example, although you can modify resource attributes associated to a span using the `span` context, it's more efficient to use the `resource` context.
+
+{{< admonition type="caution" >}}
+The upstream OpenTelemetry Collector made two changes to the OTTL functions used in `statements` and `conditions`:
+
+* The `Base64Decode` converter function was removed. Use the `Decode` converter with the `base64` encoding instead, for example `Decode(value, "base64")`.
+* The `set` function's `ottl.set.allowNil` feature gate was promoted to beta and is now enabled by default. Previously, `set(target, nil)` was a no-op; it now sets `target` to `nil`.
+
+There's no configuration option in `otelcol.processor.transform` to restore the previous behavior for either change.
+{{< /admonition >}}
 
 ## Exported fields
 

@@ -7,12 +7,13 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-10-01
 title: prometheus.exporter.cadvisor
 ---
 
 # `prometheus.exporter.cadvisor`
 
-The `prometheus.exporter.cadvisor` component collects container metrics with [cAdvisor](https://github.com/google/cadvisor).
+The `prometheus.exporter.cadvisor` component collects container metrics with [cAdvisor][cadvisor].
 
 {{< docs/shared lookup="reference/components/exporter-clustering-warning.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -28,7 +29,7 @@ The component requires specific permissions and configuration depending on your 
 
 When you run {{< param "PRODUCT_NAME" >}} as a Linux binary, systemd service, or as the `alloy` user, grant the `alloy` user permissions to access the container runtime socket and related directories to collect metrics from containers on the host.
 
-The component works with Docker, `containerd`, Container Runtime Interface for OpenShift (CRI-O), and systemd container runtimes.
+The component works with Docker, `containerd`, CRI-O, and systemd container runtimes.
 
 For Docker, grant permissions using one of these approaches:
 
@@ -46,7 +47,9 @@ For Docker, grant permissions using one of these approaches:
 
   {{< admonition type="note" >}}
   The `docker` group grants privileges equivalent to the `root` user.
-  For more information about the security implications, refer to [Docker security](https://docs.docker.com/engine/security/#docker-daemon-attack-surface).
+  For more information about the security implications, refer to [Docker security][docker-security].
+
+  [docker-security]: https://docs.docker.com/engine/security/#docker-daemon-attack-surface
   {{< /admonition >}}
 
 - **Using ACLs**: Grant the `alloy` user read and execute permissions to `/var/lib/docker/`:
@@ -78,10 +81,9 @@ For Docker, grant permissions using one of these approaches:
   Only use this approach if necessary for your environment.
   {{< /admonition >}}
 
-For more information about running {{< param "PRODUCT_NAME" >}} without root privileges, refer to [Access and permissions for {{< param "PRODUCT_NAME" >}} on Kubernetes][access-kubernetes].
+For more information about running {{< param "PRODUCT_NAME" >}} without root privileges, refer to [Access and permissions for {{< param "FULL_PRODUCT_NAME" >}} on Linux][access-linux].
 
-[access-kubernetes]: ../../../../access_permissions/kubernetes/
-[nonroot]: ../../../../configure/nonroot/
+[access-linux]: ../../../../access_permissions/linux/
 
 {{< /tab-content >}}
 {{< tab-content name="Kubernetes" >}}
@@ -90,24 +92,26 @@ When you run {{< param "PRODUCT_NAME" >}} in Kubernetes to collect container met
 
 The DaemonSet requires:
 
-* **Host network access**: To access the container runtime
-* **Volume mounts**: Access to the container runtime socket and system directories
-* **Security context**: Privileged access or specific capabilities
+- **Host network access**: To access the container runtime
+- **Volume mounts**: Access to the container runtime socket and system directories
+- **Security context**: Privileged access or specific capabilities
 
-For detailed Kubernetes Deployment guidance, refer to the [Kubernetes Deployment example](#kubernetes-deployment-example) section.
+For detailed guidance, refer to the [Kubernetes DaemonSet example][k8s-daemonset] section.
 
 {{< /tab-content >}}
 {{< tab-content name="Docker container" >}}
 
 When you run {{< param "PRODUCT_NAME" >}} itself as a Docker container to monitor other containers on the host, the {{< param "PRODUCT_NAME" >}} container requires:
 
-* **Privileged mode**: Access to host resources
-* **Volume mounts**: Access to the container runtime socket and system directories
+- **Privileged mode**: Access to host resources
+- **Volume mounts**: Access to the container runtime socket and system directories
 
-For a complete Docker container deployment example, refer to the [Docker deployment example](#docker-deployment-example) section.
+For a complete Docker container deployment example, refer to the [Docker deployment example][docker-deployment] section.
 
 {{< /tab-content >}}
 {{< /tabs >}}
+
+You can specify multiple `prometheus.exporter.cadvisor` components by giving them different labels.
 
 ## Usage
 
@@ -122,80 +126,98 @@ You can use the following arguments with `prometheus.exporter.cadvisor`:
 
 | Name                           | Type           | Description                                                                                                         | Default                             | Required |
 | ------------------------------ | -------------- | ------------------------------------------------------------------------------------------------------------------- | ----------------------------------- | -------- |
+| `allow_dynamic_housekeeping`   | `bool`         | Let the housekeeping interval grow for containers whose stats don't change.                                         | `true`                              | no       |
 | `allowlisted_container_labels` | `list(string)` | Allowlist of container labels to convert to Prometheus labels.                                                      | `[]`                                | no       |
-| `containerd_host`              | `string`       | The containerd endpoint.                                                                                            | `"/run/containerd/containerd.sock"` | no       |
-| `containerd_namespace`         | `string`       | The containerd namespace.                                                                                           | `"k8s.io"`                          | no       |
-| `disable_root_cgroup_stats`    | `bool`         | Disable collecting root Cgroup stats.                                                                               | `false`                             | no       |
-| `disabled_metrics`             | `list(string)` | List of metrics to be disabled which, if set, overrides the default disabled metrics.                               | (see below)                         | no       |
+| `containerd_host`              | `string`       | The `containerd` endpoint.                                                                                          | `"/run/containerd/containerd.sock"` | no       |
+| `containerd_namespace`         | `string`       | The `containerd` namespace.                                                                                         | `"k8s.io"`                          | no       |
+| `disable_root_cgroup_stats`    | `bool`         | Disable collecting root `cgroup` stats.                                                                             | `false`                             | no       |
+| `disabled_metrics`             | `list(string)` | List of metrics to disable. If set, this list overrides the default disabled metrics.                               | _see below_                         | no       |
 | `docker_host`                  | `string`       | Docker endpoint.                                                                                                    | `"unix:///var/run/docker.sock"`     | no       |
 | `docker_only`                  | `bool`         | Only report docker containers in addition to root stats.                                                            | `false`                             | no       |
 | `docker_tls_ca`                | `string`       | Path to a trusted CA for TLS connection to docker.                                                                  | `"ca.pem"`                          | no       |
 | `docker_tls_cert`              | `string`       | Path to client certificate for TLS connection to docker.                                                            | `"cert.pem"`                        | no       |
 | `docker_tls_key`               | `string`       | Path to private key for TLS connection to docker.                                                                   | `"key.pem"`                         | no       |
-| `enabled_metrics`              | `list(string)` | List of metrics to be enabled which, if set, overrides `disabled_metrics`.                                          | `[]`                                | no       |
-| `env_metadata_allowlist`       | `list(string)` | Allowlist of environment variable keys matched with a specified prefix that needs to be collected for containers.   | `[]`                                | no       |
-| `perf_events_config`           | `string`       | Path to a JSON file containing the configuration of perf events to measure.                                         | `""`                                | no       |
-| `raw_cgroup_prefix_allowlist`  | `list(string)` | List of cgroup path prefixes that need to be collected, even when `docker_only` is specified.                       | `[]`                                | no       |
-| `resctrl_interval`             | `duration`     | Interval to update resctrl mon groups.                                                                              | `"0"`                               | no       |
+| `enabled_metrics`              | `list(string)` | List of metrics to enable. If set, this list overrides `disabled_metrics`.                                          | `[]`                                | no       |
+| `env_metadata_allowlist`       | `list(string)` | Allowlist of environment variable keys, matched by prefix, to collect for containers.                               | `[]`                                | no       |
+| `housekeeping_interval`        | `duration`     | Interval between stats collections for each container.                                                              | `"1s"`                              | no       |
+| `max_housekeeping_interval`    | `duration`     | Maximum interval between stats collections for each container when `allow_dynamic_housekeeping` is `true`.          | `"60s"`                             | no       |
+| `perf_events_config`           | `string`       | Path to a JSON file containing the configuration of performance events to measure.                                  | `""`                                | no       |
+| `raw_cgroup_prefix_allowlist`  | `list(string)` | List of `cgroup` path prefixes to collect, even when you set `docker_only`.                                         | `[]`                                | no       |
+| `resctrl_interval`             | `duration`     | Interval to update `resctrl mon` groups.                                                                            | `"0"`                               | no       |
 | `storage_duration`             | `duration`     | Length of time to keep data stored in memory.                                                                       | `"2m"`                              | no       |
 | `store_container_labels`       | `bool`         | Whether to convert container labels and environment variables into labels on Prometheus metrics for each container. | `true`                              | no       |
 | `use_docker_tls`               | `bool`         | Use TLS to connect to docker.                                                                                       | `false`                             | no       |
 
-For `allowlisted_container_labels` to take effect, `store_container_labels` must be set to `false`.
+For `allowlisted_container_labels` to take effect, set `store_container_labels` to `false`.
 
-If a container is using the `overlayfs` storage driver, ensure the `containerd_host` attribute is set correctly to be able to retrieve its metrics.
+`housekeeping_interval` controls how often {{< param "PRODUCT_NAME" >}} collects stats for each container.
+Increasing it reduces CPU usage on hosts with many containers.
+Metrics built from container stats use the timestamp of the collection that produced them, so a longer interval produces fewer distinct samples.
+Set `housekeeping_interval` at or below the scrape interval of the component that scrapes this exporter.
+When `allow_dynamic_housekeeping` is `true`, the interval doubles after each collection where the container stats don't change, up to `max_housekeeping_interval`.
+When the stats change, the interval resets to `housekeeping_interval`.
+When `allow_dynamic_housekeeping` is `false`, the interval stays at `housekeeping_interval` and `max_housekeeping_interval` has no effect.
+`housekeeping_interval` must be greater than `0`.
+When `allow_dynamic_housekeeping` is `true`, `max_housekeeping_interval` must be greater than or equal to `housekeeping_interval`.
 
-`env_metadata_allowlist` is only supported for containerd and Docker runtimes.
+If a container uses the `overlayfs` storage driver, set the `containerd_host` attribute correctly to retrieve its metrics.
 
-If `perf_events_config` isn't set, measurement of `perf` events is disabled.
+`env_metadata_allowlist` works only with the `containerd` and Docker runtimes.
+
+If you don't set `perf_events_config`, {{< param "PRODUCT_NAME" >}} doesn't measure `perf` events.
 
 A `resctrl_interval` of `0` disables updating mon groups.
 
-The values for `enabled_metrics` and `disabled_metrics` don't correspond to Prometheus metrics, but to kinds of metrics that should or shouldn't be exposed.
+The values for `enabled_metrics` and `disabled_metrics` don't correspond to Prometheus metrics, but to kinds of metrics that cAdvisor exposes or omits.
 The values that you can use are:
 
 {{< column-list >}}
 
-* `"advtcp"`
-* `"app"`
-* `"cpu_topology"`
-* `"cpu"`
-* `"cpuLoad"`
-* `"cpuset"`
-* `"disk"`
-* `"diskIO"`
-* `"hugetlb"`
-* `"memory_numa"`
-* `"memory"`
-* `"network"`
-* `"oom_event"`
-* `"percpu"`
-* `"perf_event"`
-* `"process"`
-* `"referenced_memory"`
-* `"resctrl"`
-* `"sched"`
-* `"tcp"`
-* `"udp"`
+- `"advtcp"`
+- `"app"`
+- `"cpu"`
+- `"cpuLoad"`
+- `"cpu_topology"`
+- `"cpuset"`
+- `"disk"`
+- `"diskIO"`
+- `"hugetlb"`
+- `"memory"`
+- `"memory_numa"`
+- `"network"`
+- `"oom_event"`
+- `"percpu"`
+- `"perf_event"`
+- `"pressure"`
+- `"process"`
+- `"referenced_memory"`
+- `"resctrl"`
+- `"sched"`
+- `"tcp"`
+- `"udp"`
 
 {{< /column-list >}}
 
-By default the following metric kinds are disabled:
+By default, cAdvisor disables the following metric kinds:
 
 {{< column-list >}}
 
-* `"advtcp"`
-* `"cpu_topology"`
-* `"cpuset"`
-* `"hugetlb"`
-* `"memory_numa"`
-* `"process"`
-* `"referenced_memory"`
-* `"resctrl"`
-* `"tcp"`
-* `"udp"`
+- `"advtcp"`
+- `"cpu_topology"`
+- `"cpuset"`
+- `"hugetlb"`
+- `"memory_numa"`
+- `"process"`
+- `"referenced_memory"`
+- `"resctrl"`
+- `"sched"`
+- `"tcp"`
+- `"udp"`
 
 {{< /column-list >}}
+
+The component sets the `instance` label on its exported targets to the `HOSTNAME` environment variable.
+If `HOSTNAME` isn't set, the component uses the operating system hostname, or `unknown` if it can't determine one.
 
 ## Blocks
 
@@ -220,9 +242,11 @@ In those cases, exported fields retain their last healthy values.
 
 ## Examples
 
+The following examples show you how to configure `prometheus.exporter.cadvisor` and how to deploy {{< param "PRODUCT_NAME" >}} in Docker and Kubernetes.
+
 ### Component configuration
 
-This example uses a [`prometheus.scrape` component][scrape] to collect metrics from `prometheus.exporter.cadvisor`:
+This example uses a [`prometheus.scrape`][scrape] component to collect metrics from `prometheus.exporter.cadvisor`:
 
 ```alloy
 prometheus.exporter.cadvisor "example" {
@@ -234,7 +258,7 @@ prometheus.exporter.cadvisor "example" {
 // Configure a prometheus.scrape component to collect cadvisor metrics.
 prometheus.scrape "scraper" {
   targets    = prometheus.exporter.cadvisor.example.targets
-  forward_to = [ prometheus.remote_write.demo.receiver ]
+  forward_to = [prometheus.remote_write.demo.receiver]
 }
 
 prometheus.remote_write "demo" {
@@ -251,9 +275,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
 
@@ -288,12 +312,12 @@ services:
 
 The required volume mounts are:
 
-* `/var/run/docker.sock`: Docker socket for container discovery and API access
-* `/`: Host root filesystem (read-only) for system metrics
-* `/var/run`: Host runtime data (read-write) for accessing container state
-* `/sys`: Host system information (read-only) for cgroup and device metrics
-* `/var/lib/docker/`: Docker storage directory (read-only) for container metadata and layer information
-* `/dev/disk/`: Disk device information (read-only) for disk I/O metrics
+- `/var/run/docker.sock`: Docker socket for container discovery and API access
+- `/`: Read-only access to the host root filesystem for system metrics
+- `/var/run`: Read-write access to host runtime data for container state
+- `/sys`: Read-only access to host system information for `cgroup` and device metrics
+- `/var/lib/docker/`: Read-only access to the Docker storage directory for container metadata and layer information
+- `/dev/disk/`: Read-only access to disk device information for disk I/O metrics
 
 {{< admonition type="caution" >}}
 Running in privileged mode grants the container access to all host devices.
@@ -304,7 +328,7 @@ For a complete working example with Grafana and Prometheus, refer to the [alloy-
 
 [alloy-scenarios]: https://github.com/grafana/alloy-scenarios/tree/main/docker-monitoring
 
-### Kubernetes Deployment example
+### Kubernetes DaemonSet example
 
 When you run {{< param "PRODUCT_NAME" >}} in Kubernetes, deploy it as a DaemonSet to collect container metrics from each node.
 
@@ -381,10 +405,10 @@ spec:
 
 Key configuration requirements:
 
-* **hostNetwork: true**: Allows access to the host network stack
-* **hostPID: true**: Enables process-level metrics collection
-* **privileged: true**: Grants access to host resources
-* **Volume mounts**: Provide access to container runtime and system directories
+- **hostNetwork: true**: Allows access to the host network stack
+- **hostPID: true**: Enables process-level metrics collection
+- **privileged: true**: Grants access to host resources
+- **Volume mounts**: Provide access to container runtime and system directories
 
 {{< admonition type="note" >}}
 For container runtimes other than Docker, such as `containerd` or CRI-O, adjust the volume mounts and `docker_host` or `containerd_host` arguments accordingly.
@@ -397,7 +421,10 @@ Consider using Pod Security Standards and RBAC to limit exposure, and only deplo
 
 For more information about deploying {{< param "PRODUCT_NAME" >}} on Kubernetes, refer to [Deploy {{< param "FULL_PRODUCT_NAME" >}}][deploy].
 
-[deploy]: ../../../set-up/deploy/
+[deploy]: ../../../../set-up/deploy/
+[cadvisor]: https://github.com/google/cadvisor
+[k8s-daemonset]: #kubernetes-daemonset-example
+[docker-deployment]: #docker-deployment-example
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

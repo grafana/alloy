@@ -15,6 +15,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/loki/util"
+	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/common/model"
 )
 
@@ -29,43 +30,6 @@ func init() {
 			return New(opts, args.(Arguments))
 		},
 	})
-}
-
-// Arguments holds values which are used to configure the loki.write component.
-type Arguments struct {
-	Endpoints      []EndpointOptions `alloy:"endpoint,block,optional"`
-	ExternalLabels map[string]string `alloy:"external_labels,attr,optional"`
-	MaxStreams     int               `alloy:"max_streams,attr,optional"`
-	WAL            WalArguments      `alloy:"wal,block,optional"`
-}
-
-// WalArguments holds the settings for configuring the Write-Ahead Log (WAL) used
-// by the underlying remote write client.
-type WalArguments struct {
-	Enabled          bool          `alloy:"enabled,attr,optional"`
-	MaxSegmentAge    time.Duration `alloy:"max_segment_age,attr,optional"`
-	MinReadFrequency time.Duration `alloy:"min_read_frequency,attr,optional"`
-	MaxReadFrequency time.Duration `alloy:"max_read_frequency,attr,optional"`
-	DrainTimeout     time.Duration `alloy:"drain_timeout,attr,optional"`
-}
-
-func (wa *WalArguments) Validate() error {
-	if wa.MinReadFrequency >= wa.MaxReadFrequency {
-		return fmt.Errorf("WAL min read frequency should be lower than max read frequency")
-	}
-	return nil
-}
-
-func (wa *WalArguments) SetToDefault() {
-	// todo(thepalbi): Once we are in a good state: replay implemented, and a better cleanup mechanism
-	// make WAL enabled the default
-	*wa = WalArguments{
-		Enabled:          false,
-		MaxSegmentAge:    wal.DefaultMaxSegmentAge,
-		MinReadFrequency: wal.DefaultWatchConfig.MinReadFrequency,
-		MaxReadFrequency: wal.DefaultWatchConfig.MaxReadFrequency,
-		DrainTimeout:     wal.DefaultWatchConfig.DrainTimeout,
-	}
 }
 
 // Exports holds the receiver that is used to send log entries to the
@@ -86,7 +50,11 @@ type Component struct {
 	mut            sync.RWMutex
 	externalLabels model.LabelSet
 
-	// remote write consumer
+	// wal is opened when it is first enabled and reused across updates.
+	// It will always be nil when disabled.
+	wal wal.WAL
+	// consumer is set by the first successful Update and afterwards only replaced by
+	// another successfully built consumer, never cleared.
 	consumer client.Consumer
 }
 
@@ -115,13 +83,15 @@ func (c *Component) Run(ctx context.Context) error {
 		c.mut.Lock()
 		defer c.mut.Unlock()
 
-		if c.consumer != nil {
-			if d, ok := c.consumer.(client.DrainableConsumer); ok {
-				// stop and drain since component is shutting down.
-				d.StopAndDrain()
-			} else {
-				c.consumer.Stop()
-			}
+		if d, ok := c.consumer.(client.DrainableConsumer); ok {
+			// stop and drain since component is shutting down.
+			d.StopAndDrain()
+		} else {
+			c.consumer.Stop()
+		}
+
+		if c.wal != nil {
+			c.wal.Close()
 		}
 	}()
 
@@ -146,13 +116,6 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	if c.consumer != nil {
-		// only drain on component shutdown
-		c.consumer.Stop()
-	}
-
-	c.externalLabels = util.MapToModelLabelSet(newArgs.ExternalLabels)
-
 	cfgs := newArgs.convertEndpointConfigs()
 
 	uid := alloyseed.Get().UID
@@ -164,48 +127,143 @@ func (c *Component) Update(args component.Arguments) error {
 		cfgs[i].Headers[alloyseed.LegacyHeaderName] = uid
 		cfgs[i].Headers[alloyseed.HeaderName] = uid
 	}
-	walCfg := wal.Config{
-		Dir:           filepath.Join(c.opts.DataPath, "wal"),
-		MaxSegmentAge: newArgs.WAL.MaxSegmentAge,
-		WatchConfig: wal.WatchConfig{
-			MinReadFrequency: newArgs.WAL.MinReadFrequency,
-			MaxReadFrequency: newArgs.WAL.MaxReadFrequency,
-			DrainTimeout:     newArgs.WAL.DrainTimeout,
-		},
-	}
 
-	var err error
+	var (
+		consumer client.Consumer
+		err      error
+	)
+
 	if newArgs.WAL.Enabled {
-		c.consumer, err = client.NewWALConsumer(c.opts.Logger, c.opts.Registerer, walCfg, cfgs...)
+		consumer, err = c.newWALConsumer(newArgs, cfgs)
 	} else {
-		c.consumer, err = client.NewFanoutConsumer(c.opts.Logger, c.opts.Registerer, cfgs...)
+		consumer, err = client.NewFanoutConsumer(c.opts.Logger, c.opts.Registerer, cfgs...)
 	}
 
 	if err != nil {
-		return fmt.Errorf("failed to create clients: %w", err)
+		return fmt.Errorf("failed to create client: %w", err)
 	}
+
+	if c.consumer != nil {
+		c.consumer.Stop()
+	}
+
+	// The WAL is only needed while a WAL consumer is reading from it.
+	if !newArgs.WAL.Enabled && c.wal != nil {
+		c.wal.Close()
+		c.wal = nil
+	}
+
+	c.consumer = consumer
+	c.consumer.Start()
+	c.externalLabels = util.MapToModelLabelSet(newArgs.ExternalLabels)
 
 	return nil
 }
 
-func (c *Component) consumeEntry(ctx context.Context, e loki.Entry) {
-	c.mut.RLock()
-	consumer := c.consumer
+func (c *Component) newWALConsumer(args Arguments, cfgs []client.Config) (client.Consumer, error) {
+	var (
+		wl     = c.wal
+		opened = false
+	)
 
-	if len(c.externalLabels) > 0 {
-		e.Labels = c.externalLabels.Merge(e.Labels)
+	if wl == nil {
+		var err error
+		wl, err = wal.New(c.opts.Logger, c.opts.Registerer, filepath.Join(c.opts.DataPath, "wal"))
+		if err != nil {
+			return nil, err
+		}
+		opened = true
 	}
-	c.mut.RUnlock()
 
-	// NOTE: For now it's ok to ignore error here. Error mean the consumer is going away,
-	// either because ctx was canceled or because it has been stopped by a shutdown or an update.
-	_ = consumer.ConsumeEntry(ctx, e)
+	consumer, err := client.NewWALConsumer(
+		c.opts.Logger,
+		c.opts.Registerer,
+		wl,
+		wal.Config{
+			MaxSegmentAge: args.WAL.MaxSegmentAge,
+			WatchConfig: wal.WatchConfig{
+				MinReadFrequency: args.WAL.MinReadFrequency,
+				MaxReadFrequency: args.WAL.MaxReadFrequency,
+				DrainTimeout:     args.WAL.DrainTimeout,
+			},
+		},
+		cfgs...,
+	)
+	if err != nil {
+		if opened {
+			wl.Close()
+		}
+		return nil, err
+	}
+
+	c.wal = wl
+	return consumer, nil
+}
+
+func (c *Component) consumeEntry(ctx context.Context, e loki.Entry) {
+	var (
+		bo           *backoff.Backoff
+		labelsMerged bool
+	)
+
+	for {
+		c.mut.RLock()
+		var (
+			consumer       = c.consumer
+			externalLabels = c.externalLabels
+		)
+		c.mut.RUnlock()
+
+		if len(externalLabels) > 0 && !labelsMerged {
+			labelsMerged = true
+			e.Labels = externalLabels.Merge(e.Labels)
+		}
+
+		err := consumer.ConsumeEntry(ctx, e)
+		if err == nil {
+			return
+		}
+
+		if ctx.Err() != nil {
+			c.opts.Logger.Error("dropping entry, write did not succeed before shutdown", "err", err)
+			return
+		}
+
+		if !client.IsRetryableErr(err) {
+			c.opts.Logger.Error("dropping entry, write failed with a non retryable error", "err", err)
+			return
+		}
+
+		// A stopped consumer has already been swapped out by the time Update
+		// releases the lock, so there is no need to wait.
+		// This makes delivery at-least-once: a fanout consumer enqueues to its
+		// endpoints in order, so it can be stopped after some of them already
+		// accepted the entry, and the retry hands it to those endpoints again.
+		if errors.Is(err, loki.ErrConsumerStopped) {
+			continue
+		}
+
+		// Retrying without a limit blocks the pipeline instead of dropping the entry,
+		// a full WAL disk can recover on its own once old segments are cleaned up.
+		if bo == nil {
+			bo = backoff.New(ctx, backoff.Config{
+				MinBackoff: 50 * time.Millisecond,
+				MaxBackoff: 30 * time.Second,
+			})
+		}
+
+		c.opts.Logger.Debug("failed to write entry, retrying", "attempt", bo.NumRetries()+1, "err", err)
+		bo.Wait()
+	}
 }
 
 func validateConfigStabilityLevel(o component.Options, args Arguments) error {
 	canUseExperimentalConfig := o.MinStability.Permits(featuregate.StabilityExperimental)
+	if args.WAL.Enabled && !canUseExperimentalConfig {
+		return errors.New("enabling wal requires stability.level flag to be experimental")
+	}
 	for _, e := range args.Endpoints {
-		if e.QueueConfig != defaultQueueConfig && !canUseExperimentalConfig {
+		if e.QueueConfig != defaultQueueConfigArguments && !canUseExperimentalConfig {
 			return errors.New("changing queue_config requires stability.level flag to be experimental")
 		}
 	}

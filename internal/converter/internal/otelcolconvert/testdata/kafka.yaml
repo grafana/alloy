@@ -10,7 +10,7 @@ receivers:
     max_fetch_wait: 11s
     rack_id: "test-rack"
     use_leader_epoch: false
-    group_rebalance_strategy: roundrobin
+    group_rebalance_strategies: [roundrobin]
     group_instance_id: fakeinstanceid
     error_backoff:
       enabled: true
@@ -20,56 +20,48 @@ receivers:
       max_interval: 1s
       max_elapsed_time: 1m
     auth:
-      plain_text:
-        username: fakeusername
-        password: fakepassword
       sasl:
         username: fakeusername
         password: fakepassword
         mechanism: AWS_MSK_IAM_OAUTHBEARER
-        version: 1
         aws_msk:
           region: us-east-1
-      tls:
-        insecure: true
       kerberos:
         username: fakeusername
         password: fakepassword
         service_name: someservice
         realm: myrealm
+    tls:
+      insecure: true
 
 
 exporters:
   kafka:
     brokers: redpanda:9092
     protocol_version: 2.0.0
-    resolve_canonical_bootstrap_servers_only: true
     client_id: otelcol
     topic_from_attribute: my_topic
     partition_traces_by_id: true
     partition_metrics_by_resource_attributes: true
     partition_logs_by_resource_attributes: true
     partition_logs_by_trace_id: true
+    signal_header: true
     include_metadata_keys: ["key1", "key2"]
     timeout: 11s
     auth:
-      plain_text:
-        username: fakeusername
-        password: fakepassword
       sasl:
         username: fakeusername
         password: fakepassword
         mechanism: SCRAM-SHA-256
-        version: 1
         aws_msk:
           region: us-east-1
-      tls:
-        insecure: true
       kerberos:
         username: fakeusername
         password: fakepassword
         service_name: someservice
         realm: myrealm
+    tls:
+      insecure: true
     producer:
       max_message_bytes: 209715200
       max_broker_write_bytes: 209715200

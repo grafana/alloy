@@ -58,10 +58,11 @@ otelcol.exporter.loadbalancing "<LABEL>" {
 
 You can use the following arguments with `otelcol.exporter.loadbalancing`:
 
-| Name          | Type       | Description                                                                        | Default     | Required |
-|---------------|------------|------------------------------------------------------------------------------------|-------------|----------|
-| `routing_key` | `string`   | Routing strategy for load balancing.                                               | `"traceID"` | no       |
-| `timeout`     | `duration` | Time to wait before marking a request to the `otlp > protocol` exporter as failed. | `"0s"`      | no       |
+| Name                 | Type           | Description                                                                        | Default     | Required |
+| -------------------- | -------------- | ---------------------------------------------------------------------------------- | ----------- | -------- |
+| `routing_attributes` | `list(string)` | Attributes that form the routing key when `routing_key` is `"attributes"`.         | `[]`        | no       |
+| `routing_key`        | `string`       | Routing strategy for load balancing.                                               | `"traceID"` | no       |
+| `timeout`            | `duration`     | Time to wait before marking a request to the `otlp > protocol` exporter as failed. | `"0s"`      | no       |
 
 The `routing_key` attribute determines how to route signals across endpoints. Its value can be one of the following:
 
@@ -70,12 +71,21 @@ The `routing_key` attribute determines how to route signals across endpoints. It
 This is useful when using processors like the span metrics, so all spans for each service are sent to consistent {{< param "PRODUCT_NAME" >}} instances
 for metric collection. Otherwise, metrics for the same services would be sent to different instances, making aggregations inaccurate.
 
-* `"traceID"`: Spans and logs belonging to the same `traceID` will be exported to the same backend.
-* `"resource"`: Metrics belonging to the same resource will be exported to the same backend.
-* `"metric"`: Metrics with the same name will be exported to the same backend.
-* `"streamID"`: Metrics with the same `streamID` will be exported to the same backend.
+* `"traceID"`: Spans and logs belonging to the same `traceID` are exported to the same backend.
+* `"randomness"`: Spans with the same [OpenTelemetry randomness value][randomness] are exported to the same backend. Only spans are supported.
+  The randomness value is the explicit `rv` value from the span's W3C `tracestate`, if present, and otherwise the randomness derived from the trace ID.
+  Traces that share an explicit `rv` value, such as the traces of one session or workflow, are routed to the same backend, so tail sampling decisions can see the whole group.
+  Because the producer chooses the randomness value, the traffic behind a single routing key is unbounded, unlike `"traceID"`, where a key covers at most one trace.
+* `"attributes"`: Spans, logs, and metrics with the same values for the attributes listed in `routing_attributes` are exported to the same backend.
+  You must set `routing_attributes` when you use this routing key, and you can't set it with any other routing key.
+  For spans, the attributes can come from the resource, scope, or span, plus the pseudo attributes `span.kind` and `span.name`.
+  For logs, they can come from the resource, scope, or log record, plus the pseudo attributes `log.severity` and `log.body`. For metrics, they can come from the resource, scope, or data point.
+  Attributes that are missing are treated as empty values.
+* `"resource"`: Metrics belonging to the same resource are exported to the same backend.
+* `"metric"`: Metrics with the same name are exported to the same backend.
+* `"streamID"`: Metrics with the same `streamID` are exported to the same backend.
 
-The loadbalancer configures the exporter for the signal types supported by the `routing_key`.
+The component accepts only the signal types that the `routing_key` supports.
 
 The `timeout` argument is similar to the top-level `queue` and `retry` [blocks][] for `otelcol.exporter.loadbalancing` itself.
 It helps to re-route data into a new set of healthy backends.
@@ -83,6 +93,7 @@ This is especially useful for highly elastic environments like Kubernetes,
 where the list of resolved endpoints changes frequently due to deployments and scaling events.
 
 [blocks]: #blocks
+[randomness]: https://opentelemetry.io/docs/specs/otel/trace/tracestate-probability-sampling/
 
 > **EXPERIMENTAL**: Metrics support in `otelcol.exporter.loadbalancing` is an [experimental][] feature.
 > Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
@@ -97,25 +108,28 @@ You can use the following blocks with `otelcol.exporter.loadbalancing`:
 
 {{< docs/alloy-config >}}
 
-| Block                                                     | Description                                                                       | Required |
-| --------------------------------------------------------- | --------------------------------------------------------------------------------- | -------- |
-| [`resolver`][resolver]                                    | Configures discovering the endpoints to export to.                                | yes      |
-| `resolver` > [`aws_cloud_map`][aws_cloud_map]             | AWS CloudMap-sourced list of endpoints to export to.                              | no       |
-| `resolver` > [`dns`][dns]                                 | DNS-sourced list of endpoints to export to.                                       | no       |
-| `resolver` > [`kubernetes`][kubernetes]                   | Kubernetes-sourced list of endpoints to export to.                                | no       |
-| `resolver` > [`static`][static]                           | Static list of endpoints to export to.                                            | no       |
-| [`protocol`][protocol]                                    | Protocol settings. Only OTLP is supported at the moment.                          | no       |
-| `protocol` > [`otlp`][otlp]                               | Configures an OTLP exporter.                                                      | no       |
-| `protocol` > `otlp` > [`client`][client]                  | Configures the exporter gRPC client.                                              | no       |
-| `protocol` > `otlp` > `client` > [`keepalive`][keepalive] | Configures keepalive settings for the gRPC client.                                | no       |
-| `protocol` > `otlp` > `client` > [`tls`][tls]             | Configures TLS for the gRPC client.                                               | no       |
-| `protocol` > `otlp` > `client` > `tls` > [`tpm`][tpm]     | Configures TPM settings for the TLS `key_file`.                                   | no       |
-| `protocol` > `otlp` > [`queue`][queue]                    | Configures batching of data before sending.                                       | no       |
-| `protocol` > `otlp` > [`retry`][retry]                    | Configures retry mechanism for failed requests.                                   | no       |
-| [`sending_queue`][queue]                                  | Configures batching of data before sending to the `otlp > protocol` exporter.     | no       |
-| `sending_queue` > [`batch`][batch]                        | Configures batching requests based on a timeout and a minimum number of items.    | no       |
-| [`retry`][retry]                                          | Configures retry mechanism for failed requests to the `otlp > protocol` exporter. | no       |
-| [`debug_metrics`][debug_metrics]                          | Configures the metrics that this component generates to monitor its state.        | no       |
+| Block                                                              | Description                                                                       | Required |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------- | -------- |
+| [`resolver`][resolver]                                             | Configures discovering the endpoints to export to.                                | yes      |
+| `resolver` > [`aws_cloud_map`][aws_cloud_map]                      | AWS CloudMap-sourced list of endpoints to export to.                              | no       |
+| `resolver` > [`dns`][dns]                                          | DNS-sourced list of endpoints to export to.                                       | no       |
+| `resolver` > [`kubernetes`][kubernetes]                            | Kubernetes-sourced list of endpoints to export to.                                | no       |
+| `resolver` > [`static`][static]                                    | Static list of endpoints to export to.                                            | no       |
+| [`protocol`][protocol]                                             | Protocol settings. Only OTLP is supported at the moment.                          | no       |
+| `protocol` > [`otlp`][otlp]                                        | Configures an OTLP exporter.                                                      | no       |
+| `protocol` > `otlp` > [`client`][client]                           | Configures the exporter gRPC client.                                              | no       |
+| `protocol` > `otlp` > `client` > [`keepalive`][keepalive]          | Configures keepalive settings for the gRPC client.                                | no       |
+| `protocol` > `otlp` > `client` > [`tls`][tls]                      | Configures TLS for the gRPC client.                                               | no       |
+| `protocol` > `otlp` > `client` > `tls` > [`tpm`][tpm]              | Configures TPM settings for the TLS `key_file`.                                   | no       |
+| `protocol` > `otlp` > [`queue`][queue]                             | Configures batching of data before sending.                                       | no       |
+| `protocol` > `otlp` > `queue` > [`batch`][batch]                   | Configures batching requests based on a timeout and a minimum number of items.    | no       |
+| `protocol` > `otlp` > `queue` > `batch` > [`partition`][partition] | Configures partitioning of batches by client metadata.                            | no       |
+| `protocol` > `otlp` > [`retry`][retry]                             | Configures retry mechanism for failed requests.                                   | no       |
+| [`sending_queue`][queue]                                           | Configures batching of data before sending to the `otlp > protocol` exporter.     | no       |
+| `sending_queue` > [`batch`][batch]                                 | Configures batching requests based on a timeout and a minimum number of items.    | no       |
+| `sending_queue` > `batch` > [`partition`][partition]               | Configures partitioning of batches by client metadata.                            | no       |
+| [`retry`][retry]                                                   | Configures retry mechanism for failed requests to the `otlp > protocol` exporter. | no       |
+| [`debug_metrics`][debug_metrics]                                   | Configures the metrics that this component generates to monitor its state.        | no       |
 
 [resolver]: #resolver
 [static]: #static
@@ -130,6 +144,7 @@ You can use the following blocks with `otelcol.exporter.loadbalancing`:
 [keepalive]: #keepalive
 [queue]: #queue
 [batch]: #batch
+[partition]: #partition
 [retry]: #retry
 [debug_metrics]: #debug_metrics
 
@@ -318,6 +333,12 @@ The `queue` block configures an in-memory buffer of batches before data is sent 
 The `batch` block configures batching requests based on a timeout and a minimum number of items.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `partition`
+
+The `partition` block configures how batches are partitioned by client metadata.
+
+{{< docs/shared lookup="reference/components/otelcol-queue-batch-partition-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `retry`
 

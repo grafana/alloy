@@ -150,8 +150,8 @@ func TestUnmarshalDefault(t *testing.T) {
 					NetAddr:               confignet.AddrConfig{Endpoint: "0.0.0.0:4318", Transport: confignet.TransportTypeTCP},
 					CompressionAlgorithms: []string{"", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"},
 					CORS:                  configoptional.Some[confighttp.CORSConfig](confighttp.CORSConfig{}),
-					KeepAlivesEnabled:     true,
-					IdleTimeout:           1 * time.Minute,
+					KeepAlivesEnabled:     true,            //nolint:staticcheck // migrate to confighttp Keepalive
+					IdleTimeout:           1 * time.Minute, //nolint:staticcheck // migrate to confighttp Keepalive
 					ReadHeaderTimeout:     1 * time.Minute,
 					WriteTimeout:          30 * time.Second,
 				},
@@ -232,7 +232,6 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
-				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 		{
@@ -248,7 +247,6 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: false,
-				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 		{
@@ -264,7 +262,6 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
-				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 	}

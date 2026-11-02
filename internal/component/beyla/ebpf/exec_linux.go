@@ -32,6 +32,7 @@ var beylaSubprocessCaps = []uintptr{
 	unix.CAP_NET_ADMIN,
 	unix.CAP_NET_RAW,
 	unix.CAP_PERFMON,
+	unix.CAP_DAC_OVERRIDE,
 	unix.CAP_DAC_READ_SEARCH,
 	unix.CAP_SYS_PTRACE,
 	unix.CAP_CHECKPOINT_RESTORE,

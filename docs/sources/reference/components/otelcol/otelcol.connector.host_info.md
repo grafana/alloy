@@ -32,10 +32,14 @@ otelcol.connector.host_info "<LABEL>" {
 
 You can use the following arguments with `otelcol.connector.host_info`:
 
-| Name                     | Type           | Description                                                        | Default       | Required |
-|--------------------------|----------------|--------------------------------------------------------------------|---------------|----------|
-| `host_identifiers`       | `list(string)` | Ordered list of resource attributes used to identify unique hosts. | `["host.id"]` | no       |
-| `metrics_flush_interval` | `duration`     | How often to flush generated metrics.                              | `"60s"`       | no       |
+| Name                     | Type           | Description                                                        | Default                       | Required |
+|--------------------------|----------------|--------------------------------------------------------------------|-------------------------------|----------|
+| `host_identifiers`       | `list(string)` | Ordered list of resource attributes used to identify unique hosts. | `["k8s.node.name", "host.id"]` | no       |
+| `metrics_flush_interval` | `duration`     | How often to flush generated metrics.                              | `"60s"`                       | no       |
+
+The first attribute in `host_identifiers` that's present on a span's resource is used as that span's host identifier.
+All telemetry sources reporting the same host must emit the same attribute, otherwise that host is counted more than once.
+In Kubernetes, `k8s.node.name` is the attribute most consistently set across sources, so it's tried first.
 
 ## Blocks
 

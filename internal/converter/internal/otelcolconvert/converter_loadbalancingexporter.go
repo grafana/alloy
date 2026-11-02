@@ -65,12 +65,13 @@ func toLoadbalancingExporter(cfg *loadbalancingexporter.Config) *loadbalancing.A
 		routingKey = cfg.RoutingKey
 	}
 	return &loadbalancing.Arguments{
-		Protocol:   toProtocol(cfg.Protocol),
-		Resolver:   toResolver(cfg.Resolver),
-		RoutingKey: routingKey,
-		Timeout:    cfg.TimeoutSettings.Timeout,
-		Queue:      toQueueArguments(cfg.QueueSettings),
-		Retry:      toRetryArguments(cfg.BackOffConfig),
+		Protocol:          toProtocol(cfg.Protocol),
+		Resolver:          toResolver(cfg.Resolver),
+		RoutingKey:        routingKey,
+		RoutingAttributes: cfg.RoutingAttributes,
+		Timeout:           cfg.TimeoutSettings.Timeout,
+		Queue:             toQueueArguments(cfg.QueueSettings),
+		Retry:             toRetryArguments(cfg.BackOffConfig),
 
 		DebugMetrics: common.DefaultValue[loadbalancing.Arguments]().DebugMetrics,
 	}

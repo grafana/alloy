@@ -6,6 +6,7 @@ import (
 )
 
 type metrics struct {
+	// Intentionally undocumented: this metric belongs to the experimental debug-info proxy.
 	debugInfoDownstreamCalls *prometheus.CounterVec
 }
 

@@ -197,8 +197,8 @@ func TestUnmarshalDefault(t *testing.T) {
 				Transport: confignet.TransportTypeTCP,
 			},
 			CompressionAlgorithms: slices.Clone(otelcol.DefaultCompressionAlgorithms),
-			KeepAlivesEnabled:     true,
-			IdleTimeout:           1 * time.Minute,
+			KeepAlivesEnabled:     true,            //nolint:staticcheck // migrate to confighttp Keepalive
+			IdleTimeout:           1 * time.Minute, //nolint:staticcheck // migrate to confighttp Keepalive
 			ReadHeaderTimeout:     1 * time.Minute,
 			WriteTimeout:          30 * time.Second,
 		},

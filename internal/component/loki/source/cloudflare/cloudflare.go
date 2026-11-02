@@ -3,8 +3,10 @@ package cloudflare
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -34,6 +36,7 @@ func init() {
 type Arguments struct {
 	APIToken         alloytypes.Secret   `alloy:"api_token,attr"`
 	ZoneID           string              `alloy:"zone_id,attr"`
+	APIURL           string              `alloy:"api_url,attr,optional"`
 	Labels           map[string]string   `alloy:"labels,attr,optional"`
 	Workers          int                 `alloy:"workers,attr,optional"`
 	PullRange        time.Duration       `alloy:"pull_range,attr,optional"`
@@ -50,6 +53,7 @@ func (c Arguments) tailerConfig() *tailerConfig {
 	return &tailerConfig{
 		APIToken:         string(c.APIToken),
 		ZoneID:           c.ZoneID,
+		APIURL:           strings.TrimSuffix(c.APIURL, "/"),
 		Labels:           lbls,
 		Workers:          c.Workers,
 		PullRange:        model.Duration(c.PullRange),
@@ -61,6 +65,7 @@ func (c Arguments) tailerConfig() *tailerConfig {
 
 // DefaultArguments sets the configuration defaults.
 var DefaultArguments = Arguments{
+	APIURL:     defaultAPIURL,
 	Workers:    3,
 	PullRange:  1 * time.Minute,
 	FieldsType: FieldsTypeDefault,
@@ -75,6 +80,13 @@ func (c *Arguments) SetToDefault() {
 func (c *Arguments) Validate() error {
 	if c.PullRange < 0 {
 		return fmt.Errorf("pull_range must be a positive duration")
+	}
+	u, err := url.Parse(c.APIURL)
+	if err != nil {
+		return fmt.Errorf("api_url is not a valid URL: %w", err)
+	}
+	if (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return fmt.Errorf("api_url must be an absolute http or https URL, got %q", c.APIURL)
 	}
 	return nil
 }

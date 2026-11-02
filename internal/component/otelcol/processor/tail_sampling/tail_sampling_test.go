@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/grafana/dskit/backoff"
+	tsp "github.com/open-telemetry/opentelemetry-collector-contrib/processor/tailsamplingprocessor"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 
@@ -63,6 +64,26 @@ func TestBadAlloyConfigErrorMode(t *testing.T) {
 	require.ErrorContains(t, syntax.Unmarshal([]byte(exampleBadAlloyConfig), &args), "\"\" unknown error mode")
 }
 
+func TestBooleanAttributeInvertMatch(t *testing.T) {
+	cfg := `
+    policy {
+      name = "bool"
+      type = "boolean_attribute"
+      boolean_attribute {
+        key          = "k"
+        value        = true
+        invert_match = true
+      }
+    }
+    output {}
+`
+	var args Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+	got, err := args.Convert()
+	require.NoError(t, err)
+	require.True(t, got.(*tsp.Config).PolicyCfgs[0].BooleanAttributeCfg.InvertMatch)
+}
+
 func TestBadOtelConfig(t *testing.T) {
 	var exampleBadOtelConfig = `
     decision_wait               = "10s"
@@ -114,6 +135,7 @@ func TestBigConfig(t *testing.T) {
     sample_on_first_match = true
     drop_pending_traces_on_shutdown = true
     maximum_trace_size_bytes = 4096
+    num_shards = 4
     policy {
       name = "test-policy-1"
       type = "always_sample"

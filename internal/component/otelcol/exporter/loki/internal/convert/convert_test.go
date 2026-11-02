@@ -1,6 +1,7 @@
 package convert_test
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 	"time"
@@ -336,6 +337,40 @@ func TestConsumeLogs(t *testing.T) {
 			}
 			require.Equal(t, receivedEntries, len(tc.expectedEntries))
 		})
+	}
+}
+
+func TestConsumeLogsCanceledContextReleasesLock(t *testing.T) {
+	logger := util.TestAlloyLogger(t)
+	// The receiver has no reader, so ConsumeLogs blocks until the context ends.
+	receiver := loki.NewLogsReceiver(loki.WithChannel(make(chan loki.Entry)))
+	converter := convert.New(logger.Slog(), prometheus.NewRegistry(), []loki.LogsReceiver{receiver})
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	log := processortest.CreateTestLogs(`{
+		"resourceLogs": [{
+			"scopeLogs": [{
+				"log_records": [{
+					"timeUnixNano": "1581452773000000111",
+					"body": { "stringValue": "log message" }
+				}]
+			}]
+		}]
+	}`)
+	require.NoError(t, converter.ConsumeLogs(ctx, log))
+
+	done := make(chan struct{})
+	go func() {
+		converter.UpdateFanout(nil)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("UpdateFanout blocked after ConsumeLogs returned on a canceled context")
 	}
 }
 

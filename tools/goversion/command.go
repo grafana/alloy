@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -81,12 +80,10 @@ func pr2Command() *cobra.Command {
 			}
 
 			if err := updateGoModFiles(root, version); err != nil {
-				log.Fatalf("failed to update go.mod files: %s", err)
 				return fmt.Errorf("error updating go.mod files: %w", err)
 			}
 
 			if err := updateDockerFiles(root, version); err != nil {
-				log.Fatalf("failed to update Dockerfiles: %s", err)
 				return fmt.Errorf("error updating Dockerfiles: %w", err)
 			}
 
@@ -194,6 +191,7 @@ func updateBuildImageRefs(root string, refs *buildImageRefs) error {
 		"Dockerfile",
 		"Dockerfile.chisel",
 		".github/workflows/build.yml",
+		".github/workflows/check-windows-release-build.yml",
 		".github/workflows/release-publish-alloy-artifacts.yml",
 		".github/workflows/test_full.yml",
 		".github/workflows/publish-alloy-linux.yml",

@@ -52,6 +52,7 @@ You can use the following arguments with `otelcol.exporter.kafka`:
 | `partition_logs_by_trace_id`               | `bool`         | Whether to use the 16-bit hex string of the trace ID as the message partitioning key in log messages sent to Kafka.         | `false`              | no       |
 | `partition_traces_by_id`                   | `bool`         | Whether to include the trace ID as the message key in trace messages sent to Kafka.                                         | `false`              | no       |
 | `resolve_canonical_bootstrap_servers_only` | `bool`         | Whether to resolve then reverse-lookup broker IP addresses during startup. Deprecated: now a no-op after the upstream Kafka client migration from `sarama` to `franz-go`. | `false`              | no       |
+| `signal_header`                            | `bool`         | Whether to add an `otelcol.signal` header identifying the signal type to every outgoing Kafka record.                      | `false`              | no       |
 | `timeout`                                  | `duration`     | The timeout for every attempt to send data to the backend.                                                                  | `"5s"`               | no       |
 | `topic_from_attribute`                     | `string`       | A resource attribute whose value should be used as the message's topic.                                                     | `""`                 | no       |
 | `topic`                                    | `string`       | (Deprecated) Kafka topic to send to.                                                                                        | _See below_          | no       |
@@ -73,6 +74,8 @@ When `topic_from_attribute` is set, it will take precedence over the `topic` arg
 
 `include_metadata_keys` specifies metadata keys to propagate as Kafka message headers. If one or more keys aren't found in the metadata, they are ignored. The keys also partition the data before export if `sending_queue.batch` is defined.
 
+When `signal_header` is `true`, the `otelcol.signal` header key is reserved: it's an error to also include it in `include_metadata_keys`.
+
 [logs]: #logs
 [metrics]: #metrics
 [traces]: #traces
@@ -87,11 +90,11 @@ You can use the following blocks with `otelcol.exporter.kafka`:
 | ------------------------------------------------------- | ------------------------------------------------------------------------------ | -------- |
 | [`authentication`][authentication]                      | Configures authentication for connecting to Kafka brokers.                     | no       |
 | `authentication` > [`kerberos`][kerberos]               | Authenticates against Kafka brokers with Kerberos.                             | no       |
-| `authentication` > [`plaintext`][plaintext]             | Authenticates against Kafka brokers with plaintext.                            | no       |
+| `authentication` > [`plaintext`][plaintext]             | (Deprecated) Authenticates against Kafka brokers with plaintext.               | no       |
 | `authentication` > [`sasl`][sasl]                       | Authenticates against Kafka brokers with SASL.                                 | no       |
 | `authentication` > `sasl` > [`aws_msk`][aws_msk]        | Additional SASL parameters when using AWS_MSK_IAM_OAUTHBEARER.                 | no       |
-| `authentication` > [`tls`][tls]                         | Configures TLS for connecting to the Kafka brokers.                            | no       |
-| `authentication` > `tls` > [`tpm`][tpm]                 | Configures TPM for the TLS `key_file.                                          | no       |
+| `authentication` > [`tls`][tls]                         | (Deprecated) Configures TLS for connecting to the Kafka brokers.               | no       |
+| `authentication` > `tls` > [`tpm`][tpm]                 | (Deprecated) Configures TPM for the TLS `key_file`.                            | no       |
 | [`debug_metrics`][debug_metrics]                        | Configures the metrics which this component generates to monitor its state.    | no       |
 | [`logs`][logs]                                          | Configures how to send logs to Kafka brokers.                                  | no       |
 | [`metadata`][metadata]                                  | Configures how to retrieve metadata from Kafka brokers.                        | no       |
@@ -99,11 +102,12 @@ You can use the following blocks with `otelcol.exporter.kafka`:
 | [`metrics`][metrics]                                    | Configures how to send metrics to Kafka brokers.                               | no       |
 | [`producer`][producer]                                  | Kafka producer configuration,                                                  | no       |
 | `producer` > [`compression_params`][compression_params] | Configures the compression parameters for the Kafka producer.                  | no       |
-| [`record_partitioner`][record_partitioner]             | Selects the Kafka record partitioning strategy.                                | no       |
-| `record_partitioner` > [`sticky_key`][sticky_key]      | Configures the sticky-key partitioner.                                         | no       |
+| [`record_partitioner`][record_partitioner]              | Selects the Kafka record partitioning strategy.                                | no       |
+| `record_partitioner` > [`sticky_key`][sticky_key]       | Configures the sticky-key partitioning strategy.                               | no       |
 | [`retry_on_failure`][retry_on_failure]                  | Configures retry mechanism for failed requests.                                | no       |
 | [`sending_queue`][sending_queue]                        | Configures batching of data before sending.                                    | no       |
 | `sending_queue` > [`batch`][batch]                      | Configures batching requests based on a timeout and a minimum number of items. | no       |
+| `sending_queue` > `batch` > [`partition`][partition]    | Configures partitioning of batches by client metadata.                         | no       |
 | [`tls`][tls]                                            | Configures TLS for connecting to the Kafka brokers.                            | no       |
 | `tls` > [`tpm`][tpm]                                    | Configures TPM settings for the TLS `key_file`.                                | no       |
 | [`traces`][traces]                                      | Configures how to send traces to Kafka brokers.                                | no       |
@@ -123,6 +127,7 @@ You can use the following blocks with `otelcol.exporter.kafka`:
 [retry_on_failure]: #retry_on_failure
 [sending_queue]: #sending_queue
 [batch]: #batch
+[partition]: #partition
 [producer]: #producer
 [compression_params]: #compression_params
 [record_partitioner]: #record_partitioner
@@ -300,6 +305,12 @@ The `sending_queue` block configures queueing and batching for the exporter.
 The `batch` block configures batching requests based on a timeout and a minimum number of items.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `partition`
+
+The `partition` block configures how batches are partitioned by client metadata.
+
+{{< docs/shared lookup="reference/components/otelcol-queue-batch-partition-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

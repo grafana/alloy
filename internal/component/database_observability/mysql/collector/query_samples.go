@@ -21,9 +21,6 @@ import (
 
 const (
 	QuerySamplesCollector = "query_samples"
-	OP_QUERY_SAMPLE       = "query_sample"
-	OP_WAIT_EVENT         = "wait_event"
-	OP_WAIT_EVENT_V2      = "wait_event_v2"
 
 	cpuTimeField              = `, statements.CPU_TIME`
 	maxControlledMemoryField  = `, statements.MAX_CONTROLLED_MEMORY`
@@ -427,16 +424,16 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 		traceParent := database_observability.TryExtractTraceParent(row.SQLText.String)
 
 		logMessage := fmt.Sprintf(
-			`schema="%s" user="%s" client_host="%s" thread_id="%s" event_id="%s" end_event_id="%s" digest="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" mysql_errno="%d" returned_sqlstate="%s" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
-			row.Schema.String, row.User.String, row.Host.String, row.ThreadID.String,
-			row.StatementEventID.String, row.StatementEndEventID.String,
-			row.Digest.String,
+			`schema=%s user=%s client_host=%s thread_id=%s event_id=%s end_event_id=%s digest=%s rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" mysql_errno="%d" returned_sqlstate=%s max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
+			strconv.Quote(row.Schema.String), strconv.Quote(row.User.String), strconv.Quote(row.Host.String), strconv.Quote(row.ThreadID.String),
+			strconv.Quote(row.StatementEventID.String), strconv.Quote(row.StatementEndEventID.String),
+			strconv.Quote(row.Digest.String),
 			row.RowsExamined,
 			row.RowsSent,
 			row.RowsAffected,
 			row.Errors,
 			row.MysqlErrno.Int64,
-			row.ReturnedSQLState.String,
+			strconv.Quote(row.ReturnedSQLState.String),
 			row.MaxControlledMemory,
 			row.MaxTotalMemory,
 			cpuTime,
@@ -447,12 +444,12 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			logMessage += fmt.Sprintf(` traceparent=%s`, strconv.Quote(traceParent))
 		}
 		if c.disableQueryRedaction && row.SQLText.Valid {
-			logMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
+			logMessage += fmt.Sprintf(` sql_text=%s`, strconv.Quote(row.SQLText.String))
 		}
 		// message_text can embed literal values (e.g. a duplicate key value), so
 		// it is only emitted when query redaction is disabled, like sql_text.
 		if c.disableQueryRedaction && row.MessageText.Valid {
-			logMessage += fmt.Sprintf(` message_text="%s"`, row.MessageText.String)
+			logMessage += fmt.Sprintf(` message_text=%s`, strconv.Quote(row.MessageText.String))
 		}
 
 		if lastThreadIDLogged != row.ThreadID.String || lastDigestLogged != row.Digest.String || lastEventIDLogged != row.StatementEventID.String {
@@ -462,7 +459,7 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 				logging.LevelInfo,
-				OP_QUERY_SAMPLE,
+				database_observability.OP_QUERY_SAMPLE,
 				logMessage,
 				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 			)
@@ -493,24 +490,24 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 
 			if c.enablePreClassifiedWaitEvents {
 				waitV2LogMessage := fmt.Sprintf(
-					`schema="%s" user="%s" client_host="%s" thread_id="%s" digest="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_event_type="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
-					row.Schema.String,
-					row.User.String,
-					row.Host.String,
-					row.ThreadID.String,
-					row.Digest.String,
-					row.StatementEventID.String,
-					eventID,
-					endEventID,
-					eventName,
-					classifyMySQLWaitEventType(eventName),
-					objectName,
-					objectType,
+					`schema=%s user=%s client_host=%s thread_id=%s digest=%s event_id=%s wait_event_id=%s wait_end_event_id=%s wait_event_name=%s wait_event_type=%s wait_object_name=%s wait_object_type=%s wait_time="%fms"`,
+					strconv.Quote(row.Schema.String),
+					strconv.Quote(row.User.String),
+					strconv.Quote(row.Host.String),
+					strconv.Quote(row.ThreadID.String),
+					strconv.Quote(row.Digest.String),
+					strconv.Quote(row.StatementEventID.String),
+					strconv.Quote(eventID),
+					strconv.Quote(endEventID),
+					strconv.Quote(eventName),
+					strconv.Quote(classifyMySQLWaitEventType(eventName)),
+					strconv.Quote(objectName),
+					strconv.Quote(objectType),
 					waitTimeMs,
 				)
 				c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 					logging.LevelInfo,
-					OP_WAIT_EVENT_V2,
+					database_observability.OP_WAIT_EVENT_V2,
 					waitV2LogMessage,
 					int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 				)
@@ -520,23 +517,23 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 				}
 			} else {
 				waitLogMessage := fmt.Sprintf(
-					`schema="%s" user="%s" client_host="%s" thread_id="%s" digest="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
-					row.Schema.String,
-					row.User.String,
-					row.Host.String,
-					row.ThreadID.String,
-					row.Digest.String,
-					row.StatementEventID.String,
-					eventID,
-					endEventID,
-					eventName,
-					objectName,
-					objectType,
+					`schema=%s user=%s client_host=%s thread_id=%s digest=%s event_id=%s wait_event_id=%s wait_end_event_id=%s wait_event_name=%s wait_object_name=%s wait_object_type=%s wait_time="%fms"`,
+					strconv.Quote(row.Schema.String),
+					strconv.Quote(row.User.String),
+					strconv.Quote(row.Host.String),
+					strconv.Quote(row.ThreadID.String),
+					strconv.Quote(row.Digest.String),
+					strconv.Quote(row.StatementEventID.String),
+					strconv.Quote(eventID),
+					strconv.Quote(endEventID),
+					strconv.Quote(eventName),
+					strconv.Quote(objectName),
+					strconv.Quote(objectType),
 					waitTimeMs,
 				)
 				c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 					logging.LevelInfo,
-					OP_WAIT_EVENT,
+					database_observability.OP_WAIT_EVENT,
 					waitLogMessage,
 					int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 				)
@@ -620,21 +617,21 @@ func isMySQLReplicationWaitEvent(name string) bool {
 
 func classifyMySQLWaitEventType(waitEventName string) string {
 	if isMySQLReplicationWaitEvent(waitEventName) {
-		return "Replication Wait"
+		return database_observability.WAIT_EVENT_TYPE_REPLICATION
 	}
 	rest, ok := strings.CutPrefix(waitEventName, "wait/")
 	if !ok {
-		return "Other Wait"
+		return database_observability.WAIT_EVENT_TYPE_OTHER
 	}
 	switch {
 	case strings.HasPrefix(rest, "io/file/"), strings.HasPrefix(rest, "io/table/"):
-		return "IO Wait"
+		return database_observability.WAIT_EVENT_TYPE_IO
 	case strings.HasPrefix(rest, "io/socket/"):
-		return "Network Wait"
+		return database_observability.WAIT_EVENT_TYPE_NETWORK
 	case strings.HasPrefix(rest, "io/lock/"), strings.HasPrefix(rest, "lock/"):
-		return "Lock Wait"
+		return database_observability.WAIT_EVENT_TYPE_LOCK
 	case strings.HasPrefix(rest, "synch/"):
-		return "Engine Wait"
+		return database_observability.WAIT_EVENT_TYPE_ENGINE
 	}
-	return "Other Wait"
+	return database_observability.WAIT_EVENT_TYPE_OTHER
 }

@@ -139,6 +139,7 @@ func (c *Component) Update(args component.Arguments) error {
 		newArgs.SourceMaps,
 		c.sourceMapsMetrics,
 		nil, // Use default HTTP client.
+		nil, // Use default download HTTP client.
 		nil, // Use default FS implementation.
 	)
 	c.lazySourceMaps.SetInner(innerStore)

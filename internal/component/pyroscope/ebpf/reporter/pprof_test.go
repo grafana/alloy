@@ -136,6 +136,7 @@ func TestPPROFReporter_StringAndFunctionTablePopulation(t *testing.T) {
 		events,
 	)
 	require.Len(t, profiles, 1)
+	assert.Equal(t, 1, profiles[0].Samples)
 	assert.Equal(t, "service_a", profiles[0].Labels.Get("service_name"))
 	assert.Equal(t, pyroscope.ScopeNameEBPF, profiles[0].Labels.Get(pyroscope.LabelOtelScopeName))
 

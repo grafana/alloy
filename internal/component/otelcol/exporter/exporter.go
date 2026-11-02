@@ -157,6 +157,9 @@ func (e *Exporter) Run(ctx context.Context) error {
 // the underlying OpenTelemetry Collector exporter.
 func (e *Exporter) Update(args component.Arguments) error {
 	eargs := args.(Arguments)
+	if dl, ok := eargs.(otelcol.DeprecationLogger); ok {
+		dl.LogDeprecations(e.opts.Logger)
+	}
 
 	host := scheduler.NewHost(
 		scheduler.WithHostExtensions(eargs.Extensions()),

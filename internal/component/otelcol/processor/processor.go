@@ -141,6 +141,14 @@ func (p *Processor) Update(args component.Arguments) error {
 	p.updateMut.Lock()
 	defer p.updateMut.Unlock()
 	p.args = args.(Arguments)
+	if dl, ok := p.args.(otelcol.DeprecationLogger); ok {
+		dl.LogDeprecations(p.opts.Logger)
+	}
+	if sv, ok := p.args.(otelcol.StabilityValidator); ok {
+		if err := sv.ValidateStabilityLevel(p.opts.MinStability); err != nil {
+			return err
+		}
+	}
 
 	host := scheduler.NewHost(
 		scheduler.WithHostExtensions(p.args.Extensions()),
