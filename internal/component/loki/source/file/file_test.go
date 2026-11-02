@@ -20,6 +20,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/lokitest"
 	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -507,6 +508,7 @@ func TestComponentV2(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
 	lokitest.TestV2(t, func(t *testing.T, env lokitest.Env) {
+		// newFile creates a file with three lines, 21 bytes in total.
 		newFile := func(t *testing.T) *os.File {
 			f, err := os.CreateTemp(t.TempDir(), "example")
 			require.NoError(t, err)
@@ -527,6 +529,16 @@ func TestComponentV2(t *testing.T) {
 			}
 		}
 
+		// position returns the offset the component has recorded for path.
+		position := func(t *testing.T, ctrl *componenttest.Controller, path string) int64 {
+			c, err := ctrl.GetComponent()
+			require.NoError(t, err)
+
+			offset, err := c.(*Component).posFile.Get(path, model.LabelSet{"foo": "bar"}.String())
+			require.NoError(t, err)
+			return offset
+		}
+
 		t.Run("retries entries until forward_to is updated", func(t *testing.T) {
 			f := newFile(t)
 			defer f.Close()
@@ -534,11 +546,13 @@ func TestComponentV2(t *testing.T) {
 			stopped := env.NewReceiver(t)
 			stopped.Stop()
 
-			ctrl, _ := env.Run(t, "loki.source.file", args(f.Name(), stopped))
+			ctrl, stop := env.Run(t, "loki.source.file", args(f.Name(), stopped))
 
 			require.EventuallyWithT(t, func(c *assert.CollectT) {
 				require.GreaterOrEqual(c, stopped.ConsumeCalls(), 2)
 			}, 5*time.Second, 10*time.Millisecond)
+
+			require.Equal(t, int64(0), position(t, ctrl, f.Name()))
 
 			running := env.NewReceiver(t)
 			require.NoError(t, ctrl.Update(args(f.Name(), running)))
@@ -548,6 +562,9 @@ func TestComponentV2(t *testing.T) {
 			require.Equal(t, "line 2", entries[1].Line)
 			require.Equal(t, "line 3", entries[2].Line)
 			require.Empty(t, stopped.Entries())
+
+			stop()
+			require.Equal(t, int64(21), position(t, ctrl, f.Name()))
 		})
 
 		t.Run("does not lose entries when stopped while retrying", func(t *testing.T) {
@@ -564,7 +581,7 @@ func TestComponentV2(t *testing.T) {
 			stopped := env.NewReceiver(t)
 			stopped.Stop()
 
-			_, stop := env.Run(t, "loki.source.file", args(f.Name(), stopped), withDataPath)
+			ctrl, stop := env.Run(t, "loki.source.file", args(f.Name(), stopped), withDataPath)
 
 			require.EventuallyWithT(t, func(c *assert.CollectT) {
 				require.GreaterOrEqual(c, stopped.ConsumeCalls(), 2)
@@ -572,14 +589,18 @@ func TestComponentV2(t *testing.T) {
 
 			stop()
 			require.Empty(t, stopped.Entries())
+			require.Equal(t, int64(0), position(t, ctrl, f.Name()))
 
 			running := env.NewReceiver(t)
-			env.Run(t, "loki.source.file", args(f.Name(), running), withDataPath)
+			ctrl, stop = env.Run(t, "loki.source.file", args(f.Name(), running), withDataPath)
 
 			entries := running.Next(t, 3)
 			require.Equal(t, "line 1", entries[0].Line)
 			require.Equal(t, "line 2", entries[1].Line)
 			require.Equal(t, "line 3", entries[2].Line)
+
+			stop()
+			require.Equal(t, int64(21), position(t, ctrl, f.Name()))
 		})
 
 		t.Run("keeps delivering to a healthy consumer while another is stopped", func(t *testing.T) {
@@ -589,7 +610,7 @@ func TestComponentV2(t *testing.T) {
 			healthy, stopped := env.NewReceiver(t), env.NewReceiver(t)
 			stopped.Stop()
 
-			ctrl, _ := env.Run(t, "loki.source.file", args(f.Name(), healthy, stopped))
+			ctrl, stop := env.Run(t, "loki.source.file", args(f.Name(), healthy, stopped))
 
 			require.EventuallyWithT(t, func(c *assert.CollectT) {
 				require.GreaterOrEqual(c, stopped.ConsumeCalls(), 2)
@@ -612,6 +633,9 @@ func TestComponentV2(t *testing.T) {
 			require.Equal(t, "line 2", entries[len(entries)-2].Line)
 			require.Equal(t, "line 3", entries[len(entries)-1].Line)
 			require.Empty(t, stopped.Entries())
+
+			stop()
+			require.Equal(t, int64(21), position(t, ctrl, f.Name()))
 		})
 
 		t.Run("drops an entry on an unexpected error without retrying", func(t *testing.T) {
@@ -619,20 +643,27 @@ func TestComponentV2(t *testing.T) {
 			defer f.Close()
 
 			recv := env.NewReceiver(t)
+
+			ctrl, stop := env.Run(t, "loki.source.file", args(f.Name(), recv))
+
+			entries := recv.Next(t, 3)
+			require.Equal(t, "line 1", entries[0].Line)
+			require.Equal(t, "line 2", entries[1].Line)
+			require.Equal(t, "line 3", entries[2].Line)
+
 			recv.FailNext(errors.New("unexpected"))
-
-			env.Run(t, "loki.source.file", args(f.Name(), recv))
-
-			entries := recv.Next(t, 2)
-			require.Equal(t, "line 2", entries[0].Line)
-			require.Equal(t, "line 3", entries[1].Line)
-
 			_, err := f.WriteString("line 4\n")
 			require.NoError(t, err)
 
-			entries = recv.Next(t, 1)
-			require.Equal(t, "line 4", entries[0].Line)
-			require.Equal(t, 4, recv.ConsumeCalls())
+			require.EventuallyWithT(t, func(c *assert.CollectT) {
+				require.Equal(c, 4, recv.ConsumeCalls())
+			}, 5*time.Second, 10*time.Millisecond)
+
+			// Line 4 was dropped and is the last line, so the position only includes it if the
+			// tailer moved past it, otherwise it would stay at 21.
+			stop()
+			require.Equal(t, int64(28), position(t, ctrl, f.Name()))
+			require.Len(t, recv.Entries(), 3)
 		})
 	})
 }
