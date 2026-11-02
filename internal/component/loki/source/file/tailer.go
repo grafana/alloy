@@ -66,9 +66,9 @@ func sendToV2(logger *slog.Logger, c loki.Consumer) sendFunc {
 				}
 
 				if retry.NumRetries() == 0 {
-					logger.Warn("consumer stopped, retrying until it accepts the entry")
+					logger.Warn("failed to send entry, retrying until it is accepted", "err", err)
 				} else {
-					logger.Debug("consumer stopped, still retrying", "retries", retry.NumRetries())
+					logger.Debug("failed to send entry, still retrying", "err", err, "retries", retry.NumRetries())
 				}
 
 				retry.Wait()
