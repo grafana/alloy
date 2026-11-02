@@ -233,34 +233,28 @@ func resolveExporterArgs(userBlock *PrometheusExporterArguments) exporter_postgr
 }
 
 func applyExporterExclusions(exporterArgs exporter_postgres.Arguments, excludeDatabases, excludeUsers []string, currentUser sql.NullString) exporter_postgres.Arguments {
-	autoDiscoveryExcludeDatabases := database_observability.ResolveExclusionOverride(
+	alwaysExcludedDatabases := collector.AlwaysExcludedDatabases()
+	exporterArgs.AutoDiscovery.DatabaseDenylist = database_observability.ResolveExclusions(
+		alwaysExcludedDatabases,
 		excludeDatabases,
 		exporterArgs.AutoDiscovery.DatabaseDenylist,
 	)
-	exporterArgs.AutoDiscovery.DatabaseDenylist = database_observability.MergeExclusions(
-		collector.AlwaysExcludedDatabases(),
-		autoDiscoveryExcludeDatabases,
-	)
 
-	statStatementsExcludeDatabases := database_observability.ResolveExclusionOverride(
+	exporterArgs.StatStatementFlags.ExcludeDatabases = database_observability.ResolveExclusions(
+		alwaysExcludedDatabases,
 		excludeDatabases,
 		exporterArgs.StatStatementFlags.ExcludeDatabases,
 	)
-	exporterArgs.StatStatementFlags.ExcludeDatabases = database_observability.MergeExclusions(
-		collector.AlwaysExcludedDatabases(),
-		statStatementsExcludeDatabases,
-	)
 
-	statStatementsExcludeUsers := database_observability.ResolveExclusionOverride(
-		excludeUsers,
-		exporterArgs.StatStatementFlags.ExcludeUsers,
-	)
+	if exporterArgs.StatStatementFlags.ExcludeUsers != nil {
+		excludeUsers = exporterArgs.StatStatementFlags.ExcludeUsers
+	}
 	var currentUserExclusion []string
 	if currentUser.Valid {
 		currentUserExclusion = []string{currentUser.String}
 	}
 	exporterArgs.StatStatementFlags.ExcludeUsers = database_observability.MergeExclusions(
-		statStatementsExcludeUsers,
+		excludeUsers,
 		currentUserExclusion,
 	)
 	return exporterArgs

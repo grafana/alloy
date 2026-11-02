@@ -1,9 +1,6 @@
 package database_observability
 
-import (
-	"slices"
-	"strings"
-)
+import "strings"
 
 // MergeExclusions merges exclusion lists in order and removes duplicates.
 func MergeExclusions(exclusionLists ...[]string) []string {
@@ -21,12 +18,14 @@ func MergeExclusions(exclusionLists ...[]string) []string {
 	return merged
 }
 
-// ResolveExclusionOverride returns the override when it is set, otherwise it returns the inherited exclusions.
-func ResolveExclusionOverride(inherited, override []string) []string {
+// ResolveExclusions merges mandatory exclusions with the override when it is set,
+// otherwise with the inherited exclusions.
+func ResolveExclusions(mandatory, inherited, override []string) []string {
+	effective := inherited
 	if override != nil {
-		return slices.Clone(override)
+		effective = override
 	}
-	return slices.Clone(inherited)
+	return MergeExclusions(mandatory, effective)
 }
 
 // BuildExclusionClause builds a SQL IN clause from a list of items.

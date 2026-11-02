@@ -879,13 +879,10 @@ func resolveExporterArgs(userBlock *PrometheusExporterArguments, excludeSchemas 
 	if exporterArgs.PerfSchemaEventsStatements.Limit == 0 {
 		exporterArgs.PerfSchemaEventsStatements.Limit = 100
 	}
-	excludeSchemas = database_observability.ResolveExclusionOverride(
-		excludeSchemas,
-		exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas,
-	)
-	exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas = database_observability.MergeExclusions(
+	exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas = database_observability.ResolveExclusions(
 		collector.AlwaysExcludedSchemas(),
 		excludeSchemas,
+		exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas,
 	)
 	return exporterArgs
 }
