@@ -184,7 +184,11 @@ func (a *PrometheusExporterArguments) Validate() error {
 
 const eventsStatementsCollector = "perf_schema.eventsstatements"
 
-var defaultEnabledCollectors = []string{eventsStatementsCollector}
+// defaultEnabledCollectors is a replacement allowlist, not additive. Besides
+// events statements, it holds the collectors that Database Observability reads:
+// global_status (connections), global_variables (server settings) and
+// slave_status (replication).
+var defaultEnabledCollectors = []string{eventsStatementsCollector, "global_status", "global_variables", "slave_status"}
 
 func defaultArguments() Arguments {
 	return Arguments{
