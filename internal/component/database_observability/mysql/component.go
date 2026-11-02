@@ -174,6 +174,9 @@ type PrometheusExporterArguments exporter_mysql.Arguments
 func (a *PrometheusExporterArguments) SetToDefault() {
 	args := exporter_mysql.DefaultArguments
 	args.PerfSchemaEventsStatements.Limit = 100
+	// The query_details collector already sends the statement text as logs, so
+	// a digest_text label would only add cardinality to the statement metrics.
+	args.PerfSchemaEventsStatements.TextLimit = 0
 	*a = PrometheusExporterArguments(args)
 }
 
@@ -870,6 +873,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 func resolveExporterArgs(userBlock *PrometheusExporterArguments, excludeSchemas []string) exporter_mysql.Arguments {
 	exporterArgs := exporter_mysql.DefaultArguments
 	exporterArgs.PerfSchemaEventsStatements.Limit = 100
+	exporterArgs.PerfSchemaEventsStatements.TextLimit = 0
 	if userBlock != nil {
 		exporterArgs = exporter_mysql.Arguments(*userBlock)
 	}

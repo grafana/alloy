@@ -1647,6 +1647,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
 		assert.Equal(t, []string{eventsStatementsCollector}, exporterArgs.SetCollectors)
 		assert.Equal(t, 100, exporterArgs.PerfSchemaEventsStatements.Limit)
+		assert.Equal(t, 0, exporterArgs.PerfSchemaEventsStatements.TextLimit)
 	})
 
 	t.Run("block present with sub-block settings but set collectors untouched", func(t *testing.T) {
@@ -1664,6 +1665,22 @@ func Test_resolveExporterArgs(t *testing.T) {
 		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
 		assert.Equal(t, []string{eventsStatementsCollector}, exporterArgs.SetCollectors)
 		assert.Equal(t, 50, exporterArgs.PerfSchemaEventsStatements.Limit)
+		assert.Equal(t, 0, exporterArgs.PerfSchemaEventsStatements.TextLimit)
+	})
+
+	t.Run("explicit text_limit is kept", func(t *testing.T) {
+		cfg := `data_source_name = "user:pass@tcp(localhost:3306)/db"
+			forward_to = []
+			prometheus_exporter {
+				perf_schema.eventsstatements {
+					text_limit = 120
+				}
+			}
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
+		assert.Equal(t, 120, exporterArgs.PerfSchemaEventsStatements.TextLimit)
 	})
 
 	t.Run("explicit enabled_collectors wins outright", func(t *testing.T) {
