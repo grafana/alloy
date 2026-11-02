@@ -16,6 +16,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/util"
@@ -65,10 +66,8 @@ func sendToV2(logger *slog.Logger, c loki.Consumer) sendFunc {
 					retry = backoff.New(ctx, consumerBackoffConfig)
 				}
 
-				if retry.NumRetries() == 0 {
-					logger.Warn("failed to send entry, retrying until it is accepted", "err", err)
-				} else {
-					logger.Debug("failed to send entry, still retrying", "err", err, "retries", retry.NumRetries())
+				if source.AllowRetryWarning() {
+					logger.Warn("failed to send entry, retrying until it is accepted", "err", err, "retries", retry.NumRetries())
 				}
 
 				retry.Wait()
