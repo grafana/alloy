@@ -35,8 +35,8 @@ func sendToV1(recv loki.LogsReceiver) sendFunc {
 }
 
 var consumerBackoffConfig = backoff.Config{
-	MinBackoff: 50 * time.Millisecond,
-	MaxBackoff: 10 * time.Second,
+	MinBackoff: 1 * time.Millisecond,
+	MaxBackoff: 1 * time.Second,
 }
 
 func sendToV2(logger *slog.Logger, c loki.Consumer) sendFunc {
