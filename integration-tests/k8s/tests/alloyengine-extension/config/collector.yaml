@@ -3,15 +3,17 @@ extensions:
     endpoint: 0.0.0.0:13133
   alloyengine:
     config:
-      path: /etc/alloy/alloy-config.alloy
+      path: /etc/alloy/config.alloy
     flags:
       stability.level: experimental
 
+# The collector needs a pipeline to start, but the test only exercises the one
+# the alloyengine extension runs in config.alloy. Nothing sends here.
 receivers:
   otlp:
     protocols:
       http:
-        endpoint: 0.0.0.0:14318 # unused because test uses alloyengine extension
+        endpoint: 0.0.0.0:14318
 
 exporters:
   debug:

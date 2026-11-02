@@ -171,7 +171,12 @@ func New(l *slog.Logger, c *Config) (integrations.Integration, error) {
 		},
 	}
 
-	rm, err := manager.New(cfg, memoryStorage, sysFs, manager.HousekeepingConfigFlags, includedMetrics, &collectorHTTPClient, c.RawCgroupPrefixAllowlist, c.EnvMetadataAllowlist, c.PerfEventsConfig, time.Duration(c.ResctrlInterval))
+	housekeepingConfig := manager.HousekeepingConfigFlags
+	housekeepingConfig.BaseInterval = &c.HousekeepingInterval
+	housekeepingConfig.Interval = &c.MaxHousekeepingInterval
+	housekeepingConfig.AllowDynamic = &c.AllowDynamicHousekeeping
+
+	rm, err := manager.New(cfg, memoryStorage, sysFs, housekeepingConfig, includedMetrics, &collectorHTTPClient, c.RawCgroupPrefixAllowlist, c.EnvMetadataAllowlist, c.PerfEventsConfig, time.Duration(c.ResctrlInterval))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a manager: %w", err)
 	}

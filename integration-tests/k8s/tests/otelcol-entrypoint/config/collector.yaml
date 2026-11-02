@@ -2,6 +2,8 @@ extensions:
   health_check:
     endpoint: 0.0.0.0:13133
 
+# A plain collector pipeline, with no alloyengine extension. otel-gen sends
+# here through the alloy-otel Service.
 receivers:
   otlp:
     protocols:
@@ -9,16 +11,18 @@ receivers:
         endpoint: 0.0.0.0:4318
 
 processors:
+  # Only this pipeline adds the label the assertions select on, so a metric
+  # found in Mimir went through it.
   attributes:
     actions:
-      - key: test_name
-        value: otel_metrics_basic
+      - key: alloy_test_name
+        value: otelcol-entrypoint
         action: insert
   batch:
 
 exporters:
   otlphttp:
-    metrics_endpoint: http://mimir:9009/otlp/v1/metrics
+    endpoint: http://mimir:9009/otlp
     tls:
       insecure: true
 
