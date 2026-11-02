@@ -75,6 +75,7 @@ func toKafkaExporter(cfg *kafkaexporter.Config) *kafka.Arguments {
 		IncludeMetadataKeys:                  cfg.IncludeMetadataKeys,
 		Timeout:                              cfg.TimeoutSettings.Timeout,
 		ConnIdleTimeout:                      cfg.ClientConfig.ConnIdleTimeout,
+		DialTimeout:                          cfg.ClientConfig.DialTimeout,
 		Logs:                                 toKafkaSignalConfig(cfg.Logs),
 		Metrics:                              toKafkaSignalConfig(cfg.Metrics),
 		Traces:                               toKafkaSignalConfig(cfg.Traces),

@@ -126,6 +126,7 @@ You can use the following arguments with `prometheus.exporter.cadvisor`:
 
 | Name                           | Type           | Description                                                                                                         | Default                             | Required |
 | ------------------------------ | -------------- | ------------------------------------------------------------------------------------------------------------------- | ----------------------------------- | -------- |
+| `allow_dynamic_housekeeping`   | `bool`         | Let the housekeeping interval grow for containers whose stats don't change.                                         | `true`                              | no       |
 | `allowlisted_container_labels` | `list(string)` | Allowlist of container labels to convert to Prometheus labels.                                                      | `[]`                                | no       |
 | `containerd_host`              | `string`       | The `containerd` endpoint.                                                                                          | `"/run/containerd/containerd.sock"` | no       |
 | `containerd_namespace`         | `string`       | The `containerd` namespace.                                                                                         | `"k8s.io"`                          | no       |
@@ -138,6 +139,8 @@ You can use the following arguments with `prometheus.exporter.cadvisor`:
 | `docker_tls_key`               | `string`       | Path to private key for TLS connection to docker.                                                                   | `"key.pem"`                         | no       |
 | `enabled_metrics`              | `list(string)` | List of metrics to enable. If set, this list overrides `disabled_metrics`.                                          | `[]`                                | no       |
 | `env_metadata_allowlist`       | `list(string)` | Allowlist of environment variable keys, matched by prefix, to collect for containers.                               | `[]`                                | no       |
+| `housekeeping_interval`        | `duration`     | Interval between stats collections for each container.                                                              | `"1s"`                              | no       |
+| `max_housekeeping_interval`    | `duration`     | Maximum interval between stats collections for each container when `allow_dynamic_housekeeping` is `true`.          | `"60s"`                             | no       |
 | `perf_events_config`           | `string`       | Path to a JSON file containing the configuration of performance events to measure.                                  | `""`                                | no       |
 | `raw_cgroup_prefix_allowlist`  | `list(string)` | List of `cgroup` path prefixes to collect, even when you set `docker_only`.                                         | `[]`                                | no       |
 | `resctrl_interval`             | `duration`     | Interval to update `resctrl mon` groups.                                                                            | `"0"`                               | no       |
@@ -146,6 +149,16 @@ You can use the following arguments with `prometheus.exporter.cadvisor`:
 | `use_docker_tls`               | `bool`         | Use TLS to connect to docker.                                                                                       | `false`                             | no       |
 
 For `allowlisted_container_labels` to take effect, set `store_container_labels` to `false`.
+
+`housekeeping_interval` controls how often {{< param "PRODUCT_NAME" >}} collects stats for each container.
+Increasing it reduces CPU usage on hosts with many containers.
+Metrics built from container stats use the timestamp of the collection that produced them, so a longer interval produces fewer distinct samples.
+Set `housekeeping_interval` at or below the scrape interval of the component that scrapes this exporter.
+When `allow_dynamic_housekeeping` is `true`, the interval doubles after each collection where the container stats don't change, up to `max_housekeeping_interval`.
+When the stats change, the interval resets to `housekeeping_interval`.
+When `allow_dynamic_housekeeping` is `false`, the interval stays at `housekeeping_interval` and `max_housekeeping_interval` has no effect.
+`housekeeping_interval` must be greater than `0`.
+When `allow_dynamic_housekeeping` is `true`, `max_housekeeping_interval` must be greater than or equal to `housekeeping_interval`.
 
 If a container uses the `overlayfs` storage driver, set the `containerd_host` attribute correctly to retrieve its metrics.
 

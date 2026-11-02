@@ -172,7 +172,12 @@ type HealthCheckArguments struct {
 type PrometheusExporterArguments exporter_mysql.Arguments
 
 func (a *PrometheusExporterArguments) SetToDefault() {
-	*a = PrometheusExporterArguments(exporter_mysql.DefaultArguments)
+	args := exporter_mysql.DefaultArguments
+	args.PerfSchemaEventsStatements.Limit = 100
+	// The query_details collector already sends the statement text as logs, so
+	// a digest_text label would only add cardinality to the statement metrics.
+	args.PerfSchemaEventsStatements.TextLimit = 0
+	*a = PrometheusExporterArguments(args)
 }
 
 func (a *PrometheusExporterArguments) Validate() error {
@@ -180,14 +185,22 @@ func (a *PrometheusExporterArguments) Validate() error {
 	return args.Validate()
 }
 
+const eventsStatementsCollector = "perf_schema.eventsstatements"
+
+// defaultEnabledCollectors is a replacement allowlist, not additive. Besides
+// events statements, it holds the collectors that Database Observability reads:
+// global_status (connections), global_variables (server settings) and
+// slave_status (replication).
+var defaultEnabledCollectors = []string{eventsStatementsCollector, "global_status", "global_variables", "slave_status"}
+
 func defaultArguments() Arguments {
 	return Arguments{
-		ExcludeSchemas:                database_observability.DefaultExcludedSchemas(),
+		ExcludeSchemas:                defaultExcludedSchemas(),
 		AllowUpdatePerfSchemaSettings: false,
 
 		QueryDetailsArguments: QueryDetailsArguments{
 			CollectInterval: 1 * time.Minute,
-			StatementsLimit: 250,
+			StatementsLimit: 100,
 		},
 
 		SchemaDetailsArguments: SchemaDetailsArguments{
@@ -215,12 +228,13 @@ func defaultArguments() Arguments {
 		},
 
 		QuerySamplesArguments: QuerySamplesArguments{
-			CollectInterval:             10 * time.Second,
-			DisableQueryRedaction:       false,
-			AutoEnableSetupConsumers:    false,
-			SetupConsumersCheckInterval: 1 * time.Hour,
-			SampleMinDuration:           0 * time.Millisecond,
-			WaitEventMinDuration:        1 * time.Microsecond,
+			CollectInterval:               10 * time.Second,
+			DisableQueryRedaction:         false,
+			AutoEnableSetupConsumers:      false,
+			SetupConsumersCheckInterval:   1 * time.Hour,
+			SampleMinDuration:             0 * time.Millisecond,
+			WaitEventMinDuration:          1 * time.Microsecond,
+			EnablePreClassifiedWaitEvents: true,
 		},
 		HealthCheckArguments: HealthCheckArguments{
 			CollectInterval: 1 * time.Hour,
@@ -494,10 +508,45 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 
 	c.args = newArgs
+	c.warnOnStatementLimitMismatch()
 	c.fanout.UpdateChildren(c.args.ForwardTo)
 
 	c.replaceInstances(instances)
 	return nil
+}
+
+func (c *Component) warnOnStatementLimitMismatch() {
+	queryDetailsEnabled := enableOrDisableCollectors(c.args)[collector.QueryDetailsCollector]
+	if !queryDetailsEnabled {
+		return
+	}
+
+	usesEmbeddedMySQLExporter := len(c.args.Targets) == 0
+	if !usesEmbeddedMySQLExporter {
+		return
+	}
+
+	exporterArgs := resolveExporterArgs(c.args.PrometheusExporter, c.args.ExcludeSchemas)
+	var eventsStatementsEnabled bool
+	for _, scraper := range mysqld_exporter.GetScrapers(exporterArgs.Convert()) {
+		if scraper.Name() == eventsStatementsCollector {
+			eventsStatementsEnabled = true
+		}
+	}
+
+	if !eventsStatementsEnabled {
+		return
+	}
+
+	queryDetailsLimit := c.args.QueryDetailsArguments.StatementsLimit
+	eventsStatementsLimit := exporterArgs.PerfSchemaEventsStatements.Limit
+	if queryDetailsLimit != eventsStatementsLimit {
+		c.opts.Logger.Warn(
+			"query_details and prometheus_exporter perf_schema.eventsstatements limits differ",
+			"query_details_limit", queryDetailsLimit,
+			"eventsstatements_limit", eventsStatementsLimit,
+		)
+	}
 }
 
 // buildInstances constructs, but doesn't connect, one dbInstance per config.
@@ -781,10 +830,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	}
 
 	if len(inst.cfg.targets) == 0 {
-		exporterArgs := exporter_mysql.DefaultArguments
-		if c.args.PrometheusExporter != nil {
-			exporterArgs = exporter_mysql.Arguments(*c.args.PrometheusExporter)
-		}
+		exporterArgs := resolveExporterArgs(c.args.PrometheusExporter, c.args.ExcludeSchemas)
 		exporterCfg := exporterArgs.Convert()
 		scrapers := mysqld_exporter.GetScrapers(exporterCfg)
 		exporter := mysqld_collector.New(context.Background(), string(inst.cfg.dsn), scrapers, c.opts.Logger,
@@ -826,6 +872,38 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	}
 
 	return nil
+}
+
+func resolveExporterArgs(userBlock *PrometheusExporterArguments, excludeSchemas []string) exporter_mysql.Arguments {
+	exporterArgs := exporter_mysql.DefaultArguments
+	exporterArgs.PerfSchemaEventsStatements.Limit = 100
+	exporterArgs.PerfSchemaEventsStatements.TextLimit = 0
+	if userBlock != nil {
+		exporterArgs = exporter_mysql.Arguments(*userBlock)
+	}
+	if len(exporterArgs.SetCollectors) == 0 {
+		exporterArgs.SetCollectors = defaultEnabledCollectors
+	}
+	if exporterArgs.PerfSchemaEventsStatements.Limit == 0 {
+		exporterArgs.PerfSchemaEventsStatements.Limit = 100
+	}
+	exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas = database_observability.ResolveExclusions(
+		collector.AlwaysExcludedSchemas(),
+		excludeSchemas,
+		exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas,
+	)
+	return exporterArgs
+}
+
+func defaultExcludedSchemas() []string {
+	return []string{
+		"alloydbadmin",
+		"alloydbmetadata",
+		"azure_maintenance",
+		"azure_sys",
+		"cloudsqladmin",
+		"rdsadmin",
+	}
 }
 
 func enableOrDisableCollectors(a Arguments) map[string]bool {
