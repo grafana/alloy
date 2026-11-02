@@ -4,7 +4,6 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -105,7 +104,7 @@ func (k *Kafka) Install(_ *harness.TestContext) (err error) {
 		// Producing before every partition has a leader fails with "not the
 		// leader for some partition".
 		if err := util.Step("wait for kafka topic "+topic+" leaders", func() error {
-			return k.waitForLeaders(topic, partitions)
+			return k.waitForLeaders(topic)
 		}); err != nil {
 			return err
 		}
@@ -113,52 +112,29 @@ func (k *Kafka) Install(_ *harness.TestContext) (err error) {
 	return nil
 }
 
-// waitForLeaders polls the topic description until it lists partitions
-// partitions, each with a leader.
-func (k *Kafka) waitForLeaders(topic string, partitions int) error {
+// waitForLeaders polls until no partition of topic is without a leader.
+// --unavailable-partitions lists only leaderless partitions, so empty output
+// means every partition has one.
+func (k *Kafka) waitForLeaders(topic string) error {
 	deadline := time.Now().Add(kafkaLeaderTimeout)
-	var lastErr error
+	var last string
 	for time.Now().Before(deadline) {
 		out, err := harness.RunCommandOutput("kubectl",
 			"--namespace", k.opts.Namespace, "exec", kafkaDeployment, "--",
 			kafkaBinDir+"/kafka-topics.sh",
 			"--bootstrap-server", kafkaBootstrap,
-			"--describe", "--topic", topic,
+			"--describe", "--topic", topic, "--unavailable-partitions",
 		)
-		if err == nil {
-			err = checkLeaders(out, partitions)
-		}
-		if err == nil {
+		if err == nil && strings.TrimSpace(out) == "" {
 			return nil
 		}
-		lastErr = err
+		last = out
+		if err != nil {
+			last = err.Error()
+		}
 		time.Sleep(kafkaLeaderPollInterval)
 	}
-	return fmt.Errorf("timed out after %s waiting for leaders of kafka topic %s: %w", kafkaLeaderTimeout, topic, lastErr)
-}
-
-// checkLeaders parses `kafka-topics.sh --describe` output, which has one line
-// per partition such as "Topic: t\tPartition: 0\tLeader: 1\tReplicas: 1 ...".
-func checkLeaders(describe string, partitions int) error {
-	var withLeader int
-	for _, line := range strings.Split(describe, "\n") {
-		fields := strings.Fields(line)
-		if !slices.Contains(fields, "Partition:") {
-			continue
-		}
-		i := slices.Index(fields, "Leader:")
-		if i < 0 || i+1 >= len(fields) {
-			return fmt.Errorf("no leader field in %q", line)
-		}
-		if leader, err := strconv.Atoi(fields[i+1]); err != nil || leader < 0 {
-			return fmt.Errorf("partition has no leader: %q", line)
-		}
-		withLeader++
-	}
-	if withLeader != partitions {
-		return fmt.Errorf("found %d of %d partitions with a leader", withLeader, partitions)
-	}
-	return nil
+	return fmt.Errorf("timed out after %s waiting for leaders of kafka topic %s: %s", kafkaLeaderTimeout, topic, last)
 }
 
 func (k *Kafka) Cleanup() {
