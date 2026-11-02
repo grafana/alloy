@@ -16,14 +16,17 @@ const QueryMarker = "/* " + AppName + " */"
 const PingQuery = "SELECT " + QueryMarker + " 1"
 
 // selectServerInfo returns a stable identifier for the server instance plus
-// its product version and engine edition, used to derive a server_id label and
-// to expose version/edition metadata on metrics.
+// its product version, product level, and engine edition, used to derive a
+// server_id label and to expose version/edition metadata on metrics.
 const SelectServerInfo = `SELECT ` + QueryMarker + `
     CONVERT(NVARCHAR(128), SERVERPROPERTY('ServerName')) AS server_name,
     CONVERT(NVARCHAR(128), SERVERPROPERTY('MachineName')) AS machine_name,
     CONVERT(NVARCHAR(128), SERVERPROPERTY('InstanceName')) AS instance_name,
     CONVERT(NVARCHAR(128), SERVERPROPERTY('ProductVersion')) AS product_version,
-    CONVERT(INT, SERVERPROPERTY('EngineEdition')) AS engine_edition`
+    CONVERT(NVARCHAR(128), SERVERPROPERTY('ProductLevel')) AS product_level,
+    CONVERT(NVARCHAR(128), SERVERPROPERTY('ProductBuild')) AS product_build,
+    CONVERT(INT, SERVERPROPERTY('EngineEdition')) AS engine_edition,
+    CONVERT(NVARCHAR(128), (SELECT compatibility_level FROM sys.databases WHERE database_id = DB_ID())) AS compatibility_level`
 
 const SelectOriginalLogin = `SELECT ` + QueryMarker + ` ORIGINAL_LOGIN()`
 
@@ -361,3 +364,171 @@ const selectDatabaseMaxDegreeOfParallelism = `
 SELECT ` + QueryMarker + ` CONVERT(float, value)
 FROM sys.database_scoped_configurations
 WHERE name = N'MAXDOP'`
+
+const selectServerMetrics = `
+SELECT ` + QueryMarker + `
+	CONVERT(float, si.process_user_time_ms) / 1000.0 AS process_user_cpu_seconds,
+	CONVERT(float, si.process_kernel_time_ms) / 1000.0 AS process_kernel_cpu_seconds,
+	CONVERT(float, si.ms_ticks - si.sqlserver_start_time_ms_ticks) / 1000.0 AS uptime_seconds,
+	CONVERT(float, si.cpu_count) AS logical_cpu_count,
+	CONVERT(float, si.committed_kb) * 1024.0 AS memory_manager_committed_bytes,
+	CONVERT(float, si.committed_target_kb) * 1024.0 AS memory_manager_target_bytes,
+	CONVERT(float, COALESCE(sm.total_physical_memory_kb, 0)) * 1024.0 AS host_physical_memory_total_bytes,
+	CONVERT(float, COALESCE(sm.available_physical_memory_kb, 0)) * 1024.0 AS host_physical_memory_available_bytes,
+	CONVERT(float, COALESCE(sm.total_page_file_kb, 0)) * 1024.0 AS host_commit_limit_bytes,
+	CONVERT(float, COALESCE(sm.available_page_file_kb, 0)) * 1024.0 AS host_commit_available_bytes,
+	CONVERT(float, COALESCE(sm.system_high_memory_signal_state, 0)) AS host_high_memory_signal,
+	CONVERT(float, COALESCE(sm.system_low_memory_signal_state, 0)) AS host_low_memory_signal,
+	CONVERT(float, pm.physical_memory_in_use_kb) * 1024.0 AS process_resident_memory_bytes,
+	CONVERT(float, pm.virtual_address_space_committed_kb) * 1024.0 AS process_virtual_memory_bytes,
+	CONVERT(float, pm.available_commit_limit_kb) * 1024.0 AS process_available_commit_memory_bytes,
+	CONVERT(float, pm.memory_utilization_percentage) / 100.0 AS process_committed_memory_resident_ratio,
+	CONVERT(float, pm.page_fault_count) AS process_page_faults,
+	CONVERT(float, pm.process_physical_memory_low) AS process_physical_memory_low,
+	CONVERT(float, pm.process_virtual_memory_low) AS process_virtual_memory_low
+FROM sys.dm_os_sys_info AS si
+OUTER APPLY (
+	SELECT TOP (1)
+		total_physical_memory_kb,
+		available_physical_memory_kb,
+		total_page_file_kb,
+		available_page_file_kb,
+		system_high_memory_signal_state,
+		system_low_memory_signal_state
+	FROM sys.dm_os_sys_memory
+) AS sm
+CROSS JOIN sys.dm_os_process_memory AS pm`
+
+const selectUserSessions = `
+SELECT ` + QueryMarker + `
+	CONVERT(float, COALESCE(SUM(CASE WHEN status = N'running' THEN 1 ELSE 0 END), 0)) AS running_sessions,
+	CONVERT(float, COALESCE(SUM(CASE WHEN status = N'sleeping' THEN 1 ELSE 0 END), 0)) AS sleeping_sessions,
+	CONVERT(float, COALESCE(SUM(CASE WHEN status = N'dormant' THEN 1 ELSE 0 END), 0)) AS dormant_sessions,
+	CONVERT(float, COALESCE(SUM(CASE WHEN status = N'preconnect' THEN 1 ELSE 0 END), 0)) AS preconnect_sessions,
+	CONVERT(int, (SELECT value_in_use FROM sys.configurations WHERE name = N'user connections')) AS configured_session_limit
+FROM sys.dm_exec_sessions
+WHERE is_user_process = 1
+	AND (@exclude_current_user = 0 OR program_name IS NULL OR program_name <> @collector_app_name)`
+
+const selectManagedInstanceMetrics = `
+SELECT ` + QueryMarker + `
+	CONVERT(float, cpu_rate) / 100.0 AS process_cpu_limit,
+	CONVERT(float, process_memory_limit_mb) * 1048576.0 AS process_memory_limit_bytes,
+	CONVERT(float, process_memory_limit_mb - non_sos_mem_gap_mb) * 1048576.0 AS sos_memory_target_bytes
+FROM sys.dm_os_job_object`
+
+const selectAzureSQLDatabaseResourceMetrics = `
+SELECT ` + QueryMarker + ` TOP (1)
+	end_time,
+	CONVERT(float, avg_cpu_percent) / 100.0 AS database_cpu_utilization_ratio,
+	CONVERT(float, avg_memory_usage_percent) / 100.0 AS database_memory_utilization_ratio,
+	CONVERT(float, avg_data_io_percent) / 100.0 AS database_data_io_utilization_ratio,
+	CONVERT(float, avg_log_write_percent) / 100.0 AS database_log_write_utilization_ratio,
+	CONVERT(float, max_worker_percent) / 100.0 AS database_worker_utilization_ratio,
+	CONVERT(float, max_session_percent) / 100.0 AS database_session_utilization_ratio,
+	CONVERT(float, avg_instance_cpu_percent) / 100.0 AS instance_cpu_utilization_ratio,
+	CONVERT(float, avg_instance_memory_percent) / 100.0 AS instance_memory_utilization_ratio
+FROM sys.dm_db_resource_stats
+ORDER BY end_time DESC`
+
+const selectAzureSQLDatabaseUserSessions = `
+SELECT ` + QueryMarker + `
+	CONVERT(float, COALESCE(SUM(CASE WHEN status = N'running' THEN 1 ELSE 0 END), 0)) AS running_sessions,
+	CONVERT(float, COALESCE(SUM(CASE WHEN status = N'sleeping' THEN 1 ELSE 0 END), 0)) AS sleeping_sessions,
+	CONVERT(float, COALESCE(SUM(CASE WHEN status = N'dormant' THEN 1 ELSE 0 END), 0)) AS dormant_sessions,
+	CONVERT(float, COALESCE(SUM(CASE WHEN status = N'preconnect' THEN 1 ELSE 0 END), 0)) AS preconnect_sessions
+FROM sys.dm_exec_sessions
+WHERE is_user_process = 1
+	AND database_id = DB_ID()
+	AND (@exclude_current_user = 0 OR program_name IS NULL OR program_name <> @collector_app_name)`
+
+const selectAzureSQLDatabaseLimits = `
+SELECT ` + QueryMarker + `
+	CONVERT(float, cpu_limit) AS database_vcore_limit,
+	CONVERT(float, dtu_limit) AS database_dtu_limit,
+	CONVERT(float, max_sessions) AS user_session_limit,
+	CONVERT(float, primary_group_max_workers) AS database_worker_limit,
+	CONVERT(float, max_dop) AS database_resource_governor_max_degree_of_parallelism,
+	CONVERT(float, max_memory_grant) / 100.0 AS database_memory_grant_limit_ratio
+FROM sys.dm_user_db_resource_governance
+WHERE database_id = DB_ID()`
+
+const selectManagedInstanceResourceMetrics = `
+SELECT ` + QueryMarker + ` TOP (1)
+	start_time,
+	end_time,
+	CONVERT(float, virtual_core_count) AS instance_vcore_limit,
+	CONVERT(float, avg_cpu_percent) / 100.0 AS instance_cpu_utilization_ratio,
+	CONVERT(float, reserved_storage_mb) * 1048576.0 AS instance_storage_limit_bytes,
+	CONVERT(float, storage_space_used_mb) * 1048576.0 AS instance_storage_used_bytes,
+	CONVERT(float, io_requests) AS io_requests,
+	CONVERT(float, io_bytes_read) AS io_bytes_read,
+	CONVERT(float, io_bytes_written) AS io_bytes_written
+FROM master.sys.server_resource_stats
+ORDER BY start_time DESC`
+
+const selectDatabaseStorage = `
+SELECT ` + QueryMarker + `
+	CONVERT(float, COALESCE(SUM(CASE WHEN type = 0 THEN CONVERT(bigint, FILEPROPERTY(name, 'SpaceUsed')) * 8192 ELSE 0 END), 0)) AS data_storage_used_bytes,
+	CONVERT(float, COALESCE(SUM(CASE WHEN type = 0 THEN CONVERT(bigint, size) * 8192 ELSE 0 END), 0)) AS data_storage_allocated_bytes,
+	CONVERT(float, COALESCE(SUM(CASE WHEN type = 1 THEN CONVERT(bigint, FILEPROPERTY(name, 'SpaceUsed')) * 8192 ELSE 0 END), 0)) AS log_storage_used_bytes,
+	CONVERT(float, COALESCE(SUM(CASE WHEN type = 1 THEN CONVERT(bigint, size) * 8192 ELSE 0 END), 0)) AS log_storage_allocated_bytes,
+	CONVERT(float, DATABASEPROPERTYEX(DB_NAME(), 'MaxSizeInBytes')) AS database_storage_limit_bytes
+FROM sys.database_files`
+
+const selectVolumeStorage = `
+WITH volume_files AS (
+	SELECT ` + QueryMarker + `
+		vs.volume_mount_point,
+		CONVERT(bigint, vfs.size_on_disk_bytes) AS allocated_bytes,
+		CONVERT(bigint, vs.total_bytes) AS total_bytes,
+		CONVERT(bigint, vs.available_bytes) AS available_bytes,
+		ROW_NUMBER() OVER (PARTITION BY vs.volume_mount_point ORDER BY vfs.database_id, vfs.file_id) AS rn
+	FROM sys.dm_io_virtual_file_stats(NULL, NULL) AS vfs
+	CROSS APPLY sys.dm_os_volume_stats(vfs.database_id, vfs.file_id) AS vs
+)
+SELECT
+	CONVERT(float, SUM(allocated_bytes)) AS instance_storage_allocated_bytes,
+	CONVERT(float, SUM(CASE WHEN rn = 1 THEN total_bytes ELSE 0 END)) AS instance_storage_limit_bytes,
+	CONVERT(float, SUM(CASE WHEN rn = 1 THEN total_bytes - available_bytes ELSE 0 END)) AS instance_storage_used_bytes,
+	CONVERT(float, SUM(CASE WHEN rn = 1 THEN available_bytes ELSE 0 END)) AS instance_storage_available_bytes
+FROM volume_files`
+
+const selectPerformanceCounters = `
+SELECT ` + QueryMarker + `
+	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'Batch Requests/sec' THEN cntr_value END), 0)) AS batch_requests_total,
+	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'SQL Compilations/sec' THEN cntr_value END), 0)) AS sql_compilations_total,
+	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'SQL Re-Compilations/sec' THEN cntr_value END), 0)) AS sql_recompilations_total,
+	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'Page life expectancy' AND RTRIM(object_name) LIKE N'%:Buffer Manager' THEN cntr_value END), 0)) AS page_life_expectancy_seconds,
+	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'Memory Grants Pending' THEN cntr_value END), 0)) AS memory_grants_pending,
+	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'Number of Deadlocks/sec' AND RTRIM(instance_name) = N'_Total' THEN cntr_value END), 0)) AS deadlocks_total,
+	CONVERT(float, COALESCE(MAX(CASE WHEN RTRIM(counter_name) = N'Lock Waits/sec' AND RTRIM(instance_name) = N'_Total' THEN cntr_value END), 0)) AS lock_waits_total
+FROM sys.dm_os_performance_counters
+WHERE RTRIM(counter_name) IN (
+	N'Batch Requests/sec',
+	N'SQL Compilations/sec',
+	N'SQL Re-Compilations/sec',
+	N'Page life expectancy',
+	N'Memory Grants Pending',
+	N'Number of Deadlocks/sec',
+	N'Lock Waits/sec'
+)`
+
+const selectFileIOStats = `
+SELECT ` + QueryMarker + `
+	CONVERT(float, COALESCE(SUM(num_of_bytes_read), 0)) AS io_read_bytes_total,
+	CONVERT(float, COALESCE(SUM(num_of_bytes_written), 0)) AS io_written_bytes_total,
+	CONVERT(float, COALESCE(SUM(num_of_reads), 0)) AS io_reads_total,
+	CONVERT(float, COALESCE(SUM(num_of_writes), 0)) AS io_writes_total,
+	CONVERT(float, COALESCE(SUM(io_stall_read_ms), 0)) / 1000.0 AS io_read_stall_seconds_total,
+	CONVERT(float, COALESCE(SUM(io_stall_write_ms), 0)) / 1000.0 AS io_write_stall_seconds_total
+FROM sys.dm_io_virtual_file_stats(NULL, NULL)`
+
+const selectTempdbSpaceUsage = `
+SELECT ` + QueryMarker + `
+	CONVERT(float, COALESCE(SUM(user_object_reserved_page_count), 0)) * 8192.0 AS user_objects_bytes,
+	CONVERT(float, COALESCE(SUM(internal_object_reserved_page_count), 0)) * 8192.0 AS internal_objects_bytes,
+	CONVERT(float, COALESCE(SUM(version_store_reserved_page_count), 0)) * 8192.0 AS version_store_bytes,
+	CONVERT(float, COALESCE(SUM(mixed_extent_page_count), 0)) * 8192.0 AS mixed_extents_bytes,
+	CONVERT(float, COALESCE(SUM(unallocated_extent_page_count), 0)) * 8192.0 AS unallocated_bytes
+FROM tempdb.sys.dm_db_file_space_usage`

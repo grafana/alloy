@@ -120,6 +120,33 @@ func Test_disableQueryRedaction(t *testing.T) {
 	})
 }
 
+func TestQuerySamples_EnablePreClassifiedWaitEvents_ConfigParsing(t *testing.T) {
+	t.Run("enabled by default", func(t *testing.T) {
+		cfg := `
+		data_source_name = ""
+		forward_to = []
+		targets = []
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		assert.True(t, args.QuerySamplesArguments.EnablePreClassifiedWaitEvents)
+	})
+
+	t.Run("explicitly false", func(t *testing.T) {
+		cfg := `
+		data_source_name = ""
+		forward_to = []
+		targets = []
+		query_samples {
+			enable_pre_classified_wait_events = false
+		}
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		assert.False(t, args.QuerySamplesArguments.EnablePreClassifiedWaitEvents)
+	})
+}
+
 func Test_parseCloudProvider(t *testing.T) {
 	t.Run("parse cloud provider block", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `

@@ -221,12 +221,13 @@ func defaultArguments() Arguments {
 		},
 
 		QuerySamplesArguments: QuerySamplesArguments{
-			CollectInterval:             10 * time.Second,
-			DisableQueryRedaction:       false,
-			AutoEnableSetupConsumers:    false,
-			SetupConsumersCheckInterval: 1 * time.Hour,
-			SampleMinDuration:           0 * time.Millisecond,
-			WaitEventMinDuration:        1 * time.Microsecond,
+			CollectInterval:               10 * time.Second,
+			DisableQueryRedaction:         false,
+			AutoEnableSetupConsumers:      false,
+			SetupConsumersCheckInterval:   1 * time.Hour,
+			SampleMinDuration:             0 * time.Millisecond,
+			WaitEventMinDuration:          1 * time.Microsecond,
+			EnablePreClassifiedWaitEvents: true,
 		},
 		HealthCheckArguments: HealthCheckArguments{
 			CollectInterval: 1 * time.Hour,

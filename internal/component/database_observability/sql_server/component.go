@@ -155,6 +155,10 @@ type QueryDetailsArguments struct {
 type QuerySamplesArguments struct {
 	CollectInterval       time.Duration `alloy:"collect_interval,attr,optional"`
 	DisableQueryRedaction bool          `alloy:"disable_query_redaction,attr,optional"`
+	SampleMinDuration     time.Duration `alloy:"sample_min_duration,attr,optional"`
+	WaitEventMinDuration  time.Duration `alloy:"wait_event_min_duration,attr,optional"`
+	MaxSamplesPerQuery    int           `alloy:"max_samples_per_query,attr,optional"`
+	MaxSamplesPerCollect  int           `alloy:"max_samples_per_collect,attr,optional"`
 }
 
 type ExplainPlansArguments struct {
@@ -193,7 +197,11 @@ func defaultArguments() Arguments {
 		},
 
 		QuerySamplesArguments: QuerySamplesArguments{
-			CollectInterval: 10 * time.Second,
+			CollectInterval:      10 * time.Second,
+			SampleMinDuration:    0,
+			WaitEventMinDuration: 1 * time.Millisecond,
+			MaxSamplesPerQuery:   5,
+			MaxSamplesPerCollect: 50,
 		},
 
 		ExplainPlansArguments: ExplainPlansArguments{
@@ -313,6 +321,18 @@ func (a *Arguments) Validate() error {
 	if enableOrDisableCollectors(*a)[collector.QuerySamplesCollector] {
 		if a.QuerySamplesArguments.CollectInterval <= 0 {
 			return fmt.Errorf("query_samples.collect_interval must be greater than zero")
+		}
+		if a.QuerySamplesArguments.SampleMinDuration < 0 {
+			return fmt.Errorf("query_samples.sample_min_duration must be non-negative")
+		}
+		if a.QuerySamplesArguments.WaitEventMinDuration < 0 {
+			return fmt.Errorf("query_samples.wait_event_min_duration must be non-negative")
+		}
+		if a.QuerySamplesArguments.MaxSamplesPerQuery < 0 {
+			return fmt.Errorf("query_samples.max_samples_per_query must be non-negative")
+		}
+		if a.QuerySamplesArguments.MaxSamplesPerCollect < 0 {
+			return fmt.Errorf("query_samples.max_samples_per_collect must be non-negative")
 		}
 	}
 
@@ -761,9 +781,9 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	inst.dbConnection = dbConnection
 
 	queryCtx, cancelQuery := context.WithTimeout(ctx, c.args.QueryTimeout)
-	var serverName, machineName, instanceName, engineVersion sql.NullString
+	var serverName, machineName, instanceName, engineVersion, productLevel, productBuild, compatibilityLevel sql.NullString
 	var engineEdition sql.NullInt64
-	err = inst.dbConnection.QueryRowContext(queryCtx, collector.SelectServerInfo).Scan(&serverName, &machineName, &instanceName, &engineVersion, &engineEdition)
+	err = inst.dbConnection.QueryRowContext(queryCtx, collector.SelectServerInfo).Scan(&serverName, &machineName, &instanceName, &engineVersion, &productLevel, &productBuild, &engineEdition, &compatibilityLevel)
 	cancelQuery()
 	if err != nil {
 		return fmt.Errorf("failed to query server information: %w", err)
@@ -815,7 +835,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	}
 	inst.collectors = nil
 
-	if err := c.startCollectors(ctx, inst, generatedServerID, engineVersion.String, int(engineEdition.Int64), cp, effectiveExcludeUsers); err != nil {
+	if err := c.startCollectors(ctx, inst, generatedServerID, engineVersion.String, productLevel.String, productBuild.String, int(engineEdition.Int64), compatibilityLevel.String, cp, effectiveExcludeUsers); err != nil {
 		return fmt.Errorf("failed to start collectors: %w", err)
 	}
 
@@ -834,6 +854,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 	collectors := map[string]bool{
 		collector.SchemaDetailsCollector:       true,
 		collector.ServerConfigurationCollector: true,
+		collector.ServerMetricsCollector:       true,
 		collector.QueryMetricsCollector:        true,
 		collector.QuerySamplesCollector:        true,
 		collector.QueryDetailsCollector:        true,
@@ -857,7 +878,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 // startCollectors attempts to start all of the enabled collectors for a
 // database instance. If one or more collectors fail to start, their errors
 // are reported.
-func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serverID string, engineVersion string, engineEdition int, cloudProviderInfo *database_observability.CloudProvider, effectiveExcludeUsers []string) error {
+func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serverID string, engineVersion string, productLevel string, productBuild string, engineEdition int, compatibilityLevel string, cloudProviderInfo *database_observability.CloudProvider, effectiveExcludeUsers []string) error {
 	var startErrors []string
 
 	logStartError := func(collectorName, action string, err error) {
@@ -888,6 +909,29 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 				logStartError(collector.SchemaDetailsCollector, "start", err)
 			}
 			inst.collectors = append(inst.collectors, stCollector)
+		}
+	}
+
+	if collectors[collector.ServerMetricsCollector] {
+		smCollector, err := collector.NewServerMetrics(collector.ServerMetricsArguments{
+			DB:                 inst.dbConnection,
+			Registry:           inst.registry,
+			QueryTimeout:       c.args.QueryTimeout,
+			ExcludeCurrentUser: c.args.ExcludeCurrentUser,
+			Logger:             c.opts.Logger,
+			EngineEdition:      engineEdition,
+			ProductVersion:     engineVersion,
+			ProductLevel:       productLevel,
+			ProductBuild:       productBuild,
+			CompatibilityLevel: compatibilityLevel,
+		})
+		if err != nil {
+			logStartError(collector.ServerMetricsCollector, "create", err)
+		} else {
+			if err := smCollector.Start(ctx); err != nil {
+				logStartError(collector.ServerMetricsCollector, "start", err)
+			}
+			inst.collectors = append(inst.collectors, smCollector)
 		}
 	}
 
@@ -934,6 +978,10 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 	}
 
 	if collectors[collector.QuerySamplesCollector] {
+		if c.args.QuerySamplesArguments.SampleMinDuration > 0 && c.args.QuerySamplesArguments.WaitEventMinDuration > c.args.QuerySamplesArguments.SampleMinDuration {
+			c.opts.Logger.Warn("wait_event_min_duration is greater than sample_min_duration, which may result in query samples with no associated wait events")
+		}
+
 		qsArgs := collector.QuerySamplesArguments{
 			DB:                    inst.dbConnection,
 			CollectInterval:       c.args.QuerySamplesArguments.CollectInterval,
@@ -941,6 +989,10 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 			EntryHandler:          entryHandler,
 			Logger:                c.opts.Logger,
 			DisableQueryRedaction: c.args.QuerySamplesArguments.DisableQueryRedaction,
+			SampleMinDuration:     c.args.QuerySamplesArguments.SampleMinDuration,
+			WaitEventMinDuration:  c.args.QuerySamplesArguments.WaitEventMinDuration,
+			MaxSamplesPerQuery:    c.args.QuerySamplesArguments.MaxSamplesPerQuery,
+			MaxSamplesPerCollect:  c.args.QuerySamplesArguments.MaxSamplesPerCollect,
 			ExcludeDatabases:      c.args.ExcludeDatabases,
 			ExcludeUsers:          effectiveExcludeUsers,
 			ExcludeCurrentUser:    c.args.ExcludeCurrentUser,

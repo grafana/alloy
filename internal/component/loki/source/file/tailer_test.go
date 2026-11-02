@@ -104,6 +104,7 @@ func TestTailer(t *testing.T) {
 	}
 
 	cancel()
+	<-done
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		pos, err := positionsFile.Get(logFile.Name(), labels.String())
 		assert.NoError(c, err)
@@ -150,7 +151,11 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 	)
 	require.NoError(t, err)
 	ctx, cancel := context.WithCancel(t.Context())
-	go tailer.Run(ctx)
+	done := make(chan struct{})
+	go func() {
+		tailer.Run(ctx)
+		close(done)
+	}()
 
 	_, err = logFile.Write([]byte("writing some text\n"))
 	require.NoError(t, err)
@@ -168,6 +173,7 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 	}, time.Second, 50*time.Millisecond)
 
 	cancel()
+	<-done
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		pos, err := positionsFile.Get(logFile.Name(), labels.String())
@@ -399,6 +405,7 @@ func TestTailerCorruptedPositions(t *testing.T) {
 	}
 
 	cancel()
+	<-done
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		pos, err := positionsFile.Get(logFile.Name(), labels.String())
 		assert.NoError(c, err)

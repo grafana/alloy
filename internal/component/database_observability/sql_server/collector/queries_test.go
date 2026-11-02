@@ -28,6 +28,18 @@ func TestQueryMarkers(t *testing.T) {
 		"server configuration": selectServerConfiguration,
 		"azure sql database server configuration": selectAzureSQLDatabaseServerConfiguration,
 		"database max degree of parallelism":      selectDatabaseMaxDegreeOfParallelism,
+		"server metrics":                          selectServerMetrics,
+		"user sessions":                           selectUserSessions,
+		"managed instance metrics":                selectManagedInstanceMetrics,
+		"azure sql database resource metrics":     selectAzureSQLDatabaseResourceMetrics,
+		"azure sql database user sessions":        selectAzureSQLDatabaseUserSessions,
+		"azure sql database limits":               selectAzureSQLDatabaseLimits,
+		"managed instance resource metrics":       selectManagedInstanceResourceMetrics,
+		"database storage":                        selectDatabaseStorage,
+		"volume storage":                          selectVolumeStorage,
+		"performance counters":                    selectPerformanceCounters,
+		"file io stats":                           selectFileIOStats,
+		"tempdb space usage":                      selectTempdbSpaceUsage,
 	} {
 		t.Run(name, func(t *testing.T) { requireQueryMarker(t, query) })
 	}
