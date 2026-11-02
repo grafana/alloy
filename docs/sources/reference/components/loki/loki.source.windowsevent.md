@@ -64,22 +64,10 @@ The `loki.source.windowsevent` component doesn't support any blocks. You can con
 
 `loki.source.windowsevent` is only reported as unhealthy if given an invalid configuration.
 
-## Example
+## Examples
 
-This example collects log entries from the Event Log specified in `eventlog_name` and forwards them to a `loki.write` component.
+- [Monitor Microsoft Windows servers and desktops with Grafana Alloy](../../../monitor/monitor-windows/)
 
-```alloy
-loki.source.windowsevent "application"  {
-    eventlog_name = "Application"
-    forward_to = [loki.write.endpoint.receiver]
-}
-
-loki.write "endpoint" {
-    endpoint {
-        url ="loki:3100/api/v1/push"
-    }
-}
-```
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components
