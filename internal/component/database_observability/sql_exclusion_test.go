@@ -115,7 +115,7 @@ func TestEscapeSQLString(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result := EscapeSQLString(tc.input)
+			result := escapeSQLString(tc.input)
 			require.Equal(t, tc.expected, result)
 		})
 	}

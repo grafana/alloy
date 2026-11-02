@@ -2,9 +2,16 @@ package collector
 
 import "github.com/grafana/alloy/internal/component/database_observability"
 
-var excludedDatabases = database_observability.AlwaysExcludedPostgresDatabases()
+var excludedDatabases = AlwaysExcludedDatabases()
 
 var exclusionClause = database_observability.BuildExclusionClause(excludedDatabases)
+
+// AlwaysExcludedDatabases returns databases that collectors must never query.
+func AlwaysExcludedDatabases() []string {
+	return []string{
+		"azure_maintenance", // Azure Database for PostgreSQL exposes this database monitoring users cannot read its pgavailability schema
+	}
+}
 
 func buildExcludedDatabasesClause(databases []string) string {
 	if len(databases) == 0 {

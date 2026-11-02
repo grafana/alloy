@@ -188,7 +188,7 @@ var defaultEnabledCollectors = []string{eventsStatementsCollector}
 
 func defaultArguments() Arguments {
 	return Arguments{
-		ExcludeSchemas:                database_observability.DefaultMySQLExcludedSchemas(),
+		ExcludeSchemas:                defaultExcludedSchemas(),
 		AllowUpdatePerfSchemaSettings: false,
 
 		QueryDetailsArguments: QueryDetailsArguments{
@@ -884,10 +884,21 @@ func resolveExporterArgs(userBlock *PrometheusExporterArguments, excludeSchemas 
 		exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas,
 	)
 	exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas = database_observability.MergeExclusions(
-		database_observability.AlwaysExcludedMySQLSchemas(),
+		collector.AlwaysExcludedSchemas(),
 		excludeSchemas,
 	)
 	return exporterArgs
+}
+
+func defaultExcludedSchemas() []string {
+	return []string{
+		"alloydbadmin",
+		"alloydbmetadata",
+		"azure_maintenance",
+		"azure_sys",
+		"cloudsqladmin",
+		"rdsadmin",
+	}
 }
 
 func enableOrDisableCollectors(a Arguments) map[string]bool {

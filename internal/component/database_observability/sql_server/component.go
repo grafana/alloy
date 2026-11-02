@@ -173,9 +173,9 @@ func defaultArguments() Arguments {
 	return Arguments{
 		QueryTimeout: defaultQueryTimeout,
 
-		ExcludeSchemas:     database_observability.DefaultSQLServerExcludedSchemas(),
-		ExcludeDatabases:   database_observability.DefaultSQLServerExcludedDatabases(),
-		ExcludeUsers:       database_observability.DefaultSQLServerExcludedUsers(),
+		ExcludeSchemas:     defaultExcludedSchemas(),
+		ExcludeDatabases:   defaultExcludedDatabases(),
+		ExcludeUsers:       defaultExcludedUsers(),
 		ExcludeCurrentUser: true,
 
 		SchemaDetailsArguments: SchemaDetailsArguments{
@@ -211,6 +211,37 @@ func defaultArguments() Arguments {
 		HealthCheckArguments: HealthCheckArguments{
 			CollectInterval: 1 * time.Hour,
 		},
+	}
+}
+
+func defaultExcludedSchemas() []string {
+	return []string{
+		"alloydbadmin",
+		"alloydbmetadata",
+		"azure_maintenance",
+		"azure_sys",
+		"cloudsqladmin",
+		"rdsadmin",
+	}
+}
+
+func defaultExcludedDatabases() []string {
+	return []string{
+		"alloydbadmin",
+		"alloydbmetadata",
+		"azure_maintenance",
+		"azure_sys",
+		"cloudsqladmin",
+		"rdsadmin",
+	}
+}
+
+func defaultExcludedUsers() []string {
+	return []string{
+		"azuresu",
+		"cloudsqladmin",
+		"db-o11y", // default recommended user
+		"rdsadmin",
 	}
 }
 

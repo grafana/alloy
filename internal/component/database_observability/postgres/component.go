@@ -152,8 +152,8 @@ type SchemaDetailsArguments struct {
 
 func defaultArguments() Arguments {
 	return Arguments{
-		ExcludeDatabases:   database_observability.DefaultPostgresExcludedDatabases(),
-		ExcludeUsers:       database_observability.DefaultPostgresExcludedUsers(),
+		ExcludeDatabases:   defaultExcludedDatabases(),
+		ExcludeUsers:       defaultExcludedUsers(),
 		ExcludeCurrentUser: true,
 		QuerySampleArguments: QuerySampleArguments{
 			CollectInterval:               10 * time.Second,
@@ -238,7 +238,7 @@ func applyExporterExclusions(exporterArgs exporter_postgres.Arguments, excludeDa
 		exporterArgs.AutoDiscovery.DatabaseDenylist,
 	)
 	exporterArgs.AutoDiscovery.DatabaseDenylist = database_observability.MergeExclusions(
-		database_observability.AlwaysExcludedPostgresDatabases(),
+		collector.AlwaysExcludedDatabases(),
 		autoDiscoveryExcludeDatabases,
 	)
 
@@ -247,7 +247,7 @@ func applyExporterExclusions(exporterArgs exporter_postgres.Arguments, excludeDa
 		exporterArgs.StatStatementFlags.ExcludeDatabases,
 	)
 	exporterArgs.StatStatementFlags.ExcludeDatabases = database_observability.MergeExclusions(
-		database_observability.AlwaysExcludedPostgresDatabases(),
+		collector.AlwaysExcludedDatabases(),
 		statStatementsExcludeDatabases,
 	)
 
@@ -264,6 +264,26 @@ func applyExporterExclusions(exporterArgs exporter_postgres.Arguments, excludeDa
 		currentUserExclusion,
 	)
 	return exporterArgs
+}
+
+func defaultExcludedDatabases() []string {
+	return []string{
+		"alloydbadmin",
+		"alloydbmetadata",
+		"azure_maintenance",
+		"azure_sys",
+		"cloudsqladmin",
+		"rdsadmin",
+	}
+}
+
+func defaultExcludedUsers() []string {
+	return []string{
+		"azuresu",
+		"cloudsqladmin",
+		"db-o11y", // default recommended user
+		"rdsadmin",
+	}
 }
 
 func (a *Arguments) SetToDefault() {
