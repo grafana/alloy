@@ -2,6 +2,7 @@ package file
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -497,6 +498,140 @@ func TestDeleteRecreateFile(t *testing.T) {
 		require.WithinDuration(t, time.Now(), entries[0].Timestamp, 1*time.Second)
 		require.Equal(t, "writing some new text", entries[0].Line)
 		require.Equal(t, wantLabelSet, entries[0].Labels)
+	})
+}
+
+func TestComponentV2(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	lokitest.TestV2(t, func(t *testing.T, env lokitest.Env) {
+		newFile := func(t *testing.T) *os.File {
+			f, err := os.CreateTemp(t.TempDir(), "example")
+			require.NoError(t, err)
+
+			_, err = f.WriteString("line 1\nline 2\nline 3\n")
+			require.NoError(t, err)
+			return f
+		}
+
+		args := func(path string, to ...loki.LogsReceiver) Arguments {
+			return Arguments{
+				Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
+					"__path__": path,
+					"foo":      "bar",
+				})},
+				ForwardTo: to,
+				FileMatch: FileMatch{Enabled: false, SyncPeriod: 10 * time.Second},
+			}
+		}
+
+		t.Run("retries entries until forward_to is updated", func(t *testing.T) {
+			f := newFile(t)
+			defer f.Close()
+
+			stopped := env.NewReceiver(t)
+			stopped.Stop()
+
+			ctrl, _ := env.Run(t, "loki.source.file", args(f.Name(), stopped))
+
+			require.EventuallyWithT(t, func(c *assert.CollectT) {
+				require.GreaterOrEqual(c, stopped.ConsumeCalls(), 2)
+			}, 5*time.Second, 10*time.Millisecond)
+
+			running := env.NewReceiver(t)
+			require.NoError(t, ctrl.Update(args(f.Name(), running)))
+
+			entries := running.Next(t, 3)
+			require.Equal(t, "line 1", entries[0].Line)
+			require.Equal(t, "line 2", entries[1].Line)
+			require.Equal(t, "line 3", entries[2].Line)
+			require.Empty(t, stopped.Entries())
+		})
+
+		t.Run("does not lose entries when stopped while retrying", func(t *testing.T) {
+			f := newFile(t)
+			defer f.Close()
+
+			// Share the data path so the second run reads the positions the first one saved.
+			dataPath := t.TempDir()
+			withDataPath := func(o component.Options) component.Options {
+				o.DataPath = dataPath
+				return o
+			}
+
+			stopped := env.NewReceiver(t)
+			stopped.Stop()
+
+			_, stop := env.Run(t, "loki.source.file", args(f.Name(), stopped), withDataPath)
+
+			require.EventuallyWithT(t, func(c *assert.CollectT) {
+				require.GreaterOrEqual(c, stopped.ConsumeCalls(), 2)
+			}, 5*time.Second, 10*time.Millisecond)
+
+			stop()
+			require.Empty(t, stopped.Entries())
+
+			running := env.NewReceiver(t)
+			env.Run(t, "loki.source.file", args(f.Name(), running), withDataPath)
+
+			entries := running.Next(t, 3)
+			require.Equal(t, "line 1", entries[0].Line)
+			require.Equal(t, "line 2", entries[1].Line)
+			require.Equal(t, "line 3", entries[2].Line)
+		})
+
+		t.Run("keeps delivering to a healthy consumer while another is stopped", func(t *testing.T) {
+			f := newFile(t)
+			defer f.Close()
+
+			healthy, stopped := env.NewReceiver(t), env.NewReceiver(t)
+			stopped.Stop()
+
+			ctrl, _ := env.Run(t, "loki.source.file", args(f.Name(), healthy, stopped))
+
+			require.EventuallyWithT(t, func(c *assert.CollectT) {
+				require.GreaterOrEqual(c, stopped.ConsumeCalls(), 2)
+			}, 5*time.Second, 10*time.Millisecond)
+
+			require.NoError(t, ctrl.Update(args(f.Name(), healthy)))
+
+			require.EventuallyWithT(t, func(c *assert.CollectT) {
+				entries := healthy.Entries()
+				require.NotEmpty(c, entries)
+				require.Equal(c, "line 3", entries[len(entries)-1].Line)
+			}, 5*time.Second, 10*time.Millisecond)
+
+			// The healthy consumer gets line 1 again on every retry, then lines 2 and 3 once.
+			entries := healthy.Entries()
+			require.GreaterOrEqual(t, len(entries), 4)
+			require.Equal(t, "line 1", entries[0].Line)
+			require.Equal(t, "line 1", entries[1].Line)
+			require.Equal(t, "line 1", entries[len(entries)-3].Line)
+			require.Equal(t, "line 2", entries[len(entries)-2].Line)
+			require.Equal(t, "line 3", entries[len(entries)-1].Line)
+			require.Empty(t, stopped.Entries())
+		})
+
+		t.Run("drops an entry on an unexpected error without retrying", func(t *testing.T) {
+			f := newFile(t)
+			defer f.Close()
+
+			recv := env.NewReceiver(t)
+			recv.FailNext(errors.New("unexpected"))
+
+			env.Run(t, "loki.source.file", args(f.Name(), recv))
+
+			entries := recv.Next(t, 2)
+			require.Equal(t, "line 2", entries[0].Line)
+			require.Equal(t, "line 3", entries[1].Line)
+
+			_, err := f.WriteString("line 4\n")
+			require.NoError(t, err)
+
+			entries = recv.Next(t, 1)
+			require.Equal(t, "line 4", entries[0].Line)
+			require.Equal(t, 4, recv.ConsumeCalls())
+		})
 	})
 }
 

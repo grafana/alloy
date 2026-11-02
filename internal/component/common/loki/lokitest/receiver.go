@@ -45,9 +45,12 @@ func (r *Receiver) Consume(ctx context.Context, batch loki.Batch) error {
 	return r.consumer.Consume(ctx, batch)
 }
 
-// Stop makes the receiver stop accepting entries.
-func (r *Receiver) Stop() {
-	r.stopFn()
+// ConsumeCalls returns how many times Consume has been called, It returns 0 with Loki pipeline V1.
+func (r *Receiver) ConsumeCalls() int {
+	if r.consumer == nil {
+		return 0
+	}
+	return r.consumer.ConsumeCalls()
 }
 
 // Next waits until n entries arrive after the ones previous calls returned.
@@ -64,9 +67,23 @@ func (r *Receiver) Next(t *testing.T, n int) []loki.Entry {
 	return entries
 }
 
+// FailNext makes the next Consume call return err without collecting its batch.
+// It does nothing with Loki pipeline V1.
+func (r *Receiver) FailNext(err error) {
+	if r.consumer == nil {
+		return
+	}
+	r.consumer.FailNext(err)
+}
+
 // Entries returns every entry received so far.
 func (r *Receiver) Entries() []loki.Entry {
 	return r.entries()
+}
+
+// Stop makes the receiver stop accepting entries.
+func (r *Receiver) Stop() {
+	r.stopFn()
 }
 
 var _ loki.LogsReceiver = (*CollectingReceiver)(nil)
@@ -135,21 +152,47 @@ func NewCollectingConsumer() *CollectingConsumer {
 // CollectingConsumer is a Consumer that will collect all received batches
 // so it can be inspected later.
 type CollectingConsumer struct {
-	mut     sync.Mutex
-	stopped bool
-	batches []loki.Batch
+	mut      sync.Mutex
+	stopped  bool
+	calls    int
+	failNext error
+	batches  []loki.Batch
 }
 
 func (c *CollectingConsumer) Consume(_ context.Context, batch loki.Batch) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
+	c.calls++
 	if c.stopped {
 		return loki.ErrConsumerStopped
 	}
 
+	if c.failNext != nil {
+		err := c.failNext
+		c.failNext = nil
+		return err
+	}
+
 	c.batches = append(c.batches, batch.Clone())
 	return nil
+}
+
+// FailNext makes the next Consume call return err without collecting its batch.
+func (c *CollectingConsumer) FailNext(err error) {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	c.failNext = err
+}
+
+// ConsumeCalls returns how many times Consume has been called, including the
+// calls that returned loki.ErrConsumerStopped.
+func (c *CollectingConsumer) ConsumeCalls() int {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	return c.calls
 }
 
 func (c *CollectingConsumer) Batches() []loki.Batch {
