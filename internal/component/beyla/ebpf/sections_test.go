@@ -5,7 +5,6 @@ package beyla
 import (
 	"io"
 	"log/slog"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -51,10 +50,12 @@ func TestSectionsEmitted(t *testing.T) {
 	}
 	comp.subprocess.SetListen(12345, "")
 
-	configPath, cleanup, err := comp.writeConfigFile()
+	configData, err := comp.buildConfig(comp.args)
 	require.NoError(t, err)
-	defer cleanup()
-	data, err := os.ReadFile(configPath)
+	configFile, err := writeConfigFile(configData)
+	require.NoError(t, err)
+	defer configFile.Close()
+	data, err := io.ReadAll(configFile)
 	require.NoError(t, err)
 
 	var config map[string]any
