@@ -2,6 +2,7 @@ package rules
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -26,8 +27,9 @@ import (
 )
 
 type fakeMimirClient struct {
-	rulesMut sync.RWMutex
-	rules    map[string][]client.MimirRuleGroup
+	mut          sync.RWMutex
+	rules        map[string][]client.MimirRuleGroup
+	listFailures int
 }
 
 var _ client.RulerInterface = &fakeMimirClient{}
@@ -39,16 +41,16 @@ func newFakeMimirClient() *fakeMimirClient {
 }
 
 func (m *fakeMimirClient) CreateRuleGroup(_ context.Context, namespace string, rule client.MimirRuleGroup) error {
-	m.rulesMut.Lock()
-	defer m.rulesMut.Unlock()
+	m.mut.Lock()
+	defer m.mut.Unlock()
 	m.deleteLocked(namespace, rule.Name)
 	m.rules[namespace] = append(m.rules[namespace], rule)
 	return nil
 }
 
 func (m *fakeMimirClient) DeleteRuleGroup(_ context.Context, namespace, group string) error {
-	m.rulesMut.Lock()
-	defer m.rulesMut.Unlock()
+	m.mut.Lock()
+	defer m.mut.Unlock()
 	m.deleteLocked(namespace, group)
 	return nil
 }
@@ -73,8 +75,12 @@ func (m *fakeMimirClient) deleteLocked(namespace, group string) {
 }
 
 func (m *fakeMimirClient) ListRules(_ context.Context, namespace string) (map[string][]client.MimirRuleGroup, error) {
-	m.rulesMut.RLock()
-	defer m.rulesMut.RUnlock()
+	m.mut.Lock()
+	defer m.mut.Unlock()
+	if m.listFailures > 0 {
+		m.listFailures--
+		return nil, errors.New("connection refused")
+	}
 	output := make(map[string][]client.MimirRuleGroup)
 	for ns, v := range m.rules {
 		if namespace != "" && namespace != ns {
@@ -83,6 +89,12 @@ func (m *fakeMimirClient) ListRules(_ context.Context, namespace string) (map[st
 		output[ns] = v
 	}
 	return output, nil
+}
+
+func (m *fakeMimirClient) remainingListFailures() int {
+	m.mut.RLock()
+	defer m.mut.RUnlock()
+	return m.listFailures
 }
 
 func TestEventLoop(t *testing.T) {
