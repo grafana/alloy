@@ -1,7 +1,10 @@
 package otelcol
 
 import (
+	"github.com/grafana/alloy/internal/featuregate"
+
 	otelconsumer "go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/consumer/xconsumer"
 )
 
 // Consumer is a combined OpenTelemetry Collector consumer which can consume
@@ -10,6 +13,7 @@ type Consumer interface {
 	otelconsumer.Traces
 	otelconsumer.Metrics
 	otelconsumer.Logs
+	xconsumer.Profiles
 }
 
 // ComponentMetadata can be implemented by, for example, consumers exported by components, to provide the ID of the component which is exporting given consumer. This is used for the graph and the live debugging.
@@ -34,9 +38,18 @@ func GetComponentMetadata(cons []Consumer) []ComponentMetadata {
 // It is expected to use ConsumerArguments as a block within the top-level
 // arguments block for a component.
 type ConsumerArguments struct {
-	Metrics []Consumer `alloy:"metrics,attr,optional"`
-	Logs    []Consumer `alloy:"logs,attr,optional"`
-	Traces  []Consumer `alloy:"traces,attr,optional"`
+	Metrics  []Consumer `alloy:"metrics,attr,optional"`
+	Logs     []Consumer `alloy:"logs,attr,optional"`
+	Traces   []Consumer `alloy:"traces,attr,optional"`
+	Profiles []Consumer `alloy:"profiles,attr,optional"`
+}
+
+// ValidateStabilityLevel checks whether the configured output signals are allowed.
+func (args *ConsumerArguments) ValidateStabilityLevel(minStability featuregate.Stability) error {
+	if len(args.Profiles) > 0 {
+		return featuregate.CheckAllowed(featuregate.StabilityExperimental, minStability, "profiles output")
+	}
+	return nil
 }
 
 // ConsumerExports is a common Exports type for Alloy components which are

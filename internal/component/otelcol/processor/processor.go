@@ -5,6 +5,7 @@ package processor
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -14,6 +15,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/pipeline"
 	otelprocessor "go.opentelemetry.io/collector/processor"
+	"go.opentelemetry.io/collector/processor/xprocessor"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/sdk/metric"
 
@@ -150,6 +152,11 @@ func (p *Processor) Update(args component.Arguments) error {
 		}
 	}
 
+	next := p.args.NextConsumers()
+	if err := next.ValidateStabilityLevel(p.opts.MinStability); err != nil {
+		return err
+	}
+
 	host := scheduler.NewHost(
 		scheduler.WithHostExtensions(p.args.Extensions()),
 		scheduler.WithHostExporters(p.args.Exporters()),
@@ -185,8 +192,6 @@ func (p *Processor) Update(args component.Arguments) error {
 	if err != nil {
 		return err
 	}
-
-	next := p.args.NextConsumers()
 
 	// Create instances of the processor from our factory for each of our
 	// supported telemetry signals.
@@ -243,8 +248,22 @@ func (p *Processor) Update(args component.Arguments) error {
 		}
 	}
 
+	var profilesProcessor xprocessor.Profiles
+	if len(next.Profiles) > 0 {
+		profilesFactory, ok := p.factory.(xprocessor.Factory)
+		if !ok {
+			return fmt.Errorf("profiles are not supported by %s: %w", p.factory.Type(), pipeline.ErrSignalNotSupported)
+		}
+
+		profilesProcessor, err = profilesFactory.CreateProfiles(p.ctx, settings, processorConfig, fanoutconsumer.Profiles(next.Profiles))
+		if err != nil {
+			return fmt.Errorf("creating profiles processor: %w", err)
+		}
+		components = append(components, profilesProcessor)
+	}
+
 	updateConsumersFunc := func() {
-		p.consumer.SetConsumers(tracesProcessor, metricsProcessor, logsProcessor)
+		p.consumer.SetConsumers(tracesProcessor, metricsProcessor, logsProcessor, profilesProcessor)
 	}
 
 	// Schedule the components to run once our component is running.
