@@ -1,0 +1,32 @@
+- discovery.kubernetes/default:
+    - role: pod
+- discovery.relabel/redis:
+    - targets: expr(discovery.kubernetes.default.targets)
+    - rule:
+        - source_labels:
+            - __meta_kubernetes_pod_container_name
+        - regex: redis-cont
+        - action: keep
+- foreach/redis:
+    - collection: expr(discovery.relabel.redis.output)
+    - var: each
+    - template:
+        - prometheus.exporter.redis/default:
+            - redis_addr: expr(each["__address__"])
+        - prometheus.scrape/default:
+            - targets: expr(prometheus.exporter.redis.default.targets)
+            - forward_to:
+                - expr(prometheus.relabel.default.receiver)
+        - prometheus.relabel/default:
+            - rule:
+                - replacement: expr(each["__meta_kubernetes_namespace"])
+                - target_label: k8s_namespace
+                - action: replace
+            - forward_to:
+                - expr(prometheus.remote_write.mimir.receiver)
+- prometheus.remote_write/mimir:
+    - endpoint:
+        - url: https://prometheus-xxx.grafana.net/api/prom/push
+        - basic_auth:
+            - username: expr(sys.env("PROMETHEUS_USERNAME"))
+            - password: expr(sys.env("GRAFANA_CLOUD_API_KEY"))

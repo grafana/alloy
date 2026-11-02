@@ -1,0 +1,3 @@
+- level: debug
+- format: json
+- port: 8080

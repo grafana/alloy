@@ -1,0 +1,6 @@
+prometheus.scrape "default" {
+  forward_to      = [prometheus.remote_write.default.receiver]
+  scrape_interval = "15s"
+  targets         = ["localhost:9090", "localhost:9091"]
+}
+
