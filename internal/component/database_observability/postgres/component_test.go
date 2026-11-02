@@ -2328,6 +2328,96 @@ func Test_resolveExporterArgs(t *testing.T) {
 		err := syntax.Unmarshal([]byte(cfg), &args)
 		require.ErrorContains(t, err, "enabled_collectors cannot be set when disable_default_metrics is true")
 	})
+
+	t.Run("database and user exclusions inherit top-level exclusions when nested exclusions are unset", func(t *testing.T) {
+		userBlock := &PrometheusExporterArguments{
+			StatStatementFlags: &exporter_postgres.StatStatementFlags{
+				Limit: 50,
+			},
+		}
+
+		exporterArgs := applyExporterExclusions(
+			resolveExporterArgs(userBlock),
+			[]string{"top_level"},
+			[]string{"top_level_user"},
+			sql.NullString{String: "current_user", Valid: true},
+		)
+
+		assert.Equal(t, []string{"azure_maintenance", "top_level"}, exporterArgs.AutoDiscovery.DatabaseDenylist)
+		assert.Equal(t, []string{"azure_maintenance", "top_level"}, exporterArgs.StatStatementFlags.ExcludeDatabases)
+		assert.Equal(t, []string{"top_level_user", "current_user"}, exporterArgs.StatStatementFlags.ExcludeUsers)
+		assert.Nil(t, userBlock.AutoDiscovery.DatabaseDenylist)
+		assert.Nil(t, userBlock.StatStatementFlags.ExcludeDatabases)
+		assert.Nil(t, userBlock.StatStatementFlags.ExcludeUsers)
+	})
+
+	t.Run("nested database and user exclusions override top-level exclusions", func(t *testing.T) {
+		userBlock := &PrometheusExporterArguments{
+			AutoDiscovery: exporter_postgres.AutoDiscovery{
+				DatabaseDenylist: []string{"autodiscovery_only"},
+			},
+			StatStatementFlags: &exporter_postgres.StatStatementFlags{
+				ExcludeDatabases: []string{"stat_statements_only"},
+				ExcludeUsers:     []string{"stat_statements_user"},
+			},
+		}
+
+		exporterArgs := applyExporterExclusions(
+			resolveExporterArgs(userBlock),
+			[]string{"top_level"},
+			[]string{"top_level_user", "current_user"},
+			sql.NullString{String: "current_user", Valid: true},
+		)
+
+		assert.Equal(t, []string{"azure_maintenance", "autodiscovery_only"}, exporterArgs.AutoDiscovery.DatabaseDenylist)
+		assert.Equal(t, []string{"azure_maintenance", "stat_statements_only"}, exporterArgs.StatStatementFlags.ExcludeDatabases)
+		assert.Equal(t, []string{"stat_statements_user", "current_user"}, exporterArgs.StatStatementFlags.ExcludeUsers)
+		assert.Equal(t, []string{"autodiscovery_only"}, userBlock.AutoDiscovery.DatabaseDenylist)
+		assert.Equal(t, []string{"stat_statements_only"}, userBlock.StatStatementFlags.ExcludeDatabases)
+		assert.Equal(t, []string{"stat_statements_user"}, userBlock.StatStatementFlags.ExcludeUsers)
+	})
+
+	t.Run("explicit empty nested exclusions override top-level exclusions", func(t *testing.T) {
+		cfg := `
+			data_source_name = "postgresql://user:pass@localhost:5432/db"
+			forward_to = []
+			prometheus_exporter {
+				autodiscovery {
+					database_denylist = []
+				}
+				stat_statements {
+					exclude_databases = []
+					exclude_users = []
+				}
+			}
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		require.NotNil(t, args.PrometheusExporter)
+		require.NotNil(t, args.PrometheusExporter.AutoDiscovery.DatabaseDenylist)
+		require.NotNil(t, args.PrometheusExporter.StatStatementFlags)
+		require.NotNil(t, args.PrometheusExporter.StatStatementFlags.ExcludeDatabases)
+		require.NotNil(t, args.PrometheusExporter.StatStatementFlags.ExcludeUsers)
+
+		exporterArgs := applyExporterExclusions(
+			resolveExporterArgs(args.PrometheusExporter),
+			[]string{"top_level"},
+			[]string{"top_level_user", "current_user"},
+			sql.NullString{String: "current_user", Valid: true},
+		)
+
+		assert.Equal(t, []string{"azure_maintenance"}, exporterArgs.AutoDiscovery.DatabaseDenylist)
+		assert.Equal(t, []string{"azure_maintenance"}, exporterArgs.StatStatementFlags.ExcludeDatabases)
+		assert.Equal(t, []string{"current_user"}, exporterArgs.StatStatementFlags.ExcludeUsers)
+	})
+
+	t.Run("database exclusions preserve mandatory exclusion without configuration", func(t *testing.T) {
+		exporterArgs := applyExporterExclusions(resolveExporterArgs(nil), nil, nil, sql.NullString{})
+
+		assert.Equal(t, []string{"azure_maintenance"}, exporterArgs.AutoDiscovery.DatabaseDenylist)
+		assert.Equal(t, []string{"azure_maintenance"}, exporterArgs.StatStatementFlags.ExcludeDatabases)
+		assert.Empty(t, exporterArgs.StatStatementFlags.ExcludeUsers)
+	})
 }
 
 func Test_query_details_stat_statements_different_limits_warning(t *testing.T) {

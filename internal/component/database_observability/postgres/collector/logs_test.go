@@ -824,6 +824,46 @@ func TestLogsCollector_ExcludeDatabases(t *testing.T) {
 	require.Equal(t, float64(1), totalCount, "only the non-excluded database log should be counted")
 }
 
+func TestLogsCollector_AlwaysExcludesAzureMaintenance(t *testing.T) {
+	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
+	registry := prometheus.NewRegistry()
+
+	collector, err := NewLogs(LogsArguments{
+		Receiver:         loki.NewLogsReceiver(),
+		EntryHandler:     entryHandler,
+		Logger:           logging.NewSlogNop(),
+		Registry:         registry,
+		ExcludeDatabases: []string{"other_db"},
+	})
+	require.NoError(t, err)
+
+	ts := collector.startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+
+	excludedLog := ts1 + ":10.0.1.5(12345):app-user@azure_maintenance:[9112]:4:57014:" + ts2 + ":25/112:0:693c34cb.2398::psqlERROR:  canceling statement"
+	allowedLog := ts1 + ":10.0.1.5(12345):app-user@allowed_db:[9113]:5:57014:" + ts2 + ":25/113:0:693c34cb.2399::psqlERROR:  canceling statement"
+
+	require.NoError(t, collector.parseTextLog(loki.Entry{Entry: push.Entry{Line: excludedLog}}))
+	require.NoError(t, collector.parseTextLog(loki.Entry{Entry: push.Entry{Line: allowedLog}}))
+
+	mfs, _ := registry.Gather()
+	var totalCount float64
+	for _, mf := range mfs {
+		if mf.GetName() == "database_observability_pg_errors_total" {
+			for _, metric := range mf.GetMetric() {
+				labels := make(map[string]string)
+				for _, label := range metric.GetLabel() {
+					labels[label.GetName()] = label.GetValue()
+				}
+				totalCount += metric.GetCounter().GetValue()
+				require.Equal(t, "allowed_db", labels["datname"], "only allowed_db should produce metrics")
+			}
+		}
+	}
+	require.Equal(t, float64(1), totalCount, "azure_maintenance must be excluded even when exclude_databases does not list it")
+}
+
 func TestLogsCollector_ExcludeUsers(t *testing.T) {
 	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry := prometheus.NewRegistry()
