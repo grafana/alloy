@@ -40,7 +40,7 @@ var consumerBackoffConfig = backoff.Config{
 }
 
 func sendToV2(logger *slog.Logger, c loki.Consumer) sendFunc {
-	// The batch is reused to avoid allocations, so each tailer needs its own sendToV2.
+	// The batch is reused to reduce allocations, so each tailer needs its own sendToV2.
 	batch := loki.NewBatch()
 
 	return func(ctx context.Context, entry loki.Entry) error {
