@@ -366,6 +366,9 @@ The collector exports the following metrics:
 | Metric | Type | Source | Description |
 |--------|------|--------|-------------|
 | `database_observability_sql_server_batch_requests_total` | counter | `sys.dm_os_performance_counters` | Total Transact-SQL command batches received by SQL Server. |
+| `database_observability_sql_server_buffer_cache_hit_ratio` | gauge | `sys.dm_os_performance_counters` | Ratio of pages found in the buffer pool without reading from disk. |
+| `database_observability_sql_server_checkpoint_pages_total` | counter | `sys.dm_os_performance_counters` | Total pages flushed to disk by checkpoint operations. |
+| `database_observability_sql_server_connection_resets_total` | counter | `sys.dm_os_performance_counters` | Total logins started from the connection pool since SQL Server last started. |
 | `database_observability_sql_server_database_cpu_utilization_ratio` | gauge | `sys.dm_db_resource_stats` | Average Azure SQL Database CPU utilization relative to the service-tier limit. |
 | `database_observability_sql_server_database_data_io_utilization_ratio` | gauge | `sys.dm_db_resource_stats` | Average Azure SQL Database data I/O utilization relative to the service-tier limit. |
 | `database_observability_sql_server_database_dtu_limit` | gauge | `sys.dm_user_db_resource_governance` | DTU limit of an Azure SQL Database that uses the DTU purchasing model. |
@@ -382,6 +385,8 @@ The collector exports the following metrics:
 | `database_observability_sql_server_database_worker_limit` | gauge | `sys.dm_user_db_resource_governance` | Worker thread limit of the Azure SQL Database user workload group. |
 | `database_observability_sql_server_database_worker_utilization_ratio` | gauge | `sys.dm_db_resource_stats` | Maximum Azure SQL Database worker utilization during the latest reporting interval. |
 | `database_observability_sql_server_deadlocks_total` | counter | `sys.dm_os_performance_counters` | Total lock requests that resulted in a deadlock. |
+| `database_observability_sql_server_free_list_stalls_total` | counter | `sys.dm_os_performance_counters` | Total requests that had to wait for a free page in the buffer pool. |
+| `database_observability_sql_server_full_scans_total` | counter | `sys.dm_os_performance_counters` | Total unrestricted base-table or full-index scans performed by SQL Server. |
 | `database_observability_sql_server_host_commit_available_bytes` | gauge | `sys.dm_os_sys_memory` | Available operating system commit visible to the SQL Server host. |
 | `database_observability_sql_server_host_commit_limit_bytes` | gauge | `sys.dm_os_sys_memory` | Operating system commit limit visible to the SQL Server host. |
 | `database_observability_sql_server_host_high_memory_signal` | gauge | `sys.dm_os_sys_memory` | Whether the host high-memory resource notification is set. |
@@ -407,11 +412,16 @@ The collector exports the following metrics:
 | `database_observability_sql_server_io_write_stall_seconds_total` | counter | `sys.dm_io_virtual_file_stats` | Total time spent waiting for write operations on SQL Server files. |
 | `database_observability_sql_server_io_writes_total` | counter | `sys.dm_io_virtual_file_stats` | Total physical write operations issued on SQL Server database and log files. |
 | `database_observability_sql_server_io_written_bytes_total` | counter | `sys.dm_io_virtual_file_stats` | Total bytes written to SQL Server database and log files. |
+| `database_observability_sql_server_lazy_writes_total` | counter | `sys.dm_os_performance_counters` | Total pages written to disk by the lazy writer to free buffer pool pages. |
+| `database_observability_sql_server_lock_wait_seconds_total` | counter | `sys.dm_os_performance_counters` | Total time spent waiting for locks. |
 | `database_observability_sql_server_lock_waits_total` | counter | `sys.dm_os_performance_counters` | Total lock requests that required the caller to wait. |
+| `database_observability_sql_server_logins_total` | counter | `sys.dm_os_performance_counters` | Total logins started outside the connection pool since SQL Server last started. |
+| `database_observability_sql_server_logouts_total` | counter | `sys.dm_os_performance_counters` | Total logout operations since SQL Server last started. |
 | `database_observability_sql_server_memory_grants_pending` | gauge | `sys.dm_os_performance_counters` | Current number of processes waiting for a workspace memory grant. |
 | `database_observability_sql_server_memory_manager_committed_bytes` | gauge | `sys.dm_os_sys_info` | Memory committed by the SQL Server memory manager. |
 | `database_observability_sql_server_memory_manager_target_bytes` | gauge | `sys.dm_os_sys_info` | Memory the SQL Server memory manager can consume. |
 | `database_observability_sql_server_page_life_expectancy_seconds` | gauge | `sys.dm_os_performance_counters` | Duration in seconds that a data page stays in the buffer pool without references. |
+| `database_observability_sql_server_page_splits_total` | counter | `sys.dm_os_performance_counters` | Total index page splits performed by SQL Server. |
 | `database_observability_sql_server_process_available_commit_memory_bytes` | gauge | `sys.dm_os_process_memory` | Memory available to be committed by the SQL Server process. |
 | `database_observability_sql_server_process_committed_memory_resident_ratio` | gauge | `sys.dm_os_process_memory` | Ratio of committed process memory resident in the working set. |
 | `database_observability_sql_server_process_cpu_limit` | gauge | `sys.dm_os_job_object` | Logical CPU capacity available to Azure SQL Managed Instance. |
@@ -422,11 +432,13 @@ The collector exports the following metrics:
 | `database_observability_sql_server_process_resident_memory_bytes` | gauge | `sys.dm_os_process_memory` | SQL Server process working set. |
 | `database_observability_sql_server_process_virtual_memory_bytes` | gauge | `sys.dm_os_process_memory` | Virtual address space committed by the SQL Server process. |
 | `database_observability_sql_server_process_virtual_memory_low` | gauge | `sys.dm_os_process_memory` | Whether the process has detected a low virtual-memory condition. |
+| `database_observability_sql_server_processes_blocked` | gauge | `sys.dm_os_performance_counters` | Current number of blocked processes. |
 | `database_observability_sql_server_sos_memory_target_bytes` | gauge | `sys.dm_os_job_object` | Memory available to the Azure SQL Managed Instance SQL operating system. |
 | `database_observability_sql_server_sql_compilations_total` | counter | `sys.dm_os_performance_counters` | Total SQL compilations performed by SQL Server. |
 | `database_observability_sql_server_sql_recompilations_total` | counter | `sys.dm_os_performance_counters` | Total SQL statement recompilations performed by SQL Server. |
 | `database_observability_sql_server_tempdb_space_unallocated_bytes` | gauge | `tempdb.sys.dm_db_file_space_usage` | Unallocated space in `tempdb` data files. |
 | `database_observability_sql_server_tempdb_space_used_bytes` | gauge | `tempdb.sys.dm_db_file_space_usage` | Space used in `tempdb` data files, labeled by `category`. |
+| `database_observability_sql_server_transactions_total` | counter | `sys.dm_os_performance_counters` | Total transactions started across all databases. |
 | `database_observability_sql_server_uptime_seconds` | gauge | `sys.dm_os_sys_info` | Time since the SQL Server process started. |
 | `database_observability_sql_server_user_session_limit` | gauge | `sys.configurations` | Maximum user sessions allowed by the active configuration and service limit. |
 | `database_observability_sql_server_user_sessions` | gauge | `sys.dm_exec_sessions` | Authenticated user sessions, labeled by `status`. |

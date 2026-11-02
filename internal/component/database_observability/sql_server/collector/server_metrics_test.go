@@ -104,12 +104,25 @@ var volumeStorageColumns = []string{
 
 var performanceCounterColumns = []string{
 	"batch_requests_total",
+	"transactions_total",
 	"sql_compilations_total",
 	"sql_recompilations_total",
 	"page_life_expectancy_seconds",
+	"buffer_cache_hit_count",
+	"buffer_cache_hit_base",
+	"checkpoint_pages_total",
+	"lazy_writes_total",
+	"free_list_stalls_total",
+	"page_splits_total",
+	"full_scans_total",
 	"memory_grants_pending",
+	"processes_blocked",
 	"deadlocks_total",
 	"lock_waits_total",
+	"lock_wait_seconds_total",
+	"logins_total",
+	"connection_resets_total",
+	"logouts_total",
 }
 
 var fileIOStatsColumns = []string{
@@ -177,7 +190,9 @@ func TestServerMetrics(t *testing.T) {
 	mock.ExpectQuery(selectDatabaseStorage).WithoutArgs().RowsWillBeClosed().
 		WillReturnRows(sqlmock.NewRows(databaseStorageColumns).AddRow(8192000, 16384000, 1024000, 2048000, nil))
 	mock.ExpectQuery(selectPerformanceCounters).WithoutArgs().RowsWillBeClosed().
-		WillReturnRows(sqlmock.NewRows(performanceCounterColumns).AddRow(5000, 400, 15, 1800, 2, 1, 25))
+		WillReturnRows(sqlmock.NewRows(performanceCounterColumns).AddRow(
+			5000, 1200, 400, 15, 1800, 990, 1000, 35, 12, 3, 45, 180, 2, 4, 1, 25, 1.5, 80, 350, 75,
+		))
 	mock.ExpectQuery(selectFileIOStats).WithoutArgs().RowsWillBeClosed().
 		WillReturnRows(sqlmock.NewRows(fileIOStatsColumns).AddRow(1048576, 524288, 128, 64, 0.25, 0.5))
 	mock.ExpectQuery(selectTempdbSpaceUsage).WithoutArgs().RowsWillBeClosed().
@@ -189,6 +204,15 @@ func TestServerMetrics(t *testing.T) {
 # HELP database_observability_sql_server_batch_requests_total Total Transact-SQL command batches received by SQL Server.
 # TYPE database_observability_sql_server_batch_requests_total counter
 database_observability_sql_server_batch_requests_total 5000
+# HELP database_observability_sql_server_buffer_cache_hit_ratio Ratio of pages found in the buffer pool without reading from disk.
+# TYPE database_observability_sql_server_buffer_cache_hit_ratio gauge
+database_observability_sql_server_buffer_cache_hit_ratio 0.99
+# HELP database_observability_sql_server_checkpoint_pages_total Total pages flushed to disk by checkpoint operations.
+# TYPE database_observability_sql_server_checkpoint_pages_total counter
+database_observability_sql_server_checkpoint_pages_total 35
+# HELP database_observability_sql_server_connection_resets_total Total logins started from the connection pool since SQL Server last started.
+# TYPE database_observability_sql_server_connection_resets_total counter
+database_observability_sql_server_connection_resets_total 350
 # HELP database_observability_sql_server_database_storage_allocated_bytes Space allocated to the connected database files, in bytes.
 # TYPE database_observability_sql_server_database_storage_allocated_bytes gauge
 database_observability_sql_server_database_storage_allocated_bytes{file_type="log"} 2.048e+06
@@ -200,6 +224,12 @@ database_observability_sql_server_database_storage_used_bytes{file_type="rows"} 
 # HELP database_observability_sql_server_deadlocks_total Total lock requests that resulted in a deadlock.
 # TYPE database_observability_sql_server_deadlocks_total counter
 database_observability_sql_server_deadlocks_total 1
+# HELP database_observability_sql_server_free_list_stalls_total Total requests that had to wait for a free page in the buffer pool.
+# TYPE database_observability_sql_server_free_list_stalls_total counter
+database_observability_sql_server_free_list_stalls_total 3
+# HELP database_observability_sql_server_full_scans_total Total unrestricted base-table or full-index scans performed by SQL Server.
+# TYPE database_observability_sql_server_full_scans_total counter
+database_observability_sql_server_full_scans_total 180
 # HELP database_observability_sql_server_host_commit_available_bytes Available operating system commit visible to the SQL Server host, in bytes.
 # TYPE database_observability_sql_server_host_commit_available_bytes gauge
 database_observability_sql_server_host_commit_available_bytes 8192
@@ -254,9 +284,21 @@ database_observability_sql_server_io_writes_total 64
 # HELP database_observability_sql_server_io_written_bytes_total Total bytes written to SQL Server database and log files.
 # TYPE database_observability_sql_server_io_written_bytes_total counter
 database_observability_sql_server_io_written_bytes_total 524288
+# HELP database_observability_sql_server_lazy_writes_total Total pages written to disk by the lazy writer to free buffer pool pages.
+# TYPE database_observability_sql_server_lazy_writes_total counter
+database_observability_sql_server_lazy_writes_total 12
+# HELP database_observability_sql_server_lock_wait_seconds_total Total time spent waiting for locks, in seconds.
+# TYPE database_observability_sql_server_lock_wait_seconds_total counter
+database_observability_sql_server_lock_wait_seconds_total 1.5
 # HELP database_observability_sql_server_lock_waits_total Total lock requests that required the caller to wait.
 # TYPE database_observability_sql_server_lock_waits_total counter
 database_observability_sql_server_lock_waits_total 25
+# HELP database_observability_sql_server_logins_total Total logins started outside the connection pool since SQL Server last started.
+# TYPE database_observability_sql_server_logins_total counter
+database_observability_sql_server_logins_total 80
+# HELP database_observability_sql_server_logouts_total Total logout operations since SQL Server last started.
+# TYPE database_observability_sql_server_logouts_total counter
+database_observability_sql_server_logouts_total 75
 # HELP database_observability_sql_server_memory_grants_pending Current number of processes waiting for a workspace memory grant.
 # TYPE database_observability_sql_server_memory_grants_pending gauge
 database_observability_sql_server_memory_grants_pending 2
@@ -269,6 +311,9 @@ database_observability_sql_server_memory_manager_target_bytes 2048
 # HELP database_observability_sql_server_page_life_expectancy_seconds Duration in seconds that a data page stays in the buffer pool without references.
 # TYPE database_observability_sql_server_page_life_expectancy_seconds gauge
 database_observability_sql_server_page_life_expectancy_seconds 1800
+# HELP database_observability_sql_server_page_splits_total Total index page splits performed by SQL Server.
+# TYPE database_observability_sql_server_page_splits_total counter
+database_observability_sql_server_page_splits_total 45
 # HELP database_observability_sql_server_process_available_commit_memory_bytes Memory available to be committed by the SQL Server process, in bytes.
 # TYPE database_observability_sql_server_process_available_commit_memory_bytes gauge
 database_observability_sql_server_process_available_commit_memory_bytes 1024
@@ -294,6 +339,9 @@ database_observability_sql_server_process_virtual_memory_bytes 4096
 # HELP database_observability_sql_server_process_virtual_memory_low Whether the SQL Server process has detected a low virtual-memory condition.
 # TYPE database_observability_sql_server_process_virtual_memory_low gauge
 database_observability_sql_server_process_virtual_memory_low 1
+# HELP database_observability_sql_server_processes_blocked Current number of blocked processes.
+# TYPE database_observability_sql_server_processes_blocked gauge
+database_observability_sql_server_processes_blocked 4
 # HELP database_observability_sql_server_sql_compilations_total Total SQL compilations performed by SQL Server.
 # TYPE database_observability_sql_server_sql_compilations_total counter
 database_observability_sql_server_sql_compilations_total 400
@@ -309,6 +357,9 @@ database_observability_sql_server_tempdb_space_used_bytes{category="internal_obj
 database_observability_sql_server_tempdb_space_used_bytes{category="mixed_extents"} 8192
 database_observability_sql_server_tempdb_space_used_bytes{category="user_objects"} 65536
 database_observability_sql_server_tempdb_space_used_bytes{category="version_store"} 16384
+# HELP database_observability_sql_server_transactions_total Total transactions started across all databases.
+# TYPE database_observability_sql_server_transactions_total counter
+database_observability_sql_server_transactions_total 1200
 # HELP database_observability_sql_server_uptime_seconds Time since the SQL Server process started, in seconds.
 # TYPE database_observability_sql_server_uptime_seconds gauge
 database_observability_sql_server_uptime_seconds 3600
@@ -351,7 +402,9 @@ func TestServerMetricsAzureSQLManagedInstance(t *testing.T) {
 	mock.ExpectQuery(selectDatabaseStorage).WithoutArgs().RowsWillBeClosed().
 		WillReturnRows(sqlmock.NewRows(databaseStorageColumns).AddRow(16000000000, 16800000000, 790000000, 830000000, nil))
 	mock.ExpectQuery(selectPerformanceCounters).WithoutArgs().RowsWillBeClosed().
-		WillReturnRows(sqlmock.NewRows(performanceCounterColumns).AddRow(1000, 50, 2, 2400, 0, 0, 4))
+		WillReturnRows(sqlmock.NewRows(performanceCounterColumns).AddRow(
+			1000, 300, 50, 2, 2400, 950, 1000, 10, 4, 1, 8, 20, 0, 1, 0, 4, 0.25, 15, 90, 14,
+		))
 	mock.ExpectQuery(selectFileIOStats).WithoutArgs().RowsWillBeClosed().
 		WillReturnRows(sqlmock.NewRows(fileIOStatsColumns).AddRow(2048, 1024, 20, 10, 0.1, 0.2))
 	mock.ExpectQuery(selectTempdbSpaceUsage).WithoutArgs().RowsWillBeClosed().
@@ -372,6 +425,15 @@ func TestServerMetricsAzureSQLManagedInstance(t *testing.T) {
 # HELP database_observability_sql_server_batch_requests_total Total Transact-SQL command batches received by SQL Server.
 # TYPE database_observability_sql_server_batch_requests_total counter
 database_observability_sql_server_batch_requests_total 1000
+# HELP database_observability_sql_server_buffer_cache_hit_ratio Ratio of pages found in the buffer pool without reading from disk.
+# TYPE database_observability_sql_server_buffer_cache_hit_ratio gauge
+database_observability_sql_server_buffer_cache_hit_ratio 0.95
+# HELP database_observability_sql_server_checkpoint_pages_total Total pages flushed to disk by checkpoint operations.
+# TYPE database_observability_sql_server_checkpoint_pages_total counter
+database_observability_sql_server_checkpoint_pages_total 10
+# HELP database_observability_sql_server_connection_resets_total Total logins started from the connection pool since SQL Server last started.
+# TYPE database_observability_sql_server_connection_resets_total counter
+database_observability_sql_server_connection_resets_total 90
 # HELP database_observability_sql_server_database_storage_allocated_bytes Space allocated to the connected database files, in bytes.
 # TYPE database_observability_sql_server_database_storage_allocated_bytes gauge
 database_observability_sql_server_database_storage_allocated_bytes{file_type="log"} 8.3e+08
@@ -383,6 +445,12 @@ database_observability_sql_server_database_storage_used_bytes{file_type="rows"} 
 # HELP database_observability_sql_server_deadlocks_total Total lock requests that resulted in a deadlock.
 # TYPE database_observability_sql_server_deadlocks_total counter
 database_observability_sql_server_deadlocks_total 0
+# HELP database_observability_sql_server_free_list_stalls_total Total requests that had to wait for a free page in the buffer pool.
+# TYPE database_observability_sql_server_free_list_stalls_total counter
+database_observability_sql_server_free_list_stalls_total 1
+# HELP database_observability_sql_server_full_scans_total Total unrestricted base-table or full-index scans performed by SQL Server.
+# TYPE database_observability_sql_server_full_scans_total counter
+database_observability_sql_server_full_scans_total 20
 # HELP database_observability_sql_server_info Information about the SQL Server engine edition and product version.
 # TYPE database_observability_sql_server_info gauge
 database_observability_sql_server_info{compatibility_level="",edition_name="azure_sql_managed_instance",engine_edition="8",product_build="",product_level="",product_version=""} 1
@@ -428,9 +496,21 @@ database_observability_sql_server_io_writes_total 10
 # HELP database_observability_sql_server_io_written_bytes_total Total bytes written to SQL Server database and log files.
 # TYPE database_observability_sql_server_io_written_bytes_total counter
 database_observability_sql_server_io_written_bytes_total 1024
+# HELP database_observability_sql_server_lazy_writes_total Total pages written to disk by the lazy writer to free buffer pool pages.
+# TYPE database_observability_sql_server_lazy_writes_total counter
+database_observability_sql_server_lazy_writes_total 4
+# HELP database_observability_sql_server_lock_wait_seconds_total Total time spent waiting for locks, in seconds.
+# TYPE database_observability_sql_server_lock_wait_seconds_total counter
+database_observability_sql_server_lock_wait_seconds_total 0.25
 # HELP database_observability_sql_server_lock_waits_total Total lock requests that required the caller to wait.
 # TYPE database_observability_sql_server_lock_waits_total counter
 database_observability_sql_server_lock_waits_total 4
+# HELP database_observability_sql_server_logins_total Total logins started outside the connection pool since SQL Server last started.
+# TYPE database_observability_sql_server_logins_total counter
+database_observability_sql_server_logins_total 15
+# HELP database_observability_sql_server_logouts_total Total logout operations since SQL Server last started.
+# TYPE database_observability_sql_server_logouts_total counter
+database_observability_sql_server_logouts_total 14
 # HELP database_observability_sql_server_memory_grants_pending Current number of processes waiting for a workspace memory grant.
 # TYPE database_observability_sql_server_memory_grants_pending gauge
 database_observability_sql_server_memory_grants_pending 0
@@ -443,6 +523,9 @@ database_observability_sql_server_memory_manager_target_bytes 2048
 # HELP database_observability_sql_server_page_life_expectancy_seconds Duration in seconds that a data page stays in the buffer pool without references.
 # TYPE database_observability_sql_server_page_life_expectancy_seconds gauge
 database_observability_sql_server_page_life_expectancy_seconds 2400
+# HELP database_observability_sql_server_page_splits_total Total index page splits performed by SQL Server.
+# TYPE database_observability_sql_server_page_splits_total counter
+database_observability_sql_server_page_splits_total 8
 # HELP database_observability_sql_server_process_available_commit_memory_bytes Memory available to be committed by the SQL Server process, in bytes.
 # TYPE database_observability_sql_server_process_available_commit_memory_bytes gauge
 database_observability_sql_server_process_available_commit_memory_bytes 1024
@@ -474,6 +557,9 @@ database_observability_sql_server_process_virtual_memory_bytes 4096
 # HELP database_observability_sql_server_process_virtual_memory_low Whether the SQL Server process has detected a low virtual-memory condition.
 # TYPE database_observability_sql_server_process_virtual_memory_low gauge
 database_observability_sql_server_process_virtual_memory_low 0
+# HELP database_observability_sql_server_processes_blocked Current number of blocked processes.
+# TYPE database_observability_sql_server_processes_blocked gauge
+database_observability_sql_server_processes_blocked 1
 # HELP database_observability_sql_server_sos_memory_target_bytes Memory available to the Azure SQL Managed Instance SQL operating system, in bytes.
 # TYPE database_observability_sql_server_sos_memory_target_bytes gauge
 database_observability_sql_server_sos_memory_target_bytes 5.0331648e+07
@@ -492,6 +578,9 @@ database_observability_sql_server_tempdb_space_used_bytes{category="internal_obj
 database_observability_sql_server_tempdb_space_used_bytes{category="mixed_extents"} 0
 database_observability_sql_server_tempdb_space_used_bytes{category="user_objects"} 8192
 database_observability_sql_server_tempdb_space_used_bytes{category="version_store"} 0
+# HELP database_observability_sql_server_transactions_total Total transactions started across all databases.
+# TYPE database_observability_sql_server_transactions_total counter
+database_observability_sql_server_transactions_total 300
 # HELP database_observability_sql_server_uptime_seconds Time since the SQL Server process started, in seconds.
 # TYPE database_observability_sql_server_uptime_seconds gauge
 database_observability_sql_server_uptime_seconds 3600
@@ -537,7 +626,9 @@ func TestServerMetricsAzureSQLDatabase(t *testing.T) {
 	mock.ExpectQuery(selectDatabaseStorage).WithoutArgs().RowsWillBeClosed().
 		WillReturnRows(sqlmock.NewRows(databaseStorageColumns).AddRow(18028126208, 18071117824, 0, 0, 34359738368))
 	mock.ExpectQuery(selectPerformanceCounters).WithoutArgs().RowsWillBeClosed().
-		WillReturnRows(sqlmock.NewRows(performanceCounterColumns).AddRow(250, 10, 1, 900, 0, 0, 2))
+		WillReturnRows(sqlmock.NewRows(performanceCounterColumns).AddRow(
+			250, 75, 10, 1, 900, 0, 0, 5, 2, 0, 3, 6, 0, 0, 0, 2, 0.1, 4, 20, 3,
+		))
 	mock.ExpectQuery(selectFileIOStats).WithoutArgs().RowsWillBeClosed().
 		WillReturnRows(sqlmock.NewRows(fileIOStatsColumns).AddRow(4096, 2048, 8, 4, 0.05, 0.08))
 
@@ -545,6 +636,12 @@ func TestServerMetricsAzureSQLDatabase(t *testing.T) {
 # HELP database_observability_sql_server_batch_requests_total Total Transact-SQL command batches received by SQL Server.
 # TYPE database_observability_sql_server_batch_requests_total counter
 database_observability_sql_server_batch_requests_total 250
+# HELP database_observability_sql_server_checkpoint_pages_total Total pages flushed to disk by checkpoint operations.
+# TYPE database_observability_sql_server_checkpoint_pages_total counter
+database_observability_sql_server_checkpoint_pages_total 5
+# HELP database_observability_sql_server_connection_resets_total Total logins started from the connection pool since SQL Server last started.
+# TYPE database_observability_sql_server_connection_resets_total counter
+database_observability_sql_server_connection_resets_total 20
 # HELP database_observability_sql_server_database_cpu_utilization_ratio Average database CPU utilization relative to the Azure SQL Database service-tier limit during the latest reporting interval.
 # TYPE database_observability_sql_server_database_cpu_utilization_ratio gauge
 database_observability_sql_server_database_cpu_utilization_ratio 0.9346
@@ -592,6 +689,12 @@ database_observability_sql_server_database_worker_utilization_ratio 0.065
 # HELP database_observability_sql_server_deadlocks_total Total lock requests that resulted in a deadlock.
 # TYPE database_observability_sql_server_deadlocks_total counter
 database_observability_sql_server_deadlocks_total 0
+# HELP database_observability_sql_server_free_list_stalls_total Total requests that had to wait for a free page in the buffer pool.
+# TYPE database_observability_sql_server_free_list_stalls_total counter
+database_observability_sql_server_free_list_stalls_total 0
+# HELP database_observability_sql_server_full_scans_total Total unrestricted base-table or full-index scans performed by SQL Server.
+# TYPE database_observability_sql_server_full_scans_total counter
+database_observability_sql_server_full_scans_total 6
 # HELP database_observability_sql_server_info Information about the SQL Server engine edition and product version.
 # TYPE database_observability_sql_server_info gauge
 database_observability_sql_server_info{compatibility_level="",edition_name="azure_sql_database",engine_edition="5",product_build="",product_level="",product_version=""} 1
@@ -619,21 +722,42 @@ database_observability_sql_server_io_writes_total 4
 # HELP database_observability_sql_server_io_written_bytes_total Total bytes written to SQL Server database and log files.
 # TYPE database_observability_sql_server_io_written_bytes_total counter
 database_observability_sql_server_io_written_bytes_total 2048
+# HELP database_observability_sql_server_lazy_writes_total Total pages written to disk by the lazy writer to free buffer pool pages.
+# TYPE database_observability_sql_server_lazy_writes_total counter
+database_observability_sql_server_lazy_writes_total 2
+# HELP database_observability_sql_server_lock_wait_seconds_total Total time spent waiting for locks, in seconds.
+# TYPE database_observability_sql_server_lock_wait_seconds_total counter
+database_observability_sql_server_lock_wait_seconds_total 0.1
 # HELP database_observability_sql_server_lock_waits_total Total lock requests that required the caller to wait.
 # TYPE database_observability_sql_server_lock_waits_total counter
 database_observability_sql_server_lock_waits_total 2
+# HELP database_observability_sql_server_logins_total Total logins started outside the connection pool since SQL Server last started.
+# TYPE database_observability_sql_server_logins_total counter
+database_observability_sql_server_logins_total 4
+# HELP database_observability_sql_server_logouts_total Total logout operations since SQL Server last started.
+# TYPE database_observability_sql_server_logouts_total counter
+database_observability_sql_server_logouts_total 3
 # HELP database_observability_sql_server_memory_grants_pending Current number of processes waiting for a workspace memory grant.
 # TYPE database_observability_sql_server_memory_grants_pending gauge
 database_observability_sql_server_memory_grants_pending 0
 # HELP database_observability_sql_server_page_life_expectancy_seconds Duration in seconds that a data page stays in the buffer pool without references.
 # TYPE database_observability_sql_server_page_life_expectancy_seconds gauge
 database_observability_sql_server_page_life_expectancy_seconds 900
+# HELP database_observability_sql_server_page_splits_total Total index page splits performed by SQL Server.
+# TYPE database_observability_sql_server_page_splits_total counter
+database_observability_sql_server_page_splits_total 3
+# HELP database_observability_sql_server_processes_blocked Current number of blocked processes.
+# TYPE database_observability_sql_server_processes_blocked gauge
+database_observability_sql_server_processes_blocked 0
 # HELP database_observability_sql_server_sql_compilations_total Total SQL compilations performed by SQL Server.
 # TYPE database_observability_sql_server_sql_compilations_total counter
 database_observability_sql_server_sql_compilations_total 10
 # HELP database_observability_sql_server_sql_recompilations_total Total SQL statement recompilations performed by SQL Server.
 # TYPE database_observability_sql_server_sql_recompilations_total counter
 database_observability_sql_server_sql_recompilations_total 1
+# HELP database_observability_sql_server_transactions_total Total transactions started across all databases.
+# TYPE database_observability_sql_server_transactions_total counter
+database_observability_sql_server_transactions_total 75
 # HELP database_observability_sql_server_user_session_limit Maximum simultaneous SQL Server user sessions allowed by the active configuration and service limit.
 # TYPE database_observability_sql_server_user_session_limit gauge
 database_observability_sql_server_user_session_limit 30000
