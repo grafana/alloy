@@ -11,7 +11,10 @@ import (
 //go:embed manifests/snmpsim.yaml
 var snmpSimManifest string
 
-const snmpSimSelector = "app=snmpsim"
+const (
+	snmpSimImage    = "tandrup/snmpsim:v0.4"
+	snmpSimSelector = "app=snmpsim"
+)
 
 var _ harness.Dependency = (*SNMPSim)(nil)
 
@@ -36,6 +39,9 @@ func (s *SNMPSim) Name() string { return "snmpsim" }
 func (s *SNMPSim) Install(_ *harness.TestContext) error {
 	if s.opts.Namespace == "" {
 		return fmt.Errorf("snmpsim namespace is required")
+	}
+	if err := ensureKindImage(snmpSimImage); err != nil {
+		return err
 	}
 	if err := util.Step("apply snmpsim manifest", func() error {
 		return harness.ApplyManifest(s.opts.Namespace, snmpSimManifest)
