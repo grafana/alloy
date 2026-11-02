@@ -57,10 +57,17 @@ func (r *Receiver) ConsumeCalls() int {
 func (r *Receiver) Next(t *testing.T, n int) []loki.Entry {
 	t.Helper()
 
+	return r.NextWithin(t, n, 5*time.Second)
+}
+
+// NextWithin is like Next but waits up to timeout for the entries.
+func (r *Receiver) NextWithin(t *testing.T, n int, timeout time.Duration) []loki.Entry {
+	t.Helper()
+
 	end := r.consumed + n
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		require.GreaterOrEqual(c, len(r.entries()), end)
-	}, 5*time.Second, 10*time.Millisecond, "waiting for %d entries", n)
+	}, timeout, 10*time.Millisecond, "waiting for %d entries", n)
 
 	entries := r.entries()[r.consumed:end]
 	r.consumed = end
