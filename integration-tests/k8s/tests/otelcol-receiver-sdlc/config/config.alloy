@@ -12,6 +12,17 @@ otelcol.receiver.sdlc "test" {
 		enabled = true
 	}
 
+	extract {
+		label {
+			key = "team"
+		}
+		// Also matches last-applied-configuration, which is never extracted.
+		annotation {
+			key_regex = "(kubectl\\.kubernetes\\.io|sdlc\\.test)/(.*)"
+			tag_name  = "$2"
+		}
+	}
+
 	output {
 		logs = [otelcol.exporter.file.rollouts.input]
 	}

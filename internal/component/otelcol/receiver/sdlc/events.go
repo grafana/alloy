@@ -9,6 +9,7 @@ import (
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/grafana/alloy/internal/build"
 )
@@ -54,6 +55,8 @@ type changeEvent struct {
 	resourceChangeType string
 	summary            string
 	diff               func(pcommon.Map)
+	// object is the changed object; its labels and annotations are extracted.
+	object metav1.Object
 }
 
 func (c *controller) rolloutID(w workload, revision int64) string {
@@ -107,6 +110,7 @@ func rolloutEvent(w workload, state rolloutState, kind, rolloutID string, at tim
 		changeType:   changeTypeEffect,
 		// Rollout kinds are part of event IDs, so they keep their names here.
 		resourceChangeType: "rollout_" + kind,
+		object:             w,
 	}
 	if state.previousRevision > 0 {
 		event.versionBefore = strconv.FormatInt(state.previousRevision, 10)
@@ -128,6 +132,7 @@ func (c *controller) enqueueCreated(w workload) {
 		changeType:         changeTypeEffect,
 		resourceChangeType: changeCreated,
 		summary:            "Created",
+		object:             w,
 	})
 }
 
@@ -214,6 +219,14 @@ func (c *controller) changeLogs(e changeEvent) plog.Logs {
 		attrs.PutStr(attrPrefix+"change.version.before", e.versionBefore)
 	}
 	attrs.PutStr(attrPrefix+"change.version.after", e.versionAfter)
+	if e.object != nil {
+		if labels := c.opts.extract.labels(e.object); len(labels) > 0 {
+			out := attrs.PutEmptyMap(attrPrefix + "labels")
+			for name, value := range labels {
+				out.PutStr(name, value)
+			}
+		}
+	}
 	if e.diff != nil {
 		diff := pcommon.NewMap()
 		e.diff(diff)

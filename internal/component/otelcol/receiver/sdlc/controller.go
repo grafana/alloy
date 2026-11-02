@@ -31,6 +31,7 @@ type controllerOptions struct {
 	secrets                 bool
 	statefulSets            bool
 	daemonSets              bool
+	extract                 extractor
 	emit                    func(context.Context, func() eventBatch) error
 	now                     func() time.Time
 }

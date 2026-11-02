@@ -38,11 +38,12 @@ func TestK8sWorkloads(t *testing.T) {
 	t.Cleanup(func() {
 		_ = harness.RunCommand("kubectl", "delete", "namespace", workloadNamespace, "--ignore-not-found", "--wait=false")
 	})
-	apply(t, deployment("web", nil))
+	apply(t, deployment("web", map[string]string{"team": "payments"}))
 	added := waitEvent(t, func(e rolloutEvent) bool {
 		return e.name == "created" && e.resourceID == workloadNamespace+"/web"
 	})
 	require.Equal(t, "Created", added.attrs["grafana.sdlc.change.summary"])
+	require.Equal(t, map[string]any{"team": "payments"}, added.attrs["grafana.sdlc.labels"])
 	first := waitEvent(t, func(e rolloutEvent) bool {
 		return e.namespace == workloadNamespace && e.name == "rollout_started" && e.resourceID == workloadNamespace+"/web"
 	})
@@ -102,14 +103,16 @@ func TestK8sWorkloads(t *testing.T) {
 
 	const secretValue = "integration-secret-value"
 	apply(t, map[string]any{"apiVersion": "v1", "kind": "ConfigMap", "metadata": map[string]any{"name": "settings", "namespace": workloadNamespace}, "data": map[string]string{"LOG_LEVEL": "info"}})
-	apply(t, map[string]any{"apiVersion": "v1", "kind": "Secret", "metadata": map[string]any{"name": "creds", "namespace": workloadNamespace}, "stringData": map[string]string{"password": secretValue}})
+	apply(t, map[string]any{"apiVersion": "v1", "kind": "Secret", "metadata": map[string]any{"name": "creds", "namespace": workloadNamespace, "annotations": map[string]string{"sdlc.test/owner": "payments"}}, "stringData": map[string]string{"password": secretValue}})
 	config := func(resourceType, name, changeType string) func(rolloutEvent) bool {
 		return func(e rolloutEvent) bool {
 			return e.resourceType == resourceType && e.resourceID == workloadNamespace+"/"+name && e.name == changeType
 		}
 	}
 	waitEvent(t, config("configmap", "settings", "created"))
-	waitEvent(t, config("secret", "creds", "created"))
+	createdSecret := waitEvent(t, config("secret", "creds", "created"))
+	// last-applied-configuration matches the rule too, but is never extracted.
+	require.Equal(t, map[string]any{"owner": "payments"}, createdSecret.attrs["grafana.sdlc.labels"])
 	require.NoError(t, harness.RunCommand("kubectl", "-n", workloadNamespace, "patch", "configmap/settings", "--type=merge", "-p", `{"data":{"LOG_LEVEL":"debug"}}`))
 	require.NoError(t, harness.RunCommand("kubectl", "-n", workloadNamespace, "patch", "secret/creds", "--type=merge", "-p", `{"stringData":{"password":"rotated-`+secretValue+`"}}`))
 	updated := waitEvent(t, config("configmap", "settings", "updated"))

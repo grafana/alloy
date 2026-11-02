@@ -38,7 +38,7 @@ func secretFixture() *metav1.PartialObjectMetadata {
 
 func transformed(t *testing.T, values bool, obj any) any {
 	t.Helper()
-	out, err := configWatchTransform(values)(obj)
+	out, err := configWatchTransform(values, extractor{}.keepAnnotation)(obj)
 	require.NoError(t, err)
 	return out
 }

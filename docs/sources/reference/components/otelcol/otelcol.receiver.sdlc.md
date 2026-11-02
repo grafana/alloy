@@ -61,16 +61,22 @@ You can use the following blocks with `otelcol.receiver.sdlc`:
 | [`clustering`][clustering]                  | Configures cluster-wide ownership of the Kubernetes watcher.           | no       |
 | [`configmaps`][configmaps]                  | Configures ConfigMap change tracking.                                  | no       |
 | [`daemonsets`][daemonsets]                  | Configures DaemonSet rollout tracking.                                 | no       |
+| [`extract`][extract]                        | Configures labels and annotations to attach to events.                 | no       |
+| `extract` > [`annotation`][annotation]      | Selects annotations to attach to events.                               | no       |
+| `extract` > [`label`][label]                | Selects labels to attach to events.                                    | no       |
 | [`output`][output]                          | Configures where to send workload events.                               | yes      |
 | [`secrets`][secrets]                        | Configures Secret change tracking.                                     | no       |
 | [`statefulsets`][statefulsets]              | Configures StatefulSet rollout tracking.                               | no       |
 
+[annotation]: #annotation
 [authorization]: #authorization
 [basic_auth]: #basic_auth
 [client]: #client
 [clustering]: #clustering
 [configmaps]: #configmaps
 [daemonsets]: #daemonsets
+[extract]: #extract
+[label]: #label
 [oauth2]: #oauth2
 [output]: #output
 [secrets]: #secrets
@@ -173,6 +179,72 @@ The `daemonsets` block configures DaemonSet rollout tracking:
 
 DaemonSet revisions are stored as ControllerRevisions, so the component also watches ControllerRevisions while DaemonSet tracking is enabled.
 
+### `extract`
+
+The `extract` block selects labels and annotations of the changed object to attach to its events in the `labels` map attribute.
+The changed object is the Deployment, StatefulSet, DaemonSet, ConfigMap, or Secret that the event describes.
+By default, the component attaches no labels or annotations.
+
+Labels and annotations share one map.
+The component applies `label` rules before `annotation` rules, and a later rule overwrites a key that an earlier rule set.
+Values longer than 2048 bytes are truncated.
+The component never attaches the `kubectl.kubernetes.io/last-applied-configuration` annotation, which contains the full applied manifest, including Secret data.
+
+{{< admonition type="caution" >}}
+Annotation rules also apply to Secrets.
+A broad `key_regex`, such as `.*`, can export annotation values that tools or users store on Secrets.
+{{< /admonition >}}
+
+#### `annotation`
+
+The `annotation` block selects annotations to attach to events.
+You can specify this block multiple times.
+
+| Name        | Type     | Description                                                     | Default | Required |
+| ----------- | -------- | --------------------------------------------------------------- | ------- | -------- |
+| `key`       | `string` | Annotation key to attach.                                       |         | no       |
+| `key_regex` | `string` | Regular expression that matches the annotation keys to attach.  |         | no       |
+| `tag_name`  | `string` | Map key to use instead of the annotation key.                   |         | no       |
+
+The `annotation` block accepts the same arguments as the [`label`][label] block and follows the same rules.
+
+#### `label`
+
+The `label` block selects labels to attach to events.
+You can specify this block multiple times.
+
+| Name        | Type     | Description                                                | Default | Required |
+| ----------- | -------- | ---------------------------------------------------------- | ------- | -------- |
+| `key`       | `string` | Label key to attach.                                       |         | no       |
+| `key_regex` | `string` | Regular expression that matches the label keys to attach.  |         | no       |
+| `tag_name`  | `string` | Map key to use instead of the label key.                   |         | no       |
+
+Set exactly one of `key` or `key_regex`.
+The `key_regex` expression must match the whole key.
+With `key_regex`, keys with empty values are skipped, and `tag_name` must reference a capture group, such as `$1` or `${name}`.
+When you omit `tag_name`, the map key is the original key.
+Extracted values are confined to the `labels` map, so they can't overwrite other event attributes.
+
+The following example attaches the `team` label, every `app.kubernetes.io/` label, and the change cause:
+
+```alloy
+extract {
+  label {
+    key = "team"
+  }
+  label {
+    key_regex = "app\\.kubernetes\\.io/(.*)"
+    tag_name  = "app.$1"
+  }
+  annotation {
+    key      = "kubernetes.io/change-cause"
+    tag_name = "change_cause"
+  }
+}
+```
+
+A Deployment labeled `app.kubernetes.io/name: checkout` produces the `app.name` key with the value `checkout` in the `grafana.sdlc.labels` attribute.
+
 ### `output`
 
 {{< badge text="Required" >}}
@@ -267,6 +339,7 @@ Send events to an ingest endpoint that is specific to your Grafana Cloud stack.
 | `change.version.before` | The previous workload revision, or the previous ConfigMap or Secret resource version. Omitted when unknown. |
 | `change.version.after` | The workload revision of this rollout, the workload generation for a workload `created` event, or the ConfigMap or Secret resource version. |
 | `change.diff` | A map of change details, described in the following sections. Omitted when it has no entries. |
+| `labels` | A map of labels and annotations of the object, selected by the [`extract`][extract] block. Omitted when it has no entries. |
 
 The component doesn't set `service.ids`, `environment.id`, `owners`, `actor`, `tracing.enabled`, `logging.enabled`, `change.url`, or `change.git.*`.
 Because `tracing.enabled` isn't set, the backend emits a span for each event.

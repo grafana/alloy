@@ -122,7 +122,7 @@ func (c *controller) configInformers() ([]cache.SharedIndexInformer, error) {
 		api := c.opts.client.CoreV1().ConfigMaps(metav1.NamespaceAll)
 		informer := newPagedInformer(c.opts.client, &corev1.ConfigMap{}, func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
 			return api.List(ctx, options)
-		}, api.Watch, configWatchTransform(content == contentAll))
+		}, api.Watch, configWatchTransform(content == contentAll, c.opts.extract.keepAnnotation))
 		if err := add(newConfigKind("configmap", content), informer); err != nil {
 			return nil, err
 		}
@@ -139,17 +139,24 @@ func (c *controller) metadataInformer(resource schema.GroupVersionResource) cach
 	api := c.opts.metadata.Resource(resource)
 	return newPagedInformer(c.opts.metadata, &metav1.PartialObjectMetadata{}, func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
 		return api.List(ctx, options)
-	}, api.Watch, configWatchTransform(false))
+	}, api.Watch, configWatchTransform(false, c.opts.extract.keepAnnotation))
 }
 
 // Keep only compared fields. Without values, data and annotations are replaced by
-// hashes so changes stay detectable. The transform runs on list pages and again in
-// the informer, so hashing must be idempotent.
-func configWatchTransform(values bool) cache.TransformFunc {
+// hashes so changes stay detectable; annotations for which keep reports true stay
+// readable for extraction. The transform runs on list pages and again in the
+// informer, so hashing must be idempotent.
+func configWatchTransform(values bool, keep func(string) bool) cache.TransformFunc {
 	metadata := func(m metav1.ObjectMeta) metav1.ObjectMeta {
+		annotations := redactValues(m.Annotations)
+		for key := range annotations {
+			if keep(key) {
+				annotations[key] = m.Annotations[key]
+			}
+		}
 		return metav1.ObjectMeta{Name: m.Name, Namespace: m.Namespace, UID: m.UID,
 			ResourceVersion: m.ResourceVersion, CreationTimestamp: m.CreationTimestamp,
-			DeletionTimestamp: m.DeletionTimestamp, Labels: m.Labels, Annotations: redactValues(m.Annotations),
+			DeletionTimestamp: m.DeletionTimestamp, Labels: m.Labels, Annotations: annotations,
 			OwnerReferences: m.OwnerReferences, Finalizers: m.Finalizers}
 	}
 	return func(obj any) (any, error) {
@@ -254,6 +261,7 @@ func (c *controller) enqueueConfig(kind configKind, event, previousVersion strin
 		resourceChangeType: event,
 		summary:            summary,
 		diff:               func(diff pcommon.Map) { putChanges(diff, changes) },
+		object:             &m,
 	}
 	logs := c.changeLogs(e)
 	// Exporters reject oversized records, which would otherwise retry forever.

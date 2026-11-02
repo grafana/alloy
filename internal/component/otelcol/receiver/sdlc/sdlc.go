@@ -44,6 +44,8 @@ type Arguments struct {
 	StatefulSets StatefulSetsArguments `alloy:"statefulsets,block,optional"`
 	DaemonSets   DaemonSetsArguments   `alloy:"daemonsets,block,optional"`
 
+	Extract ExtractArguments `alloy:"extract,block,optional"`
+
 	Client     commonk8s.ClientArguments  `alloy:"client,block,optional"`
 	Clustering cluster.ComponentBlock     `alloy:"clustering,block,optional"`
 	Output     *otelcol.ConsumerArguments `alloy:"output,block"`
@@ -63,7 +65,10 @@ func (args *Arguments) Validate() error {
 	if args.Output == nil {
 		return fmt.Errorf("output block is required")
 	}
-	return args.ConfigMaps.Validate()
+	if err := args.ConfigMaps.Validate(); err != nil {
+		return err
+	}
+	return args.Extract.Validate()
 }
 
 // Component watches Kubernetes Deployment rollout transitions.
@@ -205,6 +210,10 @@ func (c *Component) runGeneration(ctx context.Context, args Arguments, restConfi
 	if err != nil {
 		return fmt.Errorf("creating Kubernetes metadata client: %w", err)
 	}
+	extract, err := newExtractor(args.Extract)
+	if err != nil {
+		return err
+	}
 	configMapContent := ""
 	if args.ConfigMaps.Enabled {
 		configMapContent = args.ConfigMaps.Content
@@ -219,6 +228,7 @@ func (c *Component) runGeneration(ctx context.Context, args Arguments, restConfi
 		secrets:          args.Secrets.Enabled,
 		statefulSets:     args.StatefulSets.Enabled,
 		daemonSets:       args.DaemonSets.Enabled,
+		extract:          extract,
 		emit:             c.emit,
 	})
 	return ctrl.run(ctx)
