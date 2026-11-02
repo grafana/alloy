@@ -152,12 +152,13 @@ type SchemaDetailsArguments struct {
 
 func defaultArguments() Arguments {
 	return Arguments{
-		ExcludeDatabases:   database_observability.DefaultExcludedDatabases(),
-		ExcludeUsers:       database_observability.DefaultExcludedUsers(),
+		ExcludeDatabases:   defaultExcludedDatabases(),
+		ExcludeUsers:       defaultExcludedUsers(),
 		ExcludeCurrentUser: true,
 		QuerySampleArguments: QuerySampleArguments{
-			CollectInterval:       10 * time.Second,
-			DisableQueryRedaction: false,
+			CollectInterval:               10 * time.Second,
+			DisableQueryRedaction:         false,
+			EnablePreClassifiedWaitEvents: true,
 		},
 		QueryDetailsArguments: QueryDetailsArguments{
 			CollectInterval: 1 * time.Minute,
@@ -229,6 +230,54 @@ func resolveExporterArgs(userBlock *PrometheusExporterArguments) exporter_postgr
 	exporterArgs.StatStatementFlags = &statStatementsFlags
 
 	return exporterArgs
+}
+
+func applyExporterExclusions(exporterArgs exporter_postgres.Arguments, excludeDatabases, excludeUsers []string, currentUser sql.NullString) exporter_postgres.Arguments {
+	alwaysExcludedDatabases := collector.AlwaysExcludedDatabases()
+	exporterArgs.AutoDiscovery.DatabaseDenylist = database_observability.ResolveExclusions(
+		alwaysExcludedDatabases,
+		excludeDatabases,
+		exporterArgs.AutoDiscovery.DatabaseDenylist,
+	)
+
+	exporterArgs.StatStatementFlags.ExcludeDatabases = database_observability.ResolveExclusions(
+		alwaysExcludedDatabases,
+		excludeDatabases,
+		exporterArgs.StatStatementFlags.ExcludeDatabases,
+	)
+
+	if exporterArgs.StatStatementFlags.ExcludeUsers != nil {
+		excludeUsers = exporterArgs.StatStatementFlags.ExcludeUsers
+	}
+	var currentUserExclusion []string
+	if currentUser.Valid {
+		currentUserExclusion = []string{currentUser.String}
+	}
+	exporterArgs.StatStatementFlags.ExcludeUsers = database_observability.MergeExclusions(
+		excludeUsers,
+		currentUserExclusion,
+	)
+	return exporterArgs
+}
+
+func defaultExcludedDatabases() []string {
+	return []string{
+		"alloydbadmin",
+		"alloydbmetadata",
+		"azure_maintenance",
+		"azure_sys",
+		"cloudsqladmin",
+		"rdsadmin",
+	}
+}
+
+func defaultExcludedUsers() []string {
+	return []string{
+		"azuresu",
+		"cloudsqladmin",
+		"db-o11y", // default recommended user
+		"rdsadmin",
+	}
 }
 
 func (a *Arguments) SetToDefault() {
@@ -695,6 +744,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 
 	if len(inst.cfg.targets) == 0 {
 		exporterArgs := resolveExporterArgs(c.args.PrometheusExporter)
+		exporterArgs = applyExporterExclusions(exporterArgs, c.args.ExcludeDatabases, effectiveExcludeUsers, currentUser)
 		dsn := string(inst.cfg.dsn)
 
 		e := pg_exporter.NewExporter(
@@ -704,7 +754,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 			pg_exporter.WithUserQueriesPath(exporterArgs.CustomQueriesConfigPath),
 			pg_exporter.DisableSettingsMetrics(exporterArgs.DisableSettingsMetrics),
 			pg_exporter.AutoDiscoverDatabases(true),
-			pg_exporter.ExcludeDatabases(c.args.ExcludeDatabases),
+			pg_exporter.ExcludeDatabases(exporterArgs.AutoDiscovery.DatabaseDenylist),
 			pg_exporter.WithMetricPrefix("pg"),
 		)
 		if err := inst.registry.Register(e); err != nil {
@@ -725,7 +775,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 			}
 			col, err := pg_collector.NewPostgresCollector(
 				c.opts.Logger,
-				c.args.ExcludeDatabases,
+				exporterArgs.AutoDiscovery.DatabaseDenylist,
 				dsn,
 				exporterArgs.EnabledCollectors,
 				collectorOpts...,

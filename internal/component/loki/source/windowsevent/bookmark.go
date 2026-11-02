@@ -82,7 +82,7 @@ func newBookMark(path string) (*bookMark, error) {
 		path:        path,
 		isNew:       fileString == "",
 		buf:         buf,
-		bookmarkStr: uberAtomic.NewString(""),
+		bookmarkStr: uberAtomic.NewString(fileString),
 	}, nil
 }
 

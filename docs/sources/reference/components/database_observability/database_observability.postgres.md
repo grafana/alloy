@@ -257,7 +257,7 @@ If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the blo
 | `collect_interval`        | `duration` | How frequently to collect information from database.          | `"10s"` | no       |
 | `disable_query_redaction` | `bool`     | Collect unredacted SQL query text (might include parameters). | `false` | no       |
 | `exclude_current_user`    | `bool`     | Deprecated. Use the top-level `exclude_current_user` argument instead. This setting takes precedence over the top-level setting. | (unset) | no       |
-| `enable_pre_classified_wait_events`   | `boolean`  | When `true`, emits telemetry data with pre-classified wait event information. | `false` | no       |
+| `enable_pre_classified_wait_events`   | `boolean`  | When `true`, emits telemetry data with pre-classified wait event information. | `true` | no       |
 
 ### `schema_details`
 
@@ -296,6 +296,8 @@ The `logs` collector is always enabled and counts server errors from the Postgre
 The `prometheus_exporter` block configures the embedded `postgres_exporter` scrapers.
 The `data_source_name` is inherited from the parent block.
 Only the `stat_statements` collector is enabled by default.
+The embedded exporter inherits the top-level `exclude_databases` list in both `autodiscovery > database_denylist` and `stat_statements > exclude_databases`, but setting either nested list replaces the inherited list while keeping the always-excluded `azure_maintenance` database.
+The `stat_statements > exclude_users` list inherits the effective top-level `exclude_users` list, but setting a value replaces the inherited list while keeping the current connection user excluded when `exclude_current_user` is `true`.
 
 Refer to [`prometheus.exporter.postgres`](../../prometheus/prometheus.exporter.postgres/) docs for the full list of supported arguments and sub-blocks.
 
@@ -321,17 +323,11 @@ Refer to the [PostgreSQL setup documentation](https://grafana.com/docs/grafana-c
 database_observability.postgres "orders_db" {
   data_source_name = "postgres://user:pass@localhost:5432/dbname"
   forward_to       = [loki.relabel.orders_db.receiver]
-  targets          = prometheus.exporter.postgres.orders_db.targets
 
   // Enable per-query error telemetry from the processed PostgreSQL logs.
   logs {
     enable_error_logs_processing = true
   }
-}
-
-prometheus.exporter.postgres "orders_db" {
-  data_source_name   = "postgres://user:pass@localhost:5432/dbname"
-  enabled_collectors = ["stat_statements"]
 }
 
 // OPTIONAL: read PostgreSQL log files and forward to logs collector

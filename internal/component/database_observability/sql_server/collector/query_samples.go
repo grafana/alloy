@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"encoding/hex"
@@ -38,6 +39,10 @@ type QuerySamplesArguments struct {
 	EntryHandler          loki.EntryHandler
 	Logger                *slog.Logger
 	DisableQueryRedaction bool
+	SampleMinDuration     time.Duration
+	WaitEventMinDuration  time.Duration
+	MaxSamplesPerQuery    int
+	MaxSamplesPerCollect  int
 	ExcludeDatabases      []string
 	ExcludeUsers          []string
 	ExcludeCurrentUser    bool
@@ -50,6 +55,10 @@ type QuerySamples struct {
 	tracker               QueryTracker
 	entryHandler          loki.EntryHandler
 	disableQueryRedaction bool
+	sampleMinDuration     time.Duration
+	waitEventMinDuration  time.Duration
+	maxSamplesPerQuery    int
+	maxSamplesPerCollect  int
 	excludeDatabases      []string
 	excludeUsers          []string
 	excludeCurrentUser    bool
@@ -185,6 +194,10 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		tracker:               args.Tracker,
 		entryHandler:          args.EntryHandler,
 		disableQueryRedaction: args.DisableQueryRedaction,
+		sampleMinDuration:     args.SampleMinDuration,
+		waitEventMinDuration:  args.WaitEventMinDuration,
+		maxSamplesPerQuery:    args.MaxSamplesPerQuery,
+		maxSamplesPerCollect:  args.MaxSamplesPerCollect,
 		excludeDatabases:      append(slices.Clone(excludedDatabases), args.ExcludeDatabases...),
 		excludeUsers:          uniqueSorted(args.ExcludeUsers),
 		excludeCurrentUser:    args.ExcludeCurrentUser,
@@ -394,11 +407,64 @@ func (c *QuerySamples) applySnapshot(snapshot []querySampleRow, registrySet map[
 		c.samples[key].waits.closeMissing(seenWaitTasks[key])
 	}
 
-	for key := range c.samples {
+	type completedSample struct {
+		key   querySampleKey
+		state *querySampleState
+	}
+
+	var completed []completedSample
+	for key, state := range c.samples {
 		if _, active := activeKeys[key]; active {
 			continue
 		}
-		c.emitAndDelete(key)
+		delete(c.samples, key)
+		if c.sampleMinDuration > 0 && time.Duration(state.lastRow.ElapsedTimeMillis)*time.Millisecond < c.sampleMinDuration {
+			continue
+		}
+		completed = append(completed, completedSample{key: key, state: state})
+	}
+
+	slices.SortFunc(completed, func(a, b completedSample) int {
+		if diff := cmp.Compare(b.state.lastRow.ElapsedTimeMillis, a.state.lastRow.ElapsedTimeMillis); diff != 0 {
+			return diff
+		}
+		if diff := cmp.Compare(b.state.lastRow.CPUTimeMillis, a.state.lastRow.CPUTimeMillis); diff != 0 {
+			return diff
+		}
+		if diff := cmp.Compare(a.key.startNanos, b.key.startNanos); diff != 0 {
+			return diff
+		}
+		if diff := cmp.Compare(a.key.sessionID, b.key.sessionID); diff != 0 {
+			return diff
+		}
+		if diff := cmp.Compare(a.key.requestID, b.key.requestID); diff != 0 {
+			return diff
+		}
+		return cmp.Compare(a.key.queryHash, b.key.queryHash)
+	})
+
+	var emittedTotal int
+	var emittedPerQuery map[queryMetricsKey]int
+	if c.maxSamplesPerQuery > 0 {
+		emittedPerQuery = make(map[queryMetricsKey]int)
+	}
+
+	for _, candidate := range completed {
+		if c.maxSamplesPerCollect > 0 && emittedTotal >= c.maxSamplesPerCollect {
+			break
+		}
+		if c.maxSamplesPerQuery > 0 {
+			qKey := queryMetricsKey{
+				database:  candidate.state.lastRow.DatabaseName,
+				queryHash: candidate.state.lastRow.QueryHash,
+			}
+			if emittedPerQuery[qKey] >= c.maxSamplesPerQuery {
+				continue
+			}
+			emittedPerQuery[qKey]++
+		}
+		emittedTotal++
+		c.emitSample(candidate.state)
 	}
 }
 
@@ -453,12 +519,7 @@ func (t *queryWaitTracker) closeMissing(seen map[int64]struct{}) {
 	}
 }
 
-func (c *QuerySamples) emitAndDelete(key querySampleKey) {
-	state, ok := c.samples[key]
-	if !ok {
-		return
-	}
-
+func (c *QuerySamples) emitSample(state *querySampleState) {
 	timestamp := state.lastSeenAt.UnixNano()
 	if !state.lastRow.StartTime.IsZero() {
 		timestamp = state.lastRow.StartTime.UnixNano()
@@ -474,6 +535,9 @@ func (c *QuerySamples) emitAndDelete(key querySampleKey) {
 		if wait.identity.waitType == "" {
 			continue
 		}
+		if c.waitEventMinDuration > 0 && wait.duration < c.waitEventMinDuration {
+			continue
+		}
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 			logging.LevelInfo,
 			database_observability.OP_WAIT_EVENT_V2,
@@ -481,8 +545,6 @@ func (c *QuerySamples) emitAndDelete(key querySampleKey) {
 			timestamp,
 		)
 	}
-
-	delete(c.samples, key)
 }
 
 func (c *QuerySamples) buildQuerySampleLine(row querySampleRow) string {

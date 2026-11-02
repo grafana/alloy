@@ -270,7 +270,7 @@ The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they
 | `setup_consumers_check_interval` | `duration` | How frequently to check if `setup_consumers` are correctly enabled.            | `"1h"`  | no       |
 | `sample_min_duration`            | `duration` | Minimum duration for query samples to be collected. Set to "0s" to disable filtering and collect all samples regardless of their duration.| `"0s"`  | no       |
 | `wait_event_min_duration`        | `duration` | Minimum duration for a wait event to be collected. Set to "0s" to disable filtering and collect all wait events regardless of their duration.  | `"1us"` | no       |
-| `enable_pre_classified_wait_events` | `boolean` | When `true`, emits telemetry data with pre-classified wait event information. | `false` | no       |
+| `enable_pre_classified_wait_events` | `boolean` | When `true`, emits telemetry data with pre-classified wait event information. | `true` | no       |
 
 ### `setup_actors`
 
@@ -290,9 +290,15 @@ The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they
 
 The `prometheus_exporter` block configures the embedded `mysqld_exporter` scrapers.
 The `data_source_name` is inherited from the parent block.
-Only the `stat_statements` collector is enabled by default with a `limit` defaulting to `100`.
+By default, the embedded exporter enables only the collectors that Database Observability reads: `perf_schema.eventsstatements`, `global_status`, `global_variables`, and `slave_status`.
+The `limit` of the `perf_schema.eventsstatements` collector defaults to `100`.
+Use `enable_collectors` and `disable_collectors` to adjust this set, or `set_collectors` to replace it.
+The embedded `perf_schema.eventsstatements` collector inherits the top-level `exclude_schemas` list, but setting `prometheus_exporter > perf_schema.eventsstatements > exclude_schemas` replaces the inherited list while keeping the always-excluded system schemas (`mysql`, `performance_schema`, `sys`, and `information_schema`).
 
 Refer to [`prometheus.exporter.mysql`](../../prometheus/prometheus.exporter.mysql/) docs for the full list of supported arguments and sub-blocks.
+
+Unlike in `prometheus.exporter.mysql`, the `text_limit` argument of the `perf_schema.eventsstatements` block defaults to `0`.
+The statement metrics then don't have a `digest_text` label, because the `query_details` collector sends the statement text as logs.
 
 ## Example
 
@@ -300,7 +306,6 @@ Refer to [`prometheus.exporter.mysql`](../../prometheus/prometheus.exporter.mysq
 database_observability.mysql "orders_db" {
   data_source_name = "user:pass@tcp(mysql:3306)/"
   forward_to       = [loki.relabel.orders_db.receiver]
-  targets          = prometheus.exporter.mysql.orders_db.targets
 
   enable_collectors = ["query_samples", "explain_plans"]
 
@@ -309,11 +314,6 @@ database_observability.mysql "orders_db" {
       arn = "your-rds-db-arn"
     }
   }
-}
-
-prometheus.exporter.mysql "orders_db" {
-  data_source_name  = "user:pass@tcp(mysql:3306)/"
-  enable_collectors = ["perf_schema.eventsstatements"]
 }
 
 loki.relabel "orders_db" {

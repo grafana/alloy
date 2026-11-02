@@ -14,7 +14,6 @@ import (
 
 var (
 	errExpressionRequired    = errors.New("expression is required")
-	errCouldNotCompileRegex  = errors.New("could not compile regular expression")
 	errEmptyRegexStageSource = errors.New("empty source")
 )
 

@@ -16,7 +16,17 @@ jobs:
   build_images:
     runs-on:
       labels: github-hosted-ubuntu-x64-large
+    permissions:
+      contents: read
+      id-token: write
     steps:
+    - name: Login to DockerHub
+      # Authenticated pulls avoid the anonymous rate limit. Fork PRs have no OIDC token.
+      # The build continues without a login if this step fails or is skipped.
+      if: github.event.pull_request.head.repo.fork != true
+      continue-on-error: true
+      uses: grafana/shared-workflows/actions/dockerhub-login@3ffeda28e54d6c8e02c3998594fafaf0a359328d # dockerhub-login/v2.0.0
+
     - name: Checkout code
       uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       with:

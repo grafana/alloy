@@ -6,6 +6,49 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestMergeExclusions(t *testing.T) {
+	first := []string{"system", "shared"}
+	second := []string{"shared", "configured"}
+
+	merged := MergeExclusions(first, second)
+
+	require.Equal(t, []string{"system", "shared", "configured"}, merged)
+	require.Equal(t, []string{"system", "shared"}, first)
+	require.Equal(t, []string{"shared", "configured"}, second)
+}
+
+func TestResolveExclusions(t *testing.T) {
+	t.Run("inherits when override is unset", func(t *testing.T) {
+		mandatory := []string{"system"}
+		inherited := []string{"system", "inherited"}
+
+		resolved := ResolveExclusions(mandatory, inherited, nil)
+		resolved[0] = "changed"
+
+		require.Equal(t, []string{"changed", "inherited"}, resolved)
+		require.Equal(t, []string{"system"}, mandatory)
+		require.Equal(t, []string{"system", "inherited"}, inherited)
+	})
+
+	t.Run("uses explicit empty override while keeping mandatory exclusions", func(t *testing.T) {
+		resolved := ResolveExclusions([]string{"system"}, []string{"inherited"}, []string{})
+
+		require.Equal(t, []string{"system"}, resolved)
+	})
+
+	t.Run("uses configured override without mutating inputs", func(t *testing.T) {
+		mandatory := []string{"system"}
+		override := []string{"system", "override"}
+
+		resolved := ResolveExclusions(mandatory, []string{"inherited"}, override)
+		resolved[1] = "changed"
+
+		require.Equal(t, []string{"system", "changed"}, resolved)
+		require.Equal(t, []string{"system"}, mandatory)
+		require.Equal(t, []string{"system", "override"}, override)
+	})
+}
+
 func TestBuildExclusionClause(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -77,7 +120,7 @@ func TestEscapeSQLString(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result := EscapeSQLString(tc.input)
+			result := escapeSQLString(tc.input)
 			require.Equal(t, tc.expected, result)
 		})
 	}
