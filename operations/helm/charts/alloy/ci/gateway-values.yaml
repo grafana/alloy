@@ -1,0 +1,229 @@
+# Example values file demonstrating NGINX gateway configuration for Alloy
+# This provides a unified HTTP(S) entry point with path-based routing
+
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  hosts:
+    - alloy.example.com
+
+# Enable the gateway
+gateway:
+  enabled: true
+  replicas: 2
+
+  # Configure upstreams - enable/disable protocols as needed
+  # You can add custom upstreams by adding new keys here
+  upstreams:
+    # OTLP gRPC endpoint for traces
+    otlpGrpc:
+      enabled: true
+      path: /opentelemetry
+      targetPort: 4317
+      protocol: grpc
+
+    # OTLP HTTP endpoint for logs
+    otlpHttp:
+      enabled: true
+      path: /otlp/v1
+      targetPort: 4318
+      protocol: http
+
+    # Loki endpoint for logs
+    loki:
+      enabled: true
+      path: /loki/api/v1/push
+      targetPort: 3100
+      protocol: http
+
+    # Prometheus remote write endpoint
+    prometheus:
+      enabled: true
+      path: /api/v1/metrics/write
+      targetPort: 9009
+      protocol: http
+
+    # Pyroscope endpoint for continuous profiling
+    pyroscope:
+      enabled: false
+      path: /push.v1.PusherService/Push
+      targetPort: 4100
+      protocol: http
+
+    # Example custom upstream
+    # custom:
+    #   enabled: true
+    #   path: /custom
+    #   targetPort: 9000
+    #   protocol: http
+    #   extraConfig: |
+    #     proxy_pass http://alloy-custom;
+    #     proxy_set_header X-Custom-Header "value";
+
+  # TLS configuration
+  tls:
+    enabled: true
+    secretName: alloy-gateway-tls
+    port: 8443
+
+  # Basic authentication at gateway level
+  auth:
+    enabled: true
+    existingSecret: alloy-gateway-auth
+    realm: "Alloy Gateway"
+
+  # Resource limits
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Enable autoscaling
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 70
+
+  # Pod disruption budget for high availability
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+  # NGINX configuration tuning
+  nginxConfig:
+    workerProcesses: auto
+    workerConnections: 2048
+    clientMaxBodySize: "50m"
+    proxyReadTimeout: "120s"
+    # Disable access logging for better performance
+    enableAccessLog: false
+    # Custom log format (only used if enableAccessLog is true)
+    logFormat: '$remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent'
+
+  # Enable metrics collection with nginx-prometheus-exporter sidecar
+  extraContainers:
+    - name: nginx-exporter
+      image: nginx/nginx-prometheus-exporter:1.1.0
+      args:
+        - -nginx.scrape-uri=http://localhost:{{ .Values.gateway.port }}/stub_status
+      ports:
+        - name: metrics
+          containerPort: 9113
+      resources:
+        limits:
+          cpu: 100m
+          memory: 128Mi
+        requests:
+          cpu: 10m
+          memory: 64Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        runAsNonRoot: true
+        runAsUser: 101
+
+  # Enable ServiceMonitor for Prometheus Operator
+  serviceMonitor:
+    enabled: true
+    additionalLabels:
+      prometheus: kube-prometheus
+
+# Alloy configuration to listen on required ports
+alloy:
+  configMap:
+    content: |
+      logging {
+        level  = "info"
+        format = "logfmt"
+      }
+
+      // OTLP gRPC receiver
+      otelcol.receiver.otlp "default" {
+        grpc {
+          endpoint = "0.0.0.0:4317"
+        }
+
+        http {
+          endpoint = "0.0.0.0:4318"
+        }
+
+        output {
+          metrics = [otelcol.exporter.prometheus.default.input]
+          logs    = [otelcol.exporter.loki.default.input]
+          traces  = [otelcol.exporter.otlp.default.input]
+        }
+      }
+
+      // Loki receiver
+      loki.source.api "default" {
+        http {
+          listen_address = "0.0.0.0"
+          listen_port    = 3100
+        }
+
+        forward_to = [loki.write.default.receiver]
+      }
+
+      // Prometheus remote write receiver
+      prometheus.remote_write "default" {
+        endpoint {
+          url = env("PROMETHEUS_REMOTE_WRITE_URL")
+        }
+      }
+
+      // Example exporters (configure with your actual endpoints)
+      otelcol.exporter.prometheus "default" {
+        forward_to = [prometheus.remote_write.default.receiver]
+      }
+
+      otelcol.exporter.loki "default" {
+        forward_to = [loki.write.default.receiver]
+      }
+
+      otelcol.exporter.otlp "default" {
+        client {
+          endpoint = env("OTLP_ENDPOINT")
+        }
+      }
+
+      loki.write "default" {
+        endpoint {
+          url = env("LOKI_URL")
+        }
+      }
+
+  # Expose additional ports for telemetry protocols
+  extraPorts:
+  - name: otlp-grpc
+    port: 4317
+    targetPort: 4317
+    protocol: TCP
+  - name: otlp-http
+    port: 4318
+    targetPort: 4318
+    protocol: TCP
+  - name: loki
+    port: 3100
+    targetPort: 3100
+    protocol: TCP
+  - name: prometheus
+    port: 9009
+    targetPort: 9009
+    protocol: TCP
+
+# Deploy as StatefulSet for persistent storage
+controller:
+  type: statefulset
+  replicas: 3
+
+# Enable RBAC
+rbac:
+  create: true
+
+# Enable ServiceAccount
+serviceAccount:
+  create: true
