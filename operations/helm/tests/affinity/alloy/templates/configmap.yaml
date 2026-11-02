@@ -1,0 +1,43 @@
+---
+# Source: alloy/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy
+  labels:
+    helm.sh/chart: alloy
+    app.kubernetes.io/name: alloy
+    app.kubernetes.io/instance: alloy
+    app.kubernetes.io/version: "vX.Y.Z"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: config
+data:
+  config.alloy: |-
+    logging {
+    	level  = "info"
+    	format = "logfmt"
+    }
+    
+    discovery.kubernetes "pods" {
+    	role = "pod"
+    }
+    
+    discovery.kubernetes "nodes" {
+    	role = "node"
+    }
+    
+    discovery.kubernetes "services" {
+    	role = "service"
+    }
+    
+    discovery.kubernetes "endpoints" {
+    	role = "endpoints"
+    }
+    
+    discovery.kubernetes "endpointslices" {
+    	role = "endpointslice"
+    }
+    
+    discovery.kubernetes "ingresses" {
+    	role = "ingress"
+    }
