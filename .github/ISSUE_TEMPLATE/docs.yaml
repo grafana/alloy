@@ -58,6 +58,7 @@ body:
       - discovery.triton
       - discovery.uyuni
       - faro.receiver
+      - infinity.source
       - local.file
       - local.file_match
       - loki.echo
