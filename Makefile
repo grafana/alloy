@@ -357,7 +357,7 @@ alloy-image:
 	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t $(ALLOY_IMAGE) -f Dockerfile .
 
 alloy-image-distroless:
-	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t $(ALLOY_IMAGE_DISTROLESS) -f Dockerfile.chisel .
+	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) --build-arg SKIP_CODE_GENERATION=$(SKIP_CODE_GENERATION) -t $(ALLOY_IMAGE_DISTROLESS) -f Dockerfile.chisel .
 
 # Test fixture image used by the k8s integration tests as a Prometheus scrape
 # target. The runner builds this alongside alloy-image so the tests don't have
