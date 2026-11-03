@@ -11,9 +11,10 @@ import (
 	"strings"
 )
 
-// RunCommand runs name with args, inheriting stdout/stderr; CommandEnv pins KUBECONFIG.
+// RunCommand runs name with args, inheriting stdout/stderr; CommandEnv pins
+// KUBECONFIG and PinContext pins the kubectl and helm context.
 func RunCommand(name string, args ...string) error {
-	cmd := exec.Command(name, args...)
+	cmd := exec.Command(name, PinContext(name, args)...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = CommandEnv()
@@ -24,7 +25,7 @@ func RunCommand(name string, args ...string) error {
 // into the returned error so the caller gets clean stdout to parse (e.g.
 // `kubectl logs ...`). CommandEnv pins KUBECONFIG.
 func RunCommandOutput(name string, args ...string) (string, error) {
-	cmd := exec.Command(name, args...)
+	cmd := exec.Command(name, PinContext(name, args)...)
 	cmd.Env = CommandEnv()
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -38,7 +39,7 @@ func RunCommandOutput(name string, args ...string) (string, error) {
 // RunCommandQuiet is RunCommand with stdout/stderr discarded; use it when
 // only the exit code matters (e.g. `docker image inspect`).
 func RunCommandQuiet(name string, args ...string) error {
-	cmd := exec.Command(name, args...)
+	cmd := exec.Command(name, PinContext(name, args)...)
 	cmd.Stdout = io.Discard
 	cmd.Stderr = io.Discard
 	cmd.Env = CommandEnv()
@@ -48,7 +49,7 @@ func RunCommandQuiet(name string, args ...string) error {
 // RunCommandStdin is RunCommand with stdin piped from the given string.
 // Useful for `kubectl apply -f -` style invocations.
 func RunCommandStdin(stdin, name string, args ...string) error {
-	cmd := exec.Command(name, args...)
+	cmd := exec.Command(name, PinContext(name, args)...)
 	cmd.Stdin = strings.NewReader(stdin)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -59,7 +60,7 @@ func RunCommandStdin(stdin, name string, args ...string) error {
 // runDiagnosticCommand runs name under ctx and prints combined output.
 // Used by failure-diagnostics hooks; surfaces ctx timeouts in errors.
 func runDiagnosticCommand(ctx context.Context, name string, args ...string) error {
-	cmd := exec.CommandContext(ctx, name, args...)
+	cmd := exec.CommandContext(ctx, name, PinContext(name, args)...)
 	cmd.Env = CommandEnv()
 	var out bytes.Buffer
 	cmd.Stdout = &out
