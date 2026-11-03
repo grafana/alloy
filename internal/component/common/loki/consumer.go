@@ -9,7 +9,8 @@ import (
 
 // ErrConsumerStopped is returned by a Consumer that has stopped, usually because
 // a config reload removed it. Components pass it up to their caller so that the
-// source can retry the batch, see [Consumer].
+// source can retry the batch, see [Consumer]. A component should wrap it with its
+// component ID.
 var ErrConsumerStopped = errors.New("consumer stopped")
 
 // Consumer consumes batches of log entries.
