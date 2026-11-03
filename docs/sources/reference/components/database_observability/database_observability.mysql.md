@@ -251,7 +251,7 @@ The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they
 | Name                           | Type           | Description                                                                     | Default | Required |
 | ------------------------------ | -------------- | ------------------------------------------------------------------------------- | ------- | -------- |
 | `collect_interval`             | `duration`     | How frequently to collect information from database.                            | `"1m"`  | no       |
-| `initial_lookback`             | `duration`     | How far back to look for explain plan queries on the first collection interval. | `"24h"` | no       |
+| `initial_lookback`             | `duration`     | How far back to look for explain plan queries on the first collection interval. Values longer than `"24h"` act like `"24h"`. | `"24h"` | no       |
 | `per_collect_ratio`            | `float`        | Ratio of explain plan queries to collect per collect interval.                  | `1.0`   | no       |
 
 The `explain_plans` collector explains the top `statements_limit` queries by total running time in the last 24 hours that ran since its last collection.

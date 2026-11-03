@@ -8,10 +8,17 @@ import (
 	"time"
 )
 
+// StatementsWindow is how far back the statements snapshot looks for queries,
+// the INTERVAL in selectTopStatements.
+const StatementsWindow = 24 * time.Hour
+
 // selectTopStatements selects the queries that spent the most time running
 // among the ones seen in the last 24 hours, the way the perf_schema.eventsstatements
 // collector of the embedded exporter does with its default settings, so that
-// both work on the same queries.
+// both work on the same queries. Rows without a digest or a sample text are
+// kept, like the exporter keeps them, even though they can't be explained:
+// leaving them out would let the limit reach queries the exporter doesn't
+// report.
 const selectTopStatements = `
 	SELECT
 		SCHEMA_NAME,

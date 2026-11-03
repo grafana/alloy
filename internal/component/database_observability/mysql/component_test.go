@@ -2024,6 +2024,31 @@ func Test_statements_limit(t *testing.T) {
 	})
 }
 
+func Test_initial_lookback_over_window_warning(t *testing.T) {
+	const warning = "explain_plans initial_lookback is longer than the window of queries it explains"
+	update := func(t *testing.T, args Arguments) string {
+		t.Helper()
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, errors.New("connection skipped for lookback warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		args.DataSourceName = alloytypes.Secret("user:pass@tcp(localhost:3306)/db")
+		require.NoError(t, c.Update(args))
+		return logs.String()
+	}
+
+	logs := update(t, Arguments{ExplainPlansArguments: ExplainPlansArguments{InitialLookback: 48 * time.Hour}})
+	assert.Contains(t, logs, warning)
+	assert.Contains(t, logs, "initial_lookback=48h0m0s")
+
+	assert.NotContains(t, update(t, Arguments{ExplainPlansArguments: ExplainPlansArguments{InitialLookback: 24 * time.Hour}}), warning)
+	assert.NotContains(t, update(t, Arguments{
+		ExplainPlansArguments: ExplainPlansArguments{InitialLookback: 48 * time.Hour},
+		DisableCollectors:     []string{collector.ExplainPlansCollector},
+	}), warning)
+}
+
 func Test_exclude_schemas_eventsstatements_mismatch_warning(t *testing.T) {
 	t.Run("logs warning when nested exclude_schemas differs from top-level exclude_schemas", func(t *testing.T) {
 		var logs bytes.Buffer

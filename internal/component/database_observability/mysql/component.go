@@ -521,6 +521,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.args = newArgs
 	c.warnOnStatementLimitMismatch()
 	c.warnOnExclusionsMismatch()
+	c.warnOnInitialLookbackOverWindow()
 	c.fanout.UpdateChildren(c.args.ForwardTo)
 
 	c.replaceInstances(instances)
@@ -549,6 +550,22 @@ func (c *Component) statementsLimit() int {
 		return c.args.StatementsLimit
 	}
 	return defaultStatementsLimit
+}
+
+// warnOnInitialLookbackOverWindow warns when explain_plans.initial_lookback
+// reaches past the statements snapshot, which only holds queries seen within
+// collector.StatementsWindow, so a longer lookback acts like that window.
+func (c *Component) warnOnInitialLookbackOverWindow() {
+	if !enableOrDisableCollectors(c.args)[collector.ExplainPlansCollector] {
+		return
+	}
+	if lookback := c.args.ExplainPlansArguments.InitialLookback; lookback > collector.StatementsWindow {
+		c.opts.Logger.Warn(
+			"explain_plans initial_lookback is longer than the window of queries it explains, and acts like that window",
+			"initial_lookback", lookback,
+			"window", collector.StatementsWindow,
+		)
+	}
 }
 
 func (c *Component) warnOnStatementLimitMismatch() {
