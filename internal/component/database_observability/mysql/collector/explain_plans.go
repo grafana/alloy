@@ -36,7 +36,8 @@ const selectDigestsForExplainPlan = `
 		SCHEMA_NAME,
 		DIGEST,
 		QUERY_SAMPLE_TEXT,
-		LAST_SEEN
+		LAST_SEEN,
+		SUM_TIMER_WAIT
 	FROM performance_schema.events_statements_summary_by_digest
 	WHERE LAST_SEEN > ?
 	AND QUERY_SAMPLE_TEXT IS NOT NULL
@@ -580,7 +581,9 @@ func NewExplainPlans(args ExplainPlansArguments) (*ExplainPlans, error) {
 		logger:         args.Logger.With("collector", ExplainPlansCollector),
 		running:        atomic.NewBool(false),
 	}
-	c.fullScans = newFullScanStore(c.currentTime)
+	if c.registry != nil {
+		c.fullScans = newFullScanStore(c.currentTime)
+	}
 	return c, nil
 }
 
@@ -592,7 +595,9 @@ func (c *ExplainPlans) Describe(ch chan<- *prometheus.Desc) {
 // Collect implements prometheus.Collector. It serves what the latest explain
 // plans found and does not query the database.
 func (c *ExplainPlans) Collect(ch chan<- prometheus.Metric) {
-	c.fullScans.collect(ch)
+	if dropped := c.fullScans.collect(ch); dropped > 0 {
+		c.logger.Debug("full scan series left out over the cap", "dropped", dropped, "max", fullScanMaxSeries)
+	}
 }
 
 func (c *ExplainPlans) currentTime() time.Time {
@@ -729,7 +734,8 @@ func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 		generatedAt := time.Now().Format(time.RFC3339)
 		var schemaName, digest, queryText string
 		var ls time.Time
-		if err = rs.Scan(&schemaName, &digest, &queryText, &ls); err != nil {
+		var sumTimerWait uint64
+		if err = rs.Scan(&schemaName, &digest, &queryText, &ls, &sumTimerWait); err != nil {
 			c.logger.Error("failed to scan digest for explain plans", "err", err)
 			return err
 		}
@@ -758,7 +764,9 @@ func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 
 		// The query ran since the last poll, so its full scans are still
 		// current even when it isn't explained again this time.
-		c.fullScans.seen(schemaName, digest)
+		if c.fullScans != nil {
+			c.fullScans.seen(schemaName, digest, sumTimerWait)
+		}
 
 		if c.isThrottled(qi.uniqueKey) {
 			continue
@@ -883,7 +891,9 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 	// read from the plan as MySQL returned it, before any conversion, and such
 	// a query is not denylisted: it is explained again once the error output
 	// below stops throttling it, which keeps its full scans fresh.
-	c.recordFullScans(logger, qi, byteExplainPlanJSON, rewrittenQuery)
+	if c.fullScans != nil {
+		c.recordFullScans(logger, qi, byteExplainPlanJSON, rewrittenQuery)
+	}
 
 	if !utf8.Valid(byteExplainPlanJSON) {
 		logger.Error("explain plan json bytes is not valid UTF-8")

@@ -30,7 +30,6 @@ import (
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector"
 	"github.com/grafana/alloy/internal/component/discovery"
 	exporter_mysql "github.com/grafana/alloy/internal/component/prometheus/exporter/mysql"
-	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service/cluster"
 	http_service "github.com/grafana/alloy/internal/service/http"
@@ -1909,23 +1908,12 @@ func newTestComponent(t *testing.T, openSQL func(string, string) (*sql.DB, error
 	return c
 }
 
-func Test_explainPlanMetricsRegistry(t *testing.T) {
+func Test_explainPlansRegistry(t *testing.T) {
 	inst := &dbInstance{registry: prometheus.NewRegistry()}
-	for name, tc := range map[string]struct {
-		stability featuregate.Stability
-		exposed   bool
-	}{
-		"generally available": {featuregate.StabilityGenerallyAvailable, false},
-		"public preview":      {featuregate.StabilityPublicPreview, false},
-		"experimental":        {featuregate.StabilityExperimental, true},
-	} {
-		t.Run(name, func(t *testing.T) {
-			c := &Component{opts: cmp.Options{MinStability: tc.stability}}
-			if tc.exposed {
-				require.Same(t, inst.registry, c.explainPlanMetricsRegistry(inst))
-			} else {
-				require.Nil(t, c.explainPlanMetricsRegistry(inst))
-			}
-		})
-	}
+
+	c := &Component{}
+	require.Nil(t, c.explainPlansRegistry(inst), "off by default")
+
+	c.args.ExplainPlansArguments.EnableFullScanMetrics = true
+	require.Same(t, inst.registry, c.explainPlansRegistry(inst))
 }

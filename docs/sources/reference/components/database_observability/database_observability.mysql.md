@@ -250,8 +250,12 @@ The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they
 | Name                           | Type           | Description                                                                     | Default | Required |
 | ------------------------------ | -------------- | ------------------------------------------------------------------------------- | ------- | -------- |
 | `collect_interval`             | `duration`     | How frequently to collect information from database.                            | `"1m"`  | no       |
+| `enable_full_scan_metrics`     | `bool`         | Expose the tables that explain plans read in full as a metric.                  | `false` | no       |
 | `initial_lookback`             | `duration`     | How far back to look for explain plan queries on the first collection interval. | `"24h"` | no       |
 | `per_collect_ratio`            | `float`        | Ratio of explain plan queries to collect per collect interval.                  | `1.0`   | no       |
+
+When you set `enable_full_scan_metrics` to `true`, the `database_observability_mysql_explain_plan_full_scan_rows` gauge reports the optimizer's estimated rows per scan for each table that a query's latest explain plan reads in full.
+The component leaves out tables with fewer than 1,000 estimated rows, and reports at most 100 series, from the queries that spent the most time running in the last 90 minutes.
 
 ### `locks`
 

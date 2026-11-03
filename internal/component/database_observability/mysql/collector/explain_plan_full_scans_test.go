@@ -11,6 +11,7 @@ import (
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -197,7 +198,7 @@ func TestExplainPlansConversionFailuresStillReportFullScans(t *testing.T) {
 	})
 
 	t.Run("a plan that isn't valid UTF-8 is still read for full scans", func(t *testing.T) {
-		require.False(t, processPlan(t, c, mock, "grafana_net", "d2", "{\"query_block\": {\"table\": {\"table_name\": \"inv\xffites\", \"access_type\": \"ALL\", \"rows_examined_per_scan\": 7}}}"))
+		require.False(t, processPlan(t, c, mock, "grafana_net", "d2", "{\"query_block\": {\"table\": {\"table_name\": \"inv\xffites\", \"access_type\": \"ALL\", \"rows_examined_per_scan\": 7000}}}"))
 		require.Equal(t, 2, testutil.CollectAndCount(registry, "database_observability_mysql_explain_plan_full_scan_rows"))
 	})
 
@@ -233,7 +234,9 @@ func newFullScanTestCollector(t *testing.T, registry *prometheus.Registry) (*Exp
 
 	clock := time.Now()
 	c.now = func() time.Time { return clock }
-	c.fullScans = newFullScanStore(c.now)
+	if registry != nil {
+		c.fullScans = newFullScanStore(c.now)
+	}
 	return c, mock, &clock
 }
 
@@ -309,9 +312,9 @@ func TestExplainPlansReportFullScans(t *testing.T) {
 // given digests as having run since the last poll.
 func pollDigests(t *testing.T, c *ExplainPlans, mock sqlmock.Sqlmock, digests ...string) {
 	t.Helper()
-	rows := sqlmock.NewRows([]string{"schema_name", "digest", "query_sample_text", "last_seen"})
+	rows := sqlmock.NewRows([]string{"schema_name", "digest", "query_sample_text", "last_seen", "sum_timer_wait"})
 	for _, digest := range digests {
-		rows.AddRow("grafana_net", digest, "select * from some_table where id = 1", time.Now())
+		rows.AddRow("grafana_net", digest, "select * from some_table where id = 1", time.Now(), 0)
 	}
 	mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(sqlmock.AnyArg()).RowsWillBeClosed().WillReturnRows(rows)
 	require.NoError(t, c.populateQueryCache(t.Context()))
@@ -326,13 +329,13 @@ func TestExplainPlansRegistersAndUnregistersItsMetric(t *testing.T) {
 		c, mock, _ := newFullScanTestCollector(t, registry)
 		// The collector's loop looks for digests as soon as it starts.
 		mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(sqlmock.AnyArg()).RowsWillBeClosed().
-			WillReturnRows(sqlmock.NewRows([]string{"schema_name", "digest", "query_sample_text", "last_seen"}))
+			WillReturnRows(sqlmock.NewRows([]string{"schema_name", "digest", "query_sample_text", "last_seen", "sum_timer_wait"}))
 		require.NoError(t, c.Start(t.Context()))
 		return c, mock
 	}
 
 	c, _ := start()
-	c.fullScans.set("s", "d", []fullScan{{table: "t", rows: 1}})
+	c.fullScans.set("s", "d", []fullScan{{table: "t", rows: 5000}})
 	require.Equal(t, 1, testutil.CollectAndCount(registry, "database_observability_mysql_explain_plan_full_scan_rows"), "registered by Start")
 	c.Stop()
 	require.Equal(t, 0, testutil.CollectAndCount(registry, "database_observability_mysql_explain_plan_full_scan_rows"), "unregistered by Stop")
@@ -345,7 +348,104 @@ func TestExplainPlansRegistersAndUnregistersItsMetric(t *testing.T) {
 func TestExplainPlansWithoutRegistry(t *testing.T) {
 	c, mock, _ := newFullScanTestCollector(t, nil)
 	processPlan(t, c, mock, "s", "d", `{"query_block": {"table": {"table_name": "t", "access_type": "ALL", "rows_examined_per_scan": 5}}}`)
-	// Nothing to register with: the state is still kept, and Stop is safe.
+	// Without the metric no full scans are kept, and Stop is safe.
+	require.Nil(t, c.fullScans)
 	require.NotPanics(t, c.Stop)
 	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestFullScanStoreLeavesOutTinyTables(t *testing.T) {
+	s := newFullScanStore(time.Now)
+	s.set("s", "d", []fullScan{{table: "small", rows: fullScanMinRows - 1}, {table: "big", rows: fullScanMinRows}})
+	require.Equal(t, []string{"s/d/big"}, collectFullScans(t, s))
+
+	// A plan left with only tiny tables removes the query.
+	s.set("s", "d", []fullScan{{table: "small", rows: 10}})
+	require.Empty(t, s.entries)
+}
+
+func TestFullScanStoreCapsSeriesByRecentRunTime(t *testing.T) {
+	clock := time.Now()
+	s := newFullScanStore(func() time.Time { return clock })
+	poll := func(digest string, sumTimerWait uint64) { s.seen("s", digest, sumTimerWait) }
+
+	// One query per series up to the cap, each one busier than the last.
+	for i := range fullScanMaxSeries {
+		digest := fmt.Sprintf("d%03d", i)
+		s.set("s", digest, []fullScan{{table: "t", rows: 5000}})
+		poll(digest, 0)
+		poll(digest, uint64(i+1))
+	}
+	// Two tables of a query just busier than the least busy one: it takes the
+	// place of the two least busy queries.
+	s.set("s", "join", []fullScan{{table: "a", rows: 5000}, {table: "b", rows: 5000}})
+	poll("join", 0)
+	poll("join", 3)
+
+	got := collectFullScans(t, s)
+	require.Len(t, got, fullScanMaxSeries)
+	require.Contains(t, got, "s/join/a")
+	require.Contains(t, got, "s/join/b")
+	require.NotContains(t, got, "s/d000/t")
+	require.NotContains(t, got, "s/d001/t")
+	require.Contains(t, got, "s/d002/t")
+
+	t.Run("time spent before the window is not counted", func(t *testing.T) {
+		clock = clock.Add(fullScanIdleTimeout)
+		for i := range fullScanMaxSeries {
+			digest := fmt.Sprintf("d%03d", i)
+			poll(digest, uint64(i+1))
+		}
+		poll("join", 3)
+		// No query ran since the window moved, so the most rows per scan win
+		// the ties and the order is otherwise by digest.
+		got := collectFullScans(t, s)
+		require.Len(t, got, fullScanMaxSeries)
+		require.Contains(t, got, "s/d000/t")
+		require.NotContains(t, got, "s/join/a")
+	})
+}
+
+func TestRecentRunTime(t *testing.T) {
+	now := time.Now()
+	var r recentRunTime
+
+	r.add(now, 100)
+	require.Zero(t, r.total(now), "the first poll only sets the baseline")
+
+	r.add(now, 150)
+	require.EqualValues(t, 50, r.total(now))
+
+	// The digest table was truncated: the new value is all time since then.
+	r.add(now, 30)
+	require.EqualValues(t, 80, r.total(now))
+
+	now = now.Add(database_observability.EmitInterval)
+	r.add(now, 40)
+	require.EqualValues(t, 90, r.total(now), "still in the window")
+
+	now = now.Add(fullScanIdleTimeout - database_observability.EmitInterval)
+	require.EqualValues(t, 10, r.total(now), "the first bucket left the window")
+
+	now = now.Add(fullScanIdleTimeout)
+	require.Zero(t, r.total(now))
+}
+
+// collectFullScans returns the series a store emits, as "schema/digest/table".
+func collectFullScans(t *testing.T, s *fullScanStore) []string {
+	t.Helper()
+	ch := make(chan prometheus.Metric, fullScanMaxSeries+10)
+	s.collect(ch)
+	close(ch)
+	var got []string
+	for m := range ch {
+		var pb dto.Metric
+		require.NoError(t, m.Write(&pb))
+		labels := map[string]string{}
+		for _, l := range pb.GetLabel() {
+			labels[l.GetName()] = l.GetValue()
+		}
+		got = append(got, labels["schema"]+"/"+labels["digest"]+"/"+labels["table"])
+	}
+	return got
 }
