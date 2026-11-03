@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"reflect"
 	"sync"
 	"time"
 
@@ -56,6 +57,9 @@ type Component struct {
 	// consumer is set by the first successful Update and afterwards only replaced by
 	// another successfully built consumer, never cleared.
 	consumer client.Consumer
+	// consumerCfgs and consumerWAL are the settings consumer was built with.
+	consumerCfgs []client.Config
+	consumerWAL  WalArguments
 }
 
 // New creates a new loki.write component.
@@ -128,6 +132,14 @@ func (c *Component) Update(args component.Arguments) error {
 		cfgs[i].Headers[alloyseed.HeaderName] = uid
 	}
 
+	// Keep the running consumer when the settings it was built with are unchanged,
+	// for example when only external_labels changed, instead of stopping it and
+	// starting new clients.
+	if c.consumer != nil && newArgs.WAL == c.consumerWAL && reflect.DeepEqual(cfgs, c.consumerCfgs) {
+		c.externalLabels = util.MapToModelLabelSet(newArgs.ExternalLabels)
+		return nil
+	}
+
 	var (
 		consumer client.Consumer
 		err      error
@@ -154,6 +166,8 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 
 	c.consumer = consumer
+	c.consumerCfgs = cfgs
+	c.consumerWAL = newArgs.WAL
 	c.consumer.Start()
 	c.externalLabels = util.MapToModelLabelSet(newArgs.ExternalLabels)
 
