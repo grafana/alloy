@@ -294,6 +294,8 @@ The login requires `VIEW DATABASE STATE` on the connected database. On SQL Serve
 | `max_samples_per_collect` | `int`      | Maximum total number of completed query samples emitted across all tracked queries in a single collection cycle. Set to `0` for no per-collection limit. | `50`    | no       |
 
 The `query_samples` collector only collects requests whose query hash is tracked by the `query_metrics` collector.
+The collector checks [Query Store][query_store] state on the connected database before polling live requests.
+When the connected database is a system database such as `master`, or Query Store is disabled or read-only, the collector skips collection.
 
 When requests finish between polls, the collector filters out any request whose final elapsed time is shorter than `sample_min_duration`.
 Remaining completed requests are ranked by elapsed duration and then CPU time, and capped by `max_samples_per_query` and `max_samples_per_collect`.
@@ -303,7 +305,7 @@ For emitted samples, only wait event occurrences with a final duration of at lea
 The collector polls live requests and can miss queries shorter than `collect_interval`, wait events that start and finish between collections, and a query's first execution before Query Store admits its hash.
 For completed requests, the emitted resource counters contain the values from the final observation and can omit work performed after that observation.
 
-The login requires `VIEW SERVER STATE` on SQL Server 2019 and earlier. On SQL Server 2022 and later, `VIEW SERVER PERFORMANCE STATE` is also sufficient. Azure SQL Database can restrict the dynamic management views to the current session. In that case, the collector can't observe other sessions.
+The login requires `VIEW DATABASE STATE` (or `VIEW DATABASE PERFORMANCE STATE` on SQL Server 2022 and later) on the connected database, plus `VIEW SERVER STATE` on SQL Server 2019 (or `VIEW SERVER PERFORMANCE STATE` on SQL Server 2022 and later and Azure SQL Managed Instance). On Azure SQL Database, `VIEW DATABASE STATE` on the connected database is sufficient.
 
 ### `schema_details`
 
@@ -311,7 +313,7 @@ The login requires `VIEW SERVER STATE` on SQL Server 2019 and earlier. On SQL Se
 |--------------------|------------|------------------------------------------------------|---------|----------|
 | `collect_interval` | `duration` | How frequently to collect information from database. | `"1m"`  | no       |
 
-The collector scans every database that the login can access on the instance and collects schema details from each. Only databases where the login has `CONNECT` access to catalog views are collected.
+The collector scans every database that the login can access on the instance and collects schema details from each. Only databases where the login has `CONNECT` and `VIEW DEFINITION` permissions are collected.
 
 ### `server_configuration`
 
@@ -469,7 +471,7 @@ It uses `master.sys.server_resource_stats` for direct CPU, vCore, storage, and I
 The I/O metrics are average rates calculated from the totals and actual duration of the latest source interval.
 This view is refreshed independently of the Prometheus scrape interval.
 
-The login requires `VIEW SERVER STATE` on SQL Server 2019 and earlier.
+The login requires `VIEW SERVER STATE` on SQL Server 2019.
 On SQL Server 2022 and later, `VIEW SERVER PERFORMANCE STATE` is also sufficient.
 Azure SQL Managed Instance requires `VIEW SERVER PERFORMANCE STATE` for process, job-object, and complete session metrics.
 Without that permission, `user_sessions` can include only the monitoring login's own session.
