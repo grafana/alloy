@@ -607,8 +607,8 @@ func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
 
 	// regexes for the query_samples collector to verify users clause
 	const (
-		regexNoCurrentUser   = `AND d\.datname NOT IN \('azure_maintenance', 'alloydbadmin', 'alloydbmetadata', 'azure_maintenance', 'azure_sys', 'cloudsqladmin', 'rdsadmin'\)\s*AND s\.usename NOT IN \(%s\)\s*\z`
-		regexWithCurrentUser = `AND d\.datname NOT IN \('azure_maintenance', 'alloydbadmin', 'alloydbmetadata', 'azure_maintenance', 'azure_sys', 'cloudsqladmin', 'rdsadmin'\)\s*AND s\.usesysid != \(select oid from pg_roles where rolname = current_user\)\s*AND s\.usename NOT IN \(%s\)\s*\z`
+		regexNoCurrentUser   = `AND d\.datname NOT IN \('azure_maintenance', 'alloydbadmin', 'alloydbmetadata', 'azure_sys', 'cloudsqladmin', 'rdsadmin'\)\s*AND s\.usename NOT IN \(%s\)\s*\z`
+		regexWithCurrentUser = `AND d\.datname NOT IN \('azure_maintenance', 'alloydbadmin', 'alloydbmetadata', 'azure_sys', 'cloudsqladmin', 'rdsadmin'\)\s*AND s\.usesysid != \(select oid from pg_roles where rolname = current_user\)\s*AND s\.usename NOT IN \(%s\)\s*\z`
 	)
 
 	t.Run("local override unset inherits top-level cascade", func(t *testing.T) {
@@ -2374,7 +2374,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		exporterArgs := applyExporterExclusions(
 			resolveExporterArgs(userBlock),
 			[]string{"top_level"},
-			[]string{"top_level_user", "current_user"},
+			[]string{"top_level_user"},
 			sql.NullString{String: "current_user", Valid: true},
 		)
 
@@ -2420,7 +2420,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		exporterArgs := applyExporterExclusions(
 			resolveExporterArgs(args.PrometheusExporter),
 			[]string{"top_level"},
-			[]string{"top_level_user", "current_user"},
+			[]string{"top_level_user"},
 			sql.NullString{String: "current_user", Valid: true},
 		)
 

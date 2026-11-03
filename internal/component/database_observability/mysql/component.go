@@ -516,26 +516,29 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
+func (c *Component) eventsStatementsExporterArgs() (exporter_mysql.Arguments, bool) {
+	if len(c.args.Targets) > 0 {
+		return exporter_mysql.Arguments{}, false
+	}
+
+	exporterArgs := resolveExporterArgs(c.args.PrometheusExporter, c.args.ExcludeSchemas)
+	for _, scraper := range mysqld_exporter.GetScrapers(exporterArgs.Convert()) {
+		if scraper.Name() == eventsStatementsCollector {
+			return exporterArgs, true
+		}
+	}
+
+	return exporter_mysql.Arguments{}, false
+}
+
 func (c *Component) warnOnStatementLimitMismatch() {
 	queryDetailsEnabled := enableOrDisableCollectors(c.args)[collector.QueryDetailsCollector]
 	if !queryDetailsEnabled {
 		return
 	}
 
-	usesEmbeddedMySQLExporter := len(c.args.Targets) == 0
-	if !usesEmbeddedMySQLExporter {
-		return
-	}
-
-	exporterArgs := resolveExporterArgs(c.args.PrometheusExporter, c.args.ExcludeSchemas)
-	var eventsStatementsEnabled bool
-	for _, scraper := range mysqld_exporter.GetScrapers(exporterArgs.Convert()) {
-		if scraper.Name() == eventsStatementsCollector {
-			eventsStatementsEnabled = true
-		}
-	}
-
-	if !eventsStatementsEnabled {
+	exporterArgs, ok := c.eventsStatementsExporterArgs()
+	if !ok {
 		return
 	}
 
@@ -551,20 +554,8 @@ func (c *Component) warnOnStatementLimitMismatch() {
 }
 
 func (c *Component) warnOnExclusionsMismatch() {
-	usesEmbeddedMySQLExporter := len(c.args.Targets) == 0
-	if !usesEmbeddedMySQLExporter {
-		return
-	}
-
-	exporterArgs := resolveExporterArgs(c.args.PrometheusExporter, c.args.ExcludeSchemas)
-	var eventsStatementsEnabled bool
-	for _, scraper := range mysqld_exporter.GetScrapers(exporterArgs.Convert()) {
-		if scraper.Name() == eventsStatementsCollector {
-			eventsStatementsEnabled = true
-		}
-	}
-
-	if !eventsStatementsEnabled {
+	exporterArgs, ok := c.eventsStatementsExporterArgs()
+	if !ok {
 		return
 	}
 
@@ -926,7 +917,7 @@ func resolveExporterArgs(userBlock *PrometheusExporterArguments, excludeSchemas 
 	)
 	exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas = database_observability.ResolveExclusions(
 		alwaysExcludedSchemas,
-		database_observability.MergeExclusions(defaultExcludedSchemas(), excludeSchemas),
+		excludeSchemas,
 		exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas,
 	)
 	return exporterArgs

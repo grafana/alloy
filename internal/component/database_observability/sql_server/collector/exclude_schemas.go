@@ -11,8 +11,7 @@ func buildExcludedSchemasClause(schemas []string) string {
 		return exclusionClause
 	}
 
-	all := make([]string, 0, len(excludedSchemas)+len(schemas))
-	all = append(all, excludedSchemas...)
-	all = append(all, schemas...)
-	return database_observability.BuildExclusionClause(all)
+	return database_observability.BuildExclusionClause(
+		database_observability.MergeExclusions(excludedSchemas, schemas),
+	)
 }

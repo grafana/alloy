@@ -237,22 +237,21 @@ func applyExporterExclusions(exporterArgs exporter_postgres.Arguments, excludeDa
 		collector.AlwaysExcludedDatabases(),
 		defaultExcludedDatabases(),
 	)
-	inheritedDatabases := database_observability.MergeExclusions(defaultExcludedDatabases(), excludeDatabases)
 	exporterArgs.AutoDiscovery.DatabaseDenylist = database_observability.ResolveExclusions(
 		alwaysExcludedDatabases,
-		inheritedDatabases,
+		excludeDatabases,
 		exporterArgs.AutoDiscovery.DatabaseDenylist,
 	)
 
 	exporterArgs.StatStatementFlags.ExcludeDatabases = database_observability.ResolveExclusions(
 		alwaysExcludedDatabases,
-		inheritedDatabases,
+		excludeDatabases,
 		exporterArgs.StatStatementFlags.ExcludeDatabases,
 	)
 
 	resolvedExcludeUsers := database_observability.ResolveExclusions(
 		defaultExcludedUsers(),
-		database_observability.MergeExclusions(defaultExcludedUsers(), excludeUsers),
+		excludeUsers,
 		exporterArgs.StatStatementFlags.ExcludeUsers,
 	)
 	var currentUserExclusion []string
@@ -721,17 +720,20 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 
 	// Get the current user and compute the effective exclude users list.
 	var currentUser sql.NullString
+	var currentUserExclusion []string
 	if c.args.ExcludeCurrentUser {
 		if err := dbConnection.QueryRowContext(connectCtx, "SELECT current_user").Scan(&currentUser); err != nil {
 			return fmt.Errorf("failed to query current_user: %w", err)
 		}
-	}
-	effectiveExcludeUsers := database_observability.MergeExclusions(defaultExcludedUsers(), c.args.ExcludeUsers)
-	if currentUser.Valid {
-		if !slices.Contains(effectiveExcludeUsers, currentUser.String) {
-			effectiveExcludeUsers = append(effectiveExcludeUsers, currentUser.String)
+		if currentUser.Valid {
+			currentUserExclusion = []string{currentUser.String}
 		}
 	}
+	effectiveExcludeUsers := database_observability.MergeExclusions(
+		defaultExcludedUsers(),
+		c.args.ExcludeUsers,
+		currentUserExclusion,
+	)
 
 	var cp *database_observability.CloudProvider
 	if inst.cfg.cloudProvider != nil {
@@ -750,7 +752,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 
 	if len(inst.cfg.targets) == 0 {
 		exporterArgs := resolveExporterArgs(c.args.PrometheusExporter)
-		exporterArgs = applyExporterExclusions(exporterArgs, c.args.ExcludeDatabases, effectiveExcludeUsers, currentUser)
+		exporterArgs = applyExporterExclusions(exporterArgs, c.args.ExcludeDatabases, c.args.ExcludeUsers, currentUser)
 		dsn := string(inst.cfg.dsn)
 
 		e := pg_exporter.NewExporter(
