@@ -15,6 +15,7 @@ import (
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 
@@ -353,101 +354,6 @@ func TestComponentExperimentalConfig(t *testing.T) {
 		cancel()
 		require.NoError(t, c.Run(ctx))
 	})
-}
-
-type testCase struct {
-	linesCount  int
-	seriesCount int
-}
-
-func BenchmarkLokiWrite(b *testing.B) {
-	for name, tc := range map[string]testCase{
-		"100 lines, single series": {
-			linesCount:  100,
-			seriesCount: 1,
-		},
-		"100k lines, 100 series": {
-			linesCount:  100_000,
-			seriesCount: 100,
-		},
-	} {
-		b.Run(name, func(b *testing.B) {
-			benchSingleEndpoint(b, tc, func(arguments *Arguments) {})
-		})
-	}
-}
-
-func benchSingleEndpoint(b *testing.B, tc testCase, alterConfig func(arguments *Arguments)) {
-	// Set up the server that will receive the log entry, and expose it on ch.
-	var seenLines atomic.Int64
-	ch := make(chan push.PushRequest)
-
-	// just count seenLines for each entry received
-	go func() {
-		for pr := range ch {
-			count := 0
-			for _, str := range pr.Streams {
-				count += len(str.Entries)
-			}
-			seenLines.Add(int64(count))
-		}
-	}()
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var pushReq push.PushRequest
-		err := loki_util.ParseProtoReader(b.Context(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		tenantHeader := r.Header.Get("X-Scope-OrgID")
-		require.Equal(b, tenantHeader, "tenant-1")
-
-		ch <- pushReq
-	}))
-	defer srv.Close()
-
-	// Set up the component Arguments.
-	cfg := fmt.Sprintf(`
-		endpoint {
-			url        = "%s"
-			batch_wait = "10ms"
-			tenant_id  = "tenant-1"
-		}
-	`, srv.URL)
-	var args Arguments
-	require.NoError(b, syntax.Unmarshal([]byte(cfg), &args))
-
-	alterConfig(&args)
-
-	// Set up and start the component.
-	testComp, err := componenttest.NewControllerFromID(util.TestLogger(b), "loki.write")
-	require.NoError(b, err)
-	go func() {
-		err = testComp.Run(componenttest.TestContext(b), args)
-		require.NoError(b, err)
-	}()
-	require.NoError(b, testComp.WaitExports(time.Second))
-
-	// get exports from component
-	exports := testComp.Exports().(Exports)
-
-	for i := 0; i < b.N; i++ {
-		for j := 0; j < tc.linesCount; j++ {
-			logEntry := loki.Entry{
-				Labels: model.LabelSet{"foo": model.LabelValue(fmt.Sprintf("bar-%d", i%tc.seriesCount))},
-				Entry: push.Entry{
-					Timestamp: time.Now(),
-					Line:      "very important log",
-				},
-			}
-			exports.Receiver.Chan() <- logEntry
-		}
-
-		require.Eventually(b, func() bool {
-			return int64(tc.linesCount) == seenLines.Load()
-		}, time.Minute, time.Second, "haven't seen expected number of lines")
-	}
 }
 
 func TestUpdateWhileSendingIsBlocked(t *testing.T) {
@@ -832,4 +738,91 @@ func TestUpdateKeepsConsumerWhenSettingsAreUnchanged(t *testing.T) {
 			require.False(t, first == c.consumer, "consumer was not restarted after the endpoint changed")
 		})
 	}
+}
+
+func BenchmarkLokiWrite(b *testing.B) {
+	type testCase struct {
+		name      string
+		numLines  int
+		numSeries int
+	}
+
+	tests := []testCase{
+		{
+			name:      "100 lines, single series",
+			numLines:  100,
+			numSeries: 1,
+		},
+		{
+			name:      "100k lines, 100 series",
+			numLines:  100_000,
+			numSeries: 100,
+		},
+	}
+
+	for _, tt := range tests {
+		b.Run(tt.name, func(b *testing.B) {
+			benchSingleEndpoint(b, tt.numLines, tt.numSeries)
+		})
+	}
+}
+
+func benchSingleEndpoint(b *testing.B, numLines, numSeries int) {
+	var (
+		seenLines atomic.Int64
+		received  = make(chan loki_util.RemoteWriteRequest)
+	)
+
+	defer close(received)
+	go func() {
+		for req := range received {
+			for _, s := range req.Request.Streams {
+				seenLines.Add(int64(len(s.Entries)))
+			}
+		}
+	}()
+
+	srv := loki_util.NewRemoteWriteServer(received, http.StatusNoContent)
+	defer srv.Close()
+
+	cfg := fmt.Sprintf(`
+		endpoint {
+			url        = "%s"
+			batch_wait = "10ms"
+			tenant_id  = "tenant-1"
+		}
+	`, srv.URL)
+	var args Arguments
+	require.NoError(b, syntax.Unmarshal([]byte(cfg), &args))
+
+	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(b), "loki.write")
+	require.NoError(b, err)
+	stop := componenttest.RunInBackground(b, func(ctx context.Context) error {
+		return ctrl.Run(ctx, args)
+	})
+	defer stop()
+	require.NoError(b, ctrl.WaitExports(time.Second))
+
+	exports := ctrl.Exports().(Exports)
+	entries := make([]loki.Entry, numLines)
+	for i := range entries {
+		entries[i] = loki.NewEntry(
+			model.LabelSet{"foo": model.LabelValue(fmt.Sprintf("bar-%d", i%numSeries))},
+			push.Entry{Timestamp: time.Now(), Line: "very important log"},
+		)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, e := range entries {
+			exports.Receiver.Chan() <- e
+		}
+	}
+
+	// Delivery is not part of the measurement.
+	b.StopTimer()
+	require.EventuallyWithT(b, func(c *assert.CollectT) {
+		require.Equal(c, int64(b.N*numLines), seenLines.Load())
+	}, time.Minute, 10*time.Millisecond, "haven't seen expected number of lines")
+
 }
