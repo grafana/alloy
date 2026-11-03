@@ -1965,6 +1965,48 @@ func Test_query_details_eventsstatements_different_limits_warning(t *testing.T) 
 	})
 }
 
+func Test_statements_limit_eventsstatements_different_limits_warning(t *testing.T) {
+	const warning = "statements_limit and prometheus_exporter perf_schema.eventsstatements limits differ"
+	update := func(t *testing.T, args Arguments) string {
+		t.Helper()
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, errors.New("connection skipped for limit warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		args.DataSourceName = alloytypes.Secret("user:pass@tcp(localhost:3306)/db")
+		require.NoError(t, c.Update(args))
+		return logs.String()
+	}
+
+	t.Run("logs warning when the limits differ", func(t *testing.T) {
+		logs := update(t, Arguments{StatementsLimit: 200})
+		assert.Contains(t, logs, warning)
+		assert.Contains(t, logs, "statements_limit=200")
+		assert.Contains(t, logs, "eventsstatements_limit=100")
+	})
+
+	t.Run("does not log warning when the limits match", func(t *testing.T) {
+		assert.NotContains(t, update(t, Arguments{StatementsLimit: 100}), warning)
+		// An unset limit is the default, which is the exporter's too.
+		assert.NotContains(t, update(t, Arguments{}), warning)
+	})
+
+	t.Run("does not log warning when explain_plans is disabled", func(t *testing.T) {
+		assert.NotContains(t, update(t, Arguments{StatementsLimit: 200, DisableCollectors: []string{collector.ExplainPlansCollector}}), warning)
+	})
+}
+
+func Test_statements_limit_validation(t *testing.T) {
+	args := defaultArguments()
+	args.DataSourceName = alloytypes.Secret("user:pass@tcp(localhost:3306)/db")
+	require.NoError(t, args.Validate())
+	require.Equal(t, 100, args.statementsLimit())
+
+	args.StatementsLimit = -1
+	require.ErrorContains(t, args.Validate(), "statements_limit must not be negative")
+}
+
 func Test_exclude_schemas_eventsstatements_mismatch_warning(t *testing.T) {
 	t.Run("logs warning when nested exclude_schemas differs from top-level exclude_schemas", func(t *testing.T) {
 		var logs bytes.Buffer

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -510,6 +511,7 @@ func TestExplainPlans(t *testing.T) {
 
 		c, err := NewExplainPlans(ExplainPlansArguments{
 			DB:              db,
+			Statements:      newTestStatements(db),
 			Logger:          util.TestAlloyLogger(t).Slog(),
 			ScrapeInterval:  time.Second,
 			PerScrapeRatio:  1,
@@ -518,50 +520,46 @@ func TestExplainPlans(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
+		statements := func(rows ...[]any) *sqlmock.Rows {
+			r := sqlmock.NewRows([]string{"schema_name", "digest", "query_sample_text", "last_seen"})
+			for _, row := range rows {
+				r.AddRow(row[0], row[1], "select 1", row[2])
+			}
+			return r
+		}
+		cached := func() []string {
+			var keys []string
+			for key := range c.queryCache {
+				keys = append(keys, key)
+			}
+			slices.Sort(keys)
+			clear(c.queryCache)
+			return keys
+		}
 
-		t.Run("uses argument value on first request", func(t *testing.T) {
-			nextSeen := lastSeen.Add(time.Second * 45)
-			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
-				"schema_name",
-				"digest",
-				"query_text",
-				"last_seen",
-			}).AddRow(
-				"some_schema",
-				"some_digest",
-				"some_query_text",
-				lastSeen.Add(time.Second*5),
-			).AddRow(
-				"some_schema",
-				"some_digest",
-				"some_query_text",
-				nextSeen,
+		t.Run("only queries that ran after the initial lookback are explained", func(t *testing.T) {
+			// Rows come by running time, so a newer query can come before an
+			// older one that also ran since the last poll.
+			mock.ExpectQuery(fmt.Sprintf(selectTopStatements, exclusionClause, testStatementsLimit)).RowsWillBeClosed().WillReturnRows(statements(
+				[]any{"s", "newer", lastSeen.Add(time.Minute)},
+				[]any{"s", "before_lookback", lastSeen.Add(-time.Second)},
+				[]any{"s", "older", lastSeen.Add(time.Second)},
+				[]any{"s", nil, lastSeen.Add(time.Minute)},
 			))
-			lastSeen = nextSeen
-			err := c.populateQueryCache(t.Context())
-			require.NoError(t, err)
+			require.NoError(t, c.populateQueryCache(t.Context()))
+			require.Equal(t, []string{"s:newer", "s:older"}, cached())
 		})
 
-		t.Run("uses oldest last seen value on subsequent requests", func(t *testing.T) {
-			mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
-				"schema_name",
-				"digest",
-				"query_text",
-				"last_seen",
-			}).AddRow(
-				"some_schema",
-				"some_digest",
-				"some_query_text",
-				lastSeen.Add(time.Second*5),
+		t.Run("then only queries that ran since the last poll", func(t *testing.T) {
+			mock.ExpectQuery(fmt.Sprintf(selectTopStatements, exclusionClause, testStatementsLimit)).RowsWillBeClosed().WillReturnRows(statements(
+				[]any{"s", "newer", lastSeen.Add(time.Minute)},
+				[]any{"s", "older", lastSeen.Add(2 * time.Minute)},
 			))
-			err := c.populateQueryCache(t.Context())
-			require.NoError(t, err)
+			require.NoError(t, c.populateQueryCache(t.Context()))
+			require.Equal(t, []string{"s:older"}, cached())
 		})
 
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
 	})
 }
 
@@ -583,6 +581,7 @@ func TestExplainPlansSkipsTruncatedQueries(t *testing.T) {
 
 	c, err := NewExplainPlans(ExplainPlansArguments{
 		DB:              db,
+		Statements:      newTestStatements(db),
 		Logger:          logger.Slog(),
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
@@ -591,7 +590,7 @@ func TestExplainPlansSkipsTruncatedQueries(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+	mock.ExpectQuery(fmt.Sprintf(selectTopStatements, exclusionClause, testStatementsLimit)).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 		"schema_name",
 		"digest",
 		"query_sample_text",
@@ -600,7 +599,7 @@ func TestExplainPlansSkipsTruncatedQueries(t *testing.T) {
 		"some_schema",
 		"some_digest",
 		"select * from some_table where ...",
-		lastSeen,
+		lastSeen.Add(time.Second),
 	))
 
 	require.NoError(t, c.fetchExplainPlans(t.Context()))
@@ -640,6 +639,7 @@ func TestExplainPlansSkipsNonSelectQueries(t *testing.T) {
 
 	c, err := NewExplainPlans(ExplainPlansArguments{
 		DB:              db,
+		Statements:      newTestStatements(db),
 		Logger:          logger.Slog(),
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
@@ -648,7 +648,7 @@ func TestExplainPlansSkipsNonSelectQueries(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+	mock.ExpectQuery(fmt.Sprintf(selectTopStatements, exclusionClause, testStatementsLimit)).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 		"schema_name",
 		"digest",
 		"query_sample_text",
@@ -657,37 +657,37 @@ func TestExplainPlansSkipsNonSelectQueries(t *testing.T) {
 		"some_schema",
 		"update_digest",
 		"update some_table set col = 1 where id = 1",
-		lastSeen,
+		lastSeen.Add(time.Second),
 	).AddRow(
 		"some_schema",
 		"delete_digest",
 		"delete from some_table",
-		lastSeen,
+		lastSeen.Add(time.Second),
 	).AddRow(
 		"some_schema",
 		"insert_digest",
 		"insert into some_table (col) values (1)",
-		lastSeen,
+		lastSeen.Add(time.Second),
 	).AddRow(
 		"some_schema",
 		"show_digest",
 		"show global status like 'Uptime'",
-		lastSeen,
+		lastSeen.Add(time.Second),
 	).AddRow(
 		"some_schema",
 		"kill_digest",
 		"kill query 123",
-		lastSeen,
+		lastSeen.Add(time.Second),
 	).AddRow(
 		"some_schema",
 		"call_digest",
 		"call refresh_summary()",
-		lastSeen,
+		lastSeen.Add(time.Second),
 	).AddRow(
 		"some_schema",
 		"do_digest",
 		"do release_lock('foo')",
-		lastSeen,
+		lastSeen.Add(time.Second),
 	))
 
 	require.NoError(t, c.fetchExplainPlans(t.Context()))
@@ -732,6 +732,7 @@ func TestExplainPlansSkipsNoRowResult(t *testing.T) {
 
 	c, err := NewExplainPlans(ExplainPlansArguments{
 		DB:              db,
+		Statements:      newTestStatements(db),
 		Logger:          logger.Slog(),
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
@@ -740,7 +741,7 @@ func TestExplainPlansSkipsNoRowResult(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+	mock.ExpectQuery(fmt.Sprintf(selectTopStatements, exclusionClause, testStatementsLimit)).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 		"schema_name",
 		"digest",
 		"query_sample_text",
@@ -749,7 +750,7 @@ func TestExplainPlansSkipsNoRowResult(t *testing.T) {
 		"some_schema",
 		"some_digest",
 		"select * from some_table where id = 1",
-		lastSeen,
+		lastSeen.Add(time.Second),
 	))
 
 	mock.ExpectExec("USE `some_schema`").WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 0))
@@ -785,6 +786,7 @@ func TestExplainPlansPassesQueriesBeginningInSelect(t *testing.T) {
 
 	c, err := NewExplainPlans(ExplainPlansArguments{
 		DB:              db,
+		Statements:      newTestStatements(db),
 		Logger:          logger.Slog(),
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
@@ -793,7 +795,7 @@ func TestExplainPlansPassesQueriesBeginningInSelect(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+	mock.ExpectQuery(fmt.Sprintf(selectTopStatements, exclusionClause, testStatementsLimit)).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 		"schema_name",
 		"digest",
 		"query_sample_text",
@@ -802,7 +804,7 @@ func TestExplainPlansPassesQueriesBeginningInSelect(t *testing.T) {
 		"some_schema",
 		"some_digest",
 		"select * from some_table where id = 1",
-		lastSeen,
+		lastSeen.Add(time.Second),
 	))
 
 	mock.ExpectExec("USE `some_schema`").WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 0))
@@ -845,6 +847,7 @@ func TestExplainPlansPassesQueriesBeginningInWith(t *testing.T) {
 
 	c, err := NewExplainPlans(ExplainPlansArguments{
 		DB:              db,
+		Statements:      newTestStatements(db),
 		Logger:          logger.Slog(),
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
@@ -853,7 +856,7 @@ func TestExplainPlansPassesQueriesBeginningInWith(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+	mock.ExpectQuery(fmt.Sprintf(selectTopStatements, exclusionClause, testStatementsLimit)).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 		"schema_name",
 		"digest",
 		"query_sample_text",
@@ -862,7 +865,7 @@ func TestExplainPlansPassesQueriesBeginningInWith(t *testing.T) {
 		"some_schema",
 		"some_digest",
 		"with cte as (select * from some_table where id = 1) select * from cte",
-		lastSeen,
+		lastSeen.Add(time.Second),
 	))
 
 	mock.ExpectExec("USE `some_schema`").WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 0))
@@ -895,6 +898,7 @@ func TestExplainPlansThrottling(t *testing.T) {
 		defer lokiClient.Stop()
 
 		c, err := NewExplainPlans(ExplainPlansArguments{
+			Statements:   newTestStatements(nil),
 			Logger:       util.TestAlloyLogger(t).Slog(),
 			EntryHandler: lokiClient,
 		})
@@ -933,6 +937,7 @@ func TestExplainPlansThrottling(t *testing.T) {
 
 		c, err := NewExplainPlans(ExplainPlansArguments{
 			DB:             db,
+			Statements:     newTestStatements(db),
 			Logger:         util.TestAlloyLogger(t).Slog(),
 			PerScrapeRatio: 1,
 			EntryHandler:   lokiClient,
@@ -984,6 +989,7 @@ func TestExplainPlansThrottling(t *testing.T) {
 
 		c, err := NewExplainPlans(ExplainPlansArguments{
 			DB:              db,
+			Statements:      newTestStatements(db),
 			Logger:          util.TestAlloyLogger(t).Slog(),
 			PerScrapeRatio:  1,
 			InitialLookback: base.Add(-time.Hour),
@@ -996,8 +1002,7 @@ func TestExplainPlansThrottling(t *testing.T) {
 		c.lastEmittedAt[throttledKey] = base
 
 		nextSeen := base.Add(2 * time.Minute)
-		mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).
-			WithArgs(base.Add(-time.Hour)).
+		mock.ExpectQuery(fmt.Sprintf(selectTopStatements, exclusionClause, testStatementsLimit)).
 			WillReturnRows(sqlmock.NewRows([]string{"schema_name", "digest", "query_sample_text", "last_seen"}).
 				AddRow("some_schema", "throttled_digest", "select * from throttled_table", base).
 				AddRow("some_schema", "due_digest", "select * from due_table", nextSeen))
@@ -1024,6 +1029,7 @@ func TestExplainPlansThrottling(t *testing.T) {
 
 		c, err := NewExplainPlans(ExplainPlansArguments{
 			DB:              db,
+			Statements:      newTestStatements(db),
 			Logger:          util.TestAlloyLogger(t).Slog(),
 			PerScrapeRatio:  1,
 			InitialLookback: base.Add(-time.Hour),
@@ -1043,8 +1049,7 @@ func TestExplainPlansThrottling(t *testing.T) {
 			nil,
 		))
 
-		mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).
-			WithArgs(base.Add(-time.Hour)).
+		mock.ExpectQuery(fmt.Sprintf(selectTopStatements, exclusionClause, testStatementsLimit)).
 			WillReturnRows(sqlmock.NewRows([]string{"schema_name", "digest", "query_sample_text", "last_seen"}).
 				AddRow("some_schema", "some_digest", "select * from some_table", base))
 
@@ -1078,6 +1083,7 @@ func TestQueryFailureDenylist(t *testing.T) {
 
 	c, err := NewExplainPlans(ExplainPlansArguments{
 		DB:              db,
+		Statements:      newTestStatements(db),
 		Logger:          logger.Slog(),
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
@@ -1086,7 +1092,7 @@ func TestQueryFailureDenylist(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+	mock.ExpectQuery(fmt.Sprintf(selectTopStatements, exclusionClause, testStatementsLimit)).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 		"schema_name",
 		"digest",
 		"query_sample_text",
@@ -1095,7 +1101,7 @@ func TestQueryFailureDenylist(t *testing.T) {
 		"some_schema",
 		"some_digest1",
 		"select * from some_table where id = 1",
-		lastSeen,
+		lastSeen.Add(time.Second),
 	))
 
 	c.populateQueryCache(t.Context())
@@ -1120,7 +1126,7 @@ func TestQueryFailureDenylist(t *testing.T) {
 		lokiClient.Clear()
 		logBuffer.Reset()
 
-		mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+		mock.ExpectQuery(fmt.Sprintf(selectTopStatements, exclusionClause, testStatementsLimit)).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 			"schema_name",
 			"digest",
 			"query_sample_text",
@@ -1129,12 +1135,12 @@ func TestQueryFailureDenylist(t *testing.T) {
 			"some_schema",
 			"some_digest1",
 			"select * from some_table where id = 1",
-			lastSeen,
+			lastSeen.Add(2*time.Second),
 		).AddRow(
 			"some_schema",
 			"some_digest2",
 			"select * from some_table where id = 2",
-			lastSeen,
+			lastSeen.Add(2*time.Second),
 		))
 
 		err = c.populateQueryCache(t.Context())
@@ -1166,6 +1172,7 @@ func TestBatchSizeLimitsProcessing(t *testing.T) {
 
 	c, err := NewExplainPlans(ExplainPlansArguments{
 		DB:             db,
+		Statements:     newTestStatements(db),
 		Logger:         util.TestAlloyLogger(t).Slog(),
 		ScrapeInterval: time.Second,
 		PerScrapeRatio: 1,
@@ -1215,16 +1222,16 @@ func TestSchemaDenylist(t *testing.T) {
 
 	c, err := NewExplainPlans(ExplainPlansArguments{
 		DB:              db,
+		Statements:      newTestStatements(db, "some_schema"),
 		Logger:          logger.Slog(),
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
-		ExcludeSchemas:  []string{"some_schema"},
 		EntryHandler:    lokiClient,
 		InitialLookback: lastSeen,
 	})
 	require.NoError(t, err)
 
-	mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, buildExcludedSchemasClause([]string{"some_schema"}))).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+	mock.ExpectQuery(fmt.Sprintf(selectTopStatements, buildExcludedSchemasClause([]string{"some_schema"}), testStatementsLimit)).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 		"schema_name",
 		"digest",
 		"query_sample_text",
@@ -1233,7 +1240,7 @@ func TestSchemaDenylist(t *testing.T) {
 		"different_schema",
 		"some_digest2",
 		"select * from some_table where id = 2",
-		lastSeen,
+		lastSeen.Add(time.Second),
 	))
 
 	c.populateQueryCache(t.Context())

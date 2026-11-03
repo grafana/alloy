@@ -66,6 +66,7 @@ type Arguments struct {
 	EnableCollectors              []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors             []string            `alloy:"disable_collectors,attr,optional"`
 	ExcludeSchemas                []string            `alloy:"exclude_schemas,attr,optional"`
+	StatementsLimit               int                 `alloy:"statements_limit,attr,optional"`
 	AllowUpdatePerfSchemaSettings bool                `alloy:"allow_update_performance_schema_settings,attr,optional"`
 
 	Databases []DatabaseArguments `alloy:"database_instance,block,optional"`
@@ -193,9 +194,23 @@ const eventsStatementsCollector = "perf_schema.eventsstatements"
 // slave_status (replication).
 var defaultEnabledCollectors = []string{eventsStatementsCollector, "global_status", "global_variables", "slave_status"}
 
+// defaultStatementsLimit is the number of top queries the collectors work on
+// when statements_limit is not set, the same as the embedded exporter's
+// perf_schema.eventsstatements limit.
+const defaultStatementsLimit = 100
+
+// statementsLimit returns statements_limit, or its default when it is 0.
+func (a *Arguments) statementsLimit() int {
+	if a.StatementsLimit == 0 {
+		return defaultStatementsLimit
+	}
+	return a.StatementsLimit
+}
+
 func defaultArguments() Arguments {
 	return Arguments{
 		ExcludeSchemas:                defaultExcludedSchemas(),
+		StatementsLimit:               defaultStatementsLimit,
 		AllowUpdatePerfSchemaSettings: false,
 
 		QueryDetailsArguments: QueryDetailsArguments{
@@ -253,6 +268,10 @@ func (a *Arguments) SetToDefault() {
 var databaseNameRegex = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 func (a *Arguments) Validate() error {
+	if a.StatementsLimit < 0 {
+		return fmt.Errorf("statements_limit must not be negative")
+	}
+
 	if len(a.Databases) == 0 {
 		_, err := mysql.ParseDSN(string(a.DataSourceName))
 		if err != nil {
@@ -532,18 +551,25 @@ func (c *Component) eventsStatementsExporterArgs() (exporter_mysql.Arguments, bo
 }
 
 func (c *Component) warnOnStatementLimitMismatch() {
-	queryDetailsEnabled := enableOrDisableCollectors(c.args)[collector.QueryDetailsCollector]
-	if !queryDetailsEnabled {
-		return
-	}
-
 	exporterArgs, ok := c.eventsStatementsExporterArgs()
 	if !ok {
 		return
 	}
-
-	queryDetailsLimit := c.args.QueryDetailsArguments.StatementsLimit
 	eventsStatementsLimit := exporterArgs.PerfSchemaEventsStatements.Limit
+	collectors := enableOrDisableCollectors(c.args)
+
+	if collectors[collector.ExplainPlansCollector] && c.args.statementsLimit() != eventsStatementsLimit {
+		c.opts.Logger.Warn(
+			"statements_limit and prometheus_exporter perf_schema.eventsstatements limits differ",
+			"statements_limit", c.args.statementsLimit(),
+			"eventsstatements_limit", eventsStatementsLimit,
+		)
+	}
+
+	if !collectors[collector.QueryDetailsCollector] {
+		return
+	}
+	queryDetailsLimit := c.args.QueryDetailsArguments.StatementsLimit
 	if queryDetailsLimit != eventsStatementsLimit {
 		c.opts.Logger.Warn(
 			"query_details and prometheus_exporter perf_schema.eventsstatements limits differ",
@@ -978,6 +1004,16 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 
 	collectors := enableOrDisableCollectors(c.args)
 
+	// statements is the top queries of the digest table, read once for the
+	// collectors that work on them. A read is reused for half the explain
+	// plans interval, so that each poll on that interval reads the table again.
+	statements := collector.NewStatementsSnapshot(collector.StatementsSnapshotArguments{
+		DB:             inst.dbConnection,
+		Limit:          c.args.statementsLimit(),
+		ExcludeSchemas: excludeSchemas,
+		MaxAge:         c.args.ExplainPlansArguments.CollectInterval / 2,
+	})
+
 	var tableRegistry *collector.TableRegistry
 
 	if collectors[collector.SchemaDetailsCollector] {
@@ -1121,9 +1157,9 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 	if collectors[collector.ExplainPlansCollector] {
 		epCollector, err := collector.NewExplainPlans(collector.ExplainPlansArguments{
 			DB:              inst.dbConnection,
+			Statements:      statements,
 			ScrapeInterval:  c.args.ExplainPlansArguments.CollectInterval,
 			PerScrapeRatio:  c.args.ExplainPlansArguments.PerCollectRatio,
-			ExcludeSchemas:  excludeSchemas,
 			InitialLookback: time.Now().Add(-c.args.ExplainPlansArguments.InitialLookback),
 			Logger:          c.opts.Logger,
 			EntryHandler:    entryHandler,
