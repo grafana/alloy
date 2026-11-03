@@ -57,20 +57,10 @@ func (e *Entry) Clone() Entry {
 	}
 }
 
-// Returns the size of the line, structured metadata and timestamp.
+// Size returns the size of the entry in bytes when it is encoded as protobuf.
+// It doesn't include the labels, which are sent once per stream.
 func (e *Entry) Size() int {
-	// FIXME(kalleep): This is not correct but computing
-	// the actual size an entry would take when serialized to proto
-	// is quite expensive.
-	size := len(e.Line)
-	for _, label := range e.StructuredMetadata {
-		size += label.Size()
-	}
-	// A protobuf timestamp can be estimated as 12 bytes made up of 8 bytes
-	// for the number seconds since the Unix epoch and 4 bytes for the number
-	// of nanoseconds within each second.
-	size += 12
-	return size
+	return e.Entry.Size()
 }
 
 func (e *Entry) Created() int64 {
