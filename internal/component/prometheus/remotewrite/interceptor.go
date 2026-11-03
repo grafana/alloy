@@ -121,6 +121,46 @@ func NewInterceptor(componentID string, exited *atomic.Bool, debugDataPublisher 
 			}
 			return finalRef, err
 		}),
+		prometheus.WithSTZeroSampleHook(func(ref storage.SeriesRef, l labels.Labels, t, st int64, next storage.Appender) (storage.SeriesRef, error) {
+			if exited.Load() {
+				return 0, fmt.Errorf("%s has exited", componentID)
+			}
+
+			var finalRef storage.SeriesRef
+			var err error
+			if ls.Enabled() {
+				localRef := ls.GetLocalRefID(componentID, uint64(ref))
+				newLocalRef, nextErr := next.AppendSTZeroSample(storage.SeriesRef(localRef), l, t, st)
+				if nextErr == nil {
+					handleLocalLink(uint64(ref), l, localRef, uint64(newLocalRef))
+				}
+				finalRef = ref
+				err = nextErr
+			} else {
+				finalRef, err = next.AppendSTZeroSample(ref, l, t, st)
+			}
+			return finalRef, err
+		}),
+		prometheus.WithHistogramSTZeroSampleHook(func(ref storage.SeriesRef, l labels.Labels, t, st int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error) {
+			if exited.Load() {
+				return 0, fmt.Errorf("%s has exited", componentID)
+			}
+
+			var finalRef storage.SeriesRef
+			var err error
+			if ls.Enabled() {
+				localRef := ls.GetLocalRefID(componentID, uint64(ref))
+				newLocalRef, nextErr := next.AppendHistogramSTZeroSample(storage.SeriesRef(localRef), l, t, st, h, fh)
+				if nextErr == nil {
+					handleLocalLink(uint64(ref), l, localRef, uint64(newLocalRef))
+				}
+				finalRef = ref
+				err = nextErr
+			} else {
+				finalRef, err = next.AppendHistogramSTZeroSample(ref, l, t, st, h, fh)
+			}
+			return finalRef, err
+		}),
 		prometheus.WithMetadataHook(func(ref storage.SeriesRef, l labels.Labels, m metadata.Metadata, next storage.Appender) (storage.SeriesRef, error) {
 			if exited.Load() {
 				return 0, fmt.Errorf("%s has exited", componentID)
