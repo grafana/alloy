@@ -233,28 +233,34 @@ func resolveExporterArgs(userBlock *PrometheusExporterArguments) exporter_postgr
 }
 
 func applyExporterExclusions(exporterArgs exporter_postgres.Arguments, excludeDatabases, excludeUsers []string, currentUser sql.NullString) exporter_postgres.Arguments {
-	alwaysExcludedDatabases := collector.AlwaysExcludedDatabases()
+	alwaysExcludedDatabases := database_observability.MergeExclusions(
+		collector.AlwaysExcludedDatabases(),
+		defaultExcludedDatabases(),
+	)
+	inheritedDatabases := database_observability.MergeExclusions(defaultExcludedDatabases(), excludeDatabases)
 	exporterArgs.AutoDiscovery.DatabaseDenylist = database_observability.ResolveExclusions(
 		alwaysExcludedDatabases,
-		excludeDatabases,
+		inheritedDatabases,
 		exporterArgs.AutoDiscovery.DatabaseDenylist,
 	)
 
 	exporterArgs.StatStatementFlags.ExcludeDatabases = database_observability.ResolveExclusions(
 		alwaysExcludedDatabases,
-		excludeDatabases,
+		inheritedDatabases,
 		exporterArgs.StatStatementFlags.ExcludeDatabases,
 	)
 
-	if exporterArgs.StatStatementFlags.ExcludeUsers != nil {
-		excludeUsers = exporterArgs.StatStatementFlags.ExcludeUsers
-	}
+	resolvedExcludeUsers := database_observability.ResolveExclusions(
+		defaultExcludedUsers(),
+		database_observability.MergeExclusions(defaultExcludedUsers(), excludeUsers),
+		exporterArgs.StatStatementFlags.ExcludeUsers,
+	)
 	var currentUserExclusion []string
 	if currentUser.Valid {
 		currentUserExclusion = []string{currentUser.String}
 	}
 	exporterArgs.StatStatementFlags.ExcludeUsers = database_observability.MergeExclusions(
-		excludeUsers,
+		resolvedExcludeUsers,
 		currentUserExclusion,
 	)
 	return exporterArgs
@@ -720,7 +726,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 			return fmt.Errorf("failed to query current_user: %w", err)
 		}
 	}
-	effectiveExcludeUsers := slices.Clone(c.args.ExcludeUsers)
+	effectiveExcludeUsers := database_observability.MergeExclusions(defaultExcludedUsers(), c.args.ExcludeUsers)
 	if currentUser.Valid {
 		if !slices.Contains(effectiveExcludeUsers, currentUser.String) {
 			effectiveExcludeUsers = append(effectiveExcludeUsers, currentUser.String)
@@ -840,6 +846,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.args = newArgs
 
 	c.warnOnStatementLimitMismatch()
+	c.warnOnExclusionsMismatch()
 
 	c.fanout.UpdateChildren(c.args.ForwardTo)
 	// Every configured database gets a pump, owned or not: non-owned
@@ -881,6 +888,55 @@ func (c *Component) warnOnStatementLimitMismatch() {
 			"query_details and prometheus_exporter stat_statements limits differ",
 			"query_details_limit", queryDetailsLimit,
 			"stat_statements_limit", exporterArgs.StatStatementFlags.Limit,
+		)
+	}
+}
+
+func (c *Component) warnOnExclusionsMismatch() {
+	usesEmbeddedPostgresExporter := len(c.args.Targets) == 0
+	if !usesEmbeddedPostgresExporter {
+		return
+	}
+
+	exporterArgs := applyExporterExclusions(
+		resolveExporterArgs(c.args.PrometheusExporter),
+		c.args.ExcludeDatabases,
+		c.args.ExcludeUsers,
+		sql.NullString{},
+	)
+
+	topLevelDatabases := database_observability.MergeExclusions(
+		collector.AlwaysExcludedDatabases(),
+		defaultExcludedDatabases(),
+		c.args.ExcludeDatabases,
+	)
+	if !database_observability.SameExclusions(topLevelDatabases, exporterArgs.AutoDiscovery.DatabaseDenylist) {
+		c.opts.Logger.Warn(
+			"exclude_databases and prometheus_exporter autodiscovery database_denylist differ; prefer setting top-level exclude_databases only",
+			"exclude_databases", topLevelDatabases,
+			"autodiscovery_database_denylist", exporterArgs.AutoDiscovery.DatabaseDenylist,
+		)
+	}
+
+	statStatementsEnabled := !exporterArgs.DisableDefaultMetrics && slices.Contains(exporterArgs.EnabledCollectors, "stat_statements")
+	if !statStatementsEnabled || exporterArgs.StatStatementFlags == nil {
+		return
+	}
+
+	if !database_observability.SameExclusions(topLevelDatabases, exporterArgs.StatStatementFlags.ExcludeDatabases) {
+		c.opts.Logger.Warn(
+			"exclude_databases and prometheus_exporter stat_statements exclude_databases differ; prefer setting top-level exclude_databases only",
+			"exclude_databases", topLevelDatabases,
+			"stat_statements_exclude_databases", exporterArgs.StatStatementFlags.ExcludeDatabases,
+		)
+	}
+
+	topLevelUsers := database_observability.MergeExclusions(defaultExcludedUsers(), c.args.ExcludeUsers)
+	if !database_observability.SameExclusions(topLevelUsers, exporterArgs.StatStatementFlags.ExcludeUsers) {
+		c.opts.Logger.Warn(
+			"exclude_users and prometheus_exporter stat_statements exclude_users differ; prefer setting top-level exclude_users only",
+			"exclude_users", topLevelUsers,
+			"stat_statements_exclude_users", exporterArgs.StatStatementFlags.ExcludeUsers,
 		)
 	}
 }
@@ -1082,6 +1138,9 @@ func (c *Component) startCollectors(inst *dbInstance, systemID string, engineVer
 
 	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), inst.instanceKey, systemID, inst.cfg.rules)
 
+	excludeDatabases := database_observability.MergeExclusions(defaultExcludedDatabases(), c.args.ExcludeDatabases)
+	excludeUsers := database_observability.MergeExclusions(defaultExcludedUsers(), c.args.ExcludeUsers)
+
 	var tableRegistry *collector.TableRegistry
 	collectors := enableOrDisableCollectors(c.args)
 
@@ -1100,7 +1159,7 @@ func (c *Component) startCollectors(inst *dbInstance, systemID string, engineVer
 			DB:               inst.dbConnection,
 			DSN:              string(inst.cfg.dsn),
 			CollectInterval:  c.args.SchemaDetailsArguments.CollectInterval,
-			ExcludeDatabases: c.args.ExcludeDatabases,
+			ExcludeDatabases: excludeDatabases,
 			EntryHandler:     entryHandler,
 			Logger:           c.opts.Logger,
 		})
@@ -1119,7 +1178,7 @@ func (c *Component) startCollectors(inst *dbInstance, systemID string, engineVer
 			DB:                        inst.dbConnection,
 			CollectInterval:           c.args.QueryDetailsArguments.CollectInterval,
 			StatementsLimit:           c.args.QueryDetailsArguments.StatementsLimit,
-			ExcludeDatabases:          c.args.ExcludeDatabases,
+			ExcludeDatabases:          excludeDatabases,
 			ExcludeUsers:              effectiveExcludeUsers,
 			EntryHandler:              entryHandler,
 			TableRegistry:             tableRegistry,
@@ -1143,14 +1202,14 @@ func (c *Component) startCollectors(inst *dbInstance, systemID string, engineVer
 		qsExcludeCurrentUser := false
 		if localExcludeCurrentUser := c.args.QuerySampleArguments.ExcludeCurrentUser; localExcludeCurrentUser != nil {
 			c.opts.Logger.Warn("query_samples.exclude_current_user is deprecated; use the top-level exclude_current_user setting instead")
-			qsExcludeUsers = c.args.ExcludeUsers
+			qsExcludeUsers = excludeUsers
 			qsExcludeCurrentUser = *localExcludeCurrentUser
 		}
 
 		aCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
 			DB:                            inst.dbConnection,
 			CollectInterval:               c.args.QuerySampleArguments.CollectInterval,
-			ExcludeDatabases:              c.args.ExcludeDatabases,
+			ExcludeDatabases:              excludeDatabases,
 			ExcludeUsers:                  qsExcludeUsers,
 			EntryHandler:                  entryHandler,
 			Logger:                        c.opts.Logger,
@@ -1190,7 +1249,7 @@ func (c *Component) startCollectors(inst *dbInstance, systemID string, engineVer
 			DSN:              string(inst.cfg.dsn),
 			ScrapeInterval:   c.args.ExplainPlansArguments.CollectInterval,
 			PerScrapeRatio:   c.args.ExplainPlansArguments.PerCollectRatio,
-			ExcludeDatabases: c.args.ExcludeDatabases,
+			ExcludeDatabases: excludeDatabases,
 			ExcludeUsers:     effectiveExcludeUsers,
 			Logger:           c.opts.Logger,
 			DBVersion:        engineVersion,
@@ -1210,7 +1269,7 @@ func (c *Component) startCollectors(inst *dbInstance, systemID string, engineVer
 		tsCollector, err := collector.NewTableStats(collector.TableStatsArguments{
 			DB:               inst.dbConnection,
 			DSN:              string(inst.cfg.dsn),
-			ExcludeDatabases: c.args.ExcludeDatabases,
+			ExcludeDatabases: excludeDatabases,
 			Registry:         inst.registry,
 			Logger:           c.opts.Logger,
 		})
@@ -1228,7 +1287,7 @@ func (c *Component) startCollectors(inst *dbInstance, systemID string, engineVer
 		isCollector, err := collector.NewIndexStats(collector.IndexStatsArguments{
 			DB:               inst.dbConnection,
 			DSN:              string(inst.cfg.dsn),
-			ExcludeDatabases: c.args.ExcludeDatabases,
+			ExcludeDatabases: excludeDatabases,
 			Registry:         inst.registry,
 			Logger:           c.opts.Logger,
 		})
@@ -1246,7 +1305,7 @@ func (c *Component) startCollectors(inst *dbInstance, systemID string, engineVer
 	hcCollector, err := collector.NewHealthCheck(collector.HealthCheckArguments{
 		DB:               inst.dbConnection,
 		CollectInterval:  c.args.HealthCheckArguments.CollectInterval,
-		ExcludeDatabases: c.args.ExcludeDatabases,
+		ExcludeDatabases: excludeDatabases,
 		ExcludeUsers:     effectiveExcludeUsers,
 		EntryHandler:     entryHandler,
 		Logger:           c.opts.Logger,
@@ -1266,7 +1325,7 @@ func (c *Component) startCollectors(inst *dbInstance, systemID string, engineVer
 		EntryHandler:              entryHandler,
 		Logger:                    c.opts.Logger,
 		Registry:                  inst.registry,
-		ExcludeDatabases:          c.args.ExcludeDatabases,
+		ExcludeDatabases:          excludeDatabases,
 		ExcludeUsers:              effectiveExcludeUsers,
 		EnableErrorLogsProcessing: c.args.Logs.EnableErrorLogsProcessing,
 		DB:                        inst.dbConnection,
