@@ -101,7 +101,6 @@ func Test_Write_FanOut(t *testing.T) {
 			},
 			"Alloy/239",
 			"",
-			t.TempDir(),
 			arg,
 		)
 		require.NoError(t, err)
@@ -181,7 +180,6 @@ func Test_Write_Update(t *testing.T) {
 		},
 		"Alloy/239",
 		"",
-		t.TempDir(),
 		argument,
 	)
 	require.NoError(t, err)
@@ -249,6 +247,17 @@ func Test_Unmarshal_Config(t *testing.T) {
 	require.Equal(t, time.Second, arg.Endpoints[1].MinBackoff)
 	require.Equal(t, time.Second*10, arg.Endpoints[1].MaxBackoff)
 	require.Equal(t, 10, arg.Endpoints[1].MaxBackoffRetries)
+}
+
+func TestRejectDebugInfoUploadTimeout(t *testing.T) {
+	var args Arguments
+	err := syntax.Unmarshal([]byte(`
+endpoint {
+	url = "http://localhost:4040"
+	debug_info_upload_timeout = "2m"
+}
+`), &args)
+	require.ErrorContains(t, err, `unrecognized attribute name "debug_info_upload_timeout"`)
 }
 
 func TestBadAlloyConfig(t *testing.T) {
@@ -323,7 +332,6 @@ func (s *AppendIngestTestSuite) newComponent(argument Arguments) {
 		},
 		"Alloy/239",
 		"",
-		s.T().TempDir(),
 		argument,
 	)
 	s.Require().NoError(err)
@@ -638,7 +646,6 @@ func Test_Write_Append_RetryOnResourceExhausted(t *testing.T) {
 			},
 			"Alloy/239",
 			"",
-			t.TempDir(),
 			Arguments{Endpoints: []*EndpointOptions{endpoint}},
 		)
 		require.NoError(t, err)
@@ -782,7 +789,6 @@ func Test_Write_FanOut_ValidateLabels(t *testing.T) {
 		},
 		"Alloy/239",
 		"",
-		t.TempDir(),
 		argument,
 	)
 	require.NoError(t, err)

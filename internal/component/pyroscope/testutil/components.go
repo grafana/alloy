@@ -5,8 +5,6 @@ package testutil
 import (
 	"fmt"
 	"log/slog"
-	"os"
-	"path/filepath"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/trace/noop"
@@ -21,8 +19,6 @@ func CreateWriteComponent(l *slog.Logger, reg prometheus.Registerer, endpoint st
 	e := write.GetDefaultEndpointOptions()
 	e.URL = endpoint
 
-	dataPath := filepath.Join(os.TempDir(), "alloy-pyroscope-write-test")
-
 	c, err := write.New(
 		l.With("component", "pyroscope.write"),
 		noop.Tracer{},
@@ -32,7 +28,6 @@ func CreateWriteComponent(l *slog.Logger, reg prometheus.Registerer, endpoint st
 		},
 		"test",
 		"",
-		dataPath,
 		write.Arguments{Endpoints: []*write.EndpointOptions{&e}},
 	)
 	if err != nil {
