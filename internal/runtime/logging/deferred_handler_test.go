@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"testing"
 	"testing/slogtest"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -213,4 +214,39 @@ func logError(ctx context.Context, sl *slog.Logger, alloyL *slog.Logger, msg str
 
 func equal(sl *bytes.Buffer, alloy *bytes.Buffer) bool {
 	return sl.String() == alloy.String()
+}
+
+// A child that buildHandlers did not reach must build itself from its parent
+// on first use. Before, its buffered records were replayed into addRecord
+// while flushBuffer held bufferMut, and Update never returned.
+func TestDeferredChildMissedByBuildIsBuiltFromParent(t *testing.T) {
+	buf := &bytes.Buffer{}
+	l, err := NewDeferred(buf)
+	require.NoError(t, err)
+
+	child := l.Handler().WithAttrs([]slog.Attr{slog.String("component", "orphan")})
+	// Detach the child, as a lost append under concurrent WithAttrs calls did.
+	l.deferredSlog.mut.Lock()
+	l.deferredSlog.children = nil
+	l.deferredSlog.mut.Unlock()
+
+	rec := slog.NewRecord(time.Now(), slog.LevelInfo, "buffered before update", 0)
+	require.NoError(t, child.Handle(context.Background(), rec))
+
+	done := make(chan error, 1)
+	go func() {
+		done <- l.Update(Options{Level: LevelInfo, Format: FormatLogfmt})
+	}()
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("Update did not return: flushBuffer deadlocked on the orphaned child")
+	}
+
+	rec = slog.NewRecord(time.Now(), slog.LevelInfo, "after update", 0)
+	require.NoError(t, child.Handle(context.Background(), rec))
+	require.Contains(t, buf.String(), "buffered before update")
+	require.Contains(t, buf.String(), "after update")
+	require.Contains(t, buf.String(), `component=orphan`)
 }
