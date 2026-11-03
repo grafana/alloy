@@ -3,7 +3,6 @@ package enrich
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/prometheus/common/model"
@@ -32,18 +31,8 @@ type Arguments struct {
 	// The targets to use for enrichment
 	Targets []discovery.Target `alloy:"targets,attr"`
 
-	// Multi-label matching: a map of target_label -> log_label.
-	// Takes precedence over target_match_label / logs_match_label.
-	TargetToLogMatch map[string]string `alloy:"target_to_log_match,attr,optional"`
-
-	// Deprecated: use TargetToLogMatch instead.
-	// Which label from targets to use for matching (e.g. "hostname", "ip").
-	TargetMatchLabel string `alloy:"target_match_label,attr,optional"`
-
-	// Deprecated: use TargetToLogMatch instead.
-	// Which label from logs to match against (e.g. "hostname", "ip").
-	// If not specified, TargetMatchLabel will be used.
-	LogsMatchLabel string `alloy:"logs_match_label,attr,optional"`
+	// Map of target label -> log label. All pairs must match the same target.
+	TargetToLogMatch map[string]string `alloy:"target_to_log_match,attr"`
 
 	// List of labels to copy from discovered targets to logs. If empty, all labels will be copied.
 	LabelsToCopy []string `alloy:"labels_to_copy,attr,optional"`
@@ -54,22 +43,7 @@ type Arguments struct {
 
 // Validate implements syntax.Validator.
 func (a Arguments) Validate() error {
-	hasDeprecated := a.TargetMatchLabel != "" || a.LogsMatchLabel != ""
-	hasNew := len(a.TargetToLogMatch) > 0
-
-	if !hasDeprecated && !hasNew {
-		return fmt.Errorf("at least one match mechanism must be specified: set target_match_label or target_to_log_match")
-	}
-	for targetLabel, logLabel := range a.TargetToLogMatch {
-		if targetLabel == "" || logLabel == "" {
-			return fmt.Errorf("target_to_log_match must not contain empty label names, got %q = %q", targetLabel, logLabel)
-		}
-	}
-	// target_to_log_match takes precedence when set; deprecated fields are ignored.
-	if hasDeprecated && !hasNew && a.TargetMatchLabel == "" {
-		return fmt.Errorf("target_match_label must be set when using deprecated match fields")
-	}
-	return nil
+	return commonenrich.ValidateMatch("target_to_log_match", a.TargetToLogMatch)
 }
 
 type Exports struct {
@@ -163,7 +137,8 @@ func (c *Component) Update(args component.Arguments) error {
 // process returns lset enriched with labels from a matching target. Set
 // needsClone when the caller does not own lset.
 func (c *Component) process(lset model.LabelSet, needsClone bool) model.LabelSet {
-	if c.mc == nil {
+	// Skip the hash work when there is nothing to match.
+	if c.mc == nil || c.mc.matcher.Len() == 0 {
 		return lset
 	}
 
@@ -195,17 +170,8 @@ func (c *Component) process(lset model.LabelSet, needsClone bool) model.LabelSet
 }
 
 func (c *Component) refreshCacheFromTargets(args Arguments) {
-	strategyMap := args.TargetToLogMatch
-	if len(strategyMap) == 0 && args.TargetMatchLabel != "" {
-		logsLabel := args.LogsMatchLabel
-		if logsLabel == "" {
-			logsLabel = args.TargetMatchLabel
-		}
-		strategyMap = map[string]string{args.TargetMatchLabel: logsLabel}
-	}
-
 	c.mc = &matchCache{
-		matcher:      commonenrich.NewMatcher(args.Targets, strategyMap),
+		matcher:      commonenrich.NewMatcher(args.Targets, args.TargetToLogMatch),
 		labelsToCopy: args.LabelsToCopy,
 	}
 }

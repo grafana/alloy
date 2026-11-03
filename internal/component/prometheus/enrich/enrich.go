@@ -39,16 +39,8 @@ type Arguments struct {
 	// The targets to use for enrichment
 	Targets []discovery.Target `alloy:"targets,attr"`
 
-	// Multi-label matching: a map of target_label -> metric_label.
-	// Takes precedence over target_match_label / metrics_match_label.
-	TargetToMetricMatch map[string]string `alloy:"target_to_metric_match,attr,optional"`
-
-	// Legacy: which label from targets to use for matching (e.g. "hostname", "ip").
-	TargetMatchLabel string `alloy:"target_match_label,attr,optional"`
-
-	// Legacy: which label from metrics to match against (e.g. "hostname", "ip").
-	// If not specified, TargetMatchLabel will be used.
-	MetricsMatchLabel string `alloy:"metrics_match_label,attr,optional"`
+	// Map of target label -> metric label. All pairs must match the same target.
+	TargetToMetricMatch map[string]string `alloy:"target_to_metric_match,attr"`
 
 	// List of labels to copy from discovered targets to metrics. If empty, all labels will be copied.
 	LabelsToCopy []string `alloy:"labels_to_copy,attr,optional"`
@@ -58,17 +50,7 @@ type Arguments struct {
 
 // Validate implements syntax.Validator.
 func (a Arguments) Validate() error {
-	hasLegacy := a.TargetMatchLabel != "" || a.MetricsMatchLabel != ""
-	hasNew := len(a.TargetToMetricMatch) > 0
-
-	if !hasLegacy && !hasNew {
-		return fmt.Errorf("at least one match mechanism must be specified: set target_match_label or target_to_metric_match")
-	}
-	// target_to_metric_match takes precedence when set; legacy fields are ignored.
-	if hasLegacy && !hasNew && a.TargetMatchLabel == "" {
-		return fmt.Errorf("target_match_label must be set when using legacy match fields")
-	}
-	return nil
+	return commonenrich.ValidateMatch("target_to_metric_match", a.TargetToMetricMatch)
 }
 
 // Exports holds values which are exported by the prometheus.enrich component.
@@ -211,7 +193,8 @@ func (c *Component) enrich(lbls labels.Labels) labels.Labels {
 	mc := c.mc
 	c.cacheMutex.RUnlock()
 
-	if mc == nil {
+	// Skip the hash work when there is nothing to match.
+	if mc == nil || mc.matcher.Len() == 0 {
 		return lbls
 	}
 
@@ -236,18 +219,7 @@ func (c *Component) enrich(lbls labels.Labels) labels.Labels {
 }
 
 func (c *Component) refreshCacheFromTargets(args Arguments) {
-	// Build the strategy map: target_label -> metric_label.
-	strategyMap := args.TargetToMetricMatch
-	if len(strategyMap) == 0 && args.TargetMatchLabel != "" {
-		// Legacy single-label mode: synthesize a strategy map.
-		metricsLabel := args.MetricsMatchLabel
-		if metricsLabel == "" {
-			metricsLabel = args.TargetMatchLabel
-		}
-		strategyMap = map[string]string{args.TargetMatchLabel: metricsLabel}
-	}
-
-	matcher := commonenrich.NewMatcher(args.Targets, strategyMap)
+	matcher := commonenrich.NewMatcher(args.Targets, args.TargetToMetricMatch)
 
 	c.cacheMutex.Lock()
 	c.mc = &matchCache{

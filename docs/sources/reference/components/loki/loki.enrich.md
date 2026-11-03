@@ -22,22 +22,6 @@ Use the `target_to_log_match` argument to specify which target labels correspond
 The map keys are target label names and the values are the corresponding log label names.
 All labels in the map must match for enrichment to occur.
 
-{{< admonition type="warning" >}}
-The `target_match_label` and `logs_match_label` arguments are deprecated in favor of `target_to_log_match`.
-These deprecated arguments will be removed in a future release.
-
-The deprecated arguments behave as follows:
-
-- `target_match_label` is the target label to match against.
-- `logs_match_label` is the log label to match against `target_match_label`. If you don't set it, the component uses the value of `target_match_label`.
-- If you set `logs_match_label` without `target_match_label` or `target_to_log_match`, the component fails to start.
-- If you set `target_to_log_match`, the component ignores `target_match_label` and `logs_match_label`.
-
-To migrate, replace `target_match_label = "hostname"` with `target_to_log_match = {"hostname" = "hostname"}`.
-If you also set `logs_match_label`, use it as the map value.
-For example, replace `target_match_label = "hostname"` and `logs_match_label = "host"` with `target_to_log_match = {"hostname" = "host"}`.
-{{< /admonition >}}
-
 ## Usage
 
 ```alloy
@@ -64,16 +48,9 @@ You can use the following arguments with `loki.enrich`:
 | `forward_to`          | `list(LogsReceiver)` | List of receivers to send log entries to.                                                |         | yes      |
 | `targets`             | `list(map(string))`  | List of targets from a discovery component.                                              |         | yes      |
 | `labels_to_copy`      | `list(string)`       | List of labels to copy from discovered targets to logs. If empty, all labels are copied. |         | no       |
-| `logs_match_label`    | `string`             | Deprecated. Use `target_to_log_match` instead.                                           |         | no       |
-| `target_match_label`  | `string`             | Deprecated. Use `target_to_log_match` instead.                                           |         | no       |
-| `target_to_log_match` | `map(string)`        | Map of target label names to log label names. All entries must match for enrichment.     |         | no       |
+| `target_to_log_match` | `map(string)`        | Map of target label names to log label names. All entries must match for enrichment.     |         | yes      |
 
-{{< admonition type="note" >}}
-`target_to_log_match` and `target_match_label` are both optional, but you must set at least one of them.
-If you set neither, the component fails to start.
-{{< /admonition >}}
-
-The keys and values in `target_to_log_match` can't be empty strings.
+The `target_to_log_match` map must contain at least one entry. The keys and values can't be empty strings.
 
 ## Blocks
 
