@@ -38,22 +38,25 @@ func TestTailer(t *testing.T) {
 			"filename": model.LabelValue(logFile.Name()),
 			"foo":      "bar",
 		}
-		tailer := newTailer(
-			newMetrics(nil),
-			l,
-			newBatcher,
-			positionsFile,
-			func() bool { return true },
-			sourceOptions{
-				path:   logFile.Name(),
-				labels: labels,
-				fileWatch: FileWatch{
-					MinPollFrequency: 25 * time.Millisecond,
-					MaxPollFrequency: 25 * time.Millisecond,
+		newFileTailer := func() *tailer {
+			return newTailer(
+				newMetrics(nil),
+				l,
+				newBatcher,
+				positionsFile,
+				func() bool { return true },
+				sourceOptions{
+					path:   logFile.Name(),
+					labels: labels,
+					fileWatch: FileWatch{
+						MinPollFrequency: 25 * time.Millisecond,
+						MaxPollFrequency: 25 * time.Millisecond,
+					},
+					onPositionsFileError: OnPositionsFileErrorRestartBeginning,
 				},
-				onPositionsFileError: OnPositionsFileErrorRestartBeginning,
-			},
-		)
+			)
+		}
+		tailer := newFileTailer()
 
 		ctx, cancel := context.WithCancel(t.Context())
 		done := make(chan struct{})
@@ -80,6 +83,7 @@ func TestTailer(t *testing.T) {
 		<-done
 
 		// Run the tailer again
+		tailer = newFileTailer()
 		ctx, cancel = context.WithCancel(t.Context())
 		done = make(chan struct{})
 		go func() {
@@ -370,22 +374,25 @@ func TestTailerCorruptedPositions(t *testing.T) {
 			"foo":      "bar",
 		}
 		positionsFile.PutString(logFile.Name(), labels.String(), "\\0\\0\\0\\0123") // Corrupted position entry
-		tailer := newTailer(
-			newMetrics(nil),
-			l,
-			newBatcher,
-			positionsFile,
-			func() bool { return true },
-			sourceOptions{
-				path:   logFile.Name(),
-				labels: labels,
-				fileWatch: FileWatch{
-					MinPollFrequency: 25 * time.Millisecond,
-					MaxPollFrequency: 25 * time.Millisecond,
+		newFileTailer := func() *tailer {
+			return newTailer(
+				newMetrics(nil),
+				l,
+				newBatcher,
+				positionsFile,
+				func() bool { return true },
+				sourceOptions{
+					path:   logFile.Name(),
+					labels: labels,
+					fileWatch: FileWatch{
+						MinPollFrequency: 25 * time.Millisecond,
+						MaxPollFrequency: 25 * time.Millisecond,
+					},
+					onPositionsFileError: OnPositionsFileErrorRestartEnd,
 				},
-				onPositionsFileError: OnPositionsFileErrorRestartEnd,
-			},
-		)
+			)
+		}
+		tailer := newFileTailer()
 
 		ctx, cancel := context.WithCancel(t.Context())
 		done := make(chan struct{})
@@ -415,6 +422,7 @@ func TestTailerCorruptedPositions(t *testing.T) {
 		<-done
 
 		// Run the tailer again
+		tailer = newFileTailer()
 		ctx, cancel = context.WithCancel(t.Context())
 		done = make(chan struct{})
 		go func() {

@@ -21,9 +21,10 @@ type StreamBatcher interface {
 	// Add adds an entry to the stream and reports whether the caller must
 	// Flush before the next Add.
 	Add(entry push.Entry) bool
-	// Flush delivers all entries added since the last Flush. If delivery
-	// fails the entries are dropped, possibly after reaching some targets, and
-	// a later Flush does not resend them.
+	// Flush delivers all entries added since the last Flush. A V2 batcher
+	// retries while a consumer has stopped, and entries are dropped only when ctx
+	// is canceled or the consumer returns an unexpected error. Dropped entries
+	// may have reached some targets, and a later Flush does not resend them.
 	Flush(ctx context.Context) error
 }
 

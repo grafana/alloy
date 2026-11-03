@@ -444,9 +444,9 @@ func (c *Component) newSource(opts sourceOptions) (source.Source[positions.Entry
 
 func (c *Component) newBatcher(labels model.LabelSet) loki.StreamBatcher {
 	if c.pipelineV2 {
-		// FIXME(kalleep): Should we make this configurable?
-		const pipelineV2BatchSize = 100
-		return loki.NewStreamBatcherV2(c.opts.Logger, c.fanoutV2, labels, pipelineV2BatchSize)
+		// FIXME(kalleep): This should be configurable https://github.com/grafana/alloy/issues/7630
+		const maxBatchSize = 100
+		return loki.NewStreamBatcherV2(c.opts.Logger, c.fanoutV2, labels, maxBatchSize)
 	}
 	return loki.NewStreamBatcherV1(c.handler, labels)
 }
