@@ -4,8 +4,10 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -23,6 +25,9 @@ const (
 	kafkaBootstrap = "localhost:9092"
 
 	kafkaImage = "apache/kafka:4.1.0"
+
+	kafkaLeaderTimeout      = time.Minute
+	kafkaLeaderPollInterval = time.Second
 )
 
 //go:embed manifests/kafka.yaml
@@ -39,9 +44,11 @@ type Kafka struct {
 
 type KafkaOptions struct {
 	Namespace string
-	// Topics are created with a single partition once the broker is ready, so
-	// consumers can join their group before any records are produced.
+	// Topics are created once the broker is ready, so consumers can join their
+	// group before any records are produced.
 	Topics []string
+	// Partitions is the partition count of each topic. Defaults to 1.
+	Partitions int
 }
 
 func NewKafka(opts KafkaOptions) *Kafka {
@@ -80,6 +87,7 @@ func (k *Kafka) Install(_ *harness.TestContext) (err error) {
 		return err
 	}
 
+	partitions := max(k.opts.Partitions, 1)
 	for _, topic := range k.opts.Topics {
 		if err := util.Step("create kafka topic "+topic, func() error {
 			return k.exec("",
@@ -87,14 +95,46 @@ func (k *Kafka) Install(_ *harness.TestContext) (err error) {
 				"--bootstrap-server", kafkaBootstrap,
 				"--create", "--if-not-exists",
 				"--topic", topic,
-				"--partitions", "1",
+				"--partitions", strconv.Itoa(partitions),
 				"--replication-factor", "1",
 			)
 		}); err != nil {
 			return err
 		}
+		// Producing before every partition has a leader fails with "not the
+		// leader for some partition".
+		if err := util.Step("wait for kafka topic "+topic+" leaders", func() error {
+			return k.waitForLeaders(topic)
+		}); err != nil {
+			return err
+		}
 	}
 	return nil
+}
+
+// waitForLeaders polls until no partition of topic is without a leader.
+// --unavailable-partitions lists only leaderless partitions, so empty output
+// means every partition has one.
+func (k *Kafka) waitForLeaders(topic string) error {
+	deadline := time.Now().Add(kafkaLeaderTimeout)
+	var last string
+	for time.Now().Before(deadline) {
+		out, err := harness.RunCommandOutput("kubectl",
+			"--namespace", k.opts.Namespace, "exec", kafkaDeployment, "--",
+			kafkaBinDir+"/kafka-topics.sh",
+			"--bootstrap-server", kafkaBootstrap,
+			"--describe", "--topic", topic, "--unavailable-partitions",
+		)
+		if err == nil && strings.TrimSpace(out) == "" {
+			return nil
+		}
+		last = out
+		if err != nil {
+			last = err.Error()
+		}
+		time.Sleep(kafkaLeaderPollInterval)
+	}
+	return fmt.Errorf("timed out after %s waiting for leaders of kafka topic %s: %s", kafkaLeaderTimeout, topic, last)
 }
 
 func (k *Kafka) Cleanup() {
@@ -108,17 +148,43 @@ func (k *Kafka) Cleanup() {
 // contain newlines, since the console producer reads one record per line.
 func (k *Kafka) Produce(t *testing.T, topic string, messages ...string) {
 	t.Helper()
+	k.produce(t, topic, messages, nil)
+}
 
-	for _, m := range messages {
-		require.NotContains(t, m, "\n", "kafka messages must be single-line")
+// KafkaRecord is a keyed Kafka record. Records with different keys are spread
+// across a topic's partitions.
+type KafkaRecord struct {
+	Key   string
+	Value string
+}
+
+// ProduceKeyed writes each record to topic, partitioned by its key. Keys must
+// not contain a tab, and neither keys nor values may contain newlines.
+func (k *Kafka) ProduceKeyed(t *testing.T, topic string, records ...KafkaRecord) {
+	t.Helper()
+
+	lines := make([]string, 0, len(records))
+	for _, r := range records {
+		require.NotContains(t, r.Key, "\t", "kafka keys must not contain a tab")
+		lines = append(lines, r.Key+"\t"+r.Value)
+	}
+	k.produce(t, topic, lines, []string{"--property", "parse.key=true"})
+}
+
+func (k *Kafka) produce(t *testing.T, topic string, lines, extraArgs []string) {
+	t.Helper()
+
+	for _, l := range lines {
+		require.NotContains(t, l, "\n", "kafka messages must be single-line")
 	}
 
-	err := util.Step(fmt.Sprintf("produce %d records to kafka topic %s", len(messages), topic), func() error {
-		return k.exec(strings.Join(messages, "\n")+"\n",
-			kafkaBinDir+"/kafka-console-producer.sh",
+	err := util.Step(fmt.Sprintf("produce %d records to kafka topic %s", len(lines), topic), func() error {
+		args := []string{
+			kafkaBinDir + "/kafka-console-producer.sh",
 			"--bootstrap-server", kafkaBootstrap,
 			"--topic", topic,
-		)
+		}
+		return k.exec(strings.Join(lines, "\n")+"\n", append(args, extraArgs...)...)
 	})
 	require.NoError(t, err)
 }

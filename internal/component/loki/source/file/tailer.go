@@ -1,8 +1,5 @@
 package file
 
-// This code is adapted from loki/promtail. Last revision used to port changes to Alloy was a8d5815510bd959a6dd8c176a5d9fd9bbfc8f8b5.
-// tailer implements the reader interface by using the github.com/grafana/tail package to tail files.
-
 import (
 	"context"
 	"errors"
@@ -13,20 +10,83 @@ import (
 	"sync"
 	"time"
 
+	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/util"
 )
 
+type sendFunc func(ctx context.Context, entry loki.Entry) error
+
+func sendToV1(recv loki.LogsReceiver) sendFunc {
+	return func(ctx context.Context, entry loki.Entry) error {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case recv.Chan() <- entry:
+			return nil
+		}
+	}
+}
+
+var consumerBackoffConfig = backoff.Config{
+	MinBackoff: 1 * time.Millisecond,
+	MaxBackoff: 1 * time.Second,
+}
+
+func sendToV2(logger *slog.Logger, c loki.Consumer) sendFunc {
+	// The batch is reused to reduce allocations, so each tailer needs its own sendToV2.
+	batch := loki.NewBatch()
+
+	return func(ctx context.Context, entry loki.Entry) error {
+		var retry *backoff.Backoff
+		for {
+			// Rebuild the batch on every attempt, since downstream may have modified it.
+			batch.Reset()
+			batch.AddEntry(entry.Labels, entry.Created(), entry.Entry)
+
+			// The error handling must follow the Consume contract, including the order of the checks.
+			err := c.Consume(ctx, batch)
+			if err != nil {
+				if ctx.Err() != nil {
+					return err
+				}
+
+				if !errors.Is(err, loki.ErrConsumerStopped) {
+					return fmt.Errorf("unexpected error from consumer, this is most likely a bug: %w", err)
+				}
+
+				if retry == nil {
+					retry = backoff.New(ctx, consumerBackoffConfig)
+				}
+
+				if source.AllowRetryWarning() {
+					logger.Warn("failed to send entry, retrying until it is accepted", "err", err, "retries", retry.NumRetries())
+				}
+
+				retry.Wait()
+				if !retry.Ongoing() {
+					return retry.Err()
+				}
+
+				continue
+			}
+
+			return nil
+		}
+	}
+}
+
 type tailer struct {
 	metrics   *metrics
 	logger    *slog.Logger
-	receiver  loki.LogsReceiver
+	send      sendFunc
 	positions positions.Positions
 
 	key                positions.Entry
@@ -51,7 +111,7 @@ type tailer struct {
 func newTailer(
 	metrics *metrics,
 	logger *slog.Logger,
-	receiver loki.LogsReceiver,
+	send sendFunc,
 	pos positions.Positions,
 	componentStopping func() bool,
 	opts sourceOptions,
@@ -59,8 +119,8 @@ func newTailer(
 
 	return &tailer{
 		metrics:              metrics,
-		logger:               logger.With("component", "tailer", "path", opts.path),
-		receiver:             receiver,
+		logger:               logger,
+		send:                 send,
 		positions:            pos,
 		key:                  positions.Entry{Path: opts.path, Labels: opts.labels.String()},
 		labels:               opts.labels.Merge(model.LabelSet{labelFilename: model.LabelValue(opts.path)}),
@@ -178,7 +238,6 @@ func (t *tailer) tail(ctx context.Context, pos int64) {
 
 	var (
 		lastOffset          = pos
-		entries             = t.receiver.Chan()
 		positionInterval    = t.positions.SyncPeriod()
 		lastUpdatedPosition = time.Time{}
 	)
@@ -241,19 +300,23 @@ func (t *tailer) tail(ctx context.Context, pos int64) {
 		}
 
 		t.metrics.readLines.WithLabelValues(t.key.Path).Inc()
-		select {
-		case <-ctx.Done():
-			return
-		case entries <- loki.NewEntry(t.labels, push.Entry{
+		err = t.send(ctx, loki.NewEntry(t.labels, push.Entry{
 			Timestamp: line.Time,
 			Line:      line.Text,
-		}):
-			lastOffset = line.Offset
-			if time.Since(lastUpdatedPosition) >= positionInterval {
-				lastUpdatedPosition = time.Now()
-				size, _ := t.file.Size()
-				t.updateStats(lastOffset, size)
+		}))
+
+		if err != nil {
+			if ctx.Err() != nil {
+				return
 			}
+			t.logger.Error("failed to send entry, dropping it", "err", err)
+		}
+
+		lastOffset = line.Offset
+		if time.Since(lastUpdatedPosition) >= positionInterval {
+			lastUpdatedPosition = time.Now()
+			size, _ := t.file.Size()
+			t.updateStats(lastOffset, size)
 		}
 	}
 }

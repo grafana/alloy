@@ -778,3 +778,58 @@ func (w *fakeWAL) Sync() error               { return nil }
 func (w *fakeWAL) Dir() string               { return w.dir }
 func (w *fakeWAL) Close()                    {}
 func (w *fakeWAL) NextSegment() (int, error) { return 0, nil }
+
+func TestUpdateKeepsConsumerWhenSettingsAreUnchanged(t *testing.T) {
+	for _, walEnabled := range []bool{false, true} {
+		t.Run(fmt.Sprintf("wal_enabled=%t", walEnabled), func(t *testing.T) {
+			newArgs := func(url string, externalLabels string) Arguments {
+				var args Arguments
+				require.NoError(t, syntax.Unmarshal([]byte(fmt.Sprintf(`
+					endpoint {
+						url        = "%s"
+						batch_wait = "10ms"
+						tenant_id  = "tenant"
+						headers    = {"X-Custom" = "value"}
+						basic_auth {
+							username = "user"
+							password = "secret"
+						}
+						tls_config {
+							insecure_skip_verify = true
+						}
+					}
+					external_labels = %s
+				`, url, externalLabels)), &args))
+				args.WAL.Enabled = walEnabled
+				return args
+			}
+
+			c, err := New(component.Options{
+				ID:            "loki.write.test",
+				Logger:        logging.NewSlogNop(),
+				Registerer:    prometheus.NewRegistry(),
+				DataPath:      t.TempDir(),
+				MinStability:  featuregate.StabilityExperimental,
+				OnStateChange: func(component.Exports) {},
+			}, newArgs("http://localhost:1", `{}`))
+			require.NoError(t, err)
+			t.Cleanup(func() {
+				c.consumer.Stop()
+				if c.wal != nil {
+					c.wal.Close()
+				}
+			})
+			first := c.consumer
+
+			require.NoError(t, c.Update(newArgs("http://localhost:1", `{}`)))
+			require.True(t, first == c.consumer, "consumer was restarted although nothing changed")
+
+			require.NoError(t, c.Update(newArgs("http://localhost:1", `{cluster = "a"}`)))
+			require.True(t, first == c.consumer, "consumer was restarted although only external_labels changed")
+			require.Equal(t, model.LabelSet{"cluster": "a"}, c.externalLabels)
+
+			require.NoError(t, c.Update(newArgs("http://localhost:2", `{cluster = "a"}`)))
+			require.False(t, first == c.consumer, "consumer was not restarted after the endpoint changed")
+		})
+	}
+}
