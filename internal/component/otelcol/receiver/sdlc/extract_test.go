@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/grafana/alloy/internal/component/otelcol"
@@ -30,6 +31,7 @@ func TestExtractArgumentsUnmarshal(t *testing.T) {
 				key      = "kubernetes.io/change-cause"
 				tag_name = "change_cause"
 			}
+			statements = ["set(log.attributes[\"env\"], \"prod\")"]
 		}
 
 		output {}
@@ -38,6 +40,7 @@ func TestExtractArgumentsUnmarshal(t *testing.T) {
 		Fields:      []ExtractFieldRule{{Key: "name", TagName: "service"}},
 		Labels:      []ExtractRule{{KeyRegex: `app\.kubernetes\.io/(.*)`, TagName: "app.$1"}, {Key: "team"}},
 		Annotations: []ExtractRule{{Key: "kubernetes.io/change-cause", TagName: "change_cause"}},
+		Statements:  []string{`set(log.attributes["env"], "prod")`},
 	}, args.Extract)
 }
 
@@ -59,6 +62,10 @@ func TestExtractArgumentsValidate(t *testing.T) {
 		"duplicate field tag": {args: ExtractArguments{Fields: []ExtractFieldRule{{Key: "name", TagName: "x"}, {Key: "namespace", TagName: "x"}}}, err: `field: duplicate tag_name "x"`},
 		"field fallback":      {args: ExtractArguments{Fields: []ExtractFieldRule{{Key: "name", TagName: "x"}}, Labels: []ExtractRule{{Key: "a", TagName: "x"}}}},
 		"repeated references": {args: ExtractArguments{Labels: []ExtractRule{{KeyRegex: "a/(.*)", TagName: "$1"}, {KeyRegex: "b/(.*)", TagName: "$1"}}}},
+		"statements":          {args: ExtractArguments{Statements: []string{`set(log.attributes["env"], "prod")`, `delete_key(log.attributes, "a")`}}},
+		"invalid statement":   {args: ExtractArguments{Statements: []string{`set(log.attributes["env"]`}}, err: "statements:"},
+		"unknown function":    {args: ExtractArguments{Statements: []string{`nope(log.attributes["env"])`}}, err: "statements:"},
+		"missing context":     {args: ExtractArguments{Statements: []string{`set(attributes["env"], "prod")`}}, err: "statements:"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			var args Arguments
@@ -97,7 +104,7 @@ func TestExtractorAttributes(t *testing.T) {
 			// Labels are applied first, so the annotation wins.
 			{Key: "owner-annotation", TagName: "owner"},
 		},
-	})
+	}, zap.NewNop())
 	require.NoError(t, err)
 	m := &metav1.ObjectMeta{
 		Name: "checkout-v2", Namespace: "shop",
@@ -129,9 +136,100 @@ func TestExtractorAttributes(t *testing.T) {
 	require.False(t, e.keepAnnotation("other"))
 	require.Nil(t, extractor{}.labels(m))
 
-	names, err := newExtractor(ExtractArguments{Fields: []ExtractFieldRule{{Key: "name", TagName: "service"}, {Key: "namespace"}}})
+	names, err := newExtractor(ExtractArguments{Fields: []ExtractFieldRule{{Key: "name", TagName: "service"}, {Key: "namespace"}}}, zap.NewNop())
 	require.NoError(t, err)
 	require.Equal(t, map[string]string{"service": "checkout"}, names.labels(&metav1.ObjectMeta{Name: "checkout"}), "empty fields are skipped")
+}
+
+func TestExtractorStatements(t *testing.T) {
+	m := &metav1.ObjectMeta{
+		Name: "checkout", Namespace: "shop",
+		Labels:      map[string]string{"team": "payments", "app.kubernetes.io/version": "v1.2.3"},
+		Annotations: map[string]string{"owner": "alice", lastAppliedAnnotation: "{}"},
+	}
+	for name, tc := range map[string]struct {
+		args ExtractArguments
+		want map[string]string
+	}{
+		"static value": {
+			args: ExtractArguments{Statements: []string{`set(log.attributes["env"], "prod")`}},
+			want: map[string]string{"env": "prod"},
+		},
+		"compose from extracted and object": {
+			args: ExtractArguments{
+				Fields:     []ExtractFieldRule{{Key: "name"}},
+				Statements: []string{`set(log.attributes["service"], Concat([resource.attributes["namespace"], log.attributes["name"]], "/"))`},
+			},
+			want: map[string]string{"name": "checkout", "service": "shop/checkout"},
+		},
+		"object labels with fallback": {
+			args: ExtractArguments{Statements: []string{
+				`set(log.attributes["team"], resource.attributes["labels"]["team"])`,
+				`set(log.attributes["tier"], "unknown") where resource.attributes["labels"]["tier"] == nil`,
+			}},
+			want: map[string]string{"team": "payments", "tier": "unknown"},
+		},
+		"extracted values win over fallbacks": {
+			args: ExtractArguments{
+				Labels:     []ExtractRule{{Key: "team"}},
+				Statements: []string{`set(log.attributes["team"], "platform") where log.attributes["team"] == nil`},
+			},
+			want: map[string]string{"team": "payments"},
+		},
+		"delete helper label": {
+			args: ExtractArguments{
+				Fields:      []ExtractFieldRule{{Key: "name"}},
+				Annotations: []ExtractRule{{Key: "owner"}},
+				Statements: []string{
+					`set(log.attributes["who"], Concat([log.attributes["owner"], log.attributes["name"]], "@"))`,
+					`delete_key(log.attributes, "name")`,
+				},
+			},
+			want: map[string]string{"owner": "alice", "who": "alice@checkout"},
+		},
+		"reshape value": {
+			args: ExtractArguments{
+				Labels:     []ExtractRule{{Key: "app.kubernetes.io/version", TagName: "version"}},
+				Statements: []string{`replace_pattern(log.attributes["version"], "^v", "")`},
+			},
+			want: map[string]string{"version": "1.2.3"},
+		},
+		"non-string values": {
+			args: ExtractArguments{Statements: []string{`set(log.attributes["replicas"], 3)`, `set(log.attributes["canary"], true)`}},
+			want: map[string]string{"replicas": "3", "canary": "true"},
+		},
+		"truncated": {
+			args: ExtractArguments{Statements: []string{`set(log.attributes["long"], "` + strings.Repeat("a", maxLabelValueLength+1) + `")`}},
+			want: map[string]string{"long": strings.Repeat("a", maxLabelValueLength)},
+		},
+		"resource writes are discarded": {
+			args: ExtractArguments{Statements: []string{
+				`set(resource.attributes["name"], "other")`,
+				`set(log.body, "ignored")`,
+				`set(log.attributes["name"], resource.attributes["name"])`,
+			}},
+			want: map[string]string{"name": "other"},
+		},
+		"annotations aren't exposed": {
+			args: ExtractArguments{Statements: []string{`set(log.attributes["owner"], resource.attributes["annotations"]["owner"]) where resource.attributes["annotations"] != nil`}},
+			want: map[string]string{},
+		},
+		"failed statements are skipped": {
+			args: ExtractArguments{Statements: []string{
+				`set(log.attributes["bad"], ParseJSON(resource.attributes["name"]))`,
+				`set(log.attributes["env"], "prod")`,
+			}},
+			want: map[string]string{"env": "prod"},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			e, err := newExtractor(tc.args, zap.NewNop())
+			require.NoError(t, err)
+			require.Equal(t, tc.want, e.labels(m))
+			require.Equal(t, "{}", m.Annotations[lastAppliedAnnotation], "the object isn't modified")
+			require.Equal(t, map[string]string{"team": "payments", "app.kubernetes.io/version": "v1.2.3"}, m.Labels, "the object isn't modified")
+		})
+	}
 }
 
 func TestExtractedLabelsOnEvents(t *testing.T) {
@@ -141,7 +239,7 @@ func TestExtractedLabelsOnEvents(t *testing.T) {
 		Fields:      []ExtractFieldRule{{Key: "namespace"}},
 		Labels:      []ExtractRule{{Key: "team"}},
 		Annotations: []ExtractRule{{Key: "owner"}},
-	})
+	}, zap.NewNop())
 	require.NoError(t, err)
 	labeled := func(m *metav1.ObjectMeta) {
 		m.Labels = map[string]string{"team": "payments"}

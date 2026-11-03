@@ -2,12 +2,19 @@ package sdlc
 
 import (
 	"cmp"
+	"context"
 	"fmt"
 	"maps"
 	"regexp"
 	"slices"
 	"strings"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottllog"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/ottlfuncs"
+	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/pdata/plog"
+	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -20,11 +27,13 @@ const (
 
 // ExtractArguments selects metadata fields, labels and annotations of the
 // changed object to attach to its events. Rules follow
-// otelcol.processor.k8sattributes.
+// otelcol.processor.k8sattributes; statements follow
+// otelcol.processor.transform and run on the extracted labels only.
 type ExtractArguments struct {
 	Fields      []ExtractFieldRule `alloy:"field,block,optional"`
 	Labels      []ExtractRule      `alloy:"label,block,optional"`
 	Annotations []ExtractRule      `alloy:"annotation,block,optional"`
+	Statements  []string           `alloy:"statements,attr,optional"`
 }
 
 // ExtractRule selects one key, or every key matching a regular expression.
@@ -42,7 +51,7 @@ type ExtractFieldRule struct {
 
 // Validate implements syntax.Validator.
 func (args *ExtractArguments) Validate() error {
-	_, err := newExtractor(*args)
+	_, err := newExtractor(*args, zap.NewNop())
 	return err
 }
 
@@ -56,9 +65,10 @@ type extractRule struct {
 // extractor applies extraction rules. The zero value extracts nothing.
 type extractor struct {
 	fieldRules, labelRules, annotationRules []extractRule
+	statements                              *ottl.StatementSequence[*ottllog.TransformContext]
 }
 
-func newExtractor(args ExtractArguments) (extractor, error) {
+func newExtractor(args ExtractArguments, logger *zap.Logger) (extractor, error) {
 	var out extractor
 	compile := func(block string, rules []ExtractRule, names map[string]bool) ([]extractRule, error) {
 		compiled := make([]extractRule, 0, len(rules))
@@ -112,28 +122,37 @@ func newExtractor(args ExtractArguments) (extractor, error) {
 	if out.annotationRules, err = compile("annotation", args.Annotations, names); err != nil {
 		return extractor{}, err
 	}
+	if len(args.Statements) > 0 {
+		settings := component.TelemetrySettings{Logger: logger}
+		parser, err := ottllog.NewParser(ottlfuncs.StandardFuncs[*ottllog.TransformContext](), settings, ottllog.EnablePathContextNames())
+		if err != nil {
+			return extractor{}, fmt.Errorf("statements: %w", err)
+		}
+		statements, err := parser.ParseStatements(args.Statements)
+		if err != nil {
+			return extractor{}, fmt.Errorf("statements: %w", err)
+		}
+		// Like otelcol.processor.transform, failed statements are logged and skipped.
+		sequence := ottllog.NewStatementSequence(statements, settings, ottllog.WithStatementSequenceErrorMode(ottl.IgnoreError))
+		out.statements = &sequence
+	}
 	return out, nil
 }
 
 func (e extractor) empty() bool {
-	return len(e.fieldRules) == 0 && len(e.labelRules) == 0 && len(e.annotationRules) == 0
+	return len(e.fieldRules) == 0 && len(e.labelRules) == 0 && len(e.annotationRules) == 0 && e.statements == nil
 }
 
 // labels returns the extracted labels of m by name. Fields are applied before
 // labels, labels before annotations, and later rules overwrite earlier ones.
+// Statements run last.
 func (e extractor) labels(m metav1.Object) map[string]string {
 	if e.empty() {
 		return nil
 	}
 	out := map[string]string{}
 	if len(e.fieldRules) > 0 {
-		fields := map[string]string{}
-		for key, value := range map[string]string{"name": m.GetName(), "namespace": m.GetNamespace()} {
-			if value != "" {
-				fields[key] = value
-			}
-		}
-		apply(e.fieldRules, fields, out)
+		apply(e.fieldRules, objectFields(m), out)
 	}
 	apply(e.labelRules, m.GetLabels(), out)
 	annotations := m.GetAnnotations()
@@ -142,6 +161,54 @@ func (e extractor) labels(m metav1.Object) map[string]string {
 		delete(annotations, lastAppliedAnnotation)
 	}
 	apply(e.annotationRules, annotations, out)
+	if e.statements != nil {
+		out = e.transform(m, out)
+	}
+	return out
+}
+
+// objectFields returns the non-empty metadata fields that field rules select.
+func objectFields(m metav1.Object) map[string]string {
+	fields := map[string]string{}
+	for key, value := range map[string]string{"name": m.GetName(), "namespace": m.GetNamespace()} {
+		if value != "" {
+			fields[key] = value
+		}
+	}
+	return fields
+}
+
+// transform runs the statements on a scratch record whose attributes hold
+// labels and whose resource attributes describe m. Annotations aren't exposed:
+// config informers hold hashes of the ones no rule selects. Only the record
+// attributes are kept.
+func (e extractor) transform(m metav1.Object, labels map[string]string) map[string]string {
+	logs := plog.NewLogs()
+	resourceLogs := logs.ResourceLogs().AppendEmpty()
+	object := resourceLogs.Resource().Attributes()
+	for key, value := range objectFields(m) {
+		object.PutStr(key, value)
+	}
+	objectLabels := object.PutEmptyMap("labels")
+	for key, value := range m.GetLabels() {
+		objectLabels.PutStr(key, value)
+	}
+	scopeLogs := resourceLogs.ScopeLogs().AppendEmpty()
+	record := scopeLogs.LogRecords().AppendEmpty()
+	attrs := record.Attributes()
+	for key, value := range labels {
+		attrs.PutStr(key, value)
+	}
+
+	tCtx := ottllog.NewTransformContext(resourceLogs, scopeLogs, record)
+	defer tCtx.Close()
+	// Errors are logged by the sequence; it never returns them.
+	_ = e.statements.Execute(context.Background(), tCtx)
+
+	out := make(map[string]string, attrs.Len())
+	for key, value := range attrs.All() {
+		out[key] = truncate(value.AsString(), maxLabelValueLength)
+	}
 	return out
 }
 

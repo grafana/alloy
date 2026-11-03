@@ -187,8 +187,15 @@ The `extract` block selects metadata fields, labels, and annotations of the chan
 The changed object is the Deployment, StatefulSet, DaemonSet, ConfigMap, or Secret that the event describes.
 By default, the component attaches no metadata fields, labels, or annotations.
 
-Metadata fields, labels, and annotations share one map.
+You can use the following argument with the `extract` block:
+
+| Name         | Type           | Description                                                     | Default | Required |
+| ------------ | -------------- | --------------------------------------------------------------- | ------- | -------- |
+| `statements` | `list(string)` | [OTTL][] statements that set, format, or remove map keys.       | `[]`    | no       |
+
+Metadata fields, labels, annotations, and statement results share one map.
 The component applies `field` rules, then `label` rules, then `annotation` rules, and a later rule overwrites a key that an earlier rule set.
+`statements` run last, in order.
 Values longer than 2048 bytes are truncated.
 The component never attaches the `kubectl.kubernetes.io/last-applied-configuration` annotation, which contains the full applied manifest, including Secret data.
 
@@ -276,6 +283,45 @@ extract {
 ```
 
 A Deployment labeled `app.kubernetes.io/name: checkout` produces the `app.name` key with the value `checkout` in the `grafana.sdlc.labels` attribute.
+
+#### Statements
+
+Statements use the same syntax and [OTTL functions][] as [`otelcol.processor.transform`][otelcol.processor.transform] in the `log` context, but they only change the `labels` map.
+Each statement can read and write the following paths:
+
+- `log.attributes`: The map built by the `field`, `label`, and `annotation` rules. The component attaches only this map to the event.
+- `resource.attributes`: A read-only view of the changed object, with the `name` and `namespace` metadata fields and a `labels` map of its labels. Changes to this path are discarded.
+
+Statements can't read the object's annotations.
+To use an annotation in a statement, select it with an [`annotation`][annotation] rule and read it from `log.attributes`.
+
+The component converts values that aren't strings, such as numbers and booleans, to strings.
+If a statement fails, the component logs a warning, skips the statement, and runs the remaining statements.
+
+The following example sets a static `env` key, sets `service` to the namespace and name of the object, falls back to a default `team`, and removes the `name` key that the statements no longer need:
+
+```alloy
+extract {
+  field {
+    key = "name"
+  }
+  label {
+    key = "team"
+  }
+  statements = [
+    `set(log.attributes["env"], "production")`,
+    `set(log.attributes["service"], Concat([resource.attributes["namespace"], log.attributes["name"]], "/"))`,
+    `set(log.attributes["team"], "platform") where log.attributes["team"] == nil`,
+    `delete_key(log.attributes, "name")`,
+  ]
+}
+```
+
+A Deployment named `checkout` in the `shop` namespace without a `team` label produces the keys `env: production`, `service: shop/checkout`, and `team: platform`.
+
+[OTTL]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/README.md
+[OTTL functions]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/{{< param "OTEL_VERSION" >}}/pkg/ottl/ottlfuncs/README.md
+[otelcol.processor.transform]: ../otelcol.processor.transform/
 
 ### `output`
 
@@ -371,7 +417,7 @@ Send events to an ingest endpoint that is specific to your Grafana Cloud stack.
 | `change.version.before` | The previous workload revision, or the previous ConfigMap or Secret resource version. Omitted when unknown. |
 | `change.version.after` | The workload revision of this rollout, the workload generation for a workload `created` event, or the ConfigMap or Secret resource version. |
 | `change.diff` | A map of change details, described in the following sections. Omitted when it has no entries. |
-| `labels` | A map of metadata fields, labels, and annotations of the object, selected by the [`extract`][extract] block. Omitted when it has no entries. |
+| `labels` | A map of metadata fields, labels, and annotations of the object, and values set by statements, configured by the [`extract`][extract] block. Omitted when it has no entries. |
 
 The component doesn't set `service.ids`, `environment.id`, `owners`, `actor`, `tracing.enabled`, `logging.enabled`, `change.url`, or `change.git.*`.
 Because `tracing.enabled` isn't set, the backend emits a span for each event.

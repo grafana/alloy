@@ -20,6 +20,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/cluster"
+	"github.com/grafana/alloy/internal/slogadapter"
 )
 
 func init() {
@@ -210,7 +211,7 @@ func (c *Component) runGeneration(ctx context.Context, args Arguments, restConfi
 	if err != nil {
 		return fmt.Errorf("creating Kubernetes metadata client: %w", err)
 	}
-	extract, err := newExtractor(args.Extract)
+	extract, err := newExtractor(args.Extract, slogadapter.NewZap(c.opts.Logger))
 	if err != nil {
 		return err
 	}

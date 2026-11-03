@@ -24,6 +24,10 @@ otelcol.receiver.sdlc "test" {
 			key_regex = "(kubectl\\.kubernetes\\.io|sdlc\\.test)/(.*)"
 			tag_name  = "$2"
 		}
+		statements = [
+			`set(log.attributes["env"], "integration")`,
+			`set(log.attributes["object"], Concat([log.attributes["namespace"], resource.attributes["name"]], "/"))`,
+		]
 	}
 
 	output {
