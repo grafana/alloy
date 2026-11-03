@@ -1647,7 +1647,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas, 0)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
 		assert.Equal(t, wantDefaultCollectors, exporterArgs.SetCollectors)
 		assert.ElementsMatch(t, wantDefaultCollectors, scraperNames(exporterArgs))
 		assert.Equal(t, 100, exporterArgs.PerfSchemaEventsStatements.Limit)
@@ -1666,7 +1666,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas, 0)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
 		assert.Equal(t, wantDefaultCollectors, exporterArgs.SetCollectors)
 		assert.Equal(t, 50, exporterArgs.PerfSchemaEventsStatements.Limit)
 		assert.Equal(t, 0, exporterArgs.PerfSchemaEventsStatements.TextLimit)
@@ -1683,7 +1683,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas, 0)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
 		assert.Equal(t, 120, exporterArgs.PerfSchemaEventsStatements.TextLimit)
 	})
 
@@ -1697,7 +1697,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas, 0)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
 		assert.Equal(t, []string{"global_status"}, exporterArgs.SetCollectors)
 	})
 
@@ -1711,7 +1711,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas, 0)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
 		assert.Equal(t, wantDefaultCollectors, exporterArgs.SetCollectors)
 	})
 
@@ -1726,7 +1726,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas, 0)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
 		assert.ElementsMatch(t, []string{"global_status", "global_variables", "slave_status"}, scraperNames(exporterArgs))
 	})
 
@@ -1740,7 +1740,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas, 0)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
 		assert.Equal(t, 100, exporterArgs.PerfSchemaEventsStatements.Limit)
 	})
 
@@ -1753,7 +1753,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas, 0)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
 		assert.Equal(t, 100, exporterArgs.PerfSchemaEventsStatements.Limit)
 		assert.Equal(t, wantDefaultCollectors, exporterArgs.SetCollectors)
 	})
@@ -1768,7 +1768,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas, 0)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
 		assert.Equal(t, 100, exporterArgs.PerfSchemaEventsStatements.Limit)
 		assert.ElementsMatch(t,
 			[]string{eventsStatementsCollector, "global_status", "global_variables", "slave_status", "perf_schema.eventswaits"},
@@ -1783,7 +1783,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 			},
 		}
 
-		exporterArgs := resolveExporterArgs(userBlock, []string{"top_level"}, 0)
+		exporterArgs := resolveExporterArgs(userBlock, []string{"top_level"})
 
 		assert.Equal(t, []string{
 			"mysql", "performance_schema", "sys", "information_schema",
@@ -1800,7 +1800,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 			},
 		}
 
-		exporterArgs := resolveExporterArgs(userBlock, []string{"top_level"}, 0)
+		exporterArgs := resolveExporterArgs(userBlock, []string{"top_level"})
 
 		assert.Equal(t, []string{
 			"mysql", "performance_schema", "sys", "information_schema",
@@ -1825,7 +1825,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		require.NotNil(t, args.PrometheusExporter)
 		require.NotNil(t, args.PrometheusExporter.PerfSchemaEventsStatements.ExcludeSchemas)
 
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, []string{"top_level"}, 0)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, []string{"top_level"})
 
 		assert.Equal(t, []string{
 			"mysql", "performance_schema", "sys", "information_schema",
@@ -1834,7 +1834,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 	})
 
 	t.Run("schema exclusions preserve default schema exclusions without configuration", func(t *testing.T) {
-		exporterArgs := resolveExporterArgs(nil, nil, 0)
+		exporterArgs := resolveExporterArgs(nil, nil)
 
 		assert.Equal(t, []string{
 			"mysql", "performance_schema", "sys", "information_schema",
@@ -1966,47 +1966,49 @@ func Test_query_details_eventsstatements_different_limits_warning(t *testing.T) 
 }
 
 func Test_statements_limit(t *testing.T) {
-	t.Run("is unset by default, leaving each collector its own limit", func(t *testing.T) {
-		args := defaultArguments()
-		args.DataSourceName = alloytypes.Secret("user:pass@tcp(localhost:3306)/db")
-		require.NoError(t, args.Validate())
-		args.QueryDetailsArguments.StatementsLimit = 200
-
-		require.Equal(t, 200, args.queryDetailsStatementsLimit())
-		userBlock := &PrometheusExporterArguments{PerfSchemaEventsStatements: exporter_mysql.PerfSchemaEventsStatements{Limit: 50}}
-		require.Equal(t, 50, resolveExporterArgs(userBlock, nil, args.StatementsLimit).PerfSchemaEventsStatements.Limit)
-		require.Equal(t, 100, resolveExporterArgs(nil, nil, args.StatementsLimit).PerfSchemaEventsStatements.Limit)
-	})
-
-	t.Run("wins over the query_details and exporter limits when set", func(t *testing.T) {
-		args := defaultArguments()
-		args.StatementsLimit = 300
-		args.QueryDetailsArguments.StatementsLimit = 200
-
-		require.Equal(t, 300, args.queryDetailsStatementsLimit())
-		userBlock := &PrometheusExporterArguments{PerfSchemaEventsStatements: exporter_mysql.PerfSchemaEventsStatements{Limit: 50}}
-		require.Equal(t, 300, resolveExporterArgs(userBlock, nil, args.StatementsLimit).PerfSchemaEventsStatements.Limit)
-		require.Equal(t, 300, resolveExporterArgs(nil, nil, args.StatementsLimit).PerfSchemaEventsStatements.Limit)
-	})
-
-	t.Run("leaves no limit mismatch to warn about when set", func(t *testing.T) {
+	newComponent := func(t *testing.T, args Arguments) (*Component, *bytes.Buffer) {
+		t.Helper()
 		var logs bytes.Buffer
 		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
 			return nil, errors.New("connection skipped for limit warning test")
 		})
 		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
-		require.NoError(t, c.Update(Arguments{
-			DataSourceName:        alloytypes.Secret("user:pass@tcp(localhost:3306)/db"),
-			StatementsLimit:       300,
-			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 200},
-			PrometheusExporter:    &PrometheusExporterArguments{PerfSchemaEventsStatements: exporter_mysql.PerfSchemaEventsStatements{Limit: 50}},
-		}))
-		assert.NotContains(t, logs.String(), "limits differ")
+		args.DataSourceName = alloytypes.Secret("user:pass@tcp(localhost:3306)/db")
+		require.NoError(t, c.Update(args))
+		return c, &logs
+	}
+	const warning = "statements_limit and prometheus_exporter perf_schema.eventsstatements limits differ"
+	exporterLimit := func(limit int) *PrometheusExporterArguments {
+		return &PrometheusExporterArguments{PerfSchemaEventsStatements: exporter_mysql.PerfSchemaEventsStatements{Limit: limit}}
+	}
+
+	t.Run("when unset, the snapshot follows the embedded exporter's limit", func(t *testing.T) {
+		c, logs := newComponent(t, Arguments{})
+		require.Equal(t, 100, c.statementsLimit())
+
+		c, _ = newComponent(t, Arguments{PrometheusExporter: exporterLimit(50)})
+		require.Equal(t, 50, c.statementsLimit())
+		assert.NotContains(t, logs.String(), warning)
+	})
+
+	t.Run("when set, it is the snapshot's limit and leaves the other limits alone", func(t *testing.T) {
+		c, logs := newComponent(t, Arguments{StatementsLimit: 300, PrometheusExporter: exporterLimit(50)})
+		require.Equal(t, 300, c.statementsLimit())
+		require.Equal(t, 50, resolveExporterArgs(c.args.PrometheusExporter, c.args.ExcludeSchemas).PerfSchemaEventsStatements.Limit)
+		assert.Contains(t, logs.String(), warning)
+		assert.Contains(t, logs.String(), "statements_limit=300")
+		assert.Contains(t, logs.String(), "eventsstatements_limit=50")
+	})
+
+	t.Run("does not warn when explain_plans is disabled", func(t *testing.T) {
+		_, logs := newComponent(t, Arguments{StatementsLimit: 300, DisableCollectors: []string{collector.ExplainPlansCollector}})
+		assert.NotContains(t, logs.String(), warning)
 	})
 
 	t.Run("must not be negative", func(t *testing.T) {
 		args := defaultArguments()
 		args.DataSourceName = alloytypes.Secret("user:pass@tcp(localhost:3306)/db")
+		require.NoError(t, args.Validate())
 		args.StatementsLimit = -1
 		require.ErrorContains(t, args.Validate(), "statements_limit must not be negative")
 	})

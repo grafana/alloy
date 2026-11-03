@@ -194,15 +194,6 @@ const eventsStatementsCollector = "perf_schema.eventsstatements"
 // slave_status (replication).
 var defaultEnabledCollectors = []string{eventsStatementsCollector, "global_status", "global_variables", "slave_status"}
 
-// queryDetailsStatementsLimit returns the limit of query_details: the
-// top-level statements_limit when it is set, which wins over the block's own.
-func (a *Arguments) queryDetailsStatementsLimit() int {
-	if a.StatementsLimit > 0 {
-		return a.StatementsLimit
-	}
-	return a.QueryDetailsArguments.StatementsLimit
-}
-
 func defaultArguments() Arguments {
 	return Arguments{
 		ExcludeSchemas:                defaultExcludedSchemas(),
@@ -535,7 +526,7 @@ func (c *Component) eventsStatementsExporterArgs() (exporter_mysql.Arguments, bo
 		return exporter_mysql.Arguments{}, false
 	}
 
-	exporterArgs := resolveExporterArgs(c.args.PrometheusExporter, c.args.ExcludeSchemas, c.args.StatementsLimit)
+	exporterArgs := resolveExporterArgs(c.args.PrometheusExporter, c.args.ExcludeSchemas)
 	for _, scraper := range mysqld_exporter.GetScrapers(exporterArgs.Convert()) {
 		if scraper.Name() == eventsStatementsCollector {
 			return exporterArgs, true
@@ -545,7 +536,27 @@ func (c *Component) eventsStatementsExporterArgs() (exporter_mysql.Arguments, bo
 	return exporter_mysql.Arguments{}, false
 }
 
+// statementsLimit returns how many top queries the statements snapshot holds:
+// statements_limit when it is set, or else the embedded exporter's
+// perf_schema.eventsstatements limit, so that both work on the same queries.
+func (c *Component) statementsLimit() int {
+	if c.args.StatementsLimit > 0 {
+		return c.args.StatementsLimit
+	}
+	return resolveExporterArgs(c.args.PrometheusExporter, c.args.ExcludeSchemas).PerfSchemaEventsStatements.Limit
+}
+
 func (c *Component) warnOnStatementLimitMismatch() {
+	if c.args.StatementsLimit > 0 && enableOrDisableCollectors(c.args)[collector.ExplainPlansCollector] {
+		if exporterArgs, ok := c.eventsStatementsExporterArgs(); ok && c.args.StatementsLimit != exporterArgs.PerfSchemaEventsStatements.Limit {
+			c.opts.Logger.Warn(
+				"statements_limit and prometheus_exporter perf_schema.eventsstatements limits differ",
+				"statements_limit", c.args.StatementsLimit,
+				"eventsstatements_limit", exporterArgs.PerfSchemaEventsStatements.Limit,
+			)
+		}
+	}
+
 	queryDetailsEnabled := enableOrDisableCollectors(c.args)[collector.QueryDetailsCollector]
 	if !queryDetailsEnabled {
 		return
@@ -556,7 +567,7 @@ func (c *Component) warnOnStatementLimitMismatch() {
 		return
 	}
 
-	queryDetailsLimit := c.args.queryDetailsStatementsLimit()
+	queryDetailsLimit := c.args.QueryDetailsArguments.StatementsLimit
 	eventsStatementsLimit := exporterArgs.PerfSchemaEventsStatements.Limit
 	if queryDetailsLimit != eventsStatementsLimit {
 		c.opts.Logger.Warn(
@@ -868,7 +879,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	}
 
 	if len(inst.cfg.targets) == 0 {
-		exporterArgs := resolveExporterArgs(c.args.PrometheusExporter, c.args.ExcludeSchemas, c.args.StatementsLimit)
+		exporterArgs := resolveExporterArgs(c.args.PrometheusExporter, c.args.ExcludeSchemas)
 		exporterCfg := exporterArgs.Convert()
 		scrapers := mysqld_exporter.GetScrapers(exporterCfg)
 		exporter := mysqld_collector.New(context.Background(), string(inst.cfg.dsn), scrapers, c.opts.Logger,
@@ -912,9 +923,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	return nil
 }
 
-// resolveExporterArgs returns the arguments of the embedded exporter. The
-// top-level statementsLimit, when set, wins over the block's own limit.
-func resolveExporterArgs(userBlock *PrometheusExporterArguments, excludeSchemas []string, statementsLimit int) exporter_mysql.Arguments {
+func resolveExporterArgs(userBlock *PrometheusExporterArguments, excludeSchemas []string) exporter_mysql.Arguments {
 	exporterArgs := exporter_mysql.DefaultArguments
 	exporterArgs.PerfSchemaEventsStatements.Limit = 100
 	exporterArgs.PerfSchemaEventsStatements.TextLimit = 0
@@ -926,9 +935,6 @@ func resolveExporterArgs(userBlock *PrometheusExporterArguments, excludeSchemas 
 	}
 	if exporterArgs.PerfSchemaEventsStatements.Limit == 0 {
 		exporterArgs.PerfSchemaEventsStatements.Limit = 100
-	}
-	if statementsLimit > 0 {
-		exporterArgs.PerfSchemaEventsStatements.Limit = statementsLimit
 	}
 	alwaysExcludedSchemas := database_observability.MergeExclusions(
 		collector.AlwaysExcludedSchemas(),
@@ -998,13 +1004,11 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 	collectors := enableOrDisableCollectors(c.args)
 
 	// statements is the top queries of the digest table, read once for the
-	// collectors that work on them. It takes the embedded exporter's limit, so
-	// that both work on the same queries. A read is reused for half the
-	// explain plans interval, so that each poll on that interval reads the
-	// table again.
+	// collectors that work on them. A read is reused for half the explain
+	// plans interval, so that each poll on that interval reads the table again.
 	statements := collector.NewStatementsSnapshot(collector.StatementsSnapshotArguments{
 		DB:             inst.dbConnection,
-		Limit:          resolveExporterArgs(c.args.PrometheusExporter, c.args.ExcludeSchemas, c.args.StatementsLimit).PerfSchemaEventsStatements.Limit,
+		Limit:          c.statementsLimit(),
 		ExcludeSchemas: excludeSchemas,
 		MaxAge:         c.args.ExplainPlansArguments.CollectInterval / 2,
 	})
@@ -1044,7 +1048,7 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 		qtCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
 			DB:              inst.dbConnection,
 			CollectInterval: c.args.QueryDetailsArguments.CollectInterval,
-			StatementsLimit: c.args.queryDetailsStatementsLimit(),
+			StatementsLimit: c.args.QueryDetailsArguments.StatementsLimit,
 			ExcludeSchemas:  excludeSchemas,
 			EntryHandler:    entryHandler,
 			TableRegistry:   tableRegistry,
