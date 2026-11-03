@@ -3,6 +3,7 @@ package collector
 import (
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -15,6 +16,11 @@ const testStatementsLimit = 100
 // newTestStatements returns a snapshot that reads the table on every Get.
 func newTestStatements(db *sql.DB, excludeSchemas ...string) *StatementsSnapshot {
 	return NewStatementsSnapshot(StatementsSnapshotArguments{DB: db, Limit: testStatementsLimit, ExcludeSchemas: excludeSchemas})
+}
+
+func TestExplainPlansNeedAStatementsSnapshot(t *testing.T) {
+	_, err := NewExplainPlans(ExplainPlansArguments{Logger: slog.New(slog.DiscardHandler)})
+	require.ErrorContains(t, err, "explain plans need a statements snapshot")
 }
 
 func TestStatementsSnapshot(t *testing.T) {

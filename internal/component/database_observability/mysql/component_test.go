@@ -2015,6 +2015,16 @@ func Test_statements_limit(t *testing.T) {
 		assert.NotContains(t, logs.String(), warning)
 	})
 
+	t.Run("warns when the embedded exporter's time_limit isn't the 24-hour window", func(t *testing.T) {
+		const timeWarning = "prometheus_exporter perf_schema.eventsstatements time_limit differs from the window of queries explain_plans works on"
+		_, logs := newComponent(t, Arguments{PrometheusExporter: &PrometheusExporterArguments{PerfSchemaEventsStatements: exporter_mysql.PerfSchemaEventsStatements{Limit: 100, TimeLimit: 3600}}})
+		assert.Contains(t, logs.String(), timeWarning)
+		assert.Contains(t, logs.String(), "eventsstatements_time_limit=1h0m0s")
+
+		_, logs = newComponent(t, Arguments{})
+		assert.NotContains(t, logs.String(), timeWarning)
+	})
+
 	t.Run("must not be negative", func(t *testing.T) {
 		args := defaultArguments()
 		args.DataSourceName = alloytypes.Secret("user:pass@tcp(localhost:3306)/db")

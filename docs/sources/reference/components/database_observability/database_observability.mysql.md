@@ -35,7 +35,7 @@ You can use the following arguments with `database_observability.mysql`:
 | `disable_collectors`                       | `list(string)`       | A list of collectors to disable from the default set.                       |         | no       |
 | `enable_collectors`                        | `list(string)`       | A list of collectors to enable on top of the default set.                   |         | no       |
 | `exclude_schemas`                          | `list(string)`       | A list of schemas to exclude from monitoring on top of the default exclusions. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
-| `statements_limit`                         | `integer`            | Maximum number of queries, by total running time in the last 24 hours, that the `explain_plans` collector works on. | `100`   | no       |
+| `statements_limit`                         | `integer`            | Maximum number of queries the `explain_plans` collector works on: the ones with the most cumulative running time among those seen in the last 24 hours. | `100`   | no       |
 | `allow_update_performance_schema_settings` | `boolean`            | Whether to allow updates to `performance_schema` settings in any collector. Enable this in conjunction with other collector-specific settings where required. | `false` | no       |
 
 The following collectors are configurable:
@@ -254,9 +254,9 @@ The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they
 | `initial_lookback`             | `duration`     | How far back to look for explain plan queries on the first collection interval. Values longer than `"24h"` act like `"24h"`. | `"24h"` | no       |
 | `per_collect_ratio`            | `float`        | Ratio of explain plan queries to collect per collect interval.                  | `1.0`   | no       |
 
-The `explain_plans` collector explains the top `statements_limit` queries by total running time in the last 24 hours that ran since its last collection.
+The `explain_plans` collector explains the top `statements_limit` queries by cumulative running time since `performance_schema` was last reset, among the queries seen in the last 24 hours, that ran since its last collection.
 With the default settings, these are the same queries that the embedded exporter's `perf_schema.eventsstatements` collector reports.
-The component logs a warning when `statements_limit` differs from the `perf_schema.eventsstatements` `limit` of the [`prometheus_exporter`][prometheus_exporter] block.
+The component logs a warning when `statements_limit` differs from the `perf_schema.eventsstatements` `limit` of the [`prometheus_exporter`][prometheus_exporter] block, or when its `time_limit` isn't `86400`.
 
 ### `locks`
 

@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
@@ -549,7 +550,7 @@ type ExplainPlans struct {
 
 func NewExplainPlans(args ExplainPlansArguments) (*ExplainPlans, error) {
 	if args.Statements == nil {
-		return nil, fmt.Errorf("explain plans need a statements snapshot")
+		return nil, errors.New("explain plans need a statements snapshot")
 	}
 	return &ExplainPlans{
 		dbConnection:   args.DB,

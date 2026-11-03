@@ -12,8 +12,9 @@ import (
 // the INTERVAL in selectTopStatements.
 const StatementsWindow = 24 * time.Hour
 
-// selectTopStatements selects the queries that spent the most time running
-// among the ones seen in the last 24 hours, the way the perf_schema.eventsstatements
+// selectTopStatements selects the queries with the most total running time,
+// SUM_TIMER_WAIT since performance_schema was last reset, among the ones seen
+// in the last 24 hours, the way the perf_schema.eventsstatements
 // collector of the embedded exporter does with its default settings, so that
 // both work on the same queries. Rows without a digest or a sample text are
 // kept, like the exporter keeps them, even though they can't be explained:
@@ -73,7 +74,7 @@ func NewStatementsSnapshot(args StatementsSnapshotArguments) *StatementsSnapshot
 	}
 }
 
-// Get returns the top queries, by total running time, reading the table again
+// Get returns the top queries, by cumulative running time, reading the table again
 // when the last read is older than MaxAge. The returned slice must not be
 // modified.
 func (s *StatementsSnapshot) Get(ctx context.Context) ([]Statement, error) {

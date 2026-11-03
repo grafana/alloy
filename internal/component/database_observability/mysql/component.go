@@ -261,7 +261,7 @@ var databaseNameRegex = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 func (a *Arguments) Validate() error {
 	if a.StatementsLimit < 0 {
-		return fmt.Errorf("statements_limit must not be negative")
+		return errors.New("statements_limit must not be negative")
 	}
 
 	if len(a.Databases) == 0 {
@@ -570,12 +570,21 @@ func (c *Component) warnOnInitialLookbackOverWindow() {
 
 func (c *Component) warnOnStatementLimitMismatch() {
 	if enableOrDisableCollectors(c.args)[collector.ExplainPlansCollector] {
-		if exporterArgs, ok := c.eventsStatementsExporterArgs(); ok && c.statementsLimit() != exporterArgs.PerfSchemaEventsStatements.Limit {
-			c.opts.Logger.Warn(
-				"statements_limit and prometheus_exporter perf_schema.eventsstatements limits differ",
-				"statements_limit", c.statementsLimit(),
-				"eventsstatements_limit", exporterArgs.PerfSchemaEventsStatements.Limit,
-			)
+		if exporterArgs, ok := c.eventsStatementsExporterArgs(); ok {
+			if c.statementsLimit() != exporterArgs.PerfSchemaEventsStatements.Limit {
+				c.opts.Logger.Warn(
+					"statements_limit and prometheus_exporter perf_schema.eventsstatements limits differ",
+					"statements_limit", c.statementsLimit(),
+					"eventsstatements_limit", exporterArgs.PerfSchemaEventsStatements.Limit,
+				)
+			}
+			if window := time.Duration(exporterArgs.PerfSchemaEventsStatements.TimeLimit) * time.Second; window != collector.StatementsWindow {
+				c.opts.Logger.Warn(
+					"prometheus_exporter perf_schema.eventsstatements time_limit differs from the window of queries explain_plans works on",
+					"eventsstatements_time_limit", window,
+					"window", collector.StatementsWindow,
+				)
+			}
 		}
 	}
 
