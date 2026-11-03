@@ -107,11 +107,11 @@ func helmChartIndexed(client *gh.Client) func(context.Context, string, string) (
 			return false, fmt.Errorf("getting Helm chart index: %w", err)
 		}
 
-		data, err := content.GetContent()
+		data, _, err := client.API().Git.GetBlobRaw(ctx, client.Owner(), client.Repo(), content.GetSHA())
 		if err != nil {
 			return false, fmt.Errorf("reading Helm chart index: %w", err)
 		}
-		return chartVersionIndexed([]byte(data), name, version)
+		return chartVersionIndexed(data, name, version)
 	}
 }
 

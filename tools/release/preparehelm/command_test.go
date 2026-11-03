@@ -3,10 +3,14 @@ package preparehelm
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
 
+	gh "github.com/grafana/alloy/tools/release/internal/github"
 	"github.com/stretchr/testify/require"
 )
 
@@ -93,6 +97,36 @@ entries:
 `), "alloy", "1.12.2")
 	require.NoError(t, err)
 	require.False(t, indexed)
+}
+
+func TestHelmChartIndexedFetchesOversizedIndexAsRawBlob(t *testing.T) {
+	const indexSHA = "index-sha"
+
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		switch request.URL.Path {
+		case "/repos/grafana/helm-charts/contents/index.yaml":
+			require.Equal(t, "gh-pages", request.URL.Query().Get("ref"))
+			response.Header().Set("Content-Type", "application/json")
+			_, err := response.Write([]byte(`{"sha":"index-sha","size":4097865,"encoding":"none"}`))
+			require.NoError(t, err)
+		case "/repos/grafana/helm-charts/git/blobs/" + indexSHA:
+			require.Equal(t, "application/vnd.github.v3.raw", request.Header.Get("Accept"))
+			_, err := response.Write([]byte("entries:\n  alloy:\n    - version: 1.12.1\n"))
+			require.NoError(t, err)
+		default:
+			http.NotFound(response, request)
+		}
+	}))
+	defer server.Close()
+
+	client := gh.NewClient(context.Background(), gh.ClientConfig{Owner: "grafana", Repo: "helm-charts"})
+	baseURL, err := url.Parse(server.URL + "/")
+	require.NoError(t, err)
+	client.API().BaseURL = baseURL
+
+	indexed, err := helmChartIndexed(client)(context.Background(), "alloy", "1.12.1")
+	require.NoError(t, err)
+	require.True(t, indexed)
 }
 
 func TestEvaluatePreparesANewChartRelease(t *testing.T) {
