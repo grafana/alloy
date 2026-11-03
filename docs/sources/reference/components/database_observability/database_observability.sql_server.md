@@ -36,9 +36,9 @@ You can use the following arguments with `database_observability.sql_server`:
 | `disable_collectors`| `list(string)`       | A list of collectors to disable from the default set.                    |         | no       |
 | `enable_collectors` | `list(string)`       | A list of collectors to enable on top of the default set.                |         | no       |
 | `exclude_current_user` | `bool`            | Exclude tagged Alloy queries and query samples from sessions matching the Alloy application name or opened with the login that Alloy uses. | `true` | no       |
-| `exclude_schemas`   | `list(string)`       | A list of schemas to exclude from monitoring, on top of the always-excluded system schemas `sys` and `information_schema`. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
-| `exclude_databases` | `list(string)`       | A list of databases to exclude from monitoring, on top of the always-excluded system databases `master`, `model`, `msdb`, and `tempdb`. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
-| `exclude_users`     | `list(string)`       | A list of original SQL Server login names to exclude from query samples. | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
+| `exclude_schemas`   | `list(string)`       | A list of schemas to exclude from monitoring on top of the default exclusions. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
+| `exclude_databases` | `list(string)`       | A list of databases to exclude from monitoring on top of the default exclusions. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
+| `exclude_users`     | `list(string)`       | A list of original SQL Server login names to exclude from query samples on top of the default exclusions. | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
 | `query_timeout`     | `duration`           | Timeout for each SQL statement.                                          | `"10s"` | no       |
 
 When `data_source_name` doesn't specify an application name (`app name`), Alloy sets it to `grafana:alloy:database_observability` on its SQL Server connections.

@@ -34,8 +34,8 @@ You can use the following arguments with `database_observability.postgres`:
 | `targets`            | `list(map(string))`  | List of external targets to scrape for Prometheus metrics.  |         | no       |
 | `disable_collectors` | `list(string)`       | A list of collectors to disable from the default set.       |         | no       |
 | `enable_collectors`  | `list(string)`       | A list of collectors to enable on top of the default set.   |         | no       |
-| `exclude_databases`  | `list(string)`       | A list of databases to exclude from monitoring.             | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
-| `exclude_users`      | `list(string)`       | A list of users to exclude from monitoring.                 | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
+| `exclude_databases`  | `list(string)`       | A list of databases to exclude from monitoring on top of the default exclusions. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
+| `exclude_users`      | `list(string)`       | A list of users to exclude from monitoring on top of the default exclusions.     | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
 | `exclude_current_user` | `bool`             | Exclude from activity monitoring the user that Alloy uses to connect to the database. The resolved username is automatically added to `exclude_users`, if not already present. | `true` | no       |
 
 [Data Source Name]: https://pkg.go.dev/github.com/lib/pq#hdr-URL_connection_strings-NewConfig
@@ -296,8 +296,9 @@ The `logs` collector is always enabled and counts server errors from the Postgre
 The `prometheus_exporter` block configures the embedded `postgres_exporter` scrapers.
 The `data_source_name` is inherited from the parent block.
 Only the `stat_statements` collector is enabled by default.
-The embedded exporter inherits the top-level `exclude_databases` list in both `autodiscovery > database_denylist` and `stat_statements > exclude_databases`, but setting either nested list replaces the inherited list while keeping the always-excluded `azure_maintenance` database.
-The `stat_statements > exclude_users` list inherits the effective top-level `exclude_users` list, but setting a value replaces the inherited list while keeping the current connection user excluded when `exclude_current_user` is `true`.
+The embedded exporter inherits the top-level `exclude_databases` list in both `autodiscovery > database_denylist` and `stat_statements > exclude_databases`, and inherits the effective top-level `exclude_users` list in `stat_statements > exclude_users`.
+Setting these nested exclusion lists in `prometheus_exporter` is discouraged because it can cause the embedded exporter and the component's collectors to monitor different databases or users.
+Configure the top-level `exclude_databases` and `exclude_users` arguments instead.
 
 Refer to [`prometheus.exporter.postgres`](../../prometheus/prometheus.exporter.postgres/) docs for the full list of supported arguments and sub-blocks.
 

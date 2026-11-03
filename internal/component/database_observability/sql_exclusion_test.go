@@ -19,34 +19,40 @@ func TestMergeExclusions(t *testing.T) {
 
 func TestResolveExclusions(t *testing.T) {
 	t.Run("inherits when override is unset", func(t *testing.T) {
-		mandatory := []string{"system"}
+		defaults := []string{"system"}
 		inherited := []string{"system", "inherited"}
 
-		resolved := ResolveExclusions(mandatory, inherited, nil)
+		resolved := ResolveExclusions(defaults, inherited, nil)
 		resolved[0] = "changed"
 
 		require.Equal(t, []string{"changed", "inherited"}, resolved)
-		require.Equal(t, []string{"system"}, mandatory)
+		require.Equal(t, []string{"system"}, defaults)
 		require.Equal(t, []string{"system", "inherited"}, inherited)
 	})
 
-	t.Run("uses explicit empty override while keeping mandatory exclusions", func(t *testing.T) {
+	t.Run("uses explicit empty override while keeping default exclusions", func(t *testing.T) {
 		resolved := ResolveExclusions([]string{"system"}, []string{"inherited"}, []string{})
 
 		require.Equal(t, []string{"system"}, resolved)
 	})
 
 	t.Run("uses configured override without mutating inputs", func(t *testing.T) {
-		mandatory := []string{"system"}
+		defaults := []string{"system"}
 		override := []string{"system", "override"}
 
-		resolved := ResolveExclusions(mandatory, []string{"inherited"}, override)
+		resolved := ResolveExclusions(defaults, []string{"inherited"}, override)
 		resolved[1] = "changed"
 
 		require.Equal(t, []string{"system", "changed"}, resolved)
-		require.Equal(t, []string{"system"}, mandatory)
+		require.Equal(t, []string{"system"}, defaults)
 		require.Equal(t, []string{"system", "override"}, override)
 	})
+}
+
+func TestSameExclusions(t *testing.T) {
+	require.True(t, SameExclusions([]string{"b", "a", "a"}, []string{"a", "b"}))
+	require.True(t, SameExclusions(nil, []string{}))
+	require.False(t, SameExclusions([]string{"a", "b"}, []string{"a", "c"}))
 }
 
 func TestBuildExclusionClause(t *testing.T) {
