@@ -594,7 +594,7 @@ func TestQuerySamplesConfigParsing(t *testing.T) {
 }
 
 func TestResolveExcludeUsers(t *testing.T) {
-	t.Run("merges original login without mutating configured users", func(t *testing.T) {
+	t.Run("merges default users and original login without mutating configured users", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
@@ -605,7 +605,7 @@ func TestResolveExcludeUsers(t *testing.T) {
 
 		effective, err := resolveExcludeUsers(context.Background(), db, defaultQueryTimeout, configured, true)
 		require.NoError(t, err)
-		assert.Equal(t, []string{"app_reader", "alloy_monitor"}, effective)
+		assert.Equal(t, []string{"azuresu", "cloudsqladmin", "db-o11y", "rdsadmin", "app_reader", "alloy_monitor"}, effective)
 		assert.Equal(t, []string{"app_reader"}, configured)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -620,18 +620,18 @@ func TestResolveExcludeUsers(t *testing.T) {
 
 		effective, err := resolveExcludeUsers(context.Background(), db, defaultQueryTimeout, []string{"alloy_monitor"}, true)
 		require.NoError(t, err)
-		assert.Equal(t, []string{"alloy_monitor", "Alloy_Monitor"}, effective)
+		assert.Equal(t, []string{"azuresu", "cloudsqladmin", "db-o11y", "rdsadmin", "alloy_monitor", "Alloy_Monitor"}, effective)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	t.Run("disabled skips original login query", func(t *testing.T) {
+	t.Run("disabled skips original login query while keeping default users", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
 
 		effective, err := resolveExcludeUsers(context.Background(), db, defaultQueryTimeout, []string{"app_reader"}, false)
 		require.NoError(t, err)
-		assert.Equal(t, []string{"app_reader"}, effective)
+		assert.Equal(t, []string{"azuresu", "cloudsqladmin", "db-o11y", "rdsadmin", "app_reader"}, effective)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 

@@ -34,7 +34,7 @@ You can use the following arguments with `database_observability.mysql`:
 | `targets`                                  | `list(map(string))`  | List of external targets to scrape.                                         |         | no       |
 | `disable_collectors`                       | `list(string)`       | A list of collectors to disable from the default set.                       |         | no       |
 | `enable_collectors`                        | `list(string)`       | A list of collectors to enable on top of the default set.                   |         | no       |
-| `exclude_schemas`                          | `list(string)`       | A list of schemas to exclude from monitoring.                               | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
+| `exclude_schemas`                          | `list(string)`       | A list of schemas to exclude from monitoring on top of the default exclusions. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
 | `allow_update_performance_schema_settings` | `boolean`            | Whether to allow updates to `performance_schema` settings in any collector. Enable this in conjunction with other collector-specific settings where required. | `false` | no       |
 
 The following collectors are configurable:
@@ -293,7 +293,8 @@ The `data_source_name` is inherited from the parent block.
 By default, the embedded exporter enables only the collectors that Database Observability reads: `perf_schema.eventsstatements`, `global_status`, `global_variables`, and `slave_status`.
 The `limit` of the `perf_schema.eventsstatements` collector defaults to `100`.
 Use `enable_collectors` and `disable_collectors` to adjust this set, or `set_collectors` to replace it.
-The embedded `perf_schema.eventsstatements` collector inherits the top-level `exclude_schemas` list, but setting `prometheus_exporter > perf_schema.eventsstatements > exclude_schemas` replaces the inherited list while keeping the always-excluded system schemas (`mysql`, `performance_schema`, `sys`, and `information_schema`).
+The embedded `perf_schema.eventsstatements` collector inherits the top-level `exclude_schemas` list. Setting `prometheus_exporter > perf_schema.eventsstatements > exclude_schemas` is discouraged because it can cause the embedded exporter and the component's collectors to monitor different schemas.
+Configure the top-level `exclude_schemas` argument instead.
 
 Refer to [`prometheus.exporter.mysql`](../../prometheus/prometheus.exporter.mysql/) docs for the full list of supported arguments and sub-blocks.
 
