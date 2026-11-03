@@ -103,6 +103,8 @@ func TestFullScansFromRealServers(t *testing.T) {
 		// Two tables named o in one block can't be told apart.
 		"same_alias_merged_by_semijoin": {{table: "o", rows: 2}},
 		"cross_schema":                  {{tableSchema: "archive", table: "events", rows: 2}},
+		// The rewritten query names the view as if it were a table.
+		"materialized_view": {},
 	} {
 		t.Run(name, func(t *testing.T) {
 			fixture := loadTableNameFixture(t, name)

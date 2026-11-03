@@ -59,7 +59,8 @@ type fullScan struct {
 // plan reads in full, that is the tables with access type ALL, with the real
 // names that names resolves them to. Tables that are not real ones, such as
 // derived tables, materialized CTEs and union results, which MySQL names with a
-// leading '<', are left out: no index could change them.
+// leading '<', and the views it materializes, are left out: no index could
+// change them.
 func fullScansFromExplainJSON(planJSON []byte, names planTableNames) ([]fullScan, error) {
 	decoder := json.NewDecoder(bytes.NewReader(planJSON))
 	decoder.UseNumber()
@@ -117,6 +118,11 @@ func fullScanOf(node map[string]any, selectID int, names planTableNames) (fullSc
 	table, hasName := node["table_name"].(string)
 	accessType, hasAccess := node["access_type"].(string)
 	if !hasName || !hasAccess || !strings.EqualFold(accessType, "ALL") || strings.HasPrefix(table, "<") {
+		return fullScan{}, false
+	}
+	// A materialized view keeps its alias, and the rewritten query names it
+	// like a table, so only its plan node tells it apart.
+	if _, ok := node["materialized_from_subquery"]; ok {
 		return fullScan{}, false
 	}
 
