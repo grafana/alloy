@@ -619,9 +619,7 @@ func TestComponentV2(t *testing.T) {
 			require.NoError(t, ctrl.Update(args(f.Name(), healthy)))
 
 			require.EventuallyWithT(t, func(c *assert.CollectT) {
-				entries := healthy.Entries()
-				require.NotEmpty(c, entries)
-				require.Equal(c, "line 3", entries[len(entries)-1].Line)
+				require.Equal(c, int64(21), position(t, ctrl, f.Name()))
 			}, 5*time.Second, 10*time.Millisecond)
 
 			// The lines are sent as one batch, so the healthy consumer gets the whole batch again on every retry.
