@@ -122,7 +122,7 @@ func (c *controller) configInformers() ([]cache.SharedIndexInformer, error) {
 		api := c.opts.client.CoreV1().ConfigMaps(metav1.NamespaceAll)
 		informer := newPagedInformer(c.opts.client, &corev1.ConfigMap{}, func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
 			return api.List(ctx, options)
-		}, api.Watch, configWatchTransform(content == contentAll, c.opts.extract.keepAnnotation))
+		}, api.Watch, configWatchTransform(content == contentAll, c.keepAnnotation))
 		if err := add(newConfigKind("configmap", content), informer); err != nil {
 			return nil, err
 		}
@@ -139,7 +139,12 @@ func (c *controller) metadataInformer(resource schema.GroupVersionResource) cach
 	api := c.opts.metadata.Resource(resource)
 	return newPagedInformer(c.opts.metadata, &metav1.PartialObjectMetadata{}, func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
 		return api.List(ctx, options)
-	}, api.Watch, configWatchTransform(false, c.opts.extract.keepAnnotation))
+	}, api.Watch, configWatchTransform(false, c.keepAnnotation))
+}
+
+// keepAnnotation keeps annotation values that extraction or exclusion reads.
+func (c *controller) keepAnnotation(key string) bool {
+	return c.opts.extract.keepAnnotation(key) || c.opts.exclude.keepAnnotation(key)
 }
 
 // Keep only compared fields. Without values, data and annotations are replaced by
@@ -211,18 +216,19 @@ func configMeta(obj any) (metav1.ObjectMeta, bool) {
 }
 
 // observeConfig is the single entry point for ConfigMap and Secret changes, and
-// the place to apply namespace and name exclusions.
+// applies exclusions. An update that leaves the scope of exclude rules reports
+// nothing; later updates diff against it.
 func (c *controller) observeConfig(kind configKind, old, obj any, initial bool) {
 	if initial {
 		return
 	}
 	after, ok := configMeta(obj)
-	if !ok {
+	if !ok || c.opts.exclude.excludes(kind.name, &after) {
 		return
 	}
 	event, before := changeCreated, metav1.ObjectMeta{}
 	if old != nil {
-		if before, ok = configMeta(old); !ok {
+		if before, ok = configMeta(old); !ok || c.opts.exclude.excludes(kind.name, &before) {
 			return
 		}
 		event = changeUpdated

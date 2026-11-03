@@ -45,7 +45,8 @@ type Arguments struct {
 	StatefulSets StatefulSetsArguments `alloy:"statefulsets,block,optional"`
 	DaemonSets   DaemonSetsArguments   `alloy:"daemonsets,block,optional"`
 
-	Extract ExtractArguments `alloy:"extract,block,optional"`
+	Exclude []ExcludeArguments `alloy:"exclude,block,optional"`
+	Extract ExtractArguments   `alloy:"extract,block,optional"`
 
 	Client     commonk8s.ClientArguments  `alloy:"client,block,optional"`
 	Clustering cluster.ComponentBlock     `alloy:"clustering,block,optional"`
@@ -67,6 +68,9 @@ func (args *Arguments) Validate() error {
 		return fmt.Errorf("output block is required")
 	}
 	if err := args.ConfigMaps.Validate(); err != nil {
+		return err
+	}
+	if _, err := newExcluder(args.Exclude); err != nil {
 		return err
 	}
 	return args.Extract.Validate()
@@ -211,6 +215,10 @@ func (c *Component) runGeneration(ctx context.Context, args Arguments, restConfi
 	if err != nil {
 		return fmt.Errorf("creating Kubernetes metadata client: %w", err)
 	}
+	exclude, err := newExcluder(args.Exclude)
+	if err != nil {
+		return err
+	}
 	extract, err := newExtractor(args.Extract, slogadapter.NewZap(c.opts.Logger))
 	if err != nil {
 		return err
@@ -229,6 +237,7 @@ func (c *Component) runGeneration(ctx context.Context, args Arguments, restConfi
 		secrets:          args.Secrets.Enabled,
 		statefulSets:     args.StatefulSets.Enabled,
 		daemonSets:       args.DaemonSets.Enabled,
+		exclude:          exclude,
 		extract:          extract,
 		emit:             c.emit,
 	})

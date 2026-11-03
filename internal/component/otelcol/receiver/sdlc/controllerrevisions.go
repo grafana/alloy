@@ -77,11 +77,15 @@ func (c *controller) observeRevisioned(obj any, created, initial bool) {
 	if w == nil {
 		return
 	}
+	tracked, baseline := c.scope(w, initial)
+	if !tracked {
+		return
+	}
 	c.workloads[string(w.GetUID())] = obj
-	if created {
+	if created && !baseline {
 		c.enqueueCreated(w)
 	}
-	c.observeRollout(w, initial)
+	c.observeRollout(w, baseline)
 }
 
 func (c *controller) revisionedWorkload(obj any) workload {

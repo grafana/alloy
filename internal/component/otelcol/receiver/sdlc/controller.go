@@ -31,6 +31,7 @@ type controllerOptions struct {
 	secrets                 bool
 	statefulSets            bool
 	daemonSets              bool
+	exclude                 excluder
 	extract                 extractor
 	emit                    func(context.Context, func() eventBatch) error
 	now                     func() time.Time
@@ -62,8 +63,10 @@ type controller struct {
 	// holds the latest StatefulSet or DaemonSet to re-evaluate against them.
 	revisions map[string]map[string]controllerRevision
 	workloads map[string]any
-	queue     workqueue.TypedRateLimitingInterface[*eventBatch]
-	now       func() time.Time
+	// excluded holds the UIDs of workloads that exclude rules currently match.
+	excluded map[string]bool
+	queue    workqueue.TypedRateLimitingInterface[*eventBatch]
+	now      func() time.Time
 }
 
 func newController(opts controllerOptions) *controller {
@@ -73,7 +76,7 @@ func newController(opts controllerOptions) *controller {
 	if opts.logger == nil {
 		opts.logger = slog.Default()
 	}
-	return &controller{podsByOwner: map[string]map[string]*corev1.Pod{}, replicaSetsByDeployment: map[string]map[string]*appsv1.ReplicaSet{}, pods: map[string]*corev1.Pod{}, replicaSets: map[string]*appsv1.ReplicaSet{}, collections: map[string]*imageCollection{}, imageQueue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*imageCollection]()), opts: opts, rollouts: map[string]rolloutState{}, revisions: map[string]map[string]controllerRevision{}, workloads: map[string]any{}, now: opts.now, queue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*eventBatch]())}
+	return &controller{podsByOwner: map[string]map[string]*corev1.Pod{}, replicaSetsByDeployment: map[string]map[string]*appsv1.ReplicaSet{}, pods: map[string]*corev1.Pod{}, replicaSets: map[string]*appsv1.ReplicaSet{}, collections: map[string]*imageCollection{}, imageQueue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*imageCollection]()), opts: opts, rollouts: map[string]rolloutState{}, revisions: map[string]map[string]controllerRevision{}, workloads: map[string]any{}, excluded: map[string]bool{}, now: opts.now, queue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*eventBatch]())}
 }
 
 func (c *controller) run(ctx context.Context) error {
@@ -109,11 +112,11 @@ func (c *controller) run(ctx context.Context) error {
 	deployments := factory.Apps().V1().Deployments().Informer()
 	_, err = deployments.AddEventHandler(cache.ResourceEventHandlerDetailedFuncs{
 		AddFunc: func(obj any, initial bool) {
-			d := obj.(*appsv1.Deployment)
-			if !initial {
-				c.enqueueCreated(deploymentWorkload{d})
+			w := deploymentWorkload{obj.(*appsv1.Deployment)}
+			if !initial && !c.opts.exclude.excludes(w.resourceType(), w) {
+				c.enqueueCreated(w)
 			}
-			c.observe(d, initial)
+			c.observe(w.Deployment, initial)
 		},
 		UpdateFunc: func(_, obj any) { c.observe(obj.(*appsv1.Deployment), false) },
 		DeleteFunc: c.remove,
@@ -184,7 +187,37 @@ func (c *controller) run(ctx context.Context) error {
 func (c *controller) observe(d *appsv1.Deployment, initial bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.observeRollout(deploymentWorkload{d}, initial)
+	w := deploymentWorkload{d}
+	if tracked, baseline := c.scope(w, initial); tracked {
+		c.observeRollout(w, baseline)
+	}
+}
+
+// scope reports whether w is tracked, and whether to observe it as a baseline.
+// A workload that exclude rules match is forgotten without events; one that
+// leaves their scope is baselined like the initial listing. Callers hold c.mu.
+func (c *controller) scope(w workload, initial bool) (tracked, baseline bool) {
+	uid := string(w.GetUID())
+	if c.opts.exclude.excludes(w.resourceType(), w) {
+		c.excluded[uid] = true
+		// ControllerRevisions stay indexed, so a returning workload baselines
+		// on its current revision.
+		delete(c.rollouts, uid)
+		delete(c.collections, uid)
+		delete(c.workloads, uid)
+		return false, false
+	}
+	if c.excluded[uid] {
+		// Annotation changes bump a Deployment's generation, so wait until the
+		// controller has observed the change that returned w to scope.
+		// Otherwise its settled rollout would be baselined as in flight.
+		if !w.settled() {
+			return false, false
+		}
+		delete(c.excluded, uid)
+		return true, true
+	}
+	return true, initial
 }
 
 // observeRollout advances the rollout state machine of any workload kind.
@@ -268,4 +301,5 @@ func (c *controller) remove(obj any) {
 	delete(c.collections, string(m.GetUID()))
 	delete(c.workloads, string(m.GetUID()))
 	delete(c.revisions, string(m.GetUID()))
+	delete(c.excluded, string(m.GetUID()))
 }

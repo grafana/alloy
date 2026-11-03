@@ -407,6 +407,13 @@ func (c *controller) finalizeImages(ctx context.Context, x *imageCollection) {
 	}
 	add(x.state.template.Spec.Containers, false)
 	add(x.state.template.Spec.InitContainers, true)
+	// A workload excluded since its rollout closed reports nothing more.
+	c.mu.Lock()
+	excluded := c.excluded[string(x.workload.GetUID())]
+	c.mu.Unlock()
+	if excluded {
+		return
+	}
 	event := rolloutEvent(x.workload, x.state, rolloutImagesResolved, rolloutID, x.cutoff)
 	event.summary = imagesSummary(containers, complete)
 	event.diff = func(diff pcommon.Map) {

@@ -61,6 +61,10 @@ You can use the following blocks with `otelcol.receiver.sdlc`:
 | [`clustering`][clustering]                  | Configures cluster-wide ownership of the Kubernetes watcher.           | no       |
 | [`configmaps`][configmaps]                  | Configures ConfigMap change tracking.                                  | no       |
 | [`daemonsets`][daemonsets]                  | Configures DaemonSet rollout tracking.                                 | no       |
+| [`exclude`][exclude]                        | Configures objects to ignore.                                          | no       |
+| `exclude` > [`annotation`][exclude_annotation] | Matches annotations of objects to ignore.                           | no       |
+| `exclude` > [`field`][exclude_field]        | Matches metadata fields of objects to ignore.                          | no       |
+| `exclude` > [`label`][exclude_label]        | Matches labels of objects to ignore.                                   | no       |
 | [`extract`][extract]                        | Configures metadata, labels, and annotations to attach to events.      | no       |
 | `extract` > [`annotation`][annotation]      | Selects annotations to attach to events.                               | no       |
 | `extract` > [`field`][field]                | Selects metadata fields to attach to events.                           | no       |
@@ -76,6 +80,10 @@ You can use the following blocks with `otelcol.receiver.sdlc`:
 [clustering]: #clustering
 [configmaps]: #configmaps
 [daemonsets]: #daemonsets
+[exclude]: #exclude
+[exclude_annotation]: #annotation-exclude
+[exclude_field]: #field-exclude
+[exclude_label]: #label-exclude
 [extract]: #extract
 [field]: #field
 [label]: #label
@@ -180,6 +188,120 @@ The `daemonsets` block configures DaemonSet rollout tracking:
 | `enabled` | `bool` | Track DaemonSet rollouts in all namespaces. | `true`  | no       |
 
 DaemonSet revisions are stored as ControllerRevisions, so the component also watches ControllerRevisions while DaemonSet tracking is enabled.
+
+### `exclude`
+
+The `exclude` block ignores Deployments, StatefulSets, DaemonSets, ConfigMaps, and Secrets that match all of its rules.
+The component doesn't report any events for an excluded object, including its creation, rollouts, and resolved images.
+You can specify this block multiple times.
+The component ignores an object that matches any `exclude` block.
+
+The `exclude` block doesn't support any arguments and is configured fully through the [`annotation`][exclude_annotation], [`field`][exclude_field], and [`label`][exclude_label] blocks.
+Each `exclude` block requires at least one of these blocks.
+Rules match the metadata of the changed object, not its Pod template.
+
+The component evaluates rules each time it observes an object, so a label or annotation change can move an object in or out of scope:
+
+* When an object becomes excluded, the component drops it without reporting events, including for a rollout in progress.
+* When an object is no longer excluded, the component uses its current state as a baseline, like for objects that exist when the component starts, and reports its next change.
+
+The component still lists and watches excluded objects, so exclusions don't change the required [Kubernetes permissions](#kubernetes-permissions).
+
+The following example ignores every object in the `kube-system` Namespace, and Helm release Secrets in all namespaces:
+
+```alloy
+exclude {
+  field {
+    key   = "metadata.namespace"
+    value = "kube-system"
+  }
+}
+
+exclude {
+  field {
+    key   = "kind"
+    value = "Secret"
+  }
+  label {
+    key   = "owner"
+    value = "helm"
+  }
+}
+```
+
+#### `annotation` exclude
+
+The `annotation` block matches an annotation of the changed object.
+You can specify this block multiple times.
+
+| Name    | Type     | Description                            | Default    | Required |
+| ------- | -------- | -------------------------------------- | ---------- | -------- |
+| `key`   | `string` | Annotation key to match.               |            | yes      |
+| `op`    | `string` | Operation to apply to the annotation.  | `"equals"` | no       |
+| `value` | `string` | Annotation value to compare.           |            | no       |
+
+`op` accepts the following values:
+
+* `equals`: The annotation must have the value `value`.
+* `not-equals`: The annotation must be missing or have a value other than `value`.
+* `exists`: The annotation must be present.
+* `does-not-exist`: The annotation must be missing.
+
+`value` is required with `equals` and `not-equals`, and you can't set it with `exists` or `does-not-exist`.
+The `kubectl.kubernetes.io/last-applied-configuration` annotation supports only `exists` and `does-not-exist`.
+
+For ConfigMaps and Secrets, {{< param "PRODUCT_NAME" >}} otherwise keeps only hashes of annotation values in memory.
+It keeps the values of annotations that `equals` and `not-equals` rules compare.
+
+#### `field` exclude
+
+The `field` block matches a metadata field of the changed object.
+You can specify this block multiple times.
+
+| Name    | Type     | Description                       | Default    | Required |
+| ------- | -------- | --------------------------------- | ---------- | -------- |
+| `key`   | `string` | Field to match.                   |            | yes      |
+| `op`    | `string` | Operation to apply to the field.  | `"equals"` | no       |
+| `value` | `string` | Field value to compare.           |            | yes      |
+
+`key` accepts the following values:
+
+* `kind`: The kind of the object. `value` must be `Deployment`, `StatefulSet`, `DaemonSet`, `ConfigMap`, or `Secret`.
+* `metadata.name`: The name of the object.
+* `metadata.namespace`: The namespace of the object.
+
+`op` accepts the following values:
+
+* `equals`: The field must have the value `value`.
+* `not-equals`: The field must have a value other than `value`.
+
+The following example ignores every object outside the `production` Namespace:
+
+```alloy
+exclude {
+  field {
+    key   = "metadata.namespace"
+    value = "production"
+    op    = "not-equals"
+  }
+}
+```
+
+#### `label` exclude
+
+The `label` block matches a label of the changed object.
+You can specify this block multiple times.
+
+| Name    | Type     | Description                       | Default    | Required |
+| ------- | -------- | --------------------------------- | ---------- | -------- |
+| `key`   | `string` | Label key to match.               |            | yes      |
+| `op`    | `string` | Operation to apply to the label.  | `"equals"` | no       |
+| `value` | `string` | Label value to compare.           |            | yes      |
+
+`op` accepts the following values:
+
+* `equals`: The label must have the value `value`.
+* `not-equals`: The label must be missing or have a value other than `value`.
 
 ### `extract`
 
