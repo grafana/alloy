@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"reflect"
 	"sync"
@@ -57,9 +58,8 @@ type Component struct {
 	// consumer is set by the first successful Update and afterwards only replaced by
 	// another successfully built consumer, never cleared.
 	consumer client.Consumer
-	// consumerCfgs and consumerWAL are the settings consumer was built with.
-	consumerCfgs []client.Config
-	consumerWAL  WalArguments
+	// args are the arguments of the last successful Update.
+	args Arguments
 }
 
 // New creates a new loki.write component.
@@ -120,11 +120,37 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	cfgs := newArgs.convertEndpointConfigs()
+	if c.consumer == nil || consumerArgsChanged(c.args, newArgs) {
+		if err := c.updateConsumer(newArgs); err != nil {
+			return err
+		}
+	}
+
+	if !maps.Equal(c.args.ExternalLabels, newArgs.ExternalLabels) {
+		c.externalLabels = util.MapToModelLabelSet(newArgs.ExternalLabels)
+	}
+
+	c.args = newArgs
+	return nil
+}
+
+// consumerArgsChanged reports whether the consumer must be rebuilt to apply new.
+func consumerArgsChanged(old, new Arguments) bool {
+	return !reflect.DeepEqual(old.Endpoints, new.Endpoints) ||
+		old.MaxStreams != new.MaxStreams ||
+		old.WAL != new.WAL
+}
+
+// updateConsumer builds a consumer for args and replaces the current one with it.
+// The current consumer is kept if the new one can't be built.
+func (c *Component) updateConsumer(args Arguments) error {
+	cfgs := args.convertEndpointConfigs()
 
 	uid := alloyseed.Get().UID
 	for i := range cfgs {
-		//cfgs is slice of struct values, so we set by index
+		// cfgs is a slice of struct values, so we set by index. The headers map is
+		// shared with args, which are kept to detect changes, so copy it first.
+		cfgs[i].Headers = maps.Clone(cfgs[i].Headers)
 		if cfgs[i].Headers == nil {
 			cfgs[i].Headers = map[string]string{}
 		}
@@ -132,21 +158,13 @@ func (c *Component) Update(args component.Arguments) error {
 		cfgs[i].Headers[alloyseed.HeaderName] = uid
 	}
 
-	// Keep the running consumer when the settings it was built with are unchanged,
-	// for example when only external_labels changed, instead of stopping it and
-	// starting new clients.
-	if c.consumer != nil && newArgs.WAL == c.consumerWAL && reflect.DeepEqual(cfgs, c.consumerCfgs) {
-		c.externalLabels = util.MapToModelLabelSet(newArgs.ExternalLabels)
-		return nil
-	}
-
 	var (
 		consumer client.Consumer
 		err      error
 	)
 
-	if newArgs.WAL.Enabled {
-		consumer, err = c.newWALConsumer(newArgs, cfgs)
+	if args.WAL.Enabled {
+		consumer, err = c.newWALConsumer(args, cfgs)
 	} else {
 		consumer, err = client.NewFanoutConsumer(c.opts.Logger, c.opts.Registerer, cfgs...)
 	}
@@ -160,16 +178,13 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 
 	// The WAL is only needed while a WAL consumer is reading from it.
-	if !newArgs.WAL.Enabled && c.wal != nil {
+	if !args.WAL.Enabled && c.wal != nil {
 		c.wal.Close()
 		c.wal = nil
 	}
 
 	c.consumer = consumer
-	c.consumerCfgs = cfgs
-	c.consumerWAL = newArgs.WAL
 	c.consumer.Start()
-	c.externalLabels = util.MapToModelLabelSet(newArgs.ExternalLabels)
 
 	return nil
 }
