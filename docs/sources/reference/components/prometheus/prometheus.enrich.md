@@ -11,7 +11,7 @@ title: prometheus.enrich
 
 # `prometheus.enrich`
 
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `prometheus.enrich` component enriches metrics with additional labels from service discovery targets.
 It matches labels from incoming metrics against labels from discovered targets, and copies specified labels from the matched target to the metric sample.
