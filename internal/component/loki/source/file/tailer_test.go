@@ -114,6 +114,76 @@ func TestTailer(t *testing.T) {
 	})
 }
 
+// TestTailerRecordsPositionWhenIdle checks that the position of a burst of
+// lines is recorded once the file goes idle, without waiting for the tailer to
+// stop: after an unclean shutdown only the recorded position survives.
+func TestTailerRecordsPositionWhenIdle(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	runTailerTest(t, func(t *testing.T, send sendFunc, received func() []loki.Entry) {
+		l := logging.NewSlogNop()
+		tempDir := t.TempDir()
+		logFile, err := os.CreateTemp(tempDir, "example")
+		require.NoError(t, err)
+		// A long sync period, so only the first line of the burst is recorded
+		// by the periodic update.
+		positionsFile, err := positions.New(l, positions.Config{
+			SyncPeriod:        time.Hour,
+			PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
+			IgnoreInvalidYaml: false,
+			ReadOnly:          false,
+		})
+		require.NoError(t, err)
+		labels := model.LabelSet{
+			"filename": model.LabelValue(logFile.Name()),
+			"foo":      "bar",
+		}
+		tailer := newTailer(
+			newMetrics(nil),
+			l,
+			send,
+			positionsFile,
+			func() bool { return true },
+			sourceOptions{
+				path:   logFile.Name(),
+				labels: labels,
+				fileWatch: FileWatch{
+					MinPollFrequency: 25 * time.Millisecond,
+					MaxPollFrequency: 25 * time.Millisecond,
+				},
+				onPositionsFileError: OnPositionsFileErrorRestartBeginning,
+			},
+		)
+
+		_, err = logFile.Write([]byte("first\nsecond\nthird\n"))
+		require.NoError(t, err)
+
+		ctx, cancel := context.WithCancel(t.Context())
+		done := make(chan struct{})
+		go func() {
+			tailer.Run(ctx)
+			close(done)
+		}()
+
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			entries := received()
+			require.Len(c, entries, 3)
+			require.Equal(c, "third", entries[2].Line)
+		}, time.Second, 10*time.Millisecond)
+
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			pos, err := positionsFile.Get(logFile.Name(), labels.String())
+			require.NoError(c, err)
+			require.Equal(c, int64(19), pos)
+		}, time.Second, 50*time.Millisecond)
+
+		cancel()
+		<-done
+		positionsFile.Stop()
+		require.NoError(t, logFile.Close())
+	})
+}
+
 func TestTailerPositionFileEntryDeleted(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 

@@ -238,9 +238,17 @@ func (t *tailer) tail(ctx context.Context, pos int64) {
 
 	var (
 		lastOffset          = pos
+		recordedOffset      = pos
 		positionInterval    = t.positions.SyncPeriod()
 		lastUpdatedPosition = time.Time{}
 	)
+
+	recordPosition := func() {
+		lastUpdatedPosition = time.Now()
+		recordedOffset = lastOffset
+		size, _ := t.file.Size()
+		t.updateStats(lastOffset, size)
+	}
 
 	defer func() {
 		t.running.Store(false)
@@ -284,6 +292,15 @@ func (t *tailer) tail(ctx context.Context, pos int64) {
 				return t.file.Flush()
 			}
 
+			// Record the position before waiting for more data. Positions are
+			// otherwise only recorded while lines are read, at most once per
+			// sync period, so a file that goes idle right after a burst would
+			// keep the offset of the burst's first line until the tailer stops,
+			// and an unclean shutdown would re-read the rest of the burst.
+			if lastOffset != recordedOffset {
+				recordPosition()
+			}
+
 			if err := t.file.Wait(ctx); err != nil {
 				return nil, err
 			}
@@ -314,9 +331,7 @@ func (t *tailer) tail(ctx context.Context, pos int64) {
 
 		lastOffset = line.Offset
 		if time.Since(lastUpdatedPosition) >= positionInterval {
-			lastUpdatedPosition = time.Now()
-			size, _ := t.file.Size()
-			t.updateStats(lastOffset, size)
+			recordPosition()
 		}
 	}
 }
