@@ -194,9 +194,15 @@ const eventsStatementsCollector = "perf_schema.eventsstatements"
 // slave_status (replication).
 var defaultEnabledCollectors = []string{eventsStatementsCollector, "global_status", "global_variables", "slave_status"}
 
+// defaultStatementsLimit is the number of top queries the explain_plans
+// collector works on by default, the same as the embedded exporter's
+// perf_schema.eventsstatements limit.
+const defaultStatementsLimit = 100
+
 func defaultArguments() Arguments {
 	return Arguments{
 		ExcludeSchemas:                defaultExcludedSchemas(),
+		StatementsLimit:               defaultStatementsLimit,
 		AllowUpdatePerfSchemaSettings: false,
 
 		QueryDetailsArguments: QueryDetailsArguments{
@@ -537,21 +543,20 @@ func (c *Component) eventsStatementsExporterArgs() (exporter_mysql.Arguments, bo
 }
 
 // statementsLimit returns how many top queries the statements snapshot holds:
-// statements_limit when it is set, or else the embedded exporter's
-// perf_schema.eventsstatements limit, so that both work on the same queries.
+// statements_limit, or its default when it is 0.
 func (c *Component) statementsLimit() int {
 	if c.args.StatementsLimit > 0 {
 		return c.args.StatementsLimit
 	}
-	return resolveExporterArgs(c.args.PrometheusExporter, c.args.ExcludeSchemas).PerfSchemaEventsStatements.Limit
+	return defaultStatementsLimit
 }
 
 func (c *Component) warnOnStatementLimitMismatch() {
-	if c.args.StatementsLimit > 0 && enableOrDisableCollectors(c.args)[collector.ExplainPlansCollector] {
-		if exporterArgs, ok := c.eventsStatementsExporterArgs(); ok && c.args.StatementsLimit != exporterArgs.PerfSchemaEventsStatements.Limit {
+	if enableOrDisableCollectors(c.args)[collector.ExplainPlansCollector] {
+		if exporterArgs, ok := c.eventsStatementsExporterArgs(); ok && c.statementsLimit() != exporterArgs.PerfSchemaEventsStatements.Limit {
 			c.opts.Logger.Warn(
 				"statements_limit and prometheus_exporter perf_schema.eventsstatements limits differ",
-				"statements_limit", c.args.StatementsLimit,
+				"statements_limit", c.statementsLimit(),
 				"eventsstatements_limit", exporterArgs.PerfSchemaEventsStatements.Limit,
 			)
 		}

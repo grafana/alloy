@@ -1982,22 +1982,32 @@ func Test_statements_limit(t *testing.T) {
 		return &PrometheusExporterArguments{PerfSchemaEventsStatements: exporter_mysql.PerfSchemaEventsStatements{Limit: limit}}
 	}
 
-	t.Run("when unset, the snapshot follows the embedded exporter's limit", func(t *testing.T) {
+	t.Run("defaults to 100, which matches the embedded exporter's default", func(t *testing.T) {
+		require.Equal(t, 100, defaultArguments().StatementsLimit)
 		c, logs := newComponent(t, Arguments{})
-		require.Equal(t, 100, c.statementsLimit())
-
-		c, _ = newComponent(t, Arguments{PrometheusExporter: exporterLimit(50)})
-		require.Equal(t, 50, c.statementsLimit())
+		require.Equal(t, 100, c.statementsLimit(), "0 means the default")
 		assert.NotContains(t, logs.String(), warning)
 	})
 
-	t.Run("when set, it is the snapshot's limit and leaves the other limits alone", func(t *testing.T) {
-		c, logs := newComponent(t, Arguments{StatementsLimit: 300, PrometheusExporter: exporterLimit(50)})
+	t.Run("sets the snapshot's limit and leaves the exporter's alone", func(t *testing.T) {
+		c, logs := newComponent(t, Arguments{StatementsLimit: 300})
 		require.Equal(t, 300, c.statementsLimit())
-		require.Equal(t, 50, resolveExporterArgs(c.args.PrometheusExporter, c.args.ExcludeSchemas).PerfSchemaEventsStatements.Limit)
+		require.Equal(t, 100, resolveExporterArgs(c.args.PrometheusExporter, c.args.ExcludeSchemas).PerfSchemaEventsStatements.Limit)
 		assert.Contains(t, logs.String(), warning)
 		assert.Contains(t, logs.String(), "statements_limit=300")
+		assert.Contains(t, logs.String(), "eventsstatements_limit=100")
+	})
+
+	t.Run("warns when only the embedded exporter's limit is changed", func(t *testing.T) {
+		c, logs := newComponent(t, Arguments{PrometheusExporter: exporterLimit(50)})
+		require.Equal(t, 100, c.statementsLimit())
+		assert.Contains(t, logs.String(), warning)
 		assert.Contains(t, logs.String(), "eventsstatements_limit=50")
+	})
+
+	t.Run("does not warn when the embedded exporter is not used", func(t *testing.T) {
+		_, logs := newComponent(t, Arguments{StatementsLimit: 300, Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{"__address__": "localhost:9104"})}})
+		assert.NotContains(t, logs.String(), warning)
 	})
 
 	t.Run("does not warn when explain_plans is disabled", func(t *testing.T) {
