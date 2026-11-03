@@ -148,9 +148,7 @@ func (c *Component) updateConsumer(args Arguments) error {
 
 	uid := alloyseed.Get().UID
 	for i := range cfgs {
-		// cfgs is a slice of struct values, so we set by index. The headers map is
-		// shared with args, which are kept to detect changes, so copy it first.
-		cfgs[i].Headers = maps.Clone(cfgs[i].Headers)
+		//cfgs is slice of struct values, so we set by index
 		if cfgs[i].Headers == nil {
 			cfgs[i].Headers = map[string]string{}
 		}
