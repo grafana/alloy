@@ -824,5 +824,4 @@ func benchSingleEndpoint(b *testing.B, numLines, numSeries int) {
 	require.EventuallyWithT(b, func(c *assert.CollectT) {
 		require.Equal(c, int64(b.N*numLines), seenLines.Load())
 	}, time.Minute, 10*time.Millisecond, "haven't seen expected number of lines")
-
 }
