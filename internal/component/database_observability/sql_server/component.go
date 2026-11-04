@@ -173,9 +173,9 @@ func defaultArguments() Arguments {
 	return Arguments{
 		QueryTimeout: defaultQueryTimeout,
 
-		ExcludeSchemas:     database_observability.DefaultExcludedSchemas(),
-		ExcludeDatabases:   database_observability.DefaultExcludedDatabases(),
-		ExcludeUsers:       database_observability.DefaultExcludedUsers(),
+		ExcludeSchemas:     defaultExcludedSchemas(),
+		ExcludeDatabases:   defaultExcludedDatabases(),
+		ExcludeUsers:       defaultExcludedUsers(),
 		ExcludeCurrentUser: true,
 
 		SchemaDetailsArguments: SchemaDetailsArguments{
@@ -211,6 +211,37 @@ func defaultArguments() Arguments {
 		HealthCheckArguments: HealthCheckArguments{
 			CollectInterval: 1 * time.Hour,
 		},
+	}
+}
+
+func defaultExcludedSchemas() []string {
+	return []string{
+		"alloydbadmin",
+		"alloydbmetadata",
+		"azure_maintenance",
+		"azure_sys",
+		"cloudsqladmin",
+		"rdsadmin",
+	}
+}
+
+func defaultExcludedDatabases() []string {
+	return []string{
+		"alloydbadmin",
+		"alloydbmetadata",
+		"azure_maintenance",
+		"azure_sys",
+		"cloudsqladmin",
+		"rdsadmin",
+	}
+}
+
+func defaultExcludedUsers() []string {
+	return []string{
+		"azuresu",
+		"cloudsqladmin",
+		"db-o11y", // default recommended user
+		"rdsadmin",
 	}
 }
 
@@ -888,6 +919,9 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 	}
 	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), inst.instanceKey, serverID, inst.cfg.rules)
 
+	excludeSchemas := database_observability.MergeExclusions(defaultExcludedSchemas(), c.args.ExcludeSchemas)
+	excludeDatabases := database_observability.MergeExclusions(defaultExcludedDatabases(), c.args.ExcludeDatabases)
+
 	collectors := enableOrDisableCollectors(c.args)
 	var tableRegistry *collector.TableRegistry
 
@@ -896,8 +930,8 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 			DB:               inst.dbConnection,
 			CollectInterval:  c.args.SchemaDetailsArguments.CollectInterval,
 			QueryTimeout:     c.args.QueryTimeout,
-			ExcludeSchemas:   c.args.ExcludeSchemas,
-			ExcludeDatabases: c.args.ExcludeDatabases,
+			ExcludeSchemas:   excludeSchemas,
+			ExcludeDatabases: excludeDatabases,
 			EntryHandler:     entryHandler,
 			Logger:           c.opts.Logger,
 		})
@@ -993,7 +1027,7 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 			WaitEventMinDuration:  c.args.QuerySamplesArguments.WaitEventMinDuration,
 			MaxSamplesPerQuery:    c.args.QuerySamplesArguments.MaxSamplesPerQuery,
 			MaxSamplesPerCollect:  c.args.QuerySamplesArguments.MaxSamplesPerCollect,
-			ExcludeDatabases:      c.args.ExcludeDatabases,
+			ExcludeDatabases:      excludeDatabases,
 			ExcludeUsers:          effectiveExcludeUsers,
 			ExcludeCurrentUser:    c.args.ExcludeCurrentUser,
 		}
@@ -1091,7 +1125,7 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 		DB:               inst.dbConnection,
 		CollectInterval:  c.args.HealthCheckArguments.CollectInterval,
 		QueryTimeout:     c.args.QueryTimeout,
-		ExcludeDatabases: c.args.ExcludeDatabases,
+		ExcludeDatabases: excludeDatabases,
 		EntryHandler:     entryHandler,
 		Logger:           c.opts.Logger,
 	})
@@ -1118,7 +1152,7 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 // ORIGINAL_LOGIN() pairs with the sys.dm_exec_sessions.original_login_name
 // column that the query_samples filter matches against.
 func resolveExcludeUsers(ctx context.Context, db *sql.DB, queryTimeout time.Duration, configured []string, excludeCurrentUser bool) ([]string, error) {
-	effective := slices.Clone(configured)
+	effective := database_observability.MergeExclusions(defaultExcludedUsers(), configured)
 	if !excludeCurrentUser {
 		return effective, nil
 	}

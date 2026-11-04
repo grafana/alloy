@@ -34,7 +34,7 @@ You can use the following arguments with `database_observability.mysql`:
 | `targets`                                  | `list(map(string))`  | List of external targets to scrape.                                         |         | no       |
 | `disable_collectors`                       | `list(string)`       | A list of collectors to disable from the default set.                       |         | no       |
 | `enable_collectors`                        | `list(string)`       | A list of collectors to enable on top of the default set.                   |         | no       |
-| `exclude_schemas`                          | `list(string)`       | A list of schemas to exclude from monitoring.                               | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
+| `exclude_schemas`                          | `list(string)`       | A list of schemas to exclude from monitoring on top of the default exclusions. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
 | `allow_update_performance_schema_settings` | `boolean`            | Whether to allow updates to `performance_schema` settings in any collector. Enable this in conjunction with other collector-specific settings where required. | `false` | no       |
 
 The following collectors are configurable:
@@ -288,9 +288,16 @@ The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they
 
 The `prometheus_exporter` block configures the embedded `mysqld_exporter` scrapers.
 The `data_source_name` is inherited from the parent block.
-Only the `stat_statements` collector is enabled by default with a `limit` defaulting to `100`.
+By default, the embedded exporter enables only the collectors that Database Observability reads: `perf_schema.eventsstatements`, `global_status`, `global_variables`, and `slave_status`.
+The `limit` of the `perf_schema.eventsstatements` collector defaults to `100`.
+Use `enable_collectors` and `disable_collectors` to adjust this set, or `set_collectors` to replace it.
+The embedded `perf_schema.eventsstatements` collector inherits the top-level `exclude_schemas` list. Setting `prometheus_exporter > perf_schema.eventsstatements > exclude_schemas` is discouraged because it can cause the embedded exporter and the component's collectors to monitor different schemas.
+Configure the top-level `exclude_schemas` argument instead.
 
 Refer to [`prometheus.exporter.mysql`](../../prometheus/prometheus.exporter.mysql/) docs for the full list of supported arguments and sub-blocks.
+
+Unlike in `prometheus.exporter.mysql`, the `text_limit` argument of the `perf_schema.eventsstatements` block defaults to `0`.
+The statement metrics then don't have a `digest_text` label, because the `query_details` collector sends the statement text as logs.
 
 ## Example
 
@@ -298,7 +305,6 @@ Refer to [`prometheus.exporter.mysql`](../../prometheus/prometheus.exporter.mysq
 database_observability.mysql "orders_db" {
   data_source_name = "user:pass@tcp(mysql:3306)/"
   forward_to       = [loki.relabel.orders_db.receiver]
-  targets          = prometheus.exporter.mysql.orders_db.targets
 
   enable_collectors = ["query_samples", "explain_plans"]
 
@@ -307,11 +313,6 @@ database_observability.mysql "orders_db" {
       arn = "your-rds-db-arn"
     }
   }
-}
-
-prometheus.exporter.mysql "orders_db" {
-  data_source_name  = "user:pass@tcp(mysql:3306)/"
-  enable_collectors = ["perf_schema.eventsstatements"]
 }
 
 loki.relabel "orders_db" {

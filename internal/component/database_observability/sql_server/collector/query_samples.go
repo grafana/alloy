@@ -198,7 +198,7 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		waitEventMinDuration:  args.WaitEventMinDuration,
 		maxSamplesPerQuery:    args.MaxSamplesPerQuery,
 		maxSamplesPerCollect:  args.MaxSamplesPerCollect,
-		excludeDatabases:      append(slices.Clone(excludedDatabases), args.ExcludeDatabases...),
+		excludeDatabases:      database_observability.MergeExclusions(excludedDatabases, args.ExcludeDatabases),
 		excludeUsers:          uniqueSorted(args.ExcludeUsers),
 		excludeCurrentUser:    args.ExcludeCurrentUser,
 		logger:                args.Logger.With("collector", QuerySamplesCollector),
