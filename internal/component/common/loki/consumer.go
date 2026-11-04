@@ -3,13 +3,12 @@ package loki
 import (
 	"context"
 	"errors"
-	"slices"
-	"sync"
 )
 
 // ErrConsumerStopped is returned by a Consumer that has stopped, usually because
 // a config reload removed it. Components pass it up to their caller so that the
-// source can retry the batch, see [Consumer].
+// source can retry the batch, see [Consumer]. A component should wrap it with its
+// component ID.
 var ErrConsumerStopped = errors.New("consumer stopped")
 
 // Consumer consumes batches of log entries.
@@ -38,34 +37,6 @@ type Consumer interface {
 	// The entries may already have reached some consumers, so sending the batch
 	// again can produce duplicates.
 	Consume(ctx context.Context, batch Batch) error
-}
-
-var _ Consumer = (*CollectingConsumer)(nil)
-
-func NewCollectingConsumer() *CollectingConsumer {
-	return &CollectingConsumer{}
-}
-
-// CollectingConsumer is a Consumer that will collect all received batches
-// so it can be inspected later. Used in tests.
-type CollectingConsumer struct {
-	mut     sync.Mutex
-	batches []Batch
-}
-
-func (c *CollectingConsumer) Consume(_ context.Context, batch Batch) error {
-	c.mut.Lock()
-	defer c.mut.Unlock()
-
-	c.batches = append(c.batches, batch.Clone())
-	return nil
-}
-
-func (c *CollectingConsumer) Batches() []Batch {
-	c.mut.Lock()
-	defer c.mut.Unlock()
-
-	return slices.Clone(c.batches)
 }
 
 var _ Consumer = (*NopConsumer)(nil)

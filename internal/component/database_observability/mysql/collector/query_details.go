@@ -39,6 +39,7 @@ type QueryDetailsArguments struct {
 	CollectInterval time.Duration
 	StatementsLimit int
 	ExcludeSchemas  []string
+	IncludeSchemas  []string
 	EntryHandler    loki.EntryHandler
 	TableRegistry   *TableRegistry
 
@@ -50,6 +51,7 @@ type QueryDetails struct {
 	collectInterval time.Duration
 	statementsLimit int
 	excludeSchemas  []string
+	includeSchemas  []string
 	entryHandler    loki.EntryHandler
 	sqlParser       parser.Parser
 	normalizer      *sqllexer.Normalizer
@@ -68,6 +70,7 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 		collectInterval: args.CollectInterval,
 		statementsLimit: args.StatementsLimit,
 		excludeSchemas:  args.ExcludeSchemas,
+		includeSchemas:  args.IncludeSchemas,
 		entryHandler:    args.EntryHandler,
 		sqlParser:       parser.NewTiDBSqlParser(),
 		normalizer:      sqllexer.NewNormalizer(sqllexer.WithCollectTables(true)),
@@ -126,7 +129,8 @@ func (c *QueryDetails) Stop() {
 }
 
 func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
-	query := fmt.Sprintf(selectQueryTablesSamples, buildExcludedSchemasClause(c.excludeSchemas), c.statementsLimit)
+	// nosemgrep: go.lang.security.audit.database.string-formatted-query.string-formatted-query
+	query := fmt.Sprintf(selectQueryTablesSamples, buildSchemaFilterClause(c.excludeSchemas, c.includeSchemas, "schema_name"), c.statementsLimit) // #nosec G201 -- filter values are quote-escaped before interpolation
 	rs, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to fetch summary table samples: %w", err)

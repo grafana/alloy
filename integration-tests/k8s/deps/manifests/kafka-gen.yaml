@@ -1,0 +1,41 @@
+# Keeps a Kafka consumer group busy, so prometheus.exporter.kafka has consumer
+# group offsets and lag to report. It uses the broker's own image and CLI
+# tools: one container produces a record a second, the other consumes them in
+# a consumer group that commits its offsets.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-gen
+  labels:
+    app: kafka-gen
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-gen
+  template:
+    metadata:
+      labels:
+        app: kafka-gen
+    spec:
+      containers:
+        - name: producer
+          image: apache/kafka:4.1.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              while true; do echo hello; sleep 1; done |
+                /opt/kafka/bin/kafka-console-producer.sh --bootstrap-server kafka:9092 --topic __KAFKA_GEN_TOPIC__
+        - name: consumer
+          image: apache/kafka:4.1.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - /opt/kafka/bin/kafka-console-consumer.sh
+            - --bootstrap-server
+            - kafka:9092
+            - --topic
+            - __KAFKA_GEN_TOPIC__
+            - --group
+            - __KAFKA_GEN_GROUP__
