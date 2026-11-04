@@ -420,7 +420,8 @@ func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 	usersClause := buildUserFilterClause(c.excludeUsers, c.includeUsers, "pg_get_userbyid(s.userid)")
 	version17Plus := semver.MustParseRange(">=17.0.0")(c.dbVersion)
 	if version17Plus {
-		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", databasesClause, usersClause)
+		// nosemgrep: go.lang.security.audit.database.string-formatted-query.string-formatted-query
+		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", databasesClause, usersClause) // #nosec G201 -- filter values are quote-escaped before interpolation
 	} else {
 		statReset := c.dbConnection.QueryRowContext(ctx, "SELECT stats_reset FROM pg_stat_statements_info")
 		if err := statReset.Err(); err != nil {
@@ -429,7 +430,8 @@ func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 		if err := statReset.Scan(&resetTS); err != nil {
 			return fmt.Errorf("failed to scan stats reset time for explain plans: %w", err)
 		}
-		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "NOW() AT TIME ZONE 'UTC' AS stats_since", databasesClause, usersClause)
+		// nosemgrep: go.lang.security.audit.database.string-formatted-query.string-formatted-query
+		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "NOW() AT TIME ZONE 'UTC' AS stats_since", databasesClause, usersClause) // #nosec G201 -- filter values are quote-escaped before interpolation
 	}
 
 	rs, err := c.dbConnection.QueryContext(ctx, selectStatement)

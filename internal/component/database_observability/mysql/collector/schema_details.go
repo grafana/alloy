@@ -233,7 +233,8 @@ func (c *SchemaDetails) Stop() {
 }
 
 func (c *SchemaDetails) extractSchema(ctx context.Context) error {
-	query := fmt.Sprintf(selectTablesTemplate, buildSchemaFilterClause(c.excludeSchemas, c.includeSchemas, "TABLE_SCHEMA"))
+	// nosemgrep: go.lang.security.audit.database.string-formatted-query.string-formatted-query
+	query := fmt.Sprintf(selectTablesTemplate, buildSchemaFilterClause(c.excludeSchemas, c.includeSchemas, "TABLE_SCHEMA")) // #nosec G201 -- filter values are quote-escaped before interpolation
 	rs, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to query tables: %w", err)

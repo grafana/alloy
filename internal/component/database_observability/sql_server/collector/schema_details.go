@@ -433,7 +433,8 @@ func (c *SchemaDetails) listDatabases(ctx context.Context) ([]databaseName, erro
 // instance. It's shared by SchemaDetails and HealthCheck so both iterate
 // databases the same way.
 func listDatabases(ctx context.Context, db *sql.DB, queryTimeout time.Duration, excludeDatabases, includeDatabases []string) ([]databaseName, error) {
-	query := fmt.Sprintf(selectDatabasesTemplate, buildDatabaseFilterClause(excludeDatabases, includeDatabases, "name"))
+	// nosemgrep: go.lang.security.audit.database.string-formatted-query.string-formatted-query
+	query := fmt.Sprintf(selectDatabasesTemplate, buildDatabaseFilterClause(excludeDatabases, includeDatabases, "name")) // #nosec G201 -- filter values are quote-escaped before interpolation
 	var databases []databaseName
 	err := withQueryTimeout(ctx, queryTimeout, func(queryCtx context.Context) error {
 		rs, err := db.QueryContext(queryCtx, query)

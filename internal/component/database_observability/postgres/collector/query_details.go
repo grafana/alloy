@@ -146,7 +146,8 @@ func (c *QueryDetails) Stop() {
 func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 	databasesClause := buildDatabaseFilterClause(c.excludeDatabases, c.includeDatabases, "pg_database.datname")
 	usersClause := buildUserFilterClause(c.excludeUsers, c.includeUsers, "pg_get_userbyid(pg_stat_statements.userid)")
-	query := fmt.Sprintf(selectQueriesFromActivity, databasesClause, usersClause, c.statementsLimit)
+	// nosemgrep: go.lang.security.audit.database.string-formatted-query.string-formatted-query
+	query := fmt.Sprintf(selectQueriesFromActivity, databasesClause, usersClause, c.statementsLimit) // #nosec G201 -- filter values are quote-escaped before interpolation
 	rs, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to fetch statements from pg_stat_statements view: %w", err)

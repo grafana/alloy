@@ -305,7 +305,8 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 
 	databasesClause := buildDatabaseFilterClause(c.excludeDatabases, c.includeDatabases, "d.datname")
 	usersClause := buildUserFilterClause(c.excludeUsers, c.includeUsers, "s.usename")
-	query := fmt.Sprintf(selectPgStatActivity, databasesClause, excludeCurrentUserClauseField, usersClause)
+	// nosemgrep: go.lang.security.audit.database.string-formatted-query.string-formatted-query
+	query := fmt.Sprintf(selectPgStatActivity, databasesClause, excludeCurrentUserClauseField, usersClause) // #nosec G201 -- filter values are quote-escaped before interpolation
 	rows, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to query pg_stat_activity: %w", err)

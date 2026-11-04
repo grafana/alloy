@@ -129,7 +129,8 @@ func (c *QueryDetails) Stop() {
 }
 
 func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
-	query := fmt.Sprintf(selectQueryTablesSamples, buildSchemaFilterClause(c.excludeSchemas, c.includeSchemas, "schema_name"), c.statementsLimit)
+	// nosemgrep: go.lang.security.audit.database.string-formatted-query.string-formatted-query
+	query := fmt.Sprintf(selectQueryTablesSamples, buildSchemaFilterClause(c.excludeSchemas, c.includeSchemas, "schema_name"), c.statementsLimit) // #nosec G201 -- filter values are quote-escaped before interpolation
 	rs, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to fetch summary table samples: %w", err)
