@@ -1,9 +1,5 @@
 package positions
 
-// This code is copied from Promtail. The positions package allows logging
-// components to keep track of read file offsets on disk and continue from the
-// same place in case of a restart.
-
 import (
 	"fmt"
 	"log/slog"
@@ -34,7 +30,6 @@ type Config struct {
 	Path string
 }
 
-// Positions tracks how far through each file we've read.
 type positions struct {
 	logger    *slog.Logger
 	cfg       Config
