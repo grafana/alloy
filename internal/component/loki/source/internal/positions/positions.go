@@ -25,24 +25,20 @@ func CursorKey(key string) string {
 	return cursorKeyPrefix + key
 }
 
+// Positions stores read positions keyed by path and labels.
 type Positions interface {
-	// GetString returns how far we've through a file as a string.
-	// JournalTarget writes a journal cursor to the positions file, while
-	// FileTarget writes an integer offset. Use Get to read the integer
-	// offset.
+	// GetString returns the stored position, or "" if there is none.
 	GetString(path, labels string) string
-	// Get returns how far we've read through a file. Returns an error
-	// if the value stored for the file is not an integer.
+	// Get returns the stored position as an integer, or 0 if there is none.
+	// It returns an error if the stored value is not an integer.
 	Get(path, labels string) (int64, error)
-	// PutString records (asynchronously) how far we've read through a file.
-	// Unlike Put, it records a string offset and is only useful for
-	// JournalTargets which doesn't have integer offsets.
+	// PutString stores a position that isn't an integer, such as a cursor.
 	PutString(path, labels string, pos string)
-	// Put records (asynchronously) how far we've read through a file.
+	// Put stores an integer position, such as a file offset.
 	Put(path, labels string, pos int64)
-	// Remove removes the position tracking for a filepath
+	// Remove deletes the stored position.
 	Remove(path, labels string)
-	// Stop the Position tracker.
+	// Stop stops syncing and persists positions one last time.
 	Stop()
 }
 
@@ -58,19 +54,14 @@ type File struct {
 	done      chan struct{}
 }
 
-// Entry describes a positions file entry consisting of an absolute file path and
-// the matching label set.
-// An entry expects the string representation of a LabelSet or a Labels slice
-// so that it can be utilized as a YAML key. The caller should make sure that
-// the order and structure of the passed string representation is reproducible,
-// and maintains the same format for both reading and writing from/to the
-// positions file.
+// Entry is the key for a stored position: a file path or cursor key, and the
+// string form of its labels. Callers must format labels the same way on
+// every read and write.
 type Entry struct {
 	Path   string `yaml:"path"`
 	Labels string `yaml:"labels"`
 }
 
-// Config describes where to get position information from.
 type Config struct {
 	Path string
 }
