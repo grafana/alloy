@@ -173,9 +173,11 @@ func (t *tailer) tail(ctx context.Context, pos int64) {
 		time.Sleep(t.decompression.InitialDelay)
 	}
 
+	// statsInterval is how often the file metrics are updated while the tailer is delivering entries.
+	const statsInterval = 10 * time.Second
+
 	var (
-		positionInterval    = t.positions.SyncPeriod()
-		lastUpdatedPosition = time.Time{}
+		lastUpdatedStats = time.Time{}
 
 		// readOffset is the offset after the last line added to the batcher,
 		// deliveredOffset after the last flushed one. Only deliveredOffset is
@@ -186,8 +188,9 @@ func (t *tailer) tail(ctx context.Context, pos int64) {
 
 	defer func() {
 		t.running.Store(false)
-		size, _ := t.file.Size()
-		t.updateStats(deliveredOffset, size)
+
+		t.positions.Put(t.key.Path, t.key.Labels, deliveredOffset)
+		t.updateStats(t.file, deliveredOffset)
 
 		if err := t.file.Close(); err != nil {
 			if util.IsEphemeralOrFileClosed(err) {
@@ -211,8 +214,8 @@ func (t *tailer) tail(ctx context.Context, pos int64) {
 
 	// flush delivers added entries and then advances deliveredOffset. Entries that
 	// fail to be delivered are dropped, unless the tailer is stopping so they are
-	// read again on the next run.
-	flush := func() {
+	// read again on the next run. The metrics are always updated when eof is true.
+	flush := func(eof bool) {
 		if err := t.batcher.Flush(ctx); err != nil {
 			if ctx.Err() != nil {
 				return
@@ -221,10 +224,13 @@ func (t *tailer) tail(ctx context.Context, pos int64) {
 		}
 
 		deliveredOffset = readOffset
-		if time.Since(lastUpdatedPosition) >= positionInterval {
-			lastUpdatedPosition = time.Now()
-			size, _ := t.file.Size()
-			t.updateStats(deliveredOffset, size)
+		t.positions.Put(t.key.Path, t.key.Labels, deliveredOffset)
+
+		// The metrics need a stat call, so outside of EOF they are only updated once per interval.
+		// FIXME(kalleep): We can remove the inteval check once we have fully migrated to V2.
+		if eof || time.Since(lastUpdatedStats) >= statsInterval {
+			lastUpdatedStats = time.Now()
+			t.updateStats(t.file, deliveredOffset)
 		}
 	}
 
@@ -242,7 +248,7 @@ func (t *tailer) tail(ctx context.Context, pos int64) {
 		switch {
 		case errors.Is(err, io.EOF):
 			// Nothing more to read right now so we flush what we have.
-			flush()
+			flush(true)
 			if t.decompression.Enabled {
 				return
 			}
@@ -255,7 +261,7 @@ func (t *tailer) tail(ctx context.Context, pos int64) {
 			continue
 		case err != nil:
 			// Lines read before the error are not guaranteed to be read again, so deliver them.
-			flush()
+			flush(false)
 			t.logger.Error("failed to tail file", "err", err)
 			return
 		}
@@ -267,16 +273,15 @@ func (t *tailer) tail(ctx context.Context, pos int64) {
 			Line:      line.Text,
 		})
 		if full {
-			flush()
+			flush(false)
 		}
 	}
 }
 
-func (t *tailer) updateStats(offset int64, size int64) {
-	// Update metrics and the positions file together so the reported offset stays consistent.
+func (t *tailer) updateStats(f *tail.File, offset int64) {
+	size, _ := f.Size()
 	t.metrics.totalBytes.WithLabelValues(t.key.Path).Set(float64(size))
 	t.metrics.readBytes.WithLabelValues(t.key.Path).Set(float64(offset))
-	t.positions.Put(t.key.Path, t.key.Labels, offset)
 }
 
 func (t *tailer) Key() positions.Entry {
