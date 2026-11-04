@@ -1,5 +1,4 @@
 otelcol.receiver.splunkhec "default" {
-	idle_timeout        = "0s"
 	write_timeout       = "20s"
 	read_header_timeout = "20s"
 	raw_path            = "/raw"

@@ -27,10 +27,7 @@ func (o *OutputConfig) Validate() error {
 	return nil
 }
 
-var (
-	_ Stage          = (*outputStage)(nil)
-	_ entryProcessor = (*outputStage)(nil)
-)
+var _ entryProcessor = (*outputStage)(nil)
 
 // newOutputStage creates a new outputStage
 func newOutputStage(config OutputConfig, opts stageOpts) *outputStage {
@@ -48,22 +45,12 @@ type outputStage struct {
 	logger *slog.Logger
 }
 
-// Run implements Stage.
-func (o *outputStage) Run(in chan Entry) chan Entry {
-	return RunWith(in, func(e Entry) Entry {
-		return o.processEntry(e)
-	})
-}
-
 func (o *outputStage) process(ctx context.Context, entries []Entry) error {
 	for i := range entries {
 		entries[i] = o.processEntry(entries[i])
 	}
 	return o.next(ctx, entries)
 }
-
-// Cleanup implements Stage.
-func (o *outputStage) Cleanup() {}
 
 func (o *outputStage) processEntry(e Entry) Entry {
 	if v, ok := e.Extracted[o.config.Source]; ok {

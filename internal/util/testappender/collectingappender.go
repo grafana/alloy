@@ -10,6 +10,8 @@ import (
 	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/storage"
 	"golang.org/x/exp/maps"
+
+	"github.com/grafana/alloy/internal/component/prometheus/appenders/adapter"
 )
 
 type MetricSample struct {
@@ -182,4 +184,12 @@ func (c ConstantAppendable) Appender(_ context.Context) storage.Appender {
 	return c.Inner
 }
 
-var _ storage.Appendable = &ConstantAppendable{}
+// AppenderV2 returns c.Inner adapted to the AppenderV2 interface.
+func (c ConstantAppendable) AppenderV2(_ context.Context) storage.AppenderV2 {
+	return adapter.AppenderV1AsV2(c.Inner)
+}
+
+var (
+	_ storage.Appendable   = &ConstantAppendable{}
+	_ storage.AppendableV2 = &ConstantAppendable{}
+)

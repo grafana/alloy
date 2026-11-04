@@ -21,6 +21,7 @@ func TestDeprecatedFields(t *testing.T) {
 		opts: component.Options{
 			Logger: logger,
 		},
+		//nolint:staticcheck // sets the deprecated fields to assert the warnings
 		args: Arguments{
 			Port:           "8080",
 			ExecutableName: "test-app",

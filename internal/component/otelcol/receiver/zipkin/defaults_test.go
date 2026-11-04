@@ -28,8 +28,8 @@ func TestDefaultArguments(t *testing.T) {
 			CompressionAlgorithms: []string{"", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"},
 			ReadHeaderTimeout:     time.Minute,
 			WriteTimeout:          30 * time.Second,
-			IdleTimeout:           time.Minute,
-			KeepAlivesEnabled:     true,
+			IdleTimeout:           time.Minute, //nolint:staticcheck // migrate to confighttp Keepalive
+			KeepAlivesEnabled:     true,        //nolint:staticcheck // migrate to confighttp Keepalive
 		},
 		ParseStringTags: false,
 	}, cfg)

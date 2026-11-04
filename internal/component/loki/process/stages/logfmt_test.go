@@ -4,8 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLogfmtStage(t *testing.T) {
@@ -243,48 +244,104 @@ func TestLogfmtStage(t *testing.T) {
 func TestValidateLogfmtConfig(t *testing.T) {
 	t.Parallel()
 
-	tests := map[string]struct {
-		config           LogfmtConfig
-		wantMappingCount int
-		err              error
+	tests := []struct {
+		name      string
+		config    string
+		expectErr bool
 	}{
-		"no mapping": {
-			LogfmtConfig{},
-			0,
-			errMappingOrRegexRequired,
+		{
+			name:   "valid mapping without source",
+			config: `mapping = { "foo1" = "foo", "foo2" = "" }`,
 		},
-		"valid without source": {
-			LogfmtConfig{
-				Mapping: map[string]string{
-					"foo1": "foo",
-					"foo2": "",
-				},
-			},
-			2,
-			nil,
+		{
+			name: "valid mapping with source",
+			config: `
+			mapping = { "foo1" = "foo", "foo2" = "" }
+			source  = "log"
+			`,
 		},
-		"valid with source": {
-			LogfmtConfig{
-				Mapping: map[string]string{
-					"foo1": "foo",
-					"foo2": "",
-				},
-				Source: "log",
-			},
-			2,
-			nil,
+		{
+			name:   "valid regex",
+			config: `regex = "pod_.*"`,
+		},
+		{
+			name: "valid mapping and regex",
+			config: `
+			mapping = { "foo1" = "foo" }
+			regex   = "pod_.*"
+			`,
+		},
+		{
+			name:      "invalid regex returns err",
+			config:    `regex = "[unclosed"`,
+			expectErr: true,
+		},
+		{
+			name:      "empty mapping returns err",
+			config:    `mapping = {}`,
+			expectErr: true,
+		},
+		{
+			name:      "source only returns err",
+			config:    `source = "log"`,
+			expectErr: true,
+		},
+		{
+			name:      "empty config returns err",
+			config:    ``,
+			expectErr: true,
 		},
 	}
-	for tName, tt := range tests {
-		tt := tt
-		t.Run(tName, func(t *testing.T) {
-			got, _, err := validateLogfmtConfig(&tt.config)
-			if tt.err != nil {
-				assert.EqualError(t, err, tt.err.Error())
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var cfg LogfmtConfig
+			err := syntax.Unmarshal([]byte(tt.config), &cfg)
+
+			if tt.expectErr {
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
-			assert.Equal(t, tt.wantMappingCount, len(got))
+		})
+	}
+}
+
+func TestReverseMapping(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		mapping  map[string]string
+		expected map[string]string
+	}{
+		{
+			name:     "nil mapping",
+			mapping:  nil,
+			expected: map[string]string{},
+		},
+		{
+			name:     "value is used as the logfmt key",
+			mapping:  map[string]string{"out": "message"},
+			expected: map[string]string{"message": "out"},
+		},
+		{
+			name:     "empty value falls back to the extracted key",
+			mapping:  map[string]string{"app": ""},
+			expected: map[string]string{"app": "app"},
+		},
+		{
+			name:     "mixed values",
+			mapping:  map[string]string{"out": "message", "app": ""},
+			expected: map[string]string{"message": "out", "app": "app"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, tt.expected, reverseMapping(tt.mapping))
 		})
 	}
 }

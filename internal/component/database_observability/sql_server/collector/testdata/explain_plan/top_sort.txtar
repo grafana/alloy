@@ -1,0 +1,27 @@
+SQL Server showplan XML with a TopN Sort operator, which SQL Server
+emits as a <TopSort> wrapper (not <Sort>) whose OrderBy has the same shape.
+
+-- top_sort.xml --
+<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan">
+  <BatchSequence>
+    <Batch>
+      <Statements>
+        <StmtSimple>
+          <QueryPlan>
+            <RelOp PhysicalOp="Sort" LogicalOp="TopN Sort" EstimateRows="10" EstimatedTotalSubtreeCost="0.15">
+              <OutputList />
+              <TopSort Distinct="false" Rows="10">
+                <OrderBy>
+                  <OrderByColumn Ascending="true">
+                    <ColumnReference Database="[MyDb]" Schema="[dbo]" Table="[t1]" Column="c1" />
+                  </OrderByColumn>
+                </OrderBy>
+                <RelOp PhysicalOp="Table Scan" LogicalOp="Table Scan" EstimateRows="2000" EstimatedTotalSubtreeCost="0.1"><OutputList /><TableScan><Object Database="[MyDb]" Schema="[dbo]" Table="[t1]" /></TableScan></RelOp>
+              </TopSort>
+            </RelOp>
+          </QueryPlan>
+        </StmtSimple>
+      </Statements>
+    </Batch>
+  </BatchSequence>
+</ShowPlanXML>

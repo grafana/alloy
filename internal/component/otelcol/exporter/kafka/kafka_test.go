@@ -71,11 +71,12 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				ProtocolVersion: "2.0.0",
 				ClientID:        "otel-collector",
 				ConnIdleTimeout: 9 * time.Minute,
+				DialTimeout:     10 * time.Second,
 				Metadata: configkafka.MetadataConfig{
 					Full:            true,
 					RefreshInterval: 10 * time.Minute,
 					Retry: configkafka.MetadataRetryConfig{
-						Max:     3,
+						Max:     20,
 						Backoff: 250 * time.Millisecond,
 					},
 				},
@@ -343,6 +344,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					ProtocolVersion: "2.0.0",
 					ClientID:        "my-client",
 					ConnIdleTimeout: 9 * time.Minute,
+					DialTimeout:     10 * time.Second,
 					Metadata: configkafka.MetadataConfig{
 						Full:            false,
 						RefreshInterval: 14 * time.Second,
@@ -414,7 +416,6 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
-				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 		{
@@ -427,7 +428,6 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: false,
-				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 		{
@@ -440,7 +440,6 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
-				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 	}

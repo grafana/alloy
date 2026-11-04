@@ -51,10 +51,7 @@ func validatePatternConfig(c PatternConfig) error {
 	return nil
 }
 
-var (
-	_ Stage          = (*patternStage)(nil)
-	_ entryProcessor = (*patternStage)(nil)
-)
+var _ entryProcessor = (*patternStage)(nil)
 
 // newPatternStage creates a newPatternStage
 func newPatternStage(config PatternConfig, opts stageOpts) (*patternStage, error) {
@@ -85,22 +82,12 @@ type patternStage struct {
 	matcherPool sync.Pool
 }
 
-// Run implements Stage.
-func (r *patternStage) Run(in chan Entry) chan Entry {
-	return RunWith(in, func(e Entry) Entry {
-		return r.processEntry(e)
-	})
-}
-
 func (r *patternStage) process(ctx context.Context, entries []Entry) error {
 	for i := range entries {
 		entries[i] = r.processEntry(entries[i])
 	}
 	return r.next(ctx, entries)
 }
-
-// Cleanup implements Stage.
-func (r *patternStage) Cleanup() {}
 
 func (r *patternStage) processEntry(e Entry) Entry {
 	// If a source key is provided, the pattern stage should process it

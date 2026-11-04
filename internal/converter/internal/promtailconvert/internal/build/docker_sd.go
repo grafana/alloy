@@ -59,7 +59,6 @@ func toLokiSourceDocker(sd *moby.DockerSDConfig, forwardTo []loki.LogsReceiver) 
 		Labels:           nil,
 		RelabelRules:     alloy_relabel.Rules{},
 		HTTPClientConfig: common.ToHttpClientConfig(&sd.HTTPClientConfig),
-		RefreshInterval:  time.Duration(sd.RefreshInterval),
 	}
 }
 

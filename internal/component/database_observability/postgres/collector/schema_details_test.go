@@ -1877,6 +1877,25 @@ func Test_TableRegistry_IsValid(t *testing.T) {
 		assert.False(t, valid)
 		assert.Equal(t, "myschema.mytable", resolvedTable)
 	})
+
+	t.Run("unqualified lookup prefers exact case match over lowercase match in another schema", func(t *testing.T) {
+		for i := 0; i < 50; i++ {
+			tr := NewTableRegistry()
+			tr.SetTablesForDatabase("mydb", []*tableInfo{
+				{database: "mydb", schema: "schema_a", tableName: "users"},
+				{database: "mydb", schema: "schema_b", tableName: "Users"},
+				{database: "mydb", schema: "schema_c", tableName: "users"},
+			})
+
+			resolvedTable, valid := tr.IsValid("mydb", "Users")
+			assert.True(t, valid)
+			assert.Equal(t, "Users", resolvedTable)
+
+			resolvedTable, valid = tr.IsValid("mydb", "USERS")
+			assert.True(t, valid)
+			assert.Equal(t, "users", resolvedTable)
+		}
+	})
 }
 
 func Test_formatPostgresIdentifier(t *testing.T) {
@@ -2155,6 +2174,121 @@ func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
 				},
 			},
 		}, actual)
+	})
+
+	t.Run("extractNames prunes undiscovered databases from TableRegistry", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
+
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
+			DB:              db,
+			DSN:             "postgres://user:pass@localhost:5432/testdb",
+			CollectInterval: time.Hour,
+			EntryHandler:    lokiClient,
+			Logger:          util.TestAlloyLogger(t).Slog(),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				return db, nil
+			},
+		})
+		require.NoError(t, err)
+
+		collector.tableRegistry.SetTablesForDatabase("gone_db", []*tableInfo{
+			{database: "gone_db", schema: "public", tableName: "old_table"},
+		})
+		collector.tableRegistry.SetTablesForDatabase("testdb", []*tableInfo{
+			{database: "testdb", schema: "public", tableName: "users"},
+		})
+		collector.lastEmittedAt[database("testdb")] = map[string]time.Time{
+			schemaTableKey("public", "users"): collector.now(),
+		}
+
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"datname"}).AddRow("testdb"))
+		mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"schema_name"}).AddRow("public"))
+		mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"table_name"}).AddRow("users"))
+
+		require.NoError(t, collector.extractNames(context.Background()))
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		_, valid := collector.tableRegistry.IsValid("gone_db", "old_table")
+		assert.False(t, valid)
+		assert.Nil(t, collector.tableRegistry.SchemasForDatabase("gone_db"))
+
+		resolved, valid := collector.tableRegistry.IsValid("testdb", "users")
+		assert.True(t, valid)
+		assert.Equal(t, "users", resolved)
+	})
+
+	t.Run("extractSchemas clears TableRegistry when database has no schemas", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
+
+		collector := &SchemaDetails{
+			logger:        logging.NewSlogNop(),
+			now:           time.Now,
+			lastEmittedAt: map[database]map[string]time.Time{},
+			tableRegistry: NewTableRegistry(),
+			entryHandler:  lokiClient,
+		}
+		collector.tableRegistry.SetTablesForDatabase("testdb", []*tableInfo{
+			{database: "testdb", schema: "public", tableName: "previous_table"},
+		})
+
+		mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"schema_name"}))
+
+		require.NoError(t, collector.extractSchemas(context.Background(), "testdb", db))
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		_, valid := collector.tableRegistry.IsValid("testdb", "previous_table")
+		assert.False(t, valid)
+		assert.Nil(t, collector.tableRegistry.SchemasForDatabase("testdb"))
+	})
+
+	t.Run("extractSchemas preserves TableRegistry and throttle when pg_namespace row scan fails", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
+
+		fakeNow := time.Date(2024, 5, 1, 12, 0, 0, 0, time.UTC)
+		collector := &SchemaDetails{
+			logger:        logging.NewSlogNop(),
+			now:           func() time.Time { return fakeNow },
+			lastEmittedAt: map[database]map[string]time.Time{},
+			tableRegistry: NewTableRegistry(),
+			entryHandler:  lokiClient,
+		}
+		collector.lastEmittedAt[database("testdb")] = map[string]time.Time{
+			schemaTableKey("public", "previous_table"): fakeNow,
+		}
+		collector.tableRegistry.SetTablesForDatabase("testdb", []*tableInfo{
+			{database: "testdb", schema: "public", tableName: "previous_table"},
+		})
+
+		// Return 2 columns instead of 1 so schemaRs.Scan(&schema) fails without setting schemaRs.Err().
+		mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"schema_name", "extra"}).AddRow("public", "unexpected"))
+
+		require.NoError(t, collector.extractSchemas(context.Background(), "testdb", db))
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		require.Contains(t, collector.lastEmittedAt[database("testdb")], schemaTableKey("public", "previous_table"))
+		resolved, valid := collector.tableRegistry.IsValid("testdb", "previous_table")
+		assert.True(t, valid)
+		assert.Equal(t, "previous_table", resolved)
 	})
 }
 

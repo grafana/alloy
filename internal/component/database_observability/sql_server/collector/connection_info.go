@@ -2,7 +2,6 @@ package collector
 
 import (
 	"context"
-	"database/sql"
 	"strings"
 
 	"github.com/microsoft/go-mssqldb/msdsn"
@@ -24,7 +23,7 @@ type ConnectionInfoArguments struct {
 	Registry      *prometheus.Registry
 	EngineVersion string
 	CloudProvider *database_observability.CloudProvider
-	DB            *sql.DB
+	Pinger        database_observability.Pinger
 }
 
 type ConnectionInfo struct {
@@ -33,7 +32,7 @@ type ConnectionInfo struct {
 	EngineVersion string
 	InfoMetric    *prometheus.GaugeVec
 	CloudProvider *database_observability.CloudProvider
-	dbConnection  *sql.DB
+	pinger        database_observability.Pinger
 
 	running *atomic.Bool
 	stop    func()
@@ -54,7 +53,7 @@ func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
 		EngineVersion: args.EngineVersion,
 		InfoMetric:    infoMetric,
 		CloudProvider: args.CloudProvider,
-		dbConnection:  args.DB,
+		pinger:        args.Pinger,
 		running:       &atomic.Bool{},
 	}, nil
 }
@@ -122,10 +121,10 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 	labelValues := []string{providerName, providerRegion, providerAccount, dbInstanceIdentifier, engine, c.EngineVersion}
 	c.InfoMetric.WithLabelValues(labelValues...).Set(1)
 
-	if c.dbConnection != nil {
+	if c.pinger != nil {
 		c.stop = database_observability.RunConnectionInfoMonitor(
 			ctx,
-			c.dbConnection,
+			c.pinger,
 			c.Registry,
 			c.InfoMetric,
 			labelValues,

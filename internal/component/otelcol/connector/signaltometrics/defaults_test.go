@@ -16,5 +16,5 @@ func TestDefaultArguments(t *testing.T) {
 	require.NoError(t, err)
 	// Canary for the upstream defaults our docs promise. If this fails, a contrib bump
 	// changed one: update the docs, then these values.
-	require.Equal(t, &config.Config{ErrorMode: "propagate"}, cfg)
+	require.Equal(t, &config.Config{ErrorMode: "ignore"}, cfg)
 }

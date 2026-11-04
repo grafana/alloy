@@ -26,7 +26,7 @@ permissions:
 jobs:
   publish_linux_container:
     name: Publish Alloy Linux container
-    container: grafana/alloy-build-image:v0.1.35@sha256:9fa2a341b53503ce42cf9900c401d689a68ea67cdec6a20f53d72e3665fb8dc6
+    container: grafana/alloy-build-image:v0.1.37@sha256:716ebb596222e7d046384e7bcc908ad8db8e1eaf5efb89bef3183d8c9fdf6c54
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     permissions:
@@ -41,6 +41,13 @@ jobs:
       uses: grafana/shared-workflows/actions/login-to-gar@1f541877ceb22c7be7667d8a8df04984aeac9f9d # login-to-gar/v1.0.3
       with:
         registry: us-docker.pkg.dev
+
+    - name: Login to DockerHub
+      # Authenticated pulls avoid the anonymous rate limit. Fork PRs have no OIDC token.
+      # The build continues without a login if this step fails or is skipped.
+      if: github.event.pull_request.head.repo.fork != true
+      continue-on-error: true
+      uses: grafana/shared-workflows/actions/dockerhub-login@3ffeda28e54d6c8e02c3998594fafaf0a359328d # dockerhub-login/v2.0.0
 
     - name: Checkout code
       uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3

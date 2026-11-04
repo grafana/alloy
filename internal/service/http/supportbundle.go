@@ -161,7 +161,7 @@ func ExportSupportBundle(
 		sources:              sources,
 		remoteCfg:            remoteCfg,
 		runtimeFlags:         []byte(strings.Join(runtimeFlags, "\n")),
-		environmentVariables: []byte(strings.Join(retrieveEnvironmentVariables(), "\n")),
+		environmentVariables: []byte(strings.Join(retrieveEnvironmentVariables(os.Getenv), "\n")),
 		heapBuf:              &heapBuf,
 		goroutineBuf:         &goroutineBuf,
 		blockBuf:             &blockBuf,
@@ -186,7 +186,7 @@ func retrieveAPIEndpoint(httpClient http.Client, srvAddress, endpoint string) ([
 	return res, nil
 }
 
-func retrieveEnvironmentVariables() []string {
+func retrieveEnvironmentVariables(getenv func(string) string) []string {
 	relevantVariables := []string{
 		"AUTOMEMLIMIT",
 		"GODEBUG",
@@ -204,9 +204,20 @@ func retrieveEnvironmentVariables() []string {
 		"PPROF_BLOCK_PROFILING_RATE",
 		"PPROF_MUTEX_PROFILING_PERCENT",
 	}
+	// Proxy URLs may contain credentials, so only report whether they are set.
+	redactedVariables := map[string]struct{}{
+		"HTTP_PROXY":  {},
+		"http_proxy":  {},
+		"HTTPS_PROXY": {},
+		"https_proxy": {},
+	}
 	values := []string{}
 	for _, v := range relevantVariables {
-		values = append(values, fmt.Sprintf("%s=%s", v, os.Getenv(v)))
+		value := getenv(v)
+		if _, ok := redactedVariables[v]; ok && value != "" {
+			value = "<redacted>"
+		}
+		values = append(values, fmt.Sprintf("%s=%s", v, value))
 	}
 
 	return values

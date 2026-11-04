@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -12,7 +11,6 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,9 +18,9 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/lokitest"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
-	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -121,35 +119,24 @@ func Test_UnmarshalConfig(t *testing.T) {
 }
 
 func TestComponent(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	runTests(t, func(t *testing.T, match FileMatch) {
-		ctx, cancel := context.WithCancel(componenttest.TestContext(t))
-		defer cancel()
-
+	runTests(t, func(t *testing.T, match FileMatch, env lokitest.Env) {
 		// Create file to log to.
 		f, err := os.CreateTemp(t.TempDir(), "example")
 		require.NoError(t, err)
 		defer f.Close()
 
-		ctrl, err := componenttest.NewControllerFromID(nil, "loki.source.file")
-		require.NoError(t, err)
+		recv1, recv2 := env.NewReceiver(t), env.NewReceiver(t)
 
-		ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
-
-		go func() {
-			err := ctrl.Run(ctx, Arguments{
-				Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
-					"__path__": f.Name(),
-					"foo":      "bar",
-				})},
-				ForwardTo: []loki.LogsReceiver{ch1, ch2},
-				FileMatch: match,
-			})
-			require.NoError(t, err)
-		}()
-
-		ctrl.WaitRunning(time.Minute)
+		env.Run(t, "loki.source.file", Arguments{
+			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
+				"__path__": f.Name(),
+				"foo":      "bar",
+			})},
+			ForwardTo: []loki.LogsReceiver{recv1, recv2},
+			FileMatch: match,
+		})
 
 		_, err = f.Write([]byte("writing some text\n"))
 		require.NoError(t, err)
@@ -159,74 +146,44 @@ func TestComponent(t *testing.T) {
 			"foo":      "bar",
 		}
 
-		for i := 0; i < 2; i++ {
-			select {
-			case logEntry := <-ch1.Chan():
-				require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-				require.Equal(t, "writing some text", logEntry.Line)
-				require.Equal(t, wantLabelSet, logEntry.Labels)
-			case logEntry := <-ch2.Chan():
-				require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-				require.Equal(t, "writing some text", logEntry.Line)
-				require.Equal(t, wantLabelSet, logEntry.Labels)
-			case <-time.After(5 * time.Second):
-				require.FailNow(t, "failed waiting for log line")
-			}
-		}
+		entries := recv1.Next(t, 1)
+		require.WithinDuration(t, time.Now(), entries[0].Timestamp, 1*time.Second)
+		require.Equal(t, "writing some text", entries[0].Line)
+		require.Equal(t, wantLabelSet, entries[0].Labels)
+
+		entries = recv2.Next(t, 1)
+		require.WithinDuration(t, time.Now(), entries[0].Timestamp, 1*time.Second)
+		require.Equal(t, "writing some text", entries[0].Line)
+		require.Equal(t, wantLabelSet, entries[0].Labels)
 	})
 }
 
 func TestUpdateRemoveFileWhileReading(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	runTests(t, func(t *testing.T, match FileMatch) {
-		ctx, cancel := context.WithCancel(componenttest.TestContext(t))
-		defer cancel()
-
+	runTests(t, func(t *testing.T, match FileMatch, env lokitest.Env) {
 		// Create file to log to.
 		f, err := os.CreateTemp(t.TempDir(), "example")
 		require.NoError(t, err)
 		defer f.Close()
 
-		ctrl, err := componenttest.NewControllerFromID(nil, "loki.source.file")
-		require.NoError(t, err)
+		recv := env.NewReceiver(t)
 
-		ch1 := loki.NewLogsReceiver()
+		ctrl, _ := env.Run(t, "loki.source.file", Arguments{
+			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
+				"__path__": f.Name(),
+				"foo":      "bar",
+			})},
+			ForwardTo: []loki.LogsReceiver{recv},
+			FileMatch: match,
+		})
 
-		go func() {
-			err := ctrl.Run(ctx, Arguments{
-				Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
-					"__path__": f.Name(),
-					"foo":      "bar",
-				})},
-				ForwardTo: []loki.LogsReceiver{ch1},
-				FileMatch: match,
-			})
-			require.NoError(t, err)
-		}()
-
-		ctrl.WaitRunning(time.Minute)
-
-		workerCtx, cancelWorkers := context.WithCancel(ctx)
-		var wg sync.WaitGroup
-		wg.Add(2)
-
-		var backgroundErr error
-		// Start a goroutine that reads from the channel until cancellation
-		go func() {
-			defer wg.Done()
-			for {
-				select {
-				case <-workerCtx.Done():
-					return
-				case <-ch1.Chan():
-					// Just consume the messages
-				}
-			}
-		}()
-
-		go func() {
-			defer wg.Done()
+		workerCtx, cancelWorkers := context.WithCancel(t.Context())
+		var (
+			wg            sync.WaitGroup
+			backgroundErr error
+		)
+		wg.Go(func() {
 			for {
 				select {
 				case <-workerCtx.Done():
@@ -238,13 +195,13 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 					}
 				}
 			}
-		}()
+		})
 
 		time.Sleep(100 * time.Millisecond)
 
 		err = ctrl.Update(Arguments{
 			Targets:   []discovery.Target{},
-			ForwardTo: []loki.LogsReceiver{ch1},
+			ForwardTo: []loki.LogsReceiver{recv},
 			FileMatch: match,
 		})
 		require.NoError(t, err)
@@ -253,7 +210,7 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 
 		err = ctrl.Update(Arguments{
 			Targets:   []discovery.Target{},
-			ForwardTo: []loki.LogsReceiver{ch1},
+			ForwardTo: []loki.LogsReceiver{recv},
 			FileMatch: match,
 		})
 		require.NoError(t, err)
@@ -265,76 +222,49 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 }
 
 func TestFileWatch(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-	runTests(t, func(t *testing.T, match FileMatch) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+	runTests(t, func(t *testing.T, match FileMatch, env lokitest.Env) {
 		synctest.Test(t, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
 			// Create file to log to.
 			f, err := os.CreateTemp(t.TempDir(), "example")
 			require.NoError(t, err)
 			defer f.Close()
 
-			ctrl, err := componenttest.NewControllerFromID(nil, "loki.source.file")
-			require.NoError(t, err)
+			recv := env.NewReceiver(t)
 
-			ch1 := loki.NewLogsReceiver()
-
-			args := Arguments{
+			env.Run(t, "loki.source.file", Arguments{
 				Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
 					"__path__": f.Name(),
 					"foo":      "bar",
 				})},
-				ForwardTo: []loki.LogsReceiver{ch1},
+				ForwardTo: []loki.LogsReceiver{recv},
 				FileWatch: FileWatch{
 					MinPollFrequency: time.Millisecond * 500,
 					MaxPollFrequency: time.Millisecond * 500,
 				},
 				FileMatch: match,
-			}
-
-			var wg sync.WaitGroup
-			wg.Go(func() {
-				err := ctrl.Run(ctx, args)
-				require.NoError(t, err)
 			})
-
-			err = ctrl.WaitRunning(time.Minute)
-			require.NoError(t, err)
 
 			// Sleep for 600ms to miss the first poll, the next poll should be MaxPollFrequency later.
 			time.Sleep(time.Millisecond * 600)
 			_, err = f.Write([]byte("writing some text\n"))
 			require.NoError(t, err)
 
-			select {
-			case logEntry := <-ch1.Chan():
-				require.Equal(t, "writing some text", logEntry.Line)
-			case <-time.After(5 * time.Second):
-				require.FailNow(t, "failed waiting for log line")
-			}
-
-			// Shut down the component.
-			cancel()
-			wg.Wait()
+			entries := recv.Next(t, 1)
+			require.Equal(t, "writing some text", entries[0].Line)
 		})
 	})
 }
 
 // Test that updating the component does not leak goroutines.
 func TestUpdate_NoLeak(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	runTests(t, func(t *testing.T, match FileMatch) {
-		ctx, cancel := context.WithCancel(componenttest.TestContext(t))
-		defer cancel()
-
+	runTests(t, func(t *testing.T, match FileMatch, env lokitest.Env) {
 		// Create file to tail.
 		f, err := os.CreateTemp(t.TempDir(), "example")
 		require.NoError(t, err)
 		defer f.Close()
-
-		ctrl, err := componenttest.NewControllerFromID(nil, "loki.source.file")
-		require.NoError(t, err)
 
 		args := Arguments{
 			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
@@ -345,16 +275,11 @@ func TestUpdate_NoLeak(t *testing.T) {
 			FileMatch: match,
 		}
 
-		go func() {
-			err := ctrl.Run(ctx, args)
-			require.NoError(t, err)
-		}()
-
-		ctrl.WaitRunning(time.Minute)
+		ctrl, _ := env.Run(t, "loki.source.file", args)
 
 		// Update a bunch of times to ensure that no goroutines get leaked between
 		// updates.
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			err := ctrl.Update(args)
 			require.NoError(t, err)
 		}
@@ -362,45 +287,33 @@ func TestUpdate_NoLeak(t *testing.T) {
 }
 
 func TestTwoTargets(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	// FIXME use test ctrl
-	runTests(t, func(t *testing.T, match FileMatch) {
-		// Create opts for component
-		opts := component.Options{
-			Logger:        logging.NewSlogNop(),
-			Registerer:    prometheus.NewRegistry(),
-			OnStateChange: func(e component.Exports) {},
-			DataPath:      t.TempDir(),
-		}
+	runTests(t, func(t *testing.T, match FileMatch, env lokitest.Env) {
+		dataPath := t.TempDir()
 
-		f, err := os.CreateTemp(opts.DataPath, "example")
-		if err != nil {
-			log.Fatal(err)
-		}
-		f2, err := os.CreateTemp(opts.DataPath, "example2")
-		if err != nil {
-			log.Fatal(err)
-		}
+		f, err := os.CreateTemp(dataPath, "example")
+		require.NoError(t, err)
+		f2, err := os.CreateTemp(dataPath, "example2")
+		require.NoError(t, err)
 		defer f.Close()
 		defer f2.Close()
 
-		ch1 := loki.NewLogsReceiver()
+		recv := env.NewReceiver(t)
 		args := Arguments{
 			Targets: []discovery.Target{
 				discovery.NewTargetFromMap(map[string]string{"__path__": f.Name(), "foo": "bar"}),
 				discovery.NewTargetFromMap(map[string]string{"__path__": f2.Name(), "foo": "bar2"}),
 			},
-			ForwardTo: []loki.LogsReceiver{ch1},
+			ForwardTo: []loki.LogsReceiver{recv},
 			FileMatch: match,
 		}
 
-		c, err := New(opts, args)
-		require.NoError(t, err)
-
-		ctx, cancel := context.WithCancel(t.Context())
-		go c.Run(ctx)
-		time.Sleep(100 * time.Millisecond)
+		_, stop := env.Run(t, "loki.source.file", args, func(o component.Options) component.Options {
+			// Use a data path the test can inspect after the component stopped.
+			o.DataPath = dataPath
+			return o
+		})
 
 		_, err = f.Write([]byte("text\n"))
 		require.NoError(t, err)
@@ -408,38 +321,18 @@ func TestTwoTargets(t *testing.T) {
 		_, err = f2.Write([]byte("text2\n"))
 		require.NoError(t, err)
 
-		foundF1, foundF2 := false, false
-		for i := 0; i < 2; i++ {
-			select {
-			case logEntry := <-ch1.Chan():
-				require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-				switch logEntry.Line {
-				case "text":
-					foundF1 = true
-				case "text2":
-					foundF2 = true
-				}
-
-			case <-time.After(5 * time.Second):
-				require.FailNow(t, "failed waiting for log line")
-			}
-		}
-		require.True(t, foundF1)
-		require.True(t, foundF2)
-		cancel()
-		// Verify that positions.yml is written. NOTE: if we didn't wait for it, there would be a race condition between
-		// temporary directory being cleaned up and this file being created.
-		require.Eventually(t, func() bool {
-			if _, err := os.Stat(filepath.Join(opts.DataPath, "positions.yml")); errors.Is(err, os.ErrNotExist) {
-				return false
-			}
-			return true
-		}, 5*time.Second, 10*time.Millisecond, "expected positions.yml file to be written eventually")
+		// The files are tailed independently, so the order of the lines is not fixed.
+		entries := recv.Next(t, 2)
+		require.WithinDuration(t, time.Now(), entries[0].Timestamp, 1*time.Second)
+		require.WithinDuration(t, time.Now(), entries[1].Timestamp, 1*time.Second)
+		require.ElementsMatch(t, []string{"text", "text2"}, []string{entries[0].Line, entries[1].Line})
+		stop()
+		require.FileExists(t, filepath.Join(dataPath, "positions.yml"))
 	})
 }
 
 func TestEncoding(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
 	expectedLines := []string{
 		"2025-03-11 11:11:02.58 Server      Microsoft SQL Server 2019 (RTM) - 15.0.2000.5 (X64) ",
@@ -453,57 +346,54 @@ func TestEncoding(t *testing.T) {
 		"2025-03-11 11:11:02.72 Server      Server process ID is 4708.",
 	}
 
-	noDecompress := DecompressionConfig{}
-	gzDecompress := DecompressionConfig{
-		Enabled: true,
-		Format:  "gz",
+	encodingCases := []struct {
+		name     string
+		filename string
+		encoding string
+	}{
+		{"CRLF default encoding", "/CRLF/UTF-8.txt", ""},
+		{"CRLF UTF-8", "/CRLF/UTF-8.txt", "UTF-8"},
+		{"CRLF UTF-16", "/CRLF/UTF-16.txt", "UTF-16"},
+		{"CRLF UTF-16 LE", "/CRLF/UTF-16_LE.txt", "UTF-16LE"},
+		{"CRLF UTF-16 BE", "/CRLF/UTF-16_BE.txt", "UTF-16BE"},
+		{"CRLF UTF-16 LE with BOM", "/CRLF/UTF-16_LE_BOM.txt", "UTF-16"},
+		{"CRLF UTF-16 BE with BOM", "/CRLF/UTF-16_BE_BOM.txt", "UTF-16"},
+		{"LF default encoding", "/LF/UTF-8.txt", ""},
+		{"LF UTF-8", "/LF/UTF-8.txt", "UTF-8"},
+		{"LF UTF-16", "/LF/UTF-16.txt", "UTF-16"},
+		{"LF UTF-16 LE", "/LF/UTF-16_LE.txt", "UTF-16LE"},
+		{"LF UTF-16 BE", "/LF/UTF-16_BE.txt", "UTF-16BE"},
+		{"LF UTF-16 LE with BOM", "/LF/UTF-16_LE_BOM.txt", "UTF-16"},
+		{"LF UTF-16 BE with BOM", "/LF/UTF-16_BE_BOM.txt", "UTF-16"},
 	}
 
-	testCases := []struct {
+	// Each fixture is stored uncompressed and once per supported
+	// decompression format, with the format as its file extension.
+	compressionFormats := []CompressionFormat{"", "gz", "z", "bz2"}
+
+	type testCase struct {
 		name                string
 		filename            string
 		encoding            string
 		decompressionConfig DecompressionConfig
-	}{
-		{"CRLF default encoding", "/CRLF/UTF-8.txt", "", noDecompress},
-		{"CRLF UTF-8", "/CRLF/UTF-8.txt", "UTF-8", noDecompress},
-		{"CRLF UTF-16", "/CRLF/UTF-16.txt", "UTF-16", noDecompress},
-		{"CRLF UTF-16 LE", "/CRLF/UTF-16_LE.txt", "UTF-16LE", noDecompress},
-		{"CRLF UTF-16 BE", "/CRLF/UTF-16_BE.txt", "UTF-16BE", noDecompress},
-		{"CRLF UTF-16 LE with BOM", "/CRLF/UTF-16_LE_BOM.txt", "UTF-16", noDecompress},
-		{"CRLF UTF-16 BE with BOM", "/CRLF/UTF-16_BE_BOM.txt", "UTF-16", noDecompress},
-		{"LF default encoding", "/LF/UTF-8.txt", "", noDecompress},
-		{"LF UTF-8", "/LF/UTF-8.txt", "UTF-8", noDecompress},
-		{"LF UTF-16", "/LF/UTF-16.txt", "UTF-16", noDecompress},
-		{"LF UTF-16 LE", "/LF/UTF-16_LE.txt", "UTF-16LE", noDecompress},
-		{"LF UTF-16 BE", "/LF/UTF-16_BE.txt", "UTF-16BE", noDecompress},
-		{"LF UTF-16 LE with BOM", "/LF/UTF-16_LE_BOM.txt", "UTF-16", noDecompress},
-		{"LF UTF-16 BE with BOM", "/LF/UTF-16_BE_BOM.txt", "UTF-16", noDecompress},
-		{"CRLF default encoding (gzipped)", "/CRLF/UTF-8.txt.gz", "", gzDecompress},
-		{"CRLF UTF-8 (gzipped)", "/CRLF/UTF-8.txt.gz", "UTF-8", gzDecompress},
-		{"CRLF UTF-16 (gzipped)", "/CRLF/UTF-16.txt.gz", "UTF-16", gzDecompress},
-		{"CRLF UTF-16 LE (gzipped)", "/CRLF/UTF-16_LE.txt.gz", "UTF-16LE", gzDecompress},
-		{"CRLF UTF-16 BE (gzipped)", "/CRLF/UTF-16_BE.txt.gz", "UTF-16BE", gzDecompress},
-		{"CRLF UTF-16 LE with BOM (gzipped)", "/CRLF/UTF-16_LE_BOM.txt.gz", "UTF-16", gzDecompress},
-		{"CRLF UTF-16 BE with BOM (gzipped)", "/CRLF/UTF-16_BE_BOM.txt.gz", "UTF-16", gzDecompress},
-		{"LF default encoding (gzipped)", "/LF/UTF-8.txt.gz", "", gzDecompress},
-		{"LF UTF-8 (gzipped)", "/LF/UTF-8.txt.gz", "UTF-8", gzDecompress},
-		{"LF UTF-16 (gzipped)", "/LF/UTF-16.txt.gz", "UTF-16", gzDecompress},
-		{"LF UTF-16 LE (gzipped)", "/LF/UTF-16_LE.txt.gz", "UTF-16LE", gzDecompress},
-		{"LF UTF-16 BE (gzipped)", "/LF/UTF-16_BE.txt.gz", "UTF-16BE", gzDecompress},
-		{"LF UTF-16 LE with BOM (gzipped)", "/LF/UTF-16_LE_BOM.txt.gz", "UTF-16", gzDecompress},
-		{"LF UTF-16 BE with BOM (gzipped)", "/LF/UTF-16_BE_BOM.txt.gz", "UTF-16", gzDecompress},
+	}
+	var testCases []testCase
+	for _, format := range compressionFormats {
+		for _, ec := range encodingCases {
+			tc := testCase{name: ec.name, filename: ec.filename, encoding: ec.encoding}
+			if format != "" {
+				tc.name += " (" + string(format) + ")"
+				tc.filename += "." + string(format)
+				tc.decompressionConfig = DecompressionConfig{Enabled: true, Format: format}
+			}
+			testCases = append(testCases, tc)
+		}
 	}
 
-	runTests(t, func(t *testing.T, match FileMatch) {
+	runTests(t, func(t *testing.T, match FileMatch, env lokitest.Env) {
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
-				opts := component.Options{
-					Logger:        logging.NewSlogNop(),
-					Registerer:    prometheus.NewRegistry(),
-					OnStateChange: func(e component.Exports) {},
-					DataPath:      t.TempDir(),
-				}
+				dataPath := t.TempDir()
 
 				filePath, err := filepath.Abs(filepath.Join("testdata", "encoding", tc.filename))
 				require.NoError(t, err)
@@ -512,7 +402,7 @@ func TestEncoding(t *testing.T) {
 				_, err = os.Stat(filePath)
 				require.NoError(t, err, fmt.Sprintf("%s test file should exist in testdata/encoding/", tc.filename))
 
-				ch1 := loki.NewLogsReceiver()
+				recv := env.NewReceiver(t)
 				args := Arguments{
 					Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
 						"__path__": filePath,
@@ -521,119 +411,56 @@ func TestEncoding(t *testing.T) {
 					FileMatch:           match,
 					Encoding:            tc.encoding,
 					DecompressionConfig: tc.decompressionConfig,
-					ForwardTo:           []loki.LogsReceiver{ch1},
+					ForwardTo:           []loki.LogsReceiver{recv},
 				}
 
-				// Create and run the component
-				c, err := New(opts, args)
-				require.NoError(t, err)
-
-				ctx, cancel := context.WithCancel(componenttest.TestContext(t))
-
-				var wg sync.WaitGroup
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
-					err := c.Run(ctx)
-					require.NoError(t, err)
-				}()
+				_, stop := env.Run(t, "loki.source.file", args, func(o component.Options) component.Options {
+					// Use a data path the test can inspect after the component stopped.
+					o.DataPath = dataPath
+					return o
+				})
 
 				expectedLabelSet := model.LabelSet{
 					"filename": model.LabelValue(filePath),
 					"source":   "sql_errorlog_real",
 				}
 
-				// Collect all received log lines
-				receivedLines := make([]string, 0)
-				timeout := time.After(10 * time.Second)
+				entries := recv.Next(t, len(expectedLines))
 
-				// Read for a reasonable amount of time to get several log entries
-				readingComplete := false
-				for !readingComplete {
-					select {
-					case logEntry := <-ch1.Chan():
-						require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-						require.Equal(t, expectedLabelSet, logEntry.Labels)
-
-						receivedLines = append(receivedLines, logEntry.Line)
-						t.Logf("Received log line %d: %q", len(receivedLines), logEntry.Line)
-
-						// Stop after we have enough lines to verify the first few
-						if len(receivedLines) >= len(expectedLines) {
-							readingComplete = true
-						}
-
-					case <-timeout:
-						t.Logf("Timeout reached, received %d log lines total", len(receivedLines))
-						readingComplete = true
-					}
+				receivedLines := make([]string, 0, len(entries))
+				for _, e := range entries {
+					require.WithinDuration(t, time.Now(), e.Timestamp, 1*time.Second)
+					require.Equal(t, expectedLabelSet, e.Labels)
+					receivedLines = append(receivedLines, e.Line)
 				}
+				require.Equal(t, expectedLines, receivedLines)
 
-				// Verify we received all log lines
-				require.Len(t, receivedLines, len(expectedLines))
-				for i := range expectedLines {
-					require.Equal(t, expectedLines[i], receivedLines[i], "log line %d should match", i+1)
-				}
-
-				// Shut down the component before checking for the positions file.
-				// That way it will definitely write to the positions file as part of the shutdown.
-				cancel()
-
-				// Verify that positions.yml is written. NOTE: if we didn't wait for it,
-				// there would be a race condition between temporary directory being
-				// cleaned up and this file being created.
-				require.Eventually(t, func() bool {
-					if _, err := os.Stat(filepath.Join(opts.DataPath, "positions.yml")); errors.Is(err, os.ErrNotExist) {
-						return false
-					}
-					return true
-				}, 5*time.Second, 10*time.Millisecond, "expected positions.yml file to be written eventually")
-
-				wg.Wait()
+				stop()
+				require.FileExists(t, filepath.Join(dataPath, "positions.yml"))
 			})
 		}
 	})
 }
 
 func TestDeleteRecreateFile(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	runTests(t, func(t *testing.T, match FileMatch) {
-		ctx, cancel := context.WithCancel(componenttest.TestContext(t))
-
+	runTests(t, func(t *testing.T, match FileMatch, env lokitest.Env) {
 		// Create file to log to.
 		dir := t.TempDir()
 		f, err := os.Create(filepath.Join(dir, "example"))
 		require.NoError(t, err)
 
-		ctrl, err := componenttest.NewControllerFromID(nil, "loki.source.file")
-		require.NoError(t, err)
+		recv := env.NewReceiver(t)
 
-		ch1 := loki.NewLogsReceiver()
-		runErr := make(chan error, 1)
-
-		t.Cleanup(func() {
-			cancel()
-			select {
-			case err := <-runErr:
-				require.NoError(t, err)
-			case <-time.After(10 * time.Second):
-				require.FailNow(t, "timed out waiting for ctrl.Run to exit")
-			}
+		env.Run(t, "loki.source.file", Arguments{
+			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
+				"__path__": f.Name(),
+				"foo":      "bar",
+			})},
+			ForwardTo: []loki.LogsReceiver{recv},
+			FileMatch: match,
 		})
-
-		go func() {
-			runErr <- ctrl.Run(ctx, Arguments{
-				Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
-					"__path__": f.Name(),
-					"foo":      "bar",
-				})},
-				ForwardTo: []loki.LogsReceiver{ch1},
-				FileMatch: match,
-			})
-		}()
-
-		ctrl.WaitRunning(time.Minute)
 
 		_, err = f.Write([]byte("writing some text\n"))
 		require.NoError(t, err)
@@ -648,7 +475,10 @@ func TestDeleteRecreateFile(t *testing.T) {
 			"foo":      "bar",
 		}
 
-		checkMsg(t, ch1, "writing some text", 5*time.Second, wantLabelSet)
+		entries := recv.Next(t, 1)
+		require.WithinDuration(t, time.Now(), entries[0].Timestamp, 1*time.Second)
+		require.Equal(t, "writing some text", entries[0].Line)
+		require.Equal(t, wantLabelSet, entries[0].Labels)
 
 		require.NoError(t, f.Close())
 		require.NoError(t, os.Remove(f.Name()))
@@ -665,27 +495,186 @@ func TestDeleteRecreateFile(t *testing.T) {
 		_, err = f.Write([]byte("writing some new text\n"))
 		require.NoError(t, err)
 
-		checkMsg(t, ch1, "writing some new text", 5*time.Second, wantLabelSet)
+		// With file match enabled the recreated file may only be picked up on the next sync tick,
+		// so wait longer than SyncPeriod.
+		entries = recv.NextWithin(t, 1, 2*match.SyncPeriod)
+		require.WithinDuration(t, time.Now(), entries[0].Timestamp, 1*time.Second)
+		require.Equal(t, "writing some new text", entries[0].Line)
+		require.Equal(t, wantLabelSet, entries[0].Labels)
 	})
 }
 
-func runTests(t *testing.T, run func(t *testing.T, match FileMatch)) {
+func TestComponentV2(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	lokitest.TestV2(t, func(t *testing.T, env lokitest.Env) {
+		// newFile creates a file with three lines, 21 bytes in total.
+		newFile := func(t *testing.T) *os.File {
+			f, err := os.CreateTemp(t.TempDir(), "example")
+			require.NoError(t, err)
+
+			_, err = f.WriteString("line 1\nline 2\nline 3\n")
+			require.NoError(t, err)
+			return f
+		}
+
+		args := func(path string, to ...loki.LogsReceiver) Arguments {
+			return Arguments{
+				Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
+					"__path__": path,
+					"foo":      "bar",
+				})},
+				ForwardTo: to,
+				FileMatch: FileMatch{Enabled: false, SyncPeriod: 10 * time.Second},
+			}
+		}
+
+		// position returns the offset the component has recorded for path.
+		position := func(t *testing.T, ctrl *componenttest.Controller, path string) int64 {
+			c, err := ctrl.GetComponent()
+			require.NoError(t, err)
+
+			offset, err := c.(*Component).posFile.Get(path, model.LabelSet{"foo": "bar"}.String())
+			require.NoError(t, err)
+			return offset
+		}
+
+		t.Run("retries entries until forward_to is updated", func(t *testing.T) {
+			f := newFile(t)
+			defer f.Close()
+
+			stopped := env.NewReceiver(t)
+			stopped.Stop()
+
+			ctrl, stop := env.Run(t, "loki.source.file", args(f.Name(), stopped))
+
+			require.EventuallyWithT(t, func(c *assert.CollectT) {
+				require.GreaterOrEqual(c, stopped.ConsumeCalls(), 2)
+			}, 5*time.Second, 10*time.Millisecond)
+
+			require.Equal(t, int64(0), position(t, ctrl, f.Name()))
+
+			running := env.NewReceiver(t)
+			require.NoError(t, ctrl.Update(args(f.Name(), running)))
+
+			entries := running.Next(t, 3)
+			require.Equal(t, "line 1", entries[0].Line)
+			require.Equal(t, "line 2", entries[1].Line)
+			require.Equal(t, "line 3", entries[2].Line)
+			require.Empty(t, stopped.Entries())
+
+			stop()
+			require.Equal(t, int64(21), position(t, ctrl, f.Name()))
+		})
+
+		t.Run("does not lose entries when stopped while retrying", func(t *testing.T) {
+			f := newFile(t)
+			defer f.Close()
+
+			// Share the data path so the second run reads the positions the first one saved.
+			dataPath := t.TempDir()
+			withDataPath := func(o component.Options) component.Options {
+				o.DataPath = dataPath
+				return o
+			}
+
+			stopped := env.NewReceiver(t)
+			stopped.Stop()
+
+			ctrl, stop := env.Run(t, "loki.source.file", args(f.Name(), stopped), withDataPath)
+
+			require.EventuallyWithT(t, func(c *assert.CollectT) {
+				require.GreaterOrEqual(c, stopped.ConsumeCalls(), 2)
+			}, 5*time.Second, 10*time.Millisecond)
+
+			stop()
+			require.Empty(t, stopped.Entries())
+			require.Equal(t, int64(0), position(t, ctrl, f.Name()))
+
+			running := env.NewReceiver(t)
+			ctrl, stop = env.Run(t, "loki.source.file", args(f.Name(), running), withDataPath)
+
+			entries := running.Next(t, 3)
+			require.Equal(t, "line 1", entries[0].Line)
+			require.Equal(t, "line 2", entries[1].Line)
+			require.Equal(t, "line 3", entries[2].Line)
+
+			stop()
+			require.Equal(t, int64(21), position(t, ctrl, f.Name()))
+		})
+
+		t.Run("keeps delivering to a healthy consumer while another is stopped", func(t *testing.T) {
+			f := newFile(t)
+			defer f.Close()
+
+			healthy, stopped := env.NewReceiver(t), env.NewReceiver(t)
+			stopped.Stop()
+
+			ctrl, stop := env.Run(t, "loki.source.file", args(f.Name(), healthy, stopped))
+
+			require.EventuallyWithT(t, func(c *assert.CollectT) {
+				require.GreaterOrEqual(c, stopped.ConsumeCalls(), 2)
+			}, 5*time.Second, 10*time.Millisecond)
+
+			require.NoError(t, ctrl.Update(args(f.Name(), healthy)))
+
+			require.EventuallyWithT(t, func(c *assert.CollectT) {
+				require.Equal(c, int64(21), position(t, ctrl, f.Name()))
+			}, 5*time.Second, 10*time.Millisecond)
+
+			// The lines are sent as one batch, so the healthy consumer gets the whole batch again on every retry.
+			entries := healthy.Entries()
+			require.GreaterOrEqual(t, len(entries), 6)
+			require.Equal(t, "line 1", entries[0].Line)
+			require.Equal(t, "line 2", entries[1].Line)
+			require.Equal(t, "line 3", entries[2].Line)
+			require.Equal(t, "line 1", entries[len(entries)-3].Line)
+			require.Equal(t, "line 2", entries[len(entries)-2].Line)
+			require.Equal(t, "line 3", entries[len(entries)-1].Line)
+			require.Empty(t, stopped.Entries())
+
+			stop()
+			require.Equal(t, int64(21), position(t, ctrl, f.Name()))
+		})
+
+		t.Run("drops an entry on an unexpected error without retrying", func(t *testing.T) {
+			f := newFile(t)
+			defer f.Close()
+
+			recv := env.NewReceiver(t)
+
+			ctrl, stop := env.Run(t, "loki.source.file", args(f.Name(), recv))
+
+			entries := recv.Next(t, 3)
+			require.Equal(t, "line 1", entries[0].Line)
+			require.Equal(t, "line 2", entries[1].Line)
+			require.Equal(t, "line 3", entries[2].Line)
+
+			recv.FailNext(errors.New("unexpected"))
+			_, err := f.WriteString("line 4\n")
+			require.NoError(t, err)
+
+			require.EventuallyWithT(t, func(c *assert.CollectT) {
+				require.Equal(c, 2, recv.ConsumeCalls())
+			}, 5*time.Second, 10*time.Millisecond)
+
+			// Line 4 was dropped and is the last line, so the position only includes it if the
+			// tailer moved past it, otherwise it would stay at 21.
+			stop()
+			require.Equal(t, int64(28), position(t, ctrl, f.Name()))
+			require.Len(t, recv.Entries(), 3)
+		})
+	})
+}
+
+func runTests(t *testing.T, run func(t *testing.T, match FileMatch, env lokitest.Env)) {
 	t.Helper()
 
 	for _, m := range []FileMatch{{Enabled: false, SyncPeriod: 10 * time.Second}, {Enabled: true, SyncPeriod: 10 * time.Second}} {
 		t.Run(fmt.Sprintf("file match %t", m.Enabled), func(t *testing.T) {
-			run(t, m)
+			lokitest.Test(t, func(t *testing.T, env lokitest.Env) {
+				run(t, m, env)
+			})
 		})
-	}
-}
-
-func checkMsg(t *testing.T, ch loki.LogsReceiver, msg string, timeout time.Duration, labelSet model.LabelSet) {
-	select {
-	case logEntry := <-ch.Chan():
-		require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-		require.Equal(t, msg, logEntry.Line)
-		require.Equal(t, labelSet, logEntry.Labels)
-	case <-time.After(timeout):
-		require.FailNow(t, "failed waiting for log line")
 	}
 }

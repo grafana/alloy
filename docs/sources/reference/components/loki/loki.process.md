@@ -705,9 +705,12 @@ The following arguments are supported:
 
 | Name      | Type          | Description                                     | Default | Required |
 | --------- | ------------- | ----------------------------------------------- | ------- | -------- |
-| `mapping` | `map(string)` | Key-value pairs of `logmft` fields to extract.  |         | no       |
+| `mapping` | `map(string)` | Key-value pairs of `logfmt` fields to extract.  |         | no       |
 | `regex`   | `string`      | Regular expression matched against logfmt keys. |         | no       |
 | `source`  | `string`      | Source of the data to parse as `logfmt`.        | `""`    | no       |
+
+You must set at least one of `mapping` or `regex`.
+If you set both, the stage extracts the fields listed in `mapping` and any fields whose keys match `regex`.
 
 The `mapping` field is the set of key-value pairs.
 The map key defines the name used to extract the data, while the map value is the logfmt field used to populate the value.

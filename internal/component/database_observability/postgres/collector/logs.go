@@ -155,7 +155,7 @@ func NewLogs(args LogsArguments) (*Logs, error) {
 		entryHandler:              args.EntryHandler,
 		registry:                  args.Registry,
 		receiver:                  args.Receiver,
-		excludeDatabases:          args.ExcludeDatabases,
+		excludeDatabases:          database_observability.MergeExclusions(excludedDatabases, args.ExcludeDatabases),
 		excludeUsers:              args.ExcludeUsers,
 		enableErrorLogsProcessing: args.EnableErrorLogsProcessing,
 		db:                        args.DB,

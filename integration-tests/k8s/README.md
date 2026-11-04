@@ -34,7 +34,7 @@ real bottleneck we can promote them to cluster-scoped install-once
 fixtures — the harness is structured to allow adding this later if needed.
 
 In CI, all the docker images the suite needs (Alloy under test, plus test
-fixture images like prom-gen) are built once in a separate job and
+fixture images like prom-gen and otel-gen) are built once in a separate job and
 restored into each shard via `--skip-image-builds`, so adding more shards
 doesn't multiply the build time.
 
@@ -54,7 +54,8 @@ make integration-test-k8s-local-dev
 
 Opens a small TUI to pick the common run options before tests start.
 
-- Reusing kind cluster or skipping image builds (alloy, prom-gen) to speed up local development.
+- Reusing kind cluster or skipping image builds (alloy, prom-gen, otel-gen) to speed up local development.
+- Using the regular (non-distroless) Alloy image.
 - Filtering tests by shard or by package.
 
 ### Inspecting the running cluster
@@ -76,8 +77,12 @@ make integration-test-k8s RUN_ARGS='--shard 0/2'
 # Run a single test package.
 make integration-test-k8s RUN_ARGS='--package ./integration-tests/k8s/tests/prometheus-operator'
 
-# Skip rebuilding all docker images (alloy, prom-gen). They must already
+# Skip rebuilding all docker images (alloy, prom-gen, otel-gen). They must already
 # exist in the local docker daemon — useful after a previous run or when
 # iterating on a single test.
 make integration-test-k8s RUN_ARGS='--skip-image-builds'
+
+# Tests use the distroless variant of the Alloy image by default, like CI
+# does. Use the regular image instead.
+make integration-test-k8s RUN_ARGS='--distroless=false'
 ```

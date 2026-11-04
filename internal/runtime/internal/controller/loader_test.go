@@ -168,6 +168,28 @@ func TestLoader(t *testing.T) {
 		require.Empty(t, sum.GetDataFlowEdgesTo())
 	})
 
+	t.Run("Check data flow edges for Prometheus receivers", func(t *testing.T) {
+		// Data flows in the same direction as a reference to a receiver:
+		// from the component forwarding the data to the receiver.
+		file := `
+			testcomponents.prometheus_null "sink" {}
+
+			testcomponents.prometheus_null "source" {
+				forward_to = [testcomponents.prometheus_null.sink.receiver]
+			}
+		`
+		l, err := controller.NewLoader(newLoaderOptions())
+		require.NoError(t, err)
+		diags := applyFromContent(t, l, []byte(file), nil, nil)
+		require.NoError(t, diags.ErrorOrNil())
+		newGraph := l.Graph()
+
+		source := newGraph.GetByID("testcomponents.prometheus_null.source").(controller.ComponentNode)
+		sink := newGraph.GetByID("testcomponents.prometheus_null.sink").(controller.ComponentNode)
+		require.Equal(t, []string{"testcomponents.prometheus_null.sink"}, source.GetDataFlowEdgesTo())
+		require.Empty(t, sink.GetDataFlowEdgesTo())
+	})
+
 	t.Run("Copy existing components and delete stale ones", func(t *testing.T) {
 		startFile := `
 			// Component that should be copied over to the new graph

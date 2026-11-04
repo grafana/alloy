@@ -1,0 +1,26 @@
+{
+  "operation": "Ordering Operation",
+  "details": {
+    "estimatedRows": 0
+  },
+  "children": [
+    {
+      "operation": "Grouping Operation",
+      "details": {
+        "estimatedRows": 0,
+        "estimatedCost": 299556
+      },
+      "children": [
+        {
+          "operation": "Full Table Scan",
+          "details": {
+            "estimatedRows": 299556,
+            "estimatedCost": 30884.6,
+            "alias": "employees",
+            "accessType": "all"
+          }
+        }
+      ]
+    }
+  ]
+}

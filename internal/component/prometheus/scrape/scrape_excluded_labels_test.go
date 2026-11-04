@@ -121,7 +121,7 @@ func TestClusteringExclusionsRuntimeUpdate(t *testing.T) {
 	args := testArgs()
 	args.Targets = []discovery.Target{target}
 	appender := testappender.NewCollectingAppender()
-	args.ForwardTo = []storage.Appendable{testappender.ConstantAppendable{Inner: appender}}
+	args.ForwardTo = []storage.AppendableV2{testappender.ConstantAppendable{Inner: appender}}
 	opts := testOptions(t, reg, c)
 	promManagerMutex.Lock()
 	s, err := New(opts, args)

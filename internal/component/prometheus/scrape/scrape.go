@@ -55,8 +55,8 @@ var (
 // Arguments holds values which are used to configure the prometheus.scrape
 // component.
 type Arguments struct {
-	Targets   []discovery.Target   `alloy:"targets,attr"`
-	ForwardTo []storage.Appendable `alloy:"forward_to,attr"`
+	Targets   []discovery.Target     `alloy:"targets,attr"`
+	ForwardTo []storage.AppendableV2 `alloy:"forward_to,attr"`
 
 	// The job name to override the job label with.
 	JobName string `alloy:"job_name,attr,optional"`

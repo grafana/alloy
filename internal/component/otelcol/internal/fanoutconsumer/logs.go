@@ -17,6 +17,16 @@ import (
 
 // Logs creates a new fanout consumer for logs.
 func Logs(in []otelcol.Consumer) otelconsumer.Logs {
+	consumers := make([]otelconsumer.Logs, len(in))
+	for i, c := range in {
+		consumers[i] = c
+	}
+	return LogsFromConsumers(consumers)
+}
+
+// LogsFromConsumers creates a new fanout consumer for logs from
+// logs-only consumers.
+func LogsFromConsumers(in []otelconsumer.Logs) otelconsumer.Logs {
 	if len(in) == 0 {
 		return &logsFanout{}
 	} else if len(in) == 1 {

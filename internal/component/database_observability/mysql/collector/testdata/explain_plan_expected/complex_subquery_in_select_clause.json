@@ -1,0 +1,11 @@
+{
+  "operation": "Index Range Scan",
+  "details": {
+    "estimatedRows": 49,
+    "estimatedCost": 10.86,
+    "alias": "e",
+    "accessType": "range",
+    "keyUsed": "PRIMARY",
+    "condition": "( `employees` . `e` . `emp_no` \u003c ? )"
+  }
+}

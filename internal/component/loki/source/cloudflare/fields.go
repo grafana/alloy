@@ -69,16 +69,18 @@ var (
 
 // fieldsForType returns the union of a set of fields represented by the Fieldtype and the given additional fields. The returned slice will contain no duplicates.
 func fieldsForType(t FieldsType, additionalFields []string) ([]string, error) {
+	// The presets are cloned so that appending to them and sorting the result does not
+	// write into their backing arrays, which every caller shares.
 	var fields []string
 	switch t {
 	case FieldsTypeDefault:
-		fields = append(defaultFields, additionalFields...)
+		fields = append(slices.Clone(defaultFields), additionalFields...)
 	case FieldsTypeMinimal:
-		fields = append(minimalFields, additionalFields...)
+		fields = append(slices.Clone(minimalFields), additionalFields...)
 	case FieldsTypeExtended:
-		fields = append(extendedFields, additionalFields...)
+		fields = append(slices.Clone(extendedFields), additionalFields...)
 	case FieldsTypeAll:
-		fields = append(allFields, additionalFields...)
+		fields = append(slices.Clone(allFields), additionalFields...)
 	case FieldsTypeCustom:
 		fields = append(fields, additionalFields...)
 	default:

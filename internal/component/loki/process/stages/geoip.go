@@ -101,7 +101,6 @@ func validateGeoIPConfig(c GeoIPConfig) (map[string]jmespath.JMESPath, error) {
 }
 
 var (
-	_ Stage          = (*geoIPStage)(nil)
 	_ entryProcessor = (*geoIPStage)(nil)
 	_ stopper        = (*geoIPStage)(nil)
 )
@@ -132,13 +131,6 @@ type geoIPStage struct {
 	mmdb              *maxminddb.Reader
 	cfgs              GeoIPConfig
 	valuesExpressions map[string]jmespath.JMESPath
-}
-
-// Run implements Stage
-func (g *geoIPStage) Run(in chan Entry) chan Entry {
-	return RunWith(in, func(e Entry) Entry {
-		return g.processEntry(e)
-	})
 }
 
 func (g *geoIPStage) process(ctx context.Context, entries []Entry) error {
@@ -207,11 +199,6 @@ func (g *geoIPStage) processEntry(e Entry) Entry {
 	}
 
 	return e
-}
-
-// Cleanup implements Stage.
-func (g *geoIPStage) Cleanup() {
-	g.stop()
 }
 
 // stop implements stopper.

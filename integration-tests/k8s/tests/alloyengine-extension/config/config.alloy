@@ -1,0 +1,43 @@
+// Runs inside the alloyengine extension. otel-gen sends here through the
+// alloy-otel Service.
+
+otelcol.receiver.otlp "metrics" {
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+
+  output {
+    metrics = [otelcol.processor.attributes.metrics.input]
+  }
+}
+
+// Only this pipeline adds the label the assertions select on, so a metric
+// found in Mimir went through the extension.
+otelcol.processor.attributes "metrics" {
+  action {
+    key    = "alloy_test_name"
+    value  = "alloyengine-extension"
+    action = "insert"
+  }
+
+  output {
+    metrics = [otelcol.processor.batch.metrics.input]
+  }
+}
+
+otelcol.processor.batch "metrics" {
+  output {
+    metrics = [otelcol.exporter.otlphttp.mimir.input]
+  }
+}
+
+otelcol.exporter.otlphttp "mimir" {
+  client {
+    endpoint = "http://mimir:9009/otlp"
+
+    tls {
+      insecure             = true
+      insecure_skip_verify = true
+    }
+  }
+}

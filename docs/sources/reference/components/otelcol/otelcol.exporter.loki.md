@@ -105,19 +105,18 @@ This example converts the following attributes to Loki labels:
 * The `service.name` and `service.namespace` OTLP resource attributes.
 * The `event.domain` and `event.name` OTLP log attributes.
 
-Labels will be translated to a [Prometheus format][].
+The exporter translates labels to a [Prometheus format][].
 For example:
 
-| OpenTelemetry Attribute | Prometheus Label                                      |
-| ----------------------- | ----------------------------------------------------- |
-| `name`                  | `name`                                                |
-| `host.name`             | `host_name`                                           |
-| `host_name`             | `host_name`                                           |
-| `name (of the host)`    | `name__of_the_host_`                                  |
-| `2 cents`               | `key_2_cents`                                         |
-| `__name`                | `__name`                                              |
-| `_name`                 | `key_name`                                            |
-| `_name`                 | `_name` (if `PermissiveLabelSanitization` is enabled) |
+| OpenTelemetry Attribute | Prometheus Label     |
+| ----------------------- | -------------------- |
+| `name`                  | `name`               |
+| `host.name`             | `host_name`          |
+| `host_name`             | `host_name`          |
+| `name (of the host)`    | `name_of_the_host_`  |
+| `2 cents`               | `key_2_cents`        |
+| `__name`                | `_name`              |
+| `_name`                 | `_name`              |
 
 ```alloy
 otelcol.receiver.otlp "default" {

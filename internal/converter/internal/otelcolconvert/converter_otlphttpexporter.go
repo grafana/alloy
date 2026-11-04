@@ -3,6 +3,7 @@ package otelcolconvert
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component/otelcol"
@@ -70,7 +71,36 @@ func toOtelcolExporterOTLPHTTP(cfg *otlphttpexporter.Config) *otlphttp.Arguments
 	}
 }
 
+// clientKeepalive holds the effective HTTP client keep-alive settings.
+type clientKeepalive struct {
+	IdleConnTimeout     time.Duration
+	MaxIdleConns        int
+	MaxIdleConnsPerHost int
+}
+
+// effectiveClientKeepalive returns the keep-alive settings of cfg. Upstream
+// keeps them in the keepalive section when the pkg.confighttp.PrioritizeNewKeepalive
+// feature gate is enabled, and in the deprecated flat fields otherwise.
+func effectiveClientKeepalive(cfg confighttp.ClientConfig) clientKeepalive {
+	if ka := cfg.Keepalive.Get(); ka != nil {
+		return clientKeepalive{
+			IdleConnTimeout:     ka.IdleConnTimeout,
+			MaxIdleConns:        ka.MaxIdleConns,
+			MaxIdleConnsPerHost: ka.MaxIdleConnsPerHost,
+		}
+	}
+	return clientKeepalive{
+		//nolint:staticcheck
+		IdleConnTimeout: cfg.IdleConnTimeout,
+		//nolint:staticcheck
+		MaxIdleConns: cfg.MaxIdleConns,
+		//nolint:staticcheck
+		MaxIdleConnsPerHost: cfg.MaxIdleConnsPerHost,
+	}
+}
+
 func toHTTPClientArguments(cfg confighttp.ClientConfig) otelcol.HTTPClientArguments {
+	keepalive := effectiveClientKeepalive(cfg)
 	var a *auth.Handler
 	if cfg.Auth.HasValue() {
 		a = &auth.Handler{}
@@ -86,14 +116,11 @@ func toHTTPClientArguments(cfg confighttp.ClientConfig) otelcol.HTTPClientArgume
 
 		Timeout: cfg.Timeout,
 		Headers: toHeadersMap(cfg.Headers),
-		// Deprecated fields remain the source of truth for an already-unmarshaled ClientConfig.
-		//nolint:staticcheck
-		MaxIdleConns: cfg.MaxIdleConns,
-		//nolint:staticcheck
-		MaxIdleConnsPerHost: cfg.MaxIdleConnsPerHost,
+		// The keepalive settings live in either the keepalive section or the deprecated fields.
+		MaxIdleConns:        keepalive.MaxIdleConns,
+		MaxIdleConnsPerHost: keepalive.MaxIdleConnsPerHost,
 		MaxConnsPerHost:     cfg.MaxConnsPerHost,
-		//nolint:staticcheck
-		IdleConnTimeout: cfg.IdleConnTimeout,
+		IdleConnTimeout:     keepalive.IdleConnTimeout,
 		//nolint:staticcheck
 		DisableKeepAlives:    cfg.DisableKeepAlives,
 		HTTP2PingTimeout:     cfg.HTTP2PingTimeout,

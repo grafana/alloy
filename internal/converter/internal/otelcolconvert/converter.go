@@ -231,11 +231,18 @@ func (state *State) nextInstances(c componentstatus.InstanceID, signal pipeline.
 }
 
 func (state *State) LookupExtension(id component.ID) componentID {
-	cid, ok := state.extensionLookup[id]
+	cid, ok := state.TryLookupExtension(id)
 	if !ok {
 		panic(fmt.Sprintf("no component name found for extension %q", id.Name()))
 	}
 	return cid
+}
+
+// TryLookupExtension is like LookupExtension, but reports whether the
+// extension exists instead of panicking.
+func (state *State) TryLookupExtension(id component.ID) (componentID, bool) {
+	cid, ok := state.extensionLookup[id]
+	return cid, ok
 }
 
 type componentID struct {

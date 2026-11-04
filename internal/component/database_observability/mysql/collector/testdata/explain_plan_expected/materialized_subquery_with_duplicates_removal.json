@@ -1,0 +1,81 @@
+{
+  "operation": "Ordering Operation",
+  "details": {
+    "estimatedRows": 0
+  },
+  "children": [
+    {
+      "operation": "Non-Unique Key Lookup",
+      "details": {
+        "estimatedRows": 233670,
+        "estimatedCost": 81784.59,
+        "alias": "rl",
+        "accessType": "ref",
+        "keyUsed": "\u003cauto_key0\u003e",
+        "joinAlgorithm": "nested_loop"
+      },
+      "children": [
+        {
+          "operation": "Index Range Scan",
+          "details": {
+            "estimatedRows": 23366,
+            "estimatedCost": 14051.77,
+            "alias": "b",
+            "accessType": "range",
+            "keyUsed": "idx_books_stock_rate",
+            "condition": "( ( `books_store` . `b` . `stock` \u003e ? ) and ( `books_store` . `b` . `daily_rate` \u003e ? ) )"
+          }
+        },
+        {
+          "operation": "Materialized Subquery",
+          "details": {
+            "estimatedRows": 0
+          },
+          "children": [
+            {
+              "operation": "Ordering Operation",
+              "details": {
+                "estimatedRows": 0
+              },
+              "children": [
+                {
+                  "operation": "Duplicates Removal",
+                  "details": {
+                    "estimatedRows": 0,
+                    "estimatedCost": 2304463.25
+                  },
+                  "children": [
+                    {
+                      "operation": "Non-Unique Key Lookup",
+                      "details": {
+                        "estimatedRows": 2304463,
+                        "estimatedCost": 233565.71,
+                        "alias": "rlb",
+                        "accessType": "ref",
+                        "keyUsed": "PRIMARY",
+                        "joinAlgorithm": "nested_loop",
+                        "condition": "( ( `books_store` . `rlb` . `book_id` % ? ) = \u003c cache \u003e ( ( `floor` ( ( `unix_timestamp` ( ) / ? ) ) % ? ) ) )"
+                      },
+                      "children": [
+                        {
+                          "operation": "Full Table Scan",
+                          "details": {
+                            "estimatedRows": 8000,
+                            "estimatedCost": 1035.65,
+                            "alias": "rl",
+                            "accessType": "all",
+                            "condition": "( `books_store` . `rl` . `updated_at` \u003e \u003c cache \u003e ( ( now ( ) - interval ? day ) ) )"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

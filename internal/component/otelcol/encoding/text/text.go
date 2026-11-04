@@ -91,9 +91,7 @@ func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelc
 // DebugMetricsConfig implements extension.Arguments.
 func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
 	// The underlying extension doesn't support debug metrics.
-	// Return defaults (see: DebugMetricsArguments.SetToDefault).
-	return otelcolCfg.DebugMetricsArguments{
-		DisableHighCardinalityMetrics: true,
-		Level:                         otelcolCfg.LevelDetailed,
-	}
+	cfg := otelcolCfg.DebugMetricsArguments{}
+	cfg.SetToDefault()
+	return cfg
 }

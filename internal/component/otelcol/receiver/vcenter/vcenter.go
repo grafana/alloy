@@ -382,6 +382,10 @@ type Arguments struct {
 	Username string            `alloy:"username,attr"`
 	Password alloytypes.Secret `alloy:"password,attr"`
 
+	// ProxyURL is the URL of the proxy to use for the connection to the vCenter
+	// SDK endpoint. Optional.
+	ProxyURL string `alloy:"proxy_url,attr,optional"`
+
 	MetricsBuilderConfig MetricsBuilderConfig `alloy:",squash"`
 
 	ScraperControllerArguments otelcol.ScraperControllerArguments `alloy:",squash"`
@@ -422,6 +426,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.Endpoint = args.Endpoint
 	result.Username = args.Username
 	result.Password = configopaque.String(args.Password)
+	result.ProxyURL = args.ProxyURL
 	result.ClientConfig = *args.TLS.Convert()
 	result.ControllerConfig = *args.ScraperControllerArguments.Convert()
 	result.MaxQueryMetrics = args.MaxQueryMetrics
@@ -438,6 +443,19 @@ func (args Arguments) Validate() error {
 
 	if res.Scheme != "http" && res.Scheme != "https" {
 		return fmt.Errorf("url scheme must be http or https")
+	}
+
+	if args.ProxyURL != "" {
+		proxyURL, err := url.Parse(args.ProxyURL)
+		switch {
+		case err != nil:
+			return fmt.Errorf("unable to parse proxy_url %s: %w", args.ProxyURL, err)
+		case proxyURL.Scheme != "http" && proxyURL.Scheme != "https" &&
+			proxyURL.Scheme != "socks5" && proxyURL.Scheme != "socks5h":
+			return fmt.Errorf("proxy_url scheme must be http, https, socks5 or socks5h")
+		case proxyURL.Host == "":
+			return fmt.Errorf("proxy_url must include a host")
+		}
 	}
 	return nil
 }

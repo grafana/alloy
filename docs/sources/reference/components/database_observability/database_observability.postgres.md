@@ -34,8 +34,8 @@ You can use the following arguments with `database_observability.postgres`:
 | `targets`            | `list(map(string))`  | List of external targets to scrape for Prometheus metrics.  |         | no       |
 | `disable_collectors` | `list(string)`       | A list of collectors to disable from the default set.       |         | no       |
 | `enable_collectors`  | `list(string)`       | A list of collectors to enable on top of the default set.   |         | no       |
-| `exclude_databases`  | `list(string)`       | A list of databases to exclude from monitoring.             | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
-| `exclude_users`      | `list(string)`       | A list of users to exclude from monitoring.                 | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
+| `exclude_databases`  | `list(string)`       | A list of databases to exclude from monitoring on top of the default exclusions. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
+| `exclude_users`      | `list(string)`       | A list of users to exclude from monitoring on top of the default exclusions.     | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
 | `exclude_current_user` | `bool`             | Exclude from activity monitoring the user that Alloy uses to connect to the database. The resolved username is automatically added to `exclude_users`, if not already present. | `true` | no       |
 
 [Data Source Name]: https://pkg.go.dev/github.com/lib/pq#hdr-URL_connection_strings-NewConfig
@@ -77,6 +77,7 @@ You can use the following blocks with `database_observability.postgres`:
 | `cloud_provider` > [`gcp`][gcp]      | Provide GCP database host information.            | no       |
 | [`database_instance`][database_instance]                  | Define one database to monitor. Repeat the block to monitor several databases. | no       |
 | `database_instance` > [`cloud_provider`][cloud_provider]  | Provide Cloud Provider information for one database. | no       |
+| `database_instance` > [`rule`][rule]                      | Relabel the metrics and logs of one database.        | no       |
 | [`clustering`][clustering]         | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no       |
 | [`query_details`][query_details]   | Configure the queries collector.                  | no       |
 | [`query_samples`][query_samples]   | Configure the query samples collector.            | no       |
@@ -91,6 +92,7 @@ You can use the following blocks with `database_observability.postgres`:
 [azure]: #azure
 [gcp]: #gcp
 [database_instance]: #database_instance
+[rule]: #rule
 [clustering]: #clustering
 [query_details]: #query_details
 [query_samples]: #query_samples
@@ -151,7 +153,7 @@ Each `database_instance` block must also point to a distinct server: two blocks 
 |--------------------|---------------------|--------------------------------------------------------------|---------|----------|
 | `data_source_name` | `secret`            | [Data Source Name][] for the Postgres server to connect to. |         | yes      |
 
-Each `database_instance` block can also contain a [`cloud_provider`][cloud_provider] block that applies to that database only.
+Each `database_instance` block can also contain a [`cloud_provider`][cloud_provider] block that applies to that database only, and [`rule`][rule] blocks that relabel the metrics and logs of that database only.
 
 The component always embeds a `postgres_exporter` for each `database_instance` block and serves its metrics on the block's metrics path.
 Use the [`prometheus_exporter`][prometheus_exporter] block to configure it.
@@ -182,10 +184,20 @@ database_observability.postgres "pool" {
         arn = "orders-rds-db-arn"
       }
     }
+
+    rule {
+      target_label = "environment"
+      replacement  = "production"
+    }
   }
 
   database_instance "billing" {
     data_source_name = sys.env("BILLING_DSN")
+
+    rule {
+      target_label = "environment"
+      replacement  = "staging"
+    }
   }
 }
 
@@ -194,6 +206,19 @@ loki.source.file "orders_db_logs" {
   forward_to = [database_observability.postgres.pool.logs_receivers["orders"]]
 }
 ```
+
+In this example, the metrics and logs of the `orders` database carry `environment="production"`, and those of the `billing` database carry `environment="staging"`.
+
+The component doesn't forward the raw PostgreSQL log lines it receives on `logs_receivers`.
+It reads them to derive error-message entries, and those derived entries are what the `rule` blocks relabel.
+Deriving them requires [`logs.enable_error_logs_processing`][logs], which is disabled by default.
+
+### `rule`
+
+The `rule` block relabels the metrics and the logs of the `database_instance` block that contains it.
+Use it to tell the data of each monitored database apart, for example by environment, team, or tier.
+
+{{< docs/shared lookup="reference/components/rule-block-database-observability.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `clustering`
 
@@ -232,7 +257,7 @@ If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the blo
 | `collect_interval`        | `duration` | How frequently to collect information from database.          | `"10s"` | no       |
 | `disable_query_redaction` | `bool`     | Collect unredacted SQL query text (might include parameters). | `false` | no       |
 | `exclude_current_user`    | `bool`     | Deprecated. Use the top-level `exclude_current_user` argument instead. This setting takes precedence over the top-level setting. | (unset) | no       |
-| `enable_pre_classified_wait_events`   | `boolean`  | When `true`, emits telemetry data with pre-classified wait event information. | `false` | no       |
+| `enable_pre_classified_wait_events`   | `boolean`  | When `true`, emits telemetry data with pre-classified wait event information. | `true` | no       |
 
 ### `schema_details`
 
@@ -268,8 +293,12 @@ The `logs` collector is always enabled and counts server errors from the Postgre
 
 ### `prometheus_exporter`
 
-The `prometheus_exporter` block configures the embedded postgres_exporter scrapers.
+The `prometheus_exporter` block configures the embedded `postgres_exporter` scrapers.
 The `data_source_name` is inherited from the parent block.
+Only the `stat_statements` collector is enabled by default.
+The embedded exporter inherits the top-level `exclude_databases` list in both `autodiscovery > database_denylist` and `stat_statements > exclude_databases`, and inherits the effective top-level `exclude_users` list in `stat_statements > exclude_users`.
+Setting these nested exclusion lists in `prometheus_exporter` is discouraged because it can cause the embedded exporter and the component's collectors to monitor different databases or users.
+Configure the top-level `exclude_databases` and `exclude_users` arguments instead.
 
 Refer to [`prometheus.exporter.postgres`](../../prometheus/prometheus.exporter.postgres/) docs for the full list of supported arguments and sub-blocks.
 
@@ -286,7 +315,7 @@ The `logs_receiver` entry point must be fed by `loki` log source components, for
 PostgreSQL must be configured with a specific `log_line_prefix` so the collector can parse the logs.
 
 {{< admonition type="note" >}}
-Refer to the [PostgreSQL setup documentation](https://grafana.com/docs/grafana-cloud/monitor-applications/database-observability/set-up/postgres/) for the required `log_line_prefix` and detailed log configuration options.
+Refer to the [PostgreSQL setup documentation](https://grafana.com/docs/grafana-cloud/monitor-infrastructure/database-observability/set-up/postgres/) for the required `log_line_prefix` and detailed log configuration options.
 {{< /admonition >}}
 
 ## Example
@@ -295,17 +324,11 @@ Refer to the [PostgreSQL setup documentation](https://grafana.com/docs/grafana-c
 database_observability.postgres "orders_db" {
   data_source_name = "postgres://user:pass@localhost:5432/dbname"
   forward_to       = [loki.relabel.orders_db.receiver]
-  targets          = prometheus.exporter.postgres.orders_db.targets
 
   // Enable per-query error telemetry from the processed PostgreSQL logs.
   logs {
     enable_error_logs_processing = true
   }
-}
-
-prometheus.exporter.postgres "orders_db" {
-  data_source_name   = "postgres://user:pass@localhost:5432/dbname"
-  enabled_collectors = ["stat_statements"]
 }
 
 // OPTIONAL: read PostgreSQL log files and forward to logs collector

@@ -4,8 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"path/filepath"
+	"reflect"
 	"sync"
+	"time"
 
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/component"
@@ -14,6 +17,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/loki/util"
+	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/common/model"
 )
 
@@ -54,6 +58,8 @@ type Component struct {
 	// consumer is set by the first successful Update and afterwards only replaced by
 	// another successfully built consumer, never cleared.
 	consumer client.Consumer
+	// args are the arguments of the last successful Update.
+	args Arguments
 }
 
 // New creates a new loki.write component.
@@ -114,7 +120,31 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	cfgs := newArgs.convertEndpointConfigs()
+	if c.consumer == nil || consumerArgsChanged(c.args, newArgs) {
+		if err := c.updateConsumer(newArgs); err != nil {
+			return err
+		}
+	}
+
+	if !maps.Equal(c.args.ExternalLabels, newArgs.ExternalLabels) {
+		c.externalLabels = util.MapToModelLabelSet(newArgs.ExternalLabels)
+	}
+
+	c.args = newArgs
+	return nil
+}
+
+// consumerArgsChanged reports whether the consumer must be rebuilt to apply new.
+func consumerArgsChanged(old, new Arguments) bool {
+	return !reflect.DeepEqual(old.Endpoints, new.Endpoints) ||
+		old.MaxStreams != new.MaxStreams ||
+		old.WAL != new.WAL
+}
+
+// updateConsumer builds a consumer for args and replaces the current one with it.
+// The current consumer is kept if the new one can't be built.
+func (c *Component) updateConsumer(args Arguments) error {
+	cfgs := args.convertEndpointConfigs()
 
 	uid := alloyseed.Get().UID
 	for i := range cfgs {
@@ -131,8 +161,8 @@ func (c *Component) Update(args component.Arguments) error {
 		err      error
 	)
 
-	if newArgs.WAL.Enabled {
-		consumer, err = c.newWALConsumer(newArgs, cfgs)
+	if args.WAL.Enabled {
+		consumer, err = c.newWALConsumer(args, cfgs)
 	} else {
 		consumer, err = client.NewFanoutConsumer(c.opts.Logger, c.opts.Registerer, cfgs...)
 	}
@@ -146,14 +176,13 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 
 	// The WAL is only needed while a WAL consumer is reading from it.
-	if !newArgs.WAL.Enabled && c.wal != nil {
+	if !args.WAL.Enabled && c.wal != nil {
 		c.wal.Close()
 		c.wal = nil
 	}
 
 	c.consumer = consumer
 	c.consumer.Start()
-	c.externalLabels = util.MapToModelLabelSet(newArgs.ExternalLabels)
 
 	return nil
 }
@@ -199,7 +228,10 @@ func (c *Component) newWALConsumer(args Arguments, cfgs []client.Config) (client
 }
 
 func (c *Component) consumeEntry(ctx context.Context, e loki.Entry) {
-	var labelsMerged bool
+	var (
+		bo           *backoff.Backoff
+		labelsMerged bool
+	)
 
 	for {
 		c.mut.RLock()
@@ -215,19 +247,40 @@ func (c *Component) consumeEntry(ctx context.Context, e loki.Entry) {
 		}
 
 		err := consumer.ConsumeEntry(ctx, e)
-		// Only a stopped consumer is worth retrying, an update swapped it out.
-		// Anything else is an accepted entry, a canceled context while shutting down,
-		// or a failed WAL write.
-		// This makes delivery at-least-once: a fanout consumer enqueues to its
-		// endpoints in order, so it can be stopped after some of them already
-		// accepted the entry, and the retry hands it to those endpoints again.
-		if !errors.Is(err, loki.ErrConsumerStopped) {
+		if err == nil {
 			return
 		}
 
 		if ctx.Err() != nil {
+			c.opts.Logger.Error("dropping entry, write did not succeed before shutdown", "err", err)
 			return
 		}
+
+		if !client.IsRetryableErr(err) {
+			c.opts.Logger.Error("dropping entry, write failed with a non retryable error", "err", err)
+			return
+		}
+
+		// A stopped consumer has already been swapped out by the time Update
+		// releases the lock, so there is no need to wait.
+		// This makes delivery at-least-once: a fanout consumer enqueues to its
+		// endpoints in order, so it can be stopped after some of them already
+		// accepted the entry, and the retry hands it to those endpoints again.
+		if errors.Is(err, loki.ErrConsumerStopped) {
+			continue
+		}
+
+		// Retrying without a limit blocks the pipeline instead of dropping the entry,
+		// a full WAL disk can recover on its own once old segments are cleaned up.
+		if bo == nil {
+			bo = backoff.New(ctx, backoff.Config{
+				MinBackoff: 50 * time.Millisecond,
+				MaxBackoff: 30 * time.Second,
+			})
+		}
+
+		c.opts.Logger.Debug("failed to write entry, retrying", "attempt", bo.NumRetries()+1, "err", err)
+		bo.Wait()
 	}
 }
 

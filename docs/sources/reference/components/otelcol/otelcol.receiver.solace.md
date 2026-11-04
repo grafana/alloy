@@ -115,7 +115,7 @@ The following arguments are supported:
 
 | Name       | Type     | Description          | Default | Required |
 |------------|----------|----------------------|---------|----------|
-| `password` | `string` | The password to use. |         | yes      |
+| `password` | `secret` | The password to use. |         | yes      |
 | `username` | `string` | The username to use. |         | yes      |
 
 ### `sasl_xauth2`
@@ -126,7 +126,7 @@ The following arguments are supported:
 
 | Name       | Type     | Description               | Default | Required |
 |------------|----------|---------------------------|---------|----------|
-| `bearer`   | `string` | The bearer in plain text. |         | yes      |
+| `bearer`   | `secret` | The bearer in plain text. |         | yes      |
 | `username` | `string` | The username to use.      |         | yes      |
 
 ### `debug_metrics`

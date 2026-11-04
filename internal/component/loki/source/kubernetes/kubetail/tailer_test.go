@@ -270,3 +270,83 @@ func Test_processLogStream(t *testing.T) {
 		})
 	}
 }
+
+func Test_processLogStream_retail(t *testing.T) {
+	tt := []struct {
+		name        string
+		firstLines  []string
+		retailLines []string // Replayed from the start of the resume second.
+		expectLines []string
+	}{
+		{
+			name:        "last line is not forwarded again",
+			firstLines:  []string{"2023-01-23T17:00:10Z line1\n"},
+			retailLines: []string{"2023-01-23T17:00:10Z line1\n"},
+		},
+		{
+			name: "only new lines sharing the resume timestamp are forwarded",
+			firstLines: []string{
+				"2023-01-23T17:00:10Z line1\n",
+				"2023-01-23T17:00:10Z line2\n",
+			},
+			retailLines: []string{
+				"2023-01-23T17:00:10Z line1\n",
+				"2023-01-23T17:00:10Z line2\n",
+				"2023-01-23T17:00:10Z line3\n",
+				"2023-01-23T17:00:11Z line4\n",
+			},
+			expectLines: []string{"line3\n", "line4\n"},
+		},
+		{
+			name: "sub-second lines in the resume second are not forwarded again",
+			firstLines: []string{
+				"2023-01-23T17:00:10.200Z line1\n",
+				"2023-01-23T17:00:10.500Z line2\n",
+			},
+			retailLines: []string{
+				"2023-01-23T17:00:10.200Z line1\n",
+				"2023-01-23T17:00:10.500Z line2\n",
+				"2023-01-23T17:00:10.700Z line3\n",
+			},
+			expectLines: []string{"line3\n"},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			lset := labels.FromStrings(
+				kubePodName, "test-pod",
+				kubePodNamespace, "default",
+				kubePodContainerName, "test-container",
+				kubePodUID, "test-uid-123",
+			)
+			lset, err := PrepareLabels(lset, "test")
+			require.NoError(t, err)
+
+			target := NewTarget(lset, lset, false)
+			tailer := &tailer{
+				target: target,
+				lset:   newLabelSet(target.Labels()),
+				opts:   &Options{Positions: &mockPositions{}},
+			}
+			calc := newRollingAverageCalculator(10000, 100, 2*time.Second, 1*time.Hour)
+
+			// The handler is buffered, so each stream is read until EOF.
+			process := func(lines []string, sinceTime time.Time) []string {
+				handler := newMockEntryHandler()
+				stream := &mockReadCloser{strings.NewReader(strings.Join(lines, ""))}
+				require.NoError(t, tailer.processLogStream(t.Context(), stream, handler, sinceTime, positions.Entry{}, calc))
+				close(handler.ch)
+
+				var got []string
+				for e := range handler.ch {
+					got = append(got, e.Line)
+				}
+				return got
+			}
+
+			require.Len(t, process(tc.firstLines, time.Time{}), len(tc.firstLines))
+			require.Equal(t, tc.expectLines, process(tc.retailLines, target.LastEntry()))
+		})
+	}
+}

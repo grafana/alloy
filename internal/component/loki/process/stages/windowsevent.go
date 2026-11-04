@@ -34,10 +34,7 @@ func (e *WindowsEventConfig) SetToDefault() {
 	e.Source = defaultWindowsEventSource
 }
 
-var (
-	_ Stage          = (*windowsEventStage)(nil)
-	_ entryProcessor = (*windowsEventStage)(nil)
-)
+var _ entryProcessor = (*windowsEventStage)(nil)
 
 // Create a windowsevent stage.
 func newWindowsEventStage(cfg *WindowsEventConfig, opts stageOpts) *windowsEventStage {
@@ -57,21 +54,6 @@ type windowsEventStage struct {
 
 	keyReplacer   *strings.Replacer
 	valueReplacer *strings.Replacer
-}
-
-func (w *windowsEventStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		for e := range in {
-			e, err := w.processEntry(e)
-			if err != nil {
-				continue
-			}
-			out <- e
-		}
-	}()
-	return out
 }
 
 func (w *windowsEventStage) process(ctx context.Context, entries []Entry) error {
@@ -218,9 +200,4 @@ func (w *windowsEventStage) logParseErr(err error) {
 	if debugEnabled(w.logger) {
 		w.logger.Debug(err.Error())
 	}
-}
-
-// Cleanup implements Stage.
-func (*windowsEventStage) Cleanup() {
-	// no-op
 }

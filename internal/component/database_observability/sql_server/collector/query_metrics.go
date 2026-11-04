@@ -15,74 +15,26 @@ import (
 
 const QueryMetricsCollector = "query_metrics"
 
-// selectQueryMetrics ranks the top-N queries by duration within the recent lookback
-// window, then sums their full retained Query Store history so the emitted
-// counters stay monotonic across interval rollover.
-//
-// Note: the final SELECT sums the full retained history per ranked hash
-// (no lookback filter on the aggregation), while the lookback window only
-// constrains the top-N ranking/eligibility in the eligible/ranked CTEs.
-// In internal state, on a Query Store bucket rollover (when interval ends),
-// the cumulative totals keep growing → deltas stay non-negative → the
-// Prometheus counters remain monotonic. The only time totals decrease
-// is when Query Store is cleared, or when retention/cleanup drops an old
-// interval: in that case the state re-baselines rather than emitting a spike.
-const selectQueryMetrics = `
-WITH eligible AS (
-	SELECT DISTINCT q.query_hash
-	FROM sys.query_store_query q
-	WHERE q.is_internal_query = 0
-		AND q.query_hash IS NOT NULL
-		AND q.last_execution_time >= DATEADD(SECOND, -CONVERT(int, @lookback_window), SYSUTCDATETIME())
-),
-ranked AS (
-	SELECT TOP (@limit) q.query_hash
-	FROM sys.query_store_query q
-	JOIN eligible e ON e.query_hash = q.query_hash
-	JOIN sys.query_store_plan p ON p.query_id = q.query_id
-	JOIN sys.query_store_runtime_stats rs ON rs.plan_id = p.plan_id
-	JOIN sys.query_store_runtime_stats_interval i
-		ON i.runtime_stats_interval_id = rs.runtime_stats_interval_id
-	WHERE q.is_internal_query = 0
-		AND i.end_time >= DATEADD(SECOND, -CONVERT(int, @lookback_window), SYSUTCDATETIME())
-	GROUP BY q.query_hash
-	ORDER BY SUM(CONVERT(float, rs.avg_duration) * CONVERT(float, rs.count_executions)) DESC,
-		q.query_hash ASC
-)
-SELECT
-	q.query_hash,
-	SUM(CONVERT(bigint, rs.count_executions)) AS executions,
-	SUM(CASE
-		WHEN rs.execution_type IN (3, 4)
-		THEN CONVERT(bigint, rs.count_executions)
-		ELSE 0 END) AS errors,
-	SUM(CONVERT(float, rs.avg_duration) * CONVERT(float, rs.count_executions)) AS total_duration_us
-FROM sys.query_store_query q
-JOIN ranked r ON r.query_hash = q.query_hash
-JOIN sys.query_store_plan p ON p.query_id = q.query_id
-JOIN sys.query_store_runtime_stats rs ON rs.plan_id = p.plan_id
-WHERE q.is_internal_query = 0
-GROUP BY q.query_hash
-ORDER BY q.query_hash ASC`
-
 type QueryMetricsArguments struct {
-	DB              *sql.DB
-	Registry        *prometheus.Registry
-	CollectInterval time.Duration
-	QueryTimeout    time.Duration
-	Limit           int
-	Lookback        time.Duration
-	Logger          *slog.Logger
+	DB                 *sql.DB
+	Registry           *prometheus.Registry
+	CollectInterval    time.Duration
+	QueryTimeout       time.Duration
+	Limit              int
+	Lookback           time.Duration
+	ExcludeCurrentUser bool
+	Logger             *slog.Logger
 }
 
 type QueryMetrics struct {
-	dbConnection    *sql.DB
-	registry        *prometheus.Registry
-	queryTimeout    time.Duration
-	collectInterval time.Duration
-	limit           int
-	lookback        time.Duration
-	logger          *slog.Logger
+	dbConnection       *sql.DB
+	registry           *prometheus.Registry
+	queryTimeout       time.Duration
+	collectInterval    time.Duration
+	limit              int
+	lookback           time.Duration
+	excludeCurrentUser bool
+	logger             *slog.Logger
 
 	executionsMetric *prometheus.CounterVec
 	errorsMetric     *prometheus.CounterVec
@@ -121,19 +73,20 @@ func NewQueryMetrics(args QueryMetricsArguments) (*QueryMetrics, error) {
 	}
 
 	return &QueryMetrics{
-		dbConnection:     args.DB,
-		registry:         args.Registry,
-		collectInterval:  args.CollectInterval,
-		queryTimeout:     queryTimeoutOrDefault(args.QueryTimeout),
-		limit:            args.Limit,
-		lookback:         args.Lookback,
-		logger:           args.Logger.With("collector", QueryMetricsCollector),
-		executionsMetric: executionsMetric,
-		errorsMetric:     errorsMetric,
-		durationMetric:   durationMetric,
-		metrics:          []prometheus.Collector{executionsMetric, errorsMetric, durationMetric},
-		state:            newQueryMetricsState(executionsMetric, errorsMetric, durationMetric, ttl),
-		running:          atomic.NewBool(false),
+		dbConnection:       args.DB,
+		registry:           args.Registry,
+		collectInterval:    args.CollectInterval,
+		queryTimeout:       queryTimeoutOrDefault(args.QueryTimeout),
+		limit:              args.Limit,
+		lookback:           args.Lookback,
+		excludeCurrentUser: args.ExcludeCurrentUser,
+		logger:             args.Logger.With("collector", QueryMetricsCollector),
+		executionsMetric:   executionsMetric,
+		errorsMetric:       errorsMetric,
+		durationMetric:     durationMetric,
+		metrics:            []prometheus.Collector{executionsMetric, errorsMetric, durationMetric},
+		state:              newQueryMetricsState(executionsMetric, errorsMetric, durationMetric, ttl),
+		running:            atomic.NewBool(false),
 	}, nil
 }
 
@@ -232,6 +185,8 @@ func (c *QueryMetrics) fetchQueryStoreMetrics(ctx context.Context, database stri
 			queryCtx, selectQueryMetrics,
 			sql.Named("limit", c.limit),
 			sql.Named("lookback_window", int(c.lookback/time.Second)),
+			sql.Named("exclude_current_user", c.excludeCurrentUser),
+			sql.Named("collector_marker", QueryMarker),
 		)
 		if err != nil {
 			return fmt.Errorf("failed to query Query Store metrics: %w", err)

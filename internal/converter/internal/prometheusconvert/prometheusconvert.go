@@ -84,7 +84,7 @@ func AppendAllNested(f *builder.File, promConfig *prom_config.Config, jobNameToC
 		}
 		remoteWriteExports = component.AppendPrometheusRemoteWrite(pb, promConfig.GlobalConfig, promConfig.RemoteWriteConfigs, labelPrefix)
 	}
-	remoteWriteForwardTo := []storage.Appendable{remoteWriteExports.Receiver}
+	remoteWriteForwardTo := []storage.AppendableV2{remoteWriteExports.Receiver}
 
 	for _, scrapeConfig := range promConfig.ScrapeConfigs {
 		scrapeForwardTo := remoteWriteForwardTo
@@ -96,7 +96,7 @@ func AppendAllNested(f *builder.File, promConfig *prom_config.Config, jobNameToC
 
 		promMetricsRelabelExports := component.AppendPrometheusRelabel(pb, scrapeConfig.MetricRelabelConfigs, remoteWriteForwardTo, label)
 		if promMetricsRelabelExports != nil {
-			scrapeForwardTo = []storage.Appendable{promMetricsRelabelExports.Receiver}
+			scrapeForwardTo = []storage.AppendableV2{promMetricsRelabelExports.Receiver}
 		}
 
 		scrapeTargets := AppendServiceDiscoveryConfigs(pb, scrapeConfig.ServiceDiscoveryConfigs, label)

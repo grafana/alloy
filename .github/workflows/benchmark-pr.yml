@@ -1,0 +1,74 @@
+name: Benchmark PR
+
+# Add the `run-benchmarks` label to a PR to compare its benchmarks with its
+# merge base. The results are posted as a PR comment and the label is removed.
+#
+# Security: fork PRs are skipped, so only PRs whose authors can already push to
+# this repository run here. GITHUB_TOKEN is only passed to the comment steps.
+on:
+  pull_request:
+    types: [labeled]
+
+permissions: {}
+
+concurrency:
+  # Adding other labels must not cancel a run in progress.
+  group: benchmark-pr-${{ github.event.pull_request.number }}-${{ github.event.label.name == 'run-benchmarks' }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    name: Benchmark PR
+    if: >
+      github.event.label.name == 'run-benchmarks' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    # A fixed-size runner keeps measurements comparable between runs.
+    runs-on: ubuntu-x64-xlarge
+    timeout-minutes: 180
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        fetch-depth: 0 # to find the merge base
+        filter: blob:none
+        persist-credentials: false
+
+    - name: Setup tools
+      uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
+      with:
+        version: v2026.5.18
+        sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
+        install_args: go
+
+    - name: Comment that benchmarks are running
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      run: go run -C tools ./cmd benchdiff comment
+
+    - name: Run benchmarks
+      # Unlike a job timeout, a step timeout doesn't cancel the job, so the
+      # report is still posted and the label removed.
+      timeout-minutes: 150
+      env:
+        BASE_REF: origin/${{ github.event.pull_request.base.ref }}
+      run: |
+        go run -C tools ./cmd benchdiff run --base-ref "$BASE_REF" --out "$RUNNER_TEMP/benchmark"
+        cat "$RUNNER_TEMP/benchmark/report.md" >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Post report
+      if: ${{ !cancelled() }}
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      run: go run -C tools ./cmd benchdiff comment --report "$RUNNER_TEMP/benchmark/report.md"
+
+    - name: Upload results
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: benchmark-results
+        path: ${{ runner.temp }}/benchmark/
+        retention-days: 14

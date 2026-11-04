@@ -57,7 +57,6 @@ func newCRIStage(cfg CRIConfig, opts stageOpts) *criStage {
 		cfg:                 cfg,
 		next:                opts.next,
 		logger:              logger,
-		partialLines:        make(map[model.Fingerprint]Entry, cfg.MaxPartialLines),
 		partialLinesStriped: newPartialLinesStriped(cfg, logger, linesTruncated, linesFlushed),
 		linesFlushed:        linesFlushed,
 		linesTruncated:      linesTruncated,
@@ -81,8 +80,6 @@ func getLinesTruncatedMetric(registerer prometheus.Registerer) prometheus.Counte
 }
 
 var (
-	_ Stage = (*criStage)(nil)
-
 	_ stopper        = (*criStage)(nil)
 	_ entryProcessor = (*criStage)(nil)
 )
@@ -92,11 +89,6 @@ type criStage struct {
 	cfg    CRIConfig
 	logger *slog.Logger
 
-	// partialLines is only used by Run, where a single goroutine passes one
-	// entry at a time through the stage, so no locking is needed.
-	partialLines map[model.Fingerprint]Entry
-	// partialLinesStriped is only used by process, where many callers can pass
-	// batches through the stage concurrently.
 	partialLinesStriped *partialLinesStriped
 
 	linesFlushed   prometheus.Counter
@@ -109,56 +101,6 @@ const (
 	criContent = "content"
 	criTime    = "time"
 )
-
-func (c *criStage) Run(in chan Entry) chan Entry {
-	return RunWithSkipOrSendMany(in, func(e Entry) ([]Entry, bool) {
-		parsed, ok := crip.ParseCRI(e.Line)
-		if !ok {
-			return []Entry{e}, false
-		}
-
-		setCRIProperties(&e, parsed)
-
-		fingerprint := e.Labels.Fingerprint()
-		// We received partial-line (tag: "P")
-		if parsed.Flag == crip.FlagPartial {
-			if len(c.partialLines) >= c.cfg.MaxPartialLines {
-				c.logger.Warn("partial lines upperbound exceeded, merging it to single line", "threshold", c.cfg.MaxPartialLines)
-				c.linesFlushed.Add(float64(len(c.partialLines)))
-
-				// Merge existing partialLines
-				entries := make([]Entry, 0, len(c.partialLines))
-				for _, v := range c.partialLines {
-					entries = append(entries, v)
-				}
-
-				c.partialLines = make(map[model.Fingerprint]Entry, c.cfg.MaxPartialLines)
-				e.Line = ensureTruncateIfRequired("", e.Line, c.cfg, c.linesTruncated)
-				c.partialLines[fingerprint] = e
-
-				return entries, false
-			}
-
-			prev := c.partialLines[fingerprint]
-			e.Line = ensureTruncateIfRequired(prev.Line, e.Line, c.cfg, c.linesTruncated)
-			c.partialLines[fingerprint] = e
-
-			// it's a partial-line so skip it.
-			return nil, true
-		}
-
-		// We got full-line 'F'.
-		// If any old partial lines matches with this full-line stream, merge it,
-		// else just return the full line.
-		prev, ok := c.partialLines[fingerprint]
-		if ok {
-			e.Line = ensureTruncateIfRequired(prev.Line, e.Line, c.cfg, c.linesTruncated)
-			delete(c.partialLines, fingerprint)
-		}
-
-		return []Entry{e}, false
-	})
-}
 
 func (c *criStage) process(ctx context.Context, entries []Entry) error {
 	var dst int
@@ -215,8 +157,6 @@ func (c *criStage) stop() {
 		c.logger.Error("failed to flush held partial lines on stop", "err", err)
 	}
 }
-
-func (c *criStage) Cleanup() {}
 
 const (
 	stripeCount = 16

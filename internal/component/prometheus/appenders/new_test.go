@@ -61,3 +61,33 @@ func TestNew_PassthroughReceivesDeadRefThreshold(t *testing.T) {
 	require.Equal(t, storage.SeriesRef(0), child.appendRefs[0],
 		"passthrough must zero refs below the dead ref threshold")
 }
+
+func TestNewV2_NoChildrenReturnsNoop(t *testing.T) {
+	app := NewV2(nil, nil, 0, nil, nil)
+
+	_, ok := app.(NoopV2)
+	assert.True(t, ok, "expected NoopV2 appender for zero children")
+}
+
+func TestNewV2_SingleChildReturnsPassthrough(t *testing.T) {
+	app := NewV2([]storage.AppenderV2{&mockAppenderV2{}}, nil, 0, nil, nil)
+
+	_, ok := app.(*passthroughV2)
+	assert.True(t, ok, "expected passthroughV2 appender for single child")
+}
+
+func TestNewV2_MultipleChildrenReturnsSeriesRefMapping(t *testing.T) {
+	store := NewSeriesRefMappingStore(nil)
+	t.Cleanup(func() { store.Clear() })
+
+	app := NewV2([]storage.AppenderV2{&mockAppenderV2{}, &mockAppenderV2{}}, store, 0, nil, nil)
+
+	_, ok := app.(*seriesRefMappingV2)
+	assert.True(t, ok, "expected seriesRefMappingV2 appender for multiple children")
+}
+
+func TestNoopV2_ReturnsInputRef(t *testing.T) {
+	ref, err := NoopV2{}.Append(42, labels.FromStrings("job", "test"), 0, 1, 1, nil, nil, storage.AppendV2Options{})
+	require.NoError(t, err)
+	require.Equal(t, storage.SeriesRef(42), ref)
+}

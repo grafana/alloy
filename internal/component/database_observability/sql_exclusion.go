@@ -5,45 +5,53 @@ import (
 	"strings"
 )
 
-var defaultExcludedSchemas = []string{
-	"alloydbadmin",
-	"alloydbmetadata",
-	"azure_maintenance",
-	"azure_sys",
-	"cloudsqladmin",
-	"rdsadmin",
+// MergeExclusions merges exclusion lists in order and removes duplicates.
+func MergeExclusions(exclusionLists ...[]string) []string {
+	seen := make(map[string]struct{})
+	var merged []string
+	for _, exclusions := range exclusionLists {
+		for _, exclusion := range exclusions {
+			if _, exists := seen[exclusion]; exists {
+				continue
+			}
+			seen[exclusion] = struct{}{}
+			merged = append(merged, exclusion)
+		}
+	}
+	return merged
 }
 
-var defaultExcludedUsers = []string{
-	"azuresu",
-	"cloudsqladmin",
-	"db-o11y", // default recommended user
-	"rdsadmin",
+// ResolveExclusions merges default exclusions with the override when it is set,
+// otherwise with the inherited exclusions.
+func ResolveExclusions(defaults, inherited, override []string) []string {
+	effective := inherited
+	if override != nil {
+		effective = override
+	}
+	return MergeExclusions(defaults, effective)
 }
 
-func DefaultExcludedDatabases() []string {
-	return slices.Clone(defaultExcludedSchemas)
-}
-
-func DefaultExcludedSchemas() []string {
-	return slices.Clone(defaultExcludedSchemas)
-}
-
-func DefaultExcludedUsers() []string {
-	return slices.Clone(defaultExcludedUsers)
+// SameExclusions reports whether two exclusion lists contain the same set of
+// items, regardless of order or duplicates.
+func SameExclusions(a, b []string) bool {
+	normA := MergeExclusions(a)
+	normB := MergeExclusions(b)
+	slices.Sort(normA)
+	slices.Sort(normB)
+	return slices.Equal(normA, normB)
 }
 
 // BuildExclusionClause builds a SQL IN clause from a list of items.
 func BuildExclusionClause(items []string) string {
 	escaped := make([]string, len(items))
 	for i, item := range items {
-		escaped[i] = EscapeSQLString(item)
+		escaped[i] = escapeSQLString(item)
 	}
 	return "(" + strings.Join(escaped, ", ") + ")"
 }
 
-// EscapeSQLString escapes single quotes by doubling them to prevent SQL injection.
-func EscapeSQLString(s string) string {
+// escapeSQLString escapes single quotes by doubling them to prevent SQL injection.
+func escapeSQLString(s string) string {
 	escaped := strings.ReplaceAll(s, "'", "''")
 	return "'" + escaped + "'"
 }

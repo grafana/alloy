@@ -1,8 +1,5 @@
 otelcol.receiver.zipkin "default" {
-	endpoint            = "localhost:9411"
-	idle_timeout        = "0s"
-	write_timeout       = "0s"
-	read_header_timeout = "0s"
+	endpoint = "localhost:9411"
 
 	output {
 		traces = [otelcol.exporter.otlp.default.input]

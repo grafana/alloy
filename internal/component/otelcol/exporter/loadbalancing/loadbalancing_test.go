@@ -319,6 +319,60 @@ func TestConfigConversion(t *testing.T) {
 			},
 		},
 		{
+			testName: "static with randomness routing",
+			alloyCfg: `
+			routing_key = "randomness"
+			resolver {
+				static {
+					hostnames = ["endpoint-1"]
+				}
+			}
+			protocol {
+				otlp {
+					client {}
+				}
+			}
+			`,
+			expected: loadbalancingexporter.Config{
+				Resolver: loadbalancingexporter.ResolverSettings{
+					Static: configoptional.Some(loadbalancingexporter.StaticResolver{
+						Hostnames: []string{"endpoint-1"},
+					}),
+					DNS: configoptional.None[loadbalancingexporter.DNSResolver](),
+				},
+				RoutingKey: "randomness",
+				Protocol:   defaultProtocol,
+			},
+		},
+		{
+			testName: "static with attributes routing",
+			alloyCfg: `
+			routing_key        = "attributes"
+			routing_attributes = ["service.name", "span.kind"]
+			resolver {
+				static {
+					hostnames = ["endpoint-1"]
+				}
+			}
+			protocol {
+				otlp {
+					client {}
+				}
+			}
+			`,
+			expected: loadbalancingexporter.Config{
+				Resolver: loadbalancingexporter.ResolverSettings{
+					Static: configoptional.Some(loadbalancingexporter.StaticResolver{
+						Hostnames: []string{"endpoint-1"},
+					}),
+					DNS: configoptional.None[loadbalancingexporter.DNSResolver](),
+				},
+				RoutingKey:        "attributes",
+				RoutingAttributes: []string{"service.name", "span.kind"},
+				Protocol:          defaultProtocol,
+			},
+		},
+		{
 			testName: "static with timeout",
 			alloyCfg: `
 			protocol {
@@ -857,7 +911,6 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
-				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 		{
@@ -879,7 +932,6 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: false,
-				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 		{
@@ -901,7 +953,6 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
-				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 	}
@@ -914,6 +965,45 @@ func TestDebugMetricsConfig(t *testing.T) {
 			require.NoError(t, err)
 
 			require.Equal(t, tc.expected, args.DebugMetricsConfig())
+		})
+	}
+}
+
+func TestRoutingAttributesValidation(t *testing.T) {
+	const resolver = `
+	resolver {
+		static {
+			hostnames = ["endpoint-1"]
+		}
+	}
+	protocol {
+		otlp {
+			client {}
+		}
+	}`
+
+	tests := []struct {
+		testName string
+		alloyCfg string
+		errMsg   string
+	}{
+		{
+			testName: "attributes without routing_attributes",
+			alloyCfg: `routing_key = "attributes"` + resolver,
+			errMsg:   "routing_attributes must be specified",
+		},
+		{
+			testName: "routing_attributes without attributes key",
+			alloyCfg: `routing_attributes = ["service.name"]` + resolver,
+			errMsg:   "routing_attributes can only be used",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.testName, func(t *testing.T) {
+			var args loadbalancing.Arguments
+			err := syntax.Unmarshal([]byte(tc.alloyCfg), &args)
+			require.ErrorContains(t, err, tc.errMsg)
 		})
 	}
 }

@@ -19,7 +19,7 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/build"
 )
 
-func AppendPrometheusScrape(pb *build.PrometheusBlocks, scrapeConfig *prom_config.ScrapeConfig, forwardTo []storage.Appendable, targets []discovery.Target, label string) {
+func AppendPrometheusScrape(pb *build.PrometheusBlocks, scrapeConfig *prom_config.ScrapeConfig, forwardTo []storage.AppendableV2, targets []discovery.Target, label string) {
 	scrapeArgs := toScrapeArguments(scrapeConfig, forwardTo, targets)
 	name := []string{"prometheus", "scrape"}
 	block := common.NewBlockWithOverride(name, label, scrapeArgs)
@@ -42,7 +42,7 @@ func ValidatePrometheusScrape(scrapeConfig *prom_config.ScrapeConfig) diag.Diagn
 	return diags
 }
 
-func toScrapeArguments(scrapeConfig *prom_config.ScrapeConfig, forwardTo []storage.Appendable, targets []discovery.Target) *scrape.Arguments {
+func toScrapeArguments(scrapeConfig *prom_config.ScrapeConfig, forwardTo []storage.AppendableV2, targets []discovery.Target) *scrape.Arguments {
 	if scrapeConfig == nil {
 		return nil
 	}
@@ -82,7 +82,6 @@ func toScrapeArguments(scrapeConfig *prom_config.ScrapeConfig, forwardTo []stora
 		LabelValueLengthLimit:          scrapeConfig.LabelValueLengthLimit,
 		HTTPClientConfig:               *common.ToHttpClientConfig(&scrapeConfig.HTTPClientConfig),
 		ExtraMetrics:                   false,
-		EnableProtobufNegotiation:      false,
 		ConvertClassicHistogramsToNHCB: histogramsToNHCB,
 		EnableCompression:              scrapeConfig.EnableCompression,
 		NativeHistogramBucketLimit:     scrapeConfig.NativeHistogramBucketLimit,

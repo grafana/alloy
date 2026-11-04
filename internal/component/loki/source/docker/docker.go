@@ -71,7 +71,6 @@ type Arguments struct {
 func GetDefaultArguments() Arguments {
 	return Arguments{
 		HTTPClientConfig: types.CloneDefaultHTTPClientConfig(),
-		RefreshInterval:  60 * time.Second,
 	}
 }
 

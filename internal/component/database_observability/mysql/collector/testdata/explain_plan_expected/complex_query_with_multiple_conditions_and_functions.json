@@ -1,0 +1,81 @@
+{
+  "operation": "Ordering Operation",
+  "details": {
+    "estimatedRows": 0
+  },
+  "children": [
+    {
+      "operation": "Grouping Operation",
+      "details": {
+        "estimatedRows": 0
+      },
+      "children": [
+        {
+          "operation": "Non-Unique Key Lookup",
+          "details": {
+            "estimatedRows": 1542,
+            "estimatedCost": 3197.33,
+            "alias": "s",
+            "accessType": "ref",
+            "keyUsed": "PRIMARY",
+            "joinAlgorithm": "nested_loop",
+            "condition": "( `employees` . `s` . `to_date` = date ? )"
+          },
+          "children": [
+            {
+              "operation": "Unique Key Lookup",
+              "details": {
+                "estimatedRows": 1640,
+                "estimatedCost": 5408.8,
+                "alias": "e",
+                "accessType": "eq_ref",
+                "keyUsed": "PRIMARY",
+                "joinAlgorithm": "nested_loop",
+                "condition": "( `employees` . `e` . `hire_date` \u003e date ? )"
+              },
+              "children": [
+                {
+                  "operation": "Unique Key Lookup",
+                  "details": {
+                    "estimatedRows": 4920,
+                    "estimatedCost": 5412.98,
+                    "alias": "d",
+                    "accessType": "eq_ref",
+                    "keyUsed": "PRIMARY",
+                    "joinAlgorithm": "nested_loop"
+                  },
+                  "children": [
+                    {
+                      "operation": "Non-Unique Key Lookup",
+                      "details": {
+                        "estimatedRows": 4920,
+                        "estimatedCost": 38035.18,
+                        "alias": "t",
+                        "accessType": "ref",
+                        "keyUsed": "PRIMARY",
+                        "joinAlgorithm": "nested_loop",
+                        "condition": "( `employees` . `t` . `to_date` = date ? )"
+                      },
+                      "children": [
+                        {
+                          "operation": "Full Table Scan",
+                          "details": {
+                            "estimatedRows": 33114,
+                            "estimatedCost": 33851.3,
+                            "alias": "de",
+                            "accessType": "all",
+                            "condition": "( `employees` . `de` . `to_date` = date ? )"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

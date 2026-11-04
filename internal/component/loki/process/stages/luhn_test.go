@@ -1,6 +1,7 @@
 package stages
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -9,6 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/regexp"
+	"github.com/grafana/alloy/syntax"
 )
 
 // Test cases for the Luhn algorithm validation
@@ -75,8 +78,9 @@ func TestReplaceLuhnValidNumbers(t *testing.T) {
 }
 
 func TestLuhnFilterStage(t *testing.T) {
+	uuidRegex := *regexp.MustCompile(`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`)
+
 	const (
-		uuidRegex     = `[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`
 		nonLuhnUUID   = "a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4"
 		luhnUUID      = "a3f1b2e4-c5d6-7e8f-4242-424242424242"
 		luhnCard      = "4242424242424242"
@@ -138,7 +142,7 @@ func TestLuhnFilterStage(t *testing.T) {
 			cfg: LuhnFilterConfig{
 				Replacement: replacement,
 				MinLength:   12,
-				SkipRegex:   `safe-card=[0-9]+`,
+				SkipRegex:   *regexp.MustCompile(`safe-card=[0-9]+`),
 			},
 			entries: []Entry{
 				newEntry(map[string]any{}, model.LabelSet{}, "safe-card="+luhnCard, now),
@@ -152,7 +156,7 @@ func TestLuhnFilterStage(t *testing.T) {
 			cfg: LuhnFilterConfig{
 				Replacement: replacement,
 				MinLength:   12,
-				SkipRegex:   luhnCard,
+				SkipRegex:   *regexp.MustCompile(luhnCard),
 			},
 			entries: []Entry{
 				newEntry(map[string]any{}, model.LabelSet{}, "card="+luhnCard, now),
@@ -216,7 +220,7 @@ func TestLuhnFilterStage(t *testing.T) {
 			cfg: LuhnFilterConfig{
 				Replacement: replacement,
 				MinLength:   12,
-				SkipRegex:   `safe=[0-9/]+`,
+				SkipRegex:   *regexp.MustCompile(`safe=[0-9/]+`),
 			},
 			entries: []Entry{
 				newEntry(map[string]any{}, model.LabelSet{}, "safe="+luhnCard+"/"+anotherCard, now),
@@ -230,7 +234,7 @@ func TestLuhnFilterStage(t *testing.T) {
 			cfg: LuhnFilterConfig{
 				Replacement: replacement,
 				MinLength:   12,
-				SkipRegex:   `42424242$`,
+				SkipRegex:   *regexp.MustCompile(`42424242$`),
 			},
 			entries: []Entry{
 				newEntry(map[string]any{}, model.LabelSet{}, "card="+luhnCard, now),
@@ -244,7 +248,7 @@ func TestLuhnFilterStage(t *testing.T) {
 			cfg: LuhnFilterConfig{
 				Replacement: replacement,
 				MinLength:   12,
-				SkipRegex:   `^|$`,
+				SkipRegex:   *regexp.MustCompile(`^|$`),
 			},
 			entries: []Entry{
 				newEntry(map[string]any{}, model.LabelSet{}, "card="+luhnCard, now),
@@ -312,7 +316,7 @@ func TestLuhnFilterStage(t *testing.T) {
 				Replacement: replacement,
 				MinLength:   12,
 				Delimiters:  "-",
-				SkipRegex:   `safe-card=[0-9-]+`,
+				SkipRegex:   *regexp.MustCompile(`safe-card=[0-9-]+`),
 			},
 			entries: []Entry{
 				newEntry(map[string]any{}, model.LabelSet{}, "safe-card="+delimitedCard, now),
@@ -426,11 +430,12 @@ func TestLuhnFilterStage(t *testing.T) {
 // BenchmarkLuhnFilterStage compares Process performance with skip_regex enabled
 // vs disabled, across inputs that do and don't contain UUIDs and Luhn-valid numbers.
 func BenchmarkLuhnFilterStage(b *testing.B) {
+	uuidRegex := *regexp.MustCompile(`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`)
+
 	const (
-		uuidRegexStr = `[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`
-		nonLuhnUUID  = "a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4"
-		luhnUUID     = "a3f1b2e4-c5d6-7e8f-4242-424242424242" // last group is a 12-digit Luhn-valid run
-		luhnCC       = "4242424242424242"                     // 16-digit Luhn-valid credit card number
+		nonLuhnUUID = "a1b2c3d4-e5f6-a1b2-c3d4-e5f6a1b2c3d4"
+		luhnUUID    = "a3f1b2e4-c5d6-7e8f-4242-424242424242" // last group is a 12-digit Luhn-valid run
+		luhnCC      = "4242424242424242"                     // 16-digit Luhn-valid credit card number
 	)
 
 	fixtures := []struct {
@@ -457,10 +462,10 @@ func BenchmarkLuhnFilterStage(b *testing.B) {
 
 	skipRegexStates := []struct {
 		name      string
-		skipRegex string
+		skipRegex regexp.Regexp
 	}{
-		{"skip_regex=off", ""},
-		{"skip_regex=on", uuidRegexStr},
+		{"skip_regex=off", regexp.Regexp{}},
+		{"skip_regex=on", uuidRegex},
 	}
 
 	for _, fx := range fixtures {
@@ -484,21 +489,22 @@ func BenchmarkLuhnFilterStage(b *testing.B) {
 }
 
 func TestValidateLuhnFilterConfig(t *testing.T) {
+	const uuidRegex = `[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`
+
 	source := ".*"
-	emptySource := ""
 	cases := []struct {
-		name             string
-		input            LuhnFilterConfig
-		expected         LuhnFilterConfig
-		errorContainsStr string
+		name      string
+		input     string
+		expected  LuhnFilterConfig
+		expectErr bool
 	}{
 		{
 			name: "successful validation",
-			input: LuhnFilterConfig{
-				Replacement: "ABC",
-				Source:      &source,
-				MinLength:   10,
-			},
+			input: `
+				replacement = "ABC"
+				source      = ".*"
+				min_length  = 10
+			`,
 			expected: LuhnFilterConfig{
 				Replacement: "ABC",
 				Source:      &source,
@@ -507,11 +513,10 @@ func TestValidateLuhnFilterConfig(t *testing.T) {
 		},
 		{
 			name: "nil source",
-			input: LuhnFilterConfig{
-				Replacement: "ABC",
-				Source:      nil,
-				MinLength:   10,
-			},
+			input: `
+				replacement = "ABC"
+				min_length  = 10
+			`,
 			expected: LuhnFilterConfig{
 				Replacement: "ABC",
 				Source:      nil,
@@ -519,63 +524,111 @@ func TestValidateLuhnFilterConfig(t *testing.T) {
 			},
 		},
 		{
-			name: "empty source error",
-			input: LuhnFilterConfig{
-				Replacement: "ABC",
-				Source:      &emptySource,
-				MinLength:   11,
-			},
-			expected: LuhnFilterConfig{
-				Replacement: "ABC",
-				Source:      &emptySource,
-				MinLength:   11,
-			},
-			errorContainsStr: "empty source",
-		},
-		{
-			name: "defaults update",
-			input: LuhnFilterConfig{
-				Replacement: "",
-				Source:      &source,
-				MinLength:   -10,
-			},
+			name:  "defaults",
+			input: ``,
 			expected: LuhnFilterConfig{
 				Replacement: "**REDACTED**",
-				Source:      &source,
 				MinLength:   13,
 			},
 		},
 		{
-			name: "valid skip_regex",
-			input: LuhnFilterConfig{
-				Replacement: "ABC",
-				Source:      &source,
+			name:  "min_length set uses default replacement",
+			input: `min_length = 10`,
+			expected: LuhnFilterConfig{
+				Replacement: "**REDACTED**",
 				MinLength:   10,
-				SkipRegex:   `[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`,
 			},
+		},
+		{
+			name:  "replacement set uses default min_length",
+			input: `replacement = "X"`,
+			expected: LuhnFilterConfig{
+				Replacement: "X",
+				MinLength:   13,
+			},
+		},
+		{
+			name:  "min_length of one",
+			input: `min_length = 1`,
+			expected: LuhnFilterConfig{
+				Replacement: "**REDACTED**",
+				MinLength:   1,
+			},
+		},
+		{
+			name:  "delimiters",
+			input: `delimiters = " -"`,
+			expected: LuhnFilterConfig{
+				Replacement: "**REDACTED**",
+				MinLength:   13,
+				Delimiters:  " -",
+			},
+		},
+		{
+			name:  "empty skip_regex",
+			input: `skip_regex = ""`,
+			expected: LuhnFilterConfig{
+				Replacement: "**REDACTED**",
+				MinLength:   13,
+				SkipRegex:   *regexp.MustCompile(""),
+			},
+		},
+		{
+			name:      "zero min_length error",
+			input:     `min_length = 0`,
+			expectErr: true,
+		},
+		{
+			name:      "negative min_length error",
+			input:     `min_length = -10`,
+			expectErr: true,
+		},
+		{
+			name:      "empty replacement error",
+			input:     `replacement = ""`,
+			expectErr: true,
+		},
+		{
+			name: "empty source error",
+			input: `
+				replacement = "ABC"
+				source      = ""
+				min_length  = 11
+			`,
+			expectErr: true,
+		},
+		{
+			name: "valid skip_regex",
+			input: fmt.Sprintf(`
+				replacement = "ABC"
+				source      = ".*"
+				min_length  = 10
+				skip_regex  = %q
+			`, uuidRegex),
 			expected: LuhnFilterConfig{
 				Replacement: "ABC",
 				Source:      &source,
 				MinLength:   10,
-				SkipRegex:   `[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`,
+				SkipRegex:   *regexp.MustCompile(uuidRegex),
 			},
+		},
+		{
+			name:      "invalid skip_regex",
+			input:     `skip_regex = "("`,
+			expectErr: true,
 		},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			err := validateLuhnFilterConfig(&c.input)
-			if c.errorContainsStr == "" {
-				require.NoError(t, err)
+			var cfg LuhnFilterConfig
+			err := syntax.Unmarshal([]byte(c.input), &cfg)
+			if c.expectErr {
+				require.Error(t, err)
 			} else {
-				require.ErrorContains(t, err, c.errorContainsStr)
+				require.NoError(t, err)
+				require.Equal(t, c.expected, cfg)
 			}
-			require.Equal(t, c.expected, c.input)
 		})
 	}
-}
-
-func TestLuhnFilterStageRejectsInvalidSkipRegex(t *testing.T) {
-	_, err := newLuhnFilterStage(LuhnFilterConfig{SkipRegex: "("}, stageOpts{})
-	require.ErrorContains(t, err, errCouldNotCompileRegex.Error())
 }

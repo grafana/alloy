@@ -656,7 +656,7 @@ func sendMetrics(
 ) {
 
 	rwExports := tc.Exports().(remotewrite.Exports)
-	appender := rwExports.Receiver.Appender(t.Context())
+	appender := rwExports.Receiver.(storage.Appendable).Appender(t.Context())
 
 	for _, metric := range metrics {
 		require.NoError(t, metric.Append(appender))

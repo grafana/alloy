@@ -62,9 +62,7 @@ func TestWithOtelcolConsumer(t *testing.T) {
 					Action:      headers.ActionUpsert,
 				},
 			},
-			DebugMetrics: otelcolCfg.DebugMetricsArguments{
-				Level: otelcolCfg.LevelDetailed,
-			},
+			DebugMetrics: otelcolCfg.DebugMetricsArguments{},
 		})
 		require.NoError(t, err)
 	}()

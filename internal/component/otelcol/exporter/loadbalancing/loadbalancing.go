@@ -45,16 +45,18 @@ func init() {
 				myArgs := args.(Arguments)
 				var typeSignal exporter.TypeSignal
 				switch myArgs.RoutingKey {
-				case "traceID":
+				case routingKeyTraceID:
 					typeSignal = exporter.TypeLogs | exporter.TypeTraces
-				case "service":
+				case routingKeyRandomness:
+					typeSignal = exporter.TypeTraces
+				case routingKeyService, routingKeyAttributes:
 					if opts.MinStability.Permits(featuregate.StabilityExperimental) {
 						typeSignal = exporter.TypeLogs | exporter.TypeTraces | exporter.TypeMetrics
 					} else {
 						opts.Logger.Warn("disabling metrics exporter as stability level does not allow it")
 						typeSignal = exporter.TypeLogs | exporter.TypeTraces
 					}
-				case "resource", "metric", "streamID":
+				case routingKeyResource, routingKeyMetric, routingKeyStreamID:
 					if opts.MinStability.Permits(featuregate.StabilityExperimental) {
 						typeSignal = exporter.TypeMetrics
 					} else {
@@ -68,11 +70,25 @@ func init() {
 	})
 }
 
+// Supported values for the routing_key argument.
+const (
+	routingKeyTraceID    = "traceID"
+	routingKeyRandomness = "randomness"
+	routingKeyService    = "service"
+	routingKeyResource   = "resource"
+	routingKeyMetric     = "metric"
+	routingKeyStreamID   = "streamID"
+	routingKeyAttributes = "attributes"
+)
+
 // Arguments configures the otelcol.exporter.loadbalancing component.
 type Arguments struct {
 	Protocol   Protocol         `alloy:"protocol,block"`
 	Resolver   ResolverSettings `alloy:"resolver,block"`
 	RoutingKey string           `alloy:"routing_key,attr,optional"`
+	// RoutingAttributes are the attributes that form the routing key when
+	// RoutingKey is "attributes".
+	RoutingAttributes []string `alloy:"routing_attributes,attr,optional"`
 
 	Timeout time.Duration          `alloy:"timeout,attr,optional"`
 	Retry   otelcol.RetryArguments `alloy:"retry_on_failure,block,optional"`
@@ -91,7 +107,7 @@ var (
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
-		RoutingKey: "traceID",
+		RoutingKey: routingKeyTraceID,
 	}
 	args.DebugMetrics.SetToDefault()
 	args.Protocol.OTLP.SetToDefault()
@@ -106,10 +122,18 @@ func (args *Arguments) Validate() error {
 	// Allow routing keys for all signal types. Metrics exporter will be disabled
 	// if stability level is above experimental
 	switch args.RoutingKey {
-	case "service", "traceID", "resource", "metric", "streamID":
+	case routingKeyService, routingKeyTraceID, routingKeyRandomness, routingKeyResource, routingKeyMetric, routingKeyStreamID, routingKeyAttributes:
 		// The routing key is valid.
 	default:
 		return fmt.Errorf("invalid routing key %q", args.RoutingKey)
+	}
+
+	// Mirror upstream: routing_attributes and the "attributes" routing key go together.
+	if args.RoutingKey == routingKeyAttributes && len(args.RoutingAttributes) == 0 {
+		return fmt.Errorf("routing_attributes must be specified when routing_key is %q", routingKeyAttributes)
+	}
+	if args.RoutingKey != routingKeyAttributes && len(args.RoutingAttributes) > 0 {
+		return fmt.Errorf("routing_attributes can only be used when routing_key is %q", routingKeyAttributes)
 	}
 
 	if err := args.Resolver.AWSCloudMap.Validate(); err != nil {
@@ -135,6 +159,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	cfg.Protocol = *protocol
 	cfg.Resolver = args.Resolver.Convert()
 	cfg.RoutingKey = args.RoutingKey
+	cfg.RoutingAttributes = args.RoutingAttributes
 	cfg.TimeoutSettings = exporterhelper.TimeoutConfig{
 		Timeout: args.Timeout,
 	}

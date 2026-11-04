@@ -22,8 +22,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 
+	alloy_config "github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/prometheus/operator"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -676,6 +678,101 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 			checkRelabels(mrlcs, tc.expectedMetricRelabels)
 		})
 	}
+}
+
+func TestGenerateServiceMonitorConfigScrapeClassDefaultApplied(t *testing.T) {
+	cg := scrapeClassTestGenerator()
+	m := &promopv1.ServiceMonitor{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sm"}}
+	ep := promopv1.Endpoint{
+		RelabelConfigs:       []promopv1.RelabelConfig{{TargetLabel: "from_endpoint", Replacement: ptr.To("yes")}},
+		MetricRelabelConfigs: []promopv1.RelabelConfig{{TargetLabel: "metric_from_endpoint", Replacement: ptr.To("yes")}},
+	}
+
+	cfg, err := cg.GenerateServiceMonitorConfig(m, ep, 0, promk8s.RoleEndpoint)
+	require.NoError(t, err)
+
+	assert.True(t, cfg.HTTPClientConfig.TLSConfig.InsecureSkipVerify)
+	require.NotNil(t, cfg.HTTPClientConfig.Authorization)
+	assert.Equal(t, "class-token", string(cfg.HTTPClientConfig.Authorization.Credentials))
+
+	sd, ok := cfg.ServiceDiscoveryConfigs[0].(*promk8s.SDConfig)
+	require.True(t, ok)
+	assert.True(t, sd.AttachMetadata.Node)
+
+	requireRuleOrder(t, cfg.RelabelConfigs, "from_class", "from_endpoint")
+	requireRuleOrder(t, cfg.MetricRelabelConfigs, "metric_from_class", "metric_from_endpoint")
+}
+
+func TestGenerateServiceMonitorConfigScrapeClassTLSMerge(t *testing.T) {
+	cg := &ConfigGenerator{
+		Client: &kubernetes.ClientArguments{},
+		// Lets the endpoint set tlsConfig.caFile.
+		AllowArbitraryFileAccess: true,
+		ScrapeClasses: operator.NewScrapeClassIndex([]operator.ScrapeClass{{
+			Name:    "mesh",
+			Default: true,
+			TLSConfig: &alloy_config.TLSConfig{
+				CAFile:             "/class/ca.crt",
+				CertFile:           "/class/client.crt",
+				KeyFile:            "/class/client.key",
+				InsecureSkipVerify: true,
+			},
+		}}),
+	}
+	m := &promopv1.ServiceMonitor{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sm"}}
+
+	tests := []struct {
+		name     string
+		tls      *promopv1.TLSConfig
+		expected commonConfig.TLSConfig
+	}{
+		{
+			name: "class fills CA, cert and key but not other settings",
+			tls: &promopv1.TLSConfig{
+				SafeTLSConfig: promopv1.SafeTLSConfig{ServerName: ptr.To("example.com")},
+			},
+			expected: commonConfig.TLSConfig{
+				CAFile:     "/class/ca.crt",
+				CertFile:   "/class/client.crt",
+				KeyFile:    "/class/client.key",
+				ServerName: "example.com",
+			},
+		},
+		{
+			name: "endpoint CA takes precedence over the class CA",
+			tls: &promopv1.TLSConfig{
+				TLSFilesConfig: promopv1.TLSFilesConfig{CAFile: "/endpoint/ca.crt"},
+			},
+			expected: commonConfig.TLSConfig{
+				CAFile:   "/endpoint/ca.crt",
+				CertFile: "/class/client.crt",
+				KeyFile:  "/class/client.key",
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ep := promopv1.Endpoint{
+				HTTPConfigWithProxyAndTLSFiles: promopv1.HTTPConfigWithProxyAndTLSFiles{
+					HTTPConfigWithTLSFiles: promopv1.HTTPConfigWithTLSFiles{TLSConfig: tc.tls},
+				},
+			}
+			cfg, err := cg.GenerateServiceMonitorConfig(m, ep, 0, promk8s.RoleEndpoint)
+			require.NoError(t, err)
+			assert.Equal(t, tc.expected, cfg.HTTPClientConfig.TLSConfig)
+		})
+	}
+}
+
+func TestGenerateServiceMonitorConfigScrapeClassNotDefined(t *testing.T) {
+	cg := scrapeClassTestGenerator()
+	m := &promopv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sm"},
+		Spec:       promopv1.ServiceMonitorSpec{ScrapeClassName: ptr.To("does-not-exist")},
+	}
+
+	_, err := cg.GenerateServiceMonitorConfig(m, promopv1.Endpoint{}, 0, promk8s.RoleEndpoint)
+	require.Error(t, err)
 }
 
 func TestGenerateServiceMonitorConfigArbitraryFileAccess(t *testing.T) {

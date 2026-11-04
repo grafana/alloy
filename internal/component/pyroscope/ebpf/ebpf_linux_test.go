@@ -182,6 +182,23 @@ func TestProbeLinks(t *testing.T) {
 	})
 }
 
+func TestProbes(t *testing.T) {
+	args := NewDefaultArguments()
+	probes, err := args.probes(t.Context())
+	require.NoError(t, err)
+	require.Empty(t, probes)
+
+	args.OffCPUThreshold = 0.5
+	args.ProbeLinks = []string{"kprobe:do_sys_open", "uprobe:/bin/sh:main"}
+	probes, err = args.probes(t.Context())
+	require.NoError(t, err)
+	require.Len(t, probes, 3)
+
+	args.ProbeLinks = []string{"uprobe:/bin/sh"}
+	_, err = args.probes(t.Context())
+	require.Error(t, err)
+}
+
 func TestReconstructionAfterError(t *testing.T) {
 	// The goal here is to produce an error when trying to create the symbol cache directory.
 	// To keep things simple, we create a file and attempt to use it as a directory.
