@@ -22,3 +22,7 @@ func buildExcludedDatabasesClause(databases []string) string {
 		database_observability.MergeExclusions(excludedDatabases, databases),
 	)
 }
+
+func buildDatabaseFilterClause(excludeDatabases, includeDatabases []string, columnExpr string) string {
+	return buildExcludedDatabasesClause(excludeDatabases) + database_observability.BuildInclusionClause(columnExpr, includeDatabases)
+}

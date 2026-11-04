@@ -41,6 +41,7 @@ type HealthCheckArguments struct {
 	CollectInterval  time.Duration
 	QueryTimeout     time.Duration
 	ExcludeDatabases []string
+	IncludeDatabases []string
 	EntryHandler     loki.EntryHandler
 
 	Logger *slog.Logger
@@ -51,6 +52,7 @@ type HealthCheck struct {
 	collectInterval  time.Duration
 	queryTimeout     time.Duration
 	excludeDatabases []string
+	includeDatabases []string
 	entryHandler     loki.EntryHandler
 	logger           *slog.Logger
 
@@ -66,6 +68,7 @@ func NewHealthCheck(args HealthCheckArguments) (*HealthCheck, error) {
 		collectInterval:  args.CollectInterval,
 		queryTimeout:     queryTimeoutOrDefault(args.QueryTimeout),
 		excludeDatabases: args.ExcludeDatabases,
+		includeDatabases: args.IncludeDatabases,
 		entryHandler:     args.EntryHandler,
 		logger:           args.Logger.With("collector", HealthCheckCollector),
 		running:          &atomic.Bool{},
@@ -172,7 +175,7 @@ func checkAlloyVersion() healthCheckResult {
 // would fail the whole health check for a legitimately low-traffic database,
 // so this check passes if any non-excluded database has rows.
 func (c *HealthCheck) runPerDatabaseChecks(ctx context.Context) ([]healthCheckResult, error) {
-	databases, err := listDatabases(ctx, c.dbConnection, c.queryTimeout, c.excludeDatabases)
+	databases, err := listDatabases(ctx, c.dbConnection, c.queryTimeout, c.excludeDatabases, c.includeDatabases)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list databases: %w", err)
 	}

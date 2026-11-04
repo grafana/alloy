@@ -2339,7 +2339,9 @@ func Test_resolveExporterArgs(t *testing.T) {
 		exporterArgs := applyExporterExclusions(
 			resolveExporterArgs(userBlock),
 			[]string{"top_level"},
+			nil,
 			[]string{"top_level_user"},
+			nil,
 			sql.NullString{String: "current_user", Valid: true},
 		)
 
@@ -2374,7 +2376,9 @@ func Test_resolveExporterArgs(t *testing.T) {
 		exporterArgs := applyExporterExclusions(
 			resolveExporterArgs(userBlock),
 			[]string{"top_level"},
+			nil,
 			[]string{"top_level_user"},
+			nil,
 			sql.NullString{String: "current_user", Valid: true},
 		)
 
@@ -2420,7 +2424,9 @@ func Test_resolveExporterArgs(t *testing.T) {
 		exporterArgs := applyExporterExclusions(
 			resolveExporterArgs(args.PrometheusExporter),
 			[]string{"top_level"},
+			nil,
 			[]string{"top_level_user"},
+			nil,
 			sql.NullString{String: "current_user", Valid: true},
 		)
 
@@ -2437,7 +2443,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 	})
 
 	t.Run("database and user exclusions preserve default exclusions without configuration", func(t *testing.T) {
-		exporterArgs := applyExporterExclusions(resolveExporterArgs(nil), nil, nil, sql.NullString{})
+		exporterArgs := applyExporterExclusions(resolveExporterArgs(nil), nil, nil, nil, nil, sql.NullString{})
 
 		assert.Equal(t, []string{
 			"azure_maintenance", "alloydbadmin", "alloydbmetadata", "azure_sys", "cloudsqladmin", "rdsadmin",
@@ -2447,6 +2453,28 @@ func Test_resolveExporterArgs(t *testing.T) {
 		}, exporterArgs.StatStatementFlags.ExcludeDatabases)
 		assert.Equal(t, []string{
 			"azuresu", "cloudsqladmin", "db-o11y", "rdsadmin",
+		}, exporterArgs.StatStatementFlags.ExcludeUsers)
+	})
+
+	t.Run("include_databases and include_users remove matching default exclusions from exporter", func(t *testing.T) {
+		exporterArgs := applyExporterExclusions(
+			resolveExporterArgs(nil),
+			defaultExcludedDatabases(),
+			[]string{"rdsadmin", "app_db"},
+			defaultExcludedUsers(),
+			[]string{"rdsadmin", "app_user"},
+			sql.NullString{},
+		)
+
+		assert.Equal(t, []string{"rdsadmin", "app_db"}, exporterArgs.AutoDiscovery.DatabaseAllowlist)
+		assert.Equal(t, []string{
+			"azure_maintenance", "alloydbadmin", "alloydbmetadata", "azure_sys", "cloudsqladmin",
+		}, exporterArgs.AutoDiscovery.DatabaseDenylist)
+		assert.Equal(t, []string{
+			"azure_maintenance", "alloydbadmin", "alloydbmetadata", "azure_sys", "cloudsqladmin",
+		}, exporterArgs.StatStatementFlags.ExcludeDatabases)
+		assert.Equal(t, []string{
+			"azuresu", "cloudsqladmin", "db-o11y",
 		}, exporterArgs.StatStatementFlags.ExcludeUsers)
 	})
 }
@@ -2687,5 +2715,105 @@ func Test_exclusions_exporter_mismatch_warning(t *testing.T) {
 
 		assert.NotContains(t, logs.String(), "stat_statements exclude_databases differ")
 		assert.NotContains(t, logs.String(), "stat_statements exclude_users differ")
+	})
+
+	t.Run("logs warning when autodiscovery database_allowlist differs from top-level include_databases", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, fmt.Errorf("connection skipped for exclusion warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		defer c.stopPumps()
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 100},
+			IncludeDatabases:      []string{"top_level_db"},
+			PrometheusExporter: &PrometheusExporterArguments{
+				AutoDiscovery: exporter_postgres.AutoDiscovery{
+					DatabaseAllowlist: []string{"autodiscovery_db"},
+				},
+			},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.Contains(t, logs.String(), "include_databases and prometheus_exporter autodiscovery database_allowlist differ; prefer setting top-level include_databases only")
+	})
+}
+
+func TestValidate_IncludeAndExcludeDatabasesAndUsers(t *testing.T) {
+	t.Run("rejects overlapping include_databases and exclude_databases", func(t *testing.T) {
+		cfg := `
+			data_source_name  = "postgresql://user:pass@localhost:5432/db"
+			forward_to        = []
+			include_databases = ["app_db", "shared_db"]
+			exclude_databases = ["other_db", "shared_db"]
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.EqualError(t, err, `include_databases and exclude_databases cannot both contain "shared_db"`)
+	})
+
+	t.Run("rejects overlapping include_users and exclude_users", func(t *testing.T) {
+		cfg := `
+			data_source_name = "postgresql://user:pass@localhost:5432/db"
+			forward_to       = []
+			include_users    = ["app_user", "shared_user"]
+			exclude_users    = ["other_user", "shared_user"]
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.EqualError(t, err, `include_users and exclude_users cannot both contain "shared_user"`)
+	})
+
+	t.Run("accepts include_databases overlapping default exclude_databases when not explicitly excluded", func(t *testing.T) {
+		cfg := `
+			data_source_name  = "postgresql://user:pass@localhost:5432/db"
+			forward_to        = []
+			include_databases = ["app_db", "rdsadmin"]
+			exclude_databases = ["legacy_only"]
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		require.Equal(t, []string{"app_db", "rdsadmin"}, args.IncludeDatabases)
+	})
+
+	t.Run("rejects include_databases overlapping always-excluded databases", func(t *testing.T) {
+		cfg := `
+			data_source_name  = "postgresql://user:pass@localhost:5432/db"
+			forward_to        = []
+			include_databases = ["app_db", "azure_maintenance"]
+			exclude_databases = ["legacy_only"]
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.EqualError(t, err, `include_databases and exclude_databases cannot both contain "azure_maintenance"`)
+	})
+
+	t.Run("accepts include_users overlapping default exclude_users when not explicitly excluded", func(t *testing.T) {
+		cfg := `
+			data_source_name = "postgresql://user:pass@localhost:5432/db"
+			forward_to       = []
+			include_users    = ["app_user", "rdsadmin"]
+			exclude_users    = ["legacy_only"]
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		require.Equal(t, []string{"app_user", "rdsadmin"}, args.IncludeUsers)
+	})
+
+	t.Run("accepts disjoint include and exclude lists", func(t *testing.T) {
+		cfg := `
+			data_source_name  = "postgresql://user:pass@localhost:5432/db"
+			forward_to        = []
+			include_databases = ["app_db"]
+			exclude_databases = ["legacy_db"]
+			include_users     = ["app_user"]
+			exclude_users     = ["legacy_user"]
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		require.Equal(t, []string{"app_db"}, args.IncludeDatabases)
+		require.Equal(t, []string{"app_user"}, args.IncludeUsers)
 	})
 }

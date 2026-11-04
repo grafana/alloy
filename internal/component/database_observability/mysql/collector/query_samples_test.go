@@ -4295,6 +4295,44 @@ func TestQuerySamplesExcludeSchemas(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+func TestQuerySamplesIncludeSchemas(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	c, err := NewQuerySamples(QuerySamplesArguments{
+		DB:              db,
+		EngineVersion:   latestCompatibleVersion,
+		CollectInterval: time.Millisecond,
+		IncludeSchemas:  []string{"included_schema"},
+		EntryHandler:    lokiClient,
+		Logger:          util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+
+	c.timerBookmark = 1e12
+
+	mock.ExpectQuery(selectNowAndUptime).WithoutArgs().
+		WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
+
+	customClause := buildSchemaFilterClause(nil, []string{"included_schema"}, "statements.CURRENT_SCHEMA")
+	mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", customClause, "", endOfTimeline)).
+		WithArgs(1e12, 1e12).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+		"current_schema", "thread_id", "event_id", "end_event_id", "digest",
+		"timer_end", "timer_wait", "rows_examined", "rows_sent", "rows_affected",
+		"errors", "object_schema", "object_name", "object_type", "index_name",
+		"lock_time", "digest_text", "threads.PROCESSLIST_USER", "threads.PROCESSLIST_HOST", "cpu_time", "max_controlled_memory", "max_total_memory",
+	}))
+
+	require.NoError(t, c.fetchQuerySamples(t.Context()))
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 // TestQuerySamples_WaitEventCounter_MatchesLogLines pins the invariant that
 // the counter delta for (digest, schema) equals the sum of wait_time on
 // every emitted wait_event_v2 line for that key.

@@ -2,9 +2,14 @@ package collector
 
 import "github.com/grafana/alloy/internal/component/database_observability"
 
-var excludedSchemas = []string{"sys", "information_schema"}
+var excludedSchemas = AlwaysExcludedSchemas()
 
 var exclusionClause = database_observability.BuildExclusionClause(excludedSchemas)
+
+// AlwaysExcludedSchemas returns schemas that collectors must never query.
+func AlwaysExcludedSchemas() []string {
+	return []string{"sys", "information_schema"}
+}
 
 func buildExcludedSchemasClause(schemas []string) string {
 	if len(schemas) == 0 {
@@ -14,4 +19,8 @@ func buildExcludedSchemasClause(schemas []string) string {
 	return database_observability.BuildExclusionClause(
 		database_observability.MergeExclusions(excludedSchemas, schemas),
 	)
+}
+
+func buildSchemaFilterClause(excludeSchemas, includeSchemas []string, columnExpr string) string {
+	return buildExcludedSchemasClause(excludeSchemas) + database_observability.BuildInclusionClause(columnExpr, includeSchemas)
 }
