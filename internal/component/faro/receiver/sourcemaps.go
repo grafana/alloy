@@ -26,10 +26,32 @@ import (
 	"github.com/grafana/alloy/internal/util/wildcard"
 )
 
+// sourceMapContext holds the per-payload values used to look up a source map.
+type sourceMapContext struct {
+	Release  string
+	BundleID string
+}
+
+// templateData returns the values exposed to location path templates, sanitized
+// so they can be safely used as a single path segment.
+func (c sourceMapContext) templateData() sourceMapContext {
+	return sourceMapContext{
+		Release:  cleanFilePathPart(c.Release),
+		BundleID: cleanFilePathPart(c.BundleID),
+	}
+}
+
+// cacheKey identifies a cached source map.
+type cacheKey struct {
+	sourceURL string
+	release   string
+	bundleID  string
+}
+
 // sourceMapsStore is an interface for a sourcemap service capable of
 // transforming minified source locations to the original source location.
 type sourceMapsStore interface {
-	GetSourceMap(sourceURL string, release string) (*sourcemap.Consumer, error)
+	GetSourceMap(sourceURL string, smCtx sourceMapContext) (*sourcemap.Consumer, error)
 	Start()
 	Stop()
 }
@@ -124,7 +146,7 @@ type sourceMapsStoreImpl struct {
 	locs        []*sourcemapFileLocation
 
 	cacheMut      sync.Mutex
-	cache         map[string]*cachedSourceMap
+	cache         map[cacheKey]*cachedSourceMap
 	timeSource    timeSource
 	cleanupCtx    context.Context
 	cleanupCancel context.CancelFunc
@@ -184,19 +206,19 @@ func newSourceMapsStore(log *slog.Logger, args SourceMapsArguments, metrics *sou
 		fs:          fs,
 		args:        args,
 		origins:     origins,
-		cache:       make(map[string]*cachedSourceMap),
+		cache:       make(map[cacheKey]*cachedSourceMap),
 		metrics:     metrics,
 		locs:        locs,
 		timeSource:  realTimeSource{},
 	}
 }
 
-func (store *sourceMapsStoreImpl) GetSourceMap(sourceURL string, release string) (*sourcemap.Consumer, error) {
+func (store *sourceMapsStoreImpl) GetSourceMap(sourceURL string, smCtx sourceMapContext) (*sourcemap.Consumer, error) {
 	store.cacheMut.Lock()
 	defer store.cacheMut.Unlock()
 
-	cacheKey := fmt.Sprintf("%s__%s", sourceURL, release)
-	if cached, ok := store.cache[cacheKey]; ok {
+	key := cacheKey{sourceURL: sourceURL, release: smCtx.Release, bundleID: smCtx.BundleID}
+	if cached, ok := store.cache[key]; ok {
 		if cached != nil {
 			cached.lastUsed = store.timeSource.Now()
 			return cached.consumer, nil
@@ -204,20 +226,20 @@ func (store *sourceMapsStoreImpl) GetSourceMap(sourceURL string, release string)
 		return nil, nil
 	}
 
-	content, sourceMapURL, err := store.getSourceMapContent(sourceURL, release)
+	content, sourceMapURL, err := store.getSourceMapContent(sourceURL, smCtx)
 	if err != nil || content == nil {
-		store.cache[cacheKey] = nil
+		store.cache[key] = nil
 		return nil, err
 	}
 
 	consumer, err := sourcemap.Parse(sourceMapURL, content)
 	if err != nil {
-		store.cache[cacheKey] = nil
-		store.log.Debug("failed to parse source map", "url", sourceMapURL, "release", release, "err", err)
+		store.cache[key] = nil
+		store.log.Debug("failed to parse source map", "url", sourceMapURL, "release", smCtx.Release, "bundle_id", smCtx.BundleID, "err", err)
 		return nil, err
 	}
-	store.log.Info("successfully parsed source map", "url", sourceMapURL, "release", release)
-	store.cache[cacheKey] = &cachedSourceMap{
+	store.log.Info("successfully parsed source map", "url", sourceMapURL, "release", smCtx.Release, "bundle_id", smCtx.BundleID)
+	store.cache[key] = &cachedSourceMap{
 		consumer: consumer,
 		lastUsed: store.timeSource.Now(),
 	}
@@ -232,8 +254,7 @@ func (store *sourceMapsStoreImpl) CleanOldCacheEntries() {
 	ttl := store.args.Cache.TTL
 	for key, cached := range store.cache {
 		if cached != nil && cached.lastUsed.Before(store.timeSource.Now().Add(-ttl)) {
-			srcUrl := strings.SplitN(key, "__", 2)[0]
-			origin := getOrigin(srcUrl)
+			origin := getOrigin(key.sourceURL)
 			store.metrics.cacheSize.WithLabelValues(origin).Dec()
 			delete(store.cache, key)
 		}
@@ -324,14 +345,14 @@ func (store *sourceMapsStoreImpl) Stop() {
 	store.cleanupCtx = nil
 }
 
-func (store *sourceMapsStoreImpl) getSourceMapContent(sourceURL string, release string) (content []byte, sourceMapURL string, err error) {
+func (store *sourceMapsStoreImpl) getSourceMapContent(sourceURL string, smCtx sourceMapContext) (content []byte, sourceMapURL string, err error) {
 	// Attempt to find the source map in the filesystem first.
 	for _, loc := range store.locs {
 		if hasHttpPrefix(loc.Path) {
 			continue
 		}
 
-		content, sourceMapURL, err = store.getSourceMapFromFileSystem(sourceURL, release, loc)
+		content, sourceMapURL, err = store.getSourceMapFromFileSystem(sourceURL, smCtx, loc)
 		if content != nil || err != nil {
 			return content, sourceMapURL, err
 		}
@@ -343,7 +364,7 @@ func (store *sourceMapsStoreImpl) getSourceMapContent(sourceURL string, release 
 			continue
 		}
 
-		content, sourceMapURL, err = store.getSourceMapFromRemote(sourceURL, release, loc)
+		content, sourceMapURL, err = store.getSourceMapFromRemote(sourceURL, smCtx, loc)
 		if content != nil || err != nil {
 			return content, sourceMapURL, err
 		}
@@ -356,14 +377,14 @@ func (store *sourceMapsStoreImpl) getSourceMapContent(sourceURL string, release 
 	return nil, "", nil
 }
 
-func (store *sourceMapsStoreImpl) getSourceMapFromFileSystem(sourceURL string, release string, loc *sourcemapFileLocation) (content []byte, sourceMapURL string, err error) {
+func (store *sourceMapsStoreImpl) getSourceMapFromFileSystem(sourceURL string, smCtx sourceMapContext, loc *sourcemapFileLocation) (content []byte, sourceMapURL string, err error) {
 	if len(sourceURL) == 0 || !strings.HasPrefix(sourceURL, loc.MinifiedPathPrefix) || strings.HasSuffix(sourceURL, "/") {
 		return nil, "", nil
 	}
 
 	var rootPath bytes.Buffer
 
-	err = loc.pathTemplate.Execute(&rootPath, struct{ Release string }{Release: cleanFilePathPart(release)})
+	err = loc.pathTemplate.Execute(&rootPath, smCtx.templateData())
 	if err != nil {
 		return nil, "", err
 	}
@@ -400,14 +421,14 @@ func (store *sourceMapsStoreImpl) getSourceMapFromFileSystem(sourceURL string, r
 	return content, sourceURL, err
 }
 
-func (store *sourceMapsStoreImpl) getSourceMapFromRemote(sourceURL string, release string, loc *sourcemapFileLocation) (content []byte, sourceMapURL string, err error) {
+func (store *sourceMapsStoreImpl) getSourceMapFromRemote(sourceURL string, smCtx sourceMapContext, loc *sourcemapFileLocation) (content []byte, sourceMapURL string, err error) {
 	if len(sourceURL) == 0 || !strings.HasPrefix(sourceURL, loc.MinifiedPathPrefix) || strings.HasSuffix(sourceURL, "/") {
 		return nil, "", nil
 	}
 
 	var rootPath bytes.Buffer
 
-	err = loc.pathTemplate.Execute(&rootPath, struct{ Release string }{Release: cleanFilePathPart(release)})
+	err = loc.pathTemplate.Execute(&rootPath, smCtx.templateData())
 	if err != nil {
 		return nil, "", err
 	}
@@ -716,14 +737,14 @@ func cleanFilePathPart(x string) string {
 	return strings.TrimLeft(strings.ReplaceAll(strings.ReplaceAll(x, "\\", ""), "/", ""), ".")
 }
 
-func transformException(log *slog.Logger, store sourceMapsStore, ex *payload.Exception, release string) *payload.Exception {
+func transformException(log *slog.Logger, store sourceMapsStore, ex *payload.Exception, smCtx sourceMapContext) *payload.Exception {
 	if ex.Stacktrace == nil {
 		return ex
 	}
 
 	var frames []payload.Frame
 	for _, frame := range ex.Stacktrace.Frames {
-		mappedFrame, err := resolveSourceLocation(store, &frame, release)
+		mappedFrame, err := resolveSourceLocation(store, &frame, smCtx)
 		if err != nil {
 			log.Error("Error resolving stack trace frame source location", "err", err)
 			frames = append(frames, frame)
@@ -744,8 +765,8 @@ func transformException(log *slog.Logger, store sourceMapsStore, ex *payload.Exc
 	}
 }
 
-func resolveSourceLocation(store sourceMapsStore, frame *payload.Frame, release string) (*payload.Frame, error) {
-	smap, err := store.GetSourceMap(frame.Filename, release)
+func resolveSourceLocation(store sourceMapsStore, frame *payload.Frame, smCtx sourceMapContext) (*payload.Frame, error) {
+	smap, err := store.GetSourceMap(frame.Filename, smCtx)
 	if err != nil {
 		return nil, err
 	}
