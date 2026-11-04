@@ -78,28 +78,29 @@ config: |
 
 # Each request is a GCP Pub/Sub push envelope. message.data is a base64-encoded
 # Cloud Logging LogEntry with logName, resource, timestamp, severity and
-# textPayload.
+# textPayload. The readable entries, and the command that prints these bodies,
+# are in envelopes_test.go. That test fails if the bodies here drift from it.
 inputs:
   http:
-    # k8s_cluster, cluster_name=dev-us-central-42, location=us-central1, project_id=test-project
+    # logEntries[0]: k8s_cluster, cluster_name=dev-us-central-42
     - url: http://127.0.0.1:1518/gcp/api/v1/push
       headers:
         Content-Type: application/json
       expected_status: 204
       body: '{"message":{"data":"eyJsb2dOYW1lIjoicHJvamVjdHMvdGVzdC1wcm9qZWN0L2xvZ3MvaW50ZWdyYXRpb24tdGVzdCIsInJlc291cmNlIjp7InR5cGUiOiJrOHNfY2x1c3RlciIsImxhYmVscyI6eyJjbHVzdGVyX25hbWUiOiJkZXYtdXMtY2VudHJhbC00MiIsImxvY2F0aW9uIjoidXMtY2VudHJhbDEiLCJwcm9qZWN0X2lkIjoidGVzdC1wcm9qZWN0In19LCJ0aW1lc3RhbXAiOiIyMDI2LTAxLTAxVDAwOjAwOjAwWiIsInNldmVyaXR5IjoiSU5GTyIsInRleHRQYXlsb2FkIjoiazhzX2NsdXN0ZXIgbWVzc2FnZSAwIn0=","messageId":"0"},"subscription":"projects/test-project/subscriptions/test-push-sub"}'
-    # gcs_bucket, bucket_name=loki-bucket, project_id=test-project
+    # logEntries[1]: gcs_bucket, bucket_name=loki-bucket
     - url: http://127.0.0.1:1518/gcp/api/v1/push
       headers:
         Content-Type: application/json
       expected_status: 204
       body: '{"message":{"data":"eyJsb2dOYW1lIjoicHJvamVjdHMvdGVzdC1wcm9qZWN0L2xvZ3MvaW50ZWdyYXRpb24tdGVzdCIsInJlc291cmNlIjp7InR5cGUiOiJnY3NfYnVja2V0IiwibGFiZWxzIjp7ImJ1Y2tldF9uYW1lIjoibG9raS1idWNrZXQiLCJwcm9qZWN0X2lkIjoidGVzdC1wcm9qZWN0In19LCJ0aW1lc3RhbXAiOiIyMDI2LTAxLTAxVDAwOjAwOjAxWiIsInNldmVyaXR5IjoiSU5GTyIsInRleHRQYXlsb2FkIjoiZ2NzX2J1Y2tldCBtZXNzYWdlIDAifQ==","messageId":"1"},"subscription":"projects/test-project/subscriptions/test-push-sub"}'
-    # cloud_function, function_name=loki-fn, region=us-central1
+    # logEntries[2]: cloud_function, no cluster or bucket label
     - url: http://127.0.0.1:1518/gcp/api/v1/push
       headers:
         Content-Type: application/json
       expected_status: 204
       body: '{"message":{"data":"eyJsb2dOYW1lIjoicHJvamVjdHMvdGVzdC1wcm9qZWN0L2xvZ3MvaW50ZWdyYXRpb24tdGVzdCIsInJlc291cmNlIjp7InR5cGUiOiJjbG91ZF9mdW5jdGlvbiIsImxhYmVscyI6eyJmdW5jdGlvbl9uYW1lIjoibG9raS1mbiIsInJlZ2lvbiI6InVzLWNlbnRyYWwxIn19LCJ0aW1lc3RhbXAiOiIyMDI2LTAxLTAxVDAwOjAwOjAyWiIsInNldmVyaXR5IjoiSU5GTyIsInRleHRQYXlsb2FkIjoiY2xvdWRfZnVuY3Rpb24gbWVzc2FnZSAwIn0=","messageId":"2"},"subscription":"projects/test-project/subscriptions/test-push-sub"}'
-    # k8s_cluster, cluster_name=tenant-cluster, location=us-central1, project_id=test-project, X-Scope-OrgID 42
+    # logEntries[3]: k8s_cluster, cluster_name=tenant-cluster, sent with a tenant
     - url: http://127.0.0.1:1518/gcp/api/v1/push
       headers:
         Content-Type: application/json
