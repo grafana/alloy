@@ -2,6 +2,7 @@
 package enrich
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/cespare/xxhash/v2"
@@ -50,6 +51,21 @@ func NewMatcher(targets []discovery.Target, targetToLabel map[string]string) *Ma
 		m.targets[h] = labelSet
 	}
 	return m
+}
+
+// ValidateMatch checks a target-label to incoming-label map from the
+// configuration. The map must have at least one pair, and no name can be empty.
+// attr is the argument name, used in error messages.
+func ValidateMatch(attr string, m map[string]string) error {
+	if len(m) == 0 {
+		return fmt.Errorf("%s must contain at least one label pair", attr)
+	}
+	for targetLabel, label := range m {
+		if targetLabel == "" || label == "" {
+			return fmt.Errorf("%s must not contain empty label names, got %q = %q", attr, targetLabel, label)
+		}
+	}
+	return nil
 }
 
 // Match returns the matching target's labels, or nil if no target matches.

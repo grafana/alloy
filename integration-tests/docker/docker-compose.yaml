@@ -68,16 +68,6 @@ services:
     networks:
       - integration-tests
 
-  kafka-gen:
-    depends_on:
-      kafka:
-        condition: service_healthy
-    build:
-      dockerfile: ./integration-tests/docker/configs/kafka/Dockerfile
-      context: ../../
-    networks:
-      - integration-tests
-
   loki:
     image: grafana/loki:3.7.2@sha256:191d4fdfb7264f16989f0a57f320872620a5a7c2ceeec6229212c4190ec49b86
     command: -config.file=/etc/loki/local-config.yaml
