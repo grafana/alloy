@@ -48,6 +48,9 @@ ARG TARGETVARIANT
 ARG RELEASE_BUILD=1
 ARG VERSION
 ARG GOEXPERIMENT
+# Set to 1 to skip the collector code generation that `make alloy` runs first.
+# Checked-in generated code is verified by the check workflows.
+ARG SKIP_CODE_GENERATION
 
 COPY . /src/alloy
 WORKDIR /src/alloy
@@ -61,11 +64,12 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     GO_TAGS="netgo embedalloyui promtail_journal_enabled" \
     GOEXPERIMENT=${GOEXPERIMENT} \
     SKIP_UI_BUILD=1 \
+    SKIP_CODE_GENERATION=${SKIP_CODE_GENERATION} \
     make alloy
 
 ###
 
-FROM public.ecr.aws/ubuntu/ubuntu:noble@sha256:748740465d0aadaa69ab6e6c295892f17d7a8f44a85090dbb571ec0bb8c5674f AS slicer
+FROM docker.io/library/ubuntu:noble@sha256:fe81560990fae86dc4743202b2cb4d3df98d0bcf949173cecef15ce1127ef852 AS slicer
 
 # Username and uid for alloy user
 ARG UID="473"

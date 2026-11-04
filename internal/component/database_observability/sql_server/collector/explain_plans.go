@@ -209,8 +209,9 @@ func (c *ExplainPlans) collect(ctx context.Context) error {
 func (c *ExplainPlans) processPlan(now time.Time, key queryMetricsKey, queryHash, database string, planXML []byte) {
 	planNode, err := newExplainPlanOutputFromShowPlanXML(planXML)
 	if err != nil {
-		c.logger.Error("failed to parse showplan xml", "query_hash", queryHash, "err", err)
-		c.maybeEmitSkip(now, key, queryHash, database, fmt.Sprintf("failed to parse showplan xml: %s", err.Error()))
+		if c.maybeEmitSkip(now, key, queryHash, database, fmt.Sprintf("failed to parse showplan xml: %s", err.Error())) {
+			c.logger.Error("failed to parse showplan xml", "query_hash", queryHash, "err", err)
+		}
 		return
 	}
 
@@ -237,13 +238,14 @@ func (c *ExplainPlans) processPlan(now time.Time, key queryMetricsKey, queryHash
 	c.recordEmission(key, hash, now)
 }
 
-func (c *ExplainPlans) maybeEmitSkip(now time.Time, key queryMetricsKey, queryHash, database, reason string) {
+func (c *ExplainPlans) maybeEmitSkip(now time.Time, key queryMetricsKey, queryHash, database, reason string) bool {
 	skipHash := "skip:" + reason
 	if !c.shouldEmit(key, skipHash, now) {
-		return
+		return false
 	}
 	c.emit(database, queryHash, now, database_observability.ExplainProcessingResultSkipped, reason, nil)
 	c.recordEmission(key, skipHash, now)
+	return true
 }
 
 // shouldEmit gates emission on either the plan having changed since the last

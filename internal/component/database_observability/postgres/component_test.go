@@ -439,6 +439,33 @@ func TestQuerySamples_ExcludeCurrentUser_ConfigParsing(t *testing.T) {
 	})
 }
 
+func TestQuerySamples_EnablePreClassifiedWaitEvents_ConfigParsing(t *testing.T) {
+	t.Run("enabled by default", func(t *testing.T) {
+		cfg := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		targets = []
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		assert.True(t, args.QuerySampleArguments.EnablePreClassifiedWaitEvents)
+	})
+
+	t.Run("explicitly false", func(t *testing.T) {
+		cfg := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		targets = []
+		query_samples {
+			enable_pre_classified_wait_events = false
+		}
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		assert.False(t, args.QuerySampleArguments.EnablePreClassifiedWaitEvents)
+	})
+}
+
 func TestPostgres_ExcludeCurrentUser_Runtime(t *testing.T) {
 	t.Run("when true, queries current_user and merges it into effective exclude list", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true), sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
@@ -580,20 +607,20 @@ func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
 
 	// regexes for the query_samples collector to verify users clause
 	const (
-		regexNoCurrentUser   = `AND d\.datname NOT IN \('azure_maintenance'\)\s*AND s\.usename NOT IN \(%s\)\s*\z`
-		regexWithCurrentUser = `AND d\.datname NOT IN \('azure_maintenance'\)\s*AND s\.usesysid != \(select oid from pg_roles where rolname = current_user\)\s*AND s\.usename NOT IN \(%s\)\s*\z`
+		regexNoCurrentUser   = `AND d\.datname NOT IN \('azure_maintenance', 'alloydbadmin', 'alloydbmetadata', 'azure_sys', 'cloudsqladmin', 'rdsadmin'\)\s*AND s\.usename NOT IN \(%s\)\s*\z`
+		regexWithCurrentUser = `AND d\.datname NOT IN \('azure_maintenance', 'alloydbadmin', 'alloydbmetadata', 'azure_sys', 'cloudsqladmin', 'rdsadmin'\)\s*AND s\.usesysid != \(select oid from pg_roles where rolname = current_user\)\s*AND s\.usename NOT IN \(%s\)\s*\z`
 	)
 
 	t.Run("local override unset inherits top-level cascade", func(t *testing.T) {
 		c, mock, db := setup(t)
 		defer db.Close()
 		c.args.ExcludeCurrentUser = true
-		c.args.ExcludeUsers = []string{"rdsadmin"}
+		c.args.ExcludeUsers = []string{"custom_user"}
 		c.args.QuerySampleArguments.ExcludeCurrentUser = nil
 
 		expectPrelude(mock, true)
-		// effectiveExcludeUsers = ['rdsadmin', 'alloy_monitor'], no current_user clause.
-		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexNoCurrentUser, `'rdsadmin', 'alloy_monitor'`)).
+		// effectiveExcludeUsers = defaultExcludedUsers + ['custom_user', 'alloy_monitor'], no current_user clause.
+		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexNoCurrentUser, `'azuresu', 'cloudsqladmin', 'db-o11y', 'rdsadmin', 'custom_user', 'alloy_monitor'`)).
 			WillReturnRows(emptyActivityRows())
 
 		require.NoError(t, c.connectAndStartCollectors(context.Background(), c.loadInstances()[0]))
@@ -604,12 +631,12 @@ func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
 		c, mock, db := setup(t)
 		defer db.Close()
 		c.args.ExcludeCurrentUser = true
-		c.args.ExcludeUsers = []string{"rdsadmin"}
+		c.args.ExcludeUsers = []string{"custom_user"}
 		c.args.QuerySampleArguments.ExcludeCurrentUser = ptrBool(true)
 
 		expectPrelude(mock, true)
-		// SQL contains the current_user clause, and uses raw c.args.ExcludeUsers
-		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexWithCurrentUser, `'rdsadmin'`)).
+		// SQL contains the current_user clause, and uses defaultExcludedUsers + c.args.ExcludeUsers
+		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexWithCurrentUser, `'azuresu', 'cloudsqladmin', 'db-o11y', 'rdsadmin', 'custom_user'`)).
 			WillReturnRows(emptyActivityRows())
 
 		require.NoError(t, c.connectAndStartCollectors(context.Background(), c.loadInstances()[0]))
@@ -620,12 +647,12 @@ func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
 		c, mock, db := setup(t)
 		defer db.Close()
 		c.args.ExcludeCurrentUser = true
-		c.args.ExcludeUsers = []string{"rdsadmin"}
+		c.args.ExcludeUsers = []string{"custom_user"}
 		c.args.QuerySampleArguments.ExcludeCurrentUser = ptrBool(false)
 
 		expectPrelude(mock, true)
-		// No current_user clause, uses raw c.args.ExcludeUsers (no alloy_monitor appended).
-		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexNoCurrentUser, `'rdsadmin'`)).
+		// No current_user clause, uses defaultExcludedUsers + c.args.ExcludeUsers (no alloy_monitor appended).
+		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexNoCurrentUser, `'azuresu', 'cloudsqladmin', 'db-o11y', 'rdsadmin', 'custom_user'`)).
 			WillReturnRows(emptyActivityRows())
 
 		require.NoError(t, c.connectAndStartCollectors(context.Background(), c.loadInstances()[0]))
@@ -636,13 +663,13 @@ func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
 		c, mock, db := setup(t)
 		defer db.Close()
 		c.args.ExcludeCurrentUser = false
-		c.args.ExcludeUsers = []string{"rdsadmin"}
+		c.args.ExcludeUsers = []string{"custom_user"}
 		c.args.QuerySampleArguments.ExcludeCurrentUser = ptrBool(true)
 
 		// Top-level is false, so SELECT current_user is NOT issued.
 		expectPrelude(mock, false)
 		// SQL still contains the current_user clause via the local override.
-		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexWithCurrentUser, `'rdsadmin'`)).
+		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexWithCurrentUser, `'azuresu', 'cloudsqladmin', 'db-o11y', 'rdsadmin', 'custom_user'`)).
 			WillReturnRows(emptyActivityRows())
 
 		require.NoError(t, c.connectAndStartCollectors(context.Background(), c.loadInstances()[0]))
@@ -653,13 +680,13 @@ func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
 		c, mock, db := setup(t)
 		defer db.Close()
 		c.args.ExcludeCurrentUser = false
-		c.args.ExcludeUsers = []string{"rdsadmin"}
+		c.args.ExcludeUsers = []string{"custom_user"}
 		c.args.QuerySampleArguments.ExcludeCurrentUser = nil
 
 		// Top-level is false, so SELECT current_user is NOT issued.
 		expectPrelude(mock, false)
-		// Neither knob is on: no current_user clause, raw c.args.ExcludeUsers.
-		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexNoCurrentUser, `'rdsadmin'`)).
+		// Neither knob is on: no current_user clause, defaultExcludedUsers + c.args.ExcludeUsers.
+		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexNoCurrentUser, `'azuresu', 'cloudsqladmin', 'db-o11y', 'rdsadmin', 'custom_user'`)).
 			WillReturnRows(emptyActivityRows())
 
 		require.NoError(t, c.connectAndStartCollectors(context.Background(), c.loadInstances()[0]))
@@ -670,14 +697,14 @@ func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
 		c, mock, db := setup(t)
 		defer db.Close()
 		c.args.ExcludeCurrentUser = false
-		c.args.ExcludeUsers = []string{"rdsadmin"}
+		c.args.ExcludeUsers = []string{"custom_user"}
 		c.args.QuerySampleArguments.ExcludeCurrentUser = ptrBool(false)
 
 		// Top-level is false, so SELECT current_user is NOT issued.
 		expectPrelude(mock, false)
 		// Same observable SQL as the local=nil baseline above; the deprecated
 		// branch is taken (warning logged) but the rendered query is unchanged.
-		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexNoCurrentUser, `'rdsadmin'`)).
+		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexNoCurrentUser, `'azuresu', 'cloudsqladmin', 'db-o11y', 'rdsadmin', 'custom_user'`)).
 			WillReturnRows(emptyActivityRows())
 
 		require.NoError(t, c.connectAndStartCollectors(context.Background(), c.loadInstances()[0]))
@@ -2201,6 +2228,18 @@ func TestPostgres_Clustering_NonOwnedReceiverDiscards(t *testing.T) {
 }
 
 func Test_resolveExporterArgs(t *testing.T) {
+	t.Run("embedded postgres exporter always sets statstatements limit to 100, regardless of default arguments", func(t *testing.T) {
+		originalDefaultArguments := exporter_postgres.DefaultArguments
+		t.Cleanup(func() {
+			exporter_postgres.DefaultArguments = originalDefaultArguments
+		})
+		exporter_postgres.DefaultArguments.StatStatementFlags = &exporter_postgres.StatStatementFlags{Limit: 500}
+
+		exporterArgs := resolveExporterArgs(nil)
+		require.NotNil(t, exporterArgs.StatStatementFlags)
+		assert.Equal(t, uint(100), exporterArgs.StatStatementFlags.Limit)
+	})
+
 	t.Run("no block at all defaults to stat_statements only with default stat_statements limit", func(t *testing.T) {
 		cfg := `
 			data_source_name = "postgresql://user:pass@localhost:5432/db"
@@ -2288,6 +2327,155 @@ func Test_resolveExporterArgs(t *testing.T) {
 		var args Arguments
 		err := syntax.Unmarshal([]byte(cfg), &args)
 		require.ErrorContains(t, err, "enabled_collectors cannot be set when disable_default_metrics is true")
+	})
+
+	t.Run("database and user exclusions inherit top-level exclusions when nested exclusions are unset", func(t *testing.T) {
+		userBlock := &PrometheusExporterArguments{
+			StatStatementFlags: &exporter_postgres.StatStatementFlags{
+				Limit: 50,
+			},
+		}
+
+		exporterArgs := applyExporterExclusions(
+			resolveExporterArgs(userBlock),
+			[]string{"top_level"},
+			nil,
+			[]string{"top_level_user"},
+			nil,
+			sql.NullString{String: "current_user", Valid: true},
+		)
+
+		assert.Equal(t, []string{
+			"azure_maintenance", "alloydbadmin", "alloydbmetadata", "azure_sys", "cloudsqladmin", "rdsadmin",
+			"top_level",
+		}, exporterArgs.AutoDiscovery.DatabaseDenylist)
+		assert.Equal(t, []string{
+			"azure_maintenance", "alloydbadmin", "alloydbmetadata", "azure_sys", "cloudsqladmin", "rdsadmin",
+			"top_level",
+		}, exporterArgs.StatStatementFlags.ExcludeDatabases)
+		assert.Equal(t, []string{
+			"azuresu", "cloudsqladmin", "db-o11y", "rdsadmin",
+			"top_level_user", "current_user",
+		}, exporterArgs.StatStatementFlags.ExcludeUsers)
+		assert.Nil(t, userBlock.AutoDiscovery.DatabaseDenylist)
+		assert.Nil(t, userBlock.StatStatementFlags.ExcludeDatabases)
+		assert.Nil(t, userBlock.StatStatementFlags.ExcludeUsers)
+	})
+
+	t.Run("nested database and user exclusions override custom top-level exclusions while preserving default exclusions", func(t *testing.T) {
+		userBlock := &PrometheusExporterArguments{
+			AutoDiscovery: exporter_postgres.AutoDiscovery{
+				DatabaseDenylist: []string{"autodiscovery_only"},
+			},
+			StatStatementFlags: &exporter_postgres.StatStatementFlags{
+				ExcludeDatabases: []string{"stat_statements_only"},
+				ExcludeUsers:     []string{"stat_statements_user"},
+			},
+		}
+
+		exporterArgs := applyExporterExclusions(
+			resolveExporterArgs(userBlock),
+			[]string{"top_level"},
+			nil,
+			[]string{"top_level_user"},
+			nil,
+			sql.NullString{String: "current_user", Valid: true},
+		)
+
+		assert.Equal(t, []string{
+			"azure_maintenance", "alloydbadmin", "alloydbmetadata", "azure_sys", "cloudsqladmin", "rdsadmin",
+			"autodiscovery_only",
+		}, exporterArgs.AutoDiscovery.DatabaseDenylist)
+		assert.Equal(t, []string{
+			"azure_maintenance", "alloydbadmin", "alloydbmetadata", "azure_sys", "cloudsqladmin", "rdsadmin",
+			"stat_statements_only",
+		}, exporterArgs.StatStatementFlags.ExcludeDatabases)
+		assert.Equal(t, []string{
+			"azuresu", "cloudsqladmin", "db-o11y", "rdsadmin",
+			"stat_statements_user", "current_user",
+		}, exporterArgs.StatStatementFlags.ExcludeUsers)
+		assert.Equal(t, []string{"autodiscovery_only"}, userBlock.AutoDiscovery.DatabaseDenylist)
+		assert.Equal(t, []string{"stat_statements_only"}, userBlock.StatStatementFlags.ExcludeDatabases)
+		assert.Equal(t, []string{"stat_statements_user"}, userBlock.StatStatementFlags.ExcludeUsers)
+	})
+
+	t.Run("explicit empty nested exclusions override custom top-level exclusions while preserving default exclusions", func(t *testing.T) {
+		cfg := `
+			data_source_name = "postgresql://user:pass@localhost:5432/db"
+			forward_to = []
+			prometheus_exporter {
+				autodiscovery {
+					database_denylist = []
+				}
+				stat_statements {
+					exclude_databases = []
+					exclude_users = []
+				}
+			}
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		require.NotNil(t, args.PrometheusExporter)
+		require.NotNil(t, args.PrometheusExporter.AutoDiscovery.DatabaseDenylist)
+		require.NotNil(t, args.PrometheusExporter.StatStatementFlags)
+		require.NotNil(t, args.PrometheusExporter.StatStatementFlags.ExcludeDatabases)
+		require.NotNil(t, args.PrometheusExporter.StatStatementFlags.ExcludeUsers)
+
+		exporterArgs := applyExporterExclusions(
+			resolveExporterArgs(args.PrometheusExporter),
+			[]string{"top_level"},
+			nil,
+			[]string{"top_level_user"},
+			nil,
+			sql.NullString{String: "current_user", Valid: true},
+		)
+
+		assert.Equal(t, []string{
+			"azure_maintenance", "alloydbadmin", "alloydbmetadata", "azure_sys", "cloudsqladmin", "rdsadmin",
+		}, exporterArgs.AutoDiscovery.DatabaseDenylist)
+		assert.Equal(t, []string{
+			"azure_maintenance", "alloydbadmin", "alloydbmetadata", "azure_sys", "cloudsqladmin", "rdsadmin",
+		}, exporterArgs.StatStatementFlags.ExcludeDatabases)
+		assert.Equal(t, []string{
+			"azuresu", "cloudsqladmin", "db-o11y", "rdsadmin",
+			"current_user",
+		}, exporterArgs.StatStatementFlags.ExcludeUsers)
+	})
+
+	t.Run("database and user exclusions preserve default exclusions without configuration", func(t *testing.T) {
+		exporterArgs := applyExporterExclusions(resolveExporterArgs(nil), nil, nil, nil, nil, sql.NullString{})
+
+		assert.Equal(t, []string{
+			"azure_maintenance", "alloydbadmin", "alloydbmetadata", "azure_sys", "cloudsqladmin", "rdsadmin",
+		}, exporterArgs.AutoDiscovery.DatabaseDenylist)
+		assert.Equal(t, []string{
+			"azure_maintenance", "alloydbadmin", "alloydbmetadata", "azure_sys", "cloudsqladmin", "rdsadmin",
+		}, exporterArgs.StatStatementFlags.ExcludeDatabases)
+		assert.Equal(t, []string{
+			"azuresu", "cloudsqladmin", "db-o11y", "rdsadmin",
+		}, exporterArgs.StatStatementFlags.ExcludeUsers)
+	})
+
+	t.Run("include_databases and include_users remove matching default exclusions from exporter", func(t *testing.T) {
+		exporterArgs := applyExporterExclusions(
+			resolveExporterArgs(nil),
+			defaultExcludedDatabases(),
+			[]string{"rdsadmin", "app_db"},
+			defaultExcludedUsers(),
+			[]string{"rdsadmin", "app_user"},
+			sql.NullString{},
+		)
+
+		assert.Equal(t, []string{"rdsadmin", "app_db"}, exporterArgs.AutoDiscovery.DatabaseAllowlist)
+		assert.Equal(t, []string{
+			"azure_maintenance", "alloydbadmin", "alloydbmetadata", "azure_sys", "cloudsqladmin",
+		}, exporterArgs.AutoDiscovery.DatabaseDenylist)
+		assert.Equal(t, []string{
+			"azure_maintenance", "alloydbadmin", "alloydbmetadata", "azure_sys", "cloudsqladmin",
+		}, exporterArgs.StatStatementFlags.ExcludeDatabases)
+		assert.Equal(t, []string{
+			"azuresu", "cloudsqladmin", "db-o11y",
+		}, exporterArgs.StatStatementFlags.ExcludeUsers)
 	})
 }
 
@@ -2403,5 +2591,229 @@ func Test_query_details_stat_statements_different_limits_warning(t *testing.T) {
 		require.NoError(t, c.Update(args))
 
 		assert.NotContains(t, logs.String(), "query_details and prometheus_exporter stat_statements limits differ")
+	})
+}
+
+func Test_exclusions_exporter_mismatch_warning(t *testing.T) {
+	t.Run("logs warnings when autodiscovery and stat_statements exclusions differ from top-level", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, fmt.Errorf("connection skipped for exclusion warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		defer c.stopPumps()
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 100},
+			ExcludeDatabases:      []string{"top_level_db"},
+			ExcludeUsers:          []string{"top_level_user"},
+			PrometheusExporter: &PrometheusExporterArguments{
+				AutoDiscovery: exporter_postgres.AutoDiscovery{
+					DatabaseDenylist: []string{"autodiscovery_db"},
+				},
+				StatStatementFlags: &exporter_postgres.StatStatementFlags{
+					Limit:            100,
+					ExcludeDatabases: []string{"stat_statements_db"},
+					ExcludeUsers:     []string{"stat_statements_user"},
+				},
+			},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.Contains(t, logs.String(), "exclude_databases and prometheus_exporter autodiscovery database_denylist differ; prefer setting top-level exclude_databases only")
+		assert.Contains(t, logs.String(), "exclude_databases and prometheus_exporter stat_statements exclude_databases differ; prefer setting top-level exclude_databases only")
+		assert.Contains(t, logs.String(), "exclude_users and prometheus_exporter stat_statements exclude_users differ; prefer setting top-level exclude_users only")
+	})
+
+	t.Run("does not log warning when nested exclusions are unset", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, fmt.Errorf("connection skipped for exclusion warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		defer c.stopPumps()
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 100},
+			ExcludeDatabases:      []string{"postgres"},
+			ExcludeUsers:          []string{"custom_user"},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "differ; prefer setting top-level")
+	})
+
+	t.Run("does not log warning when nested exclusions resolve to the same set in different order", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, fmt.Errorf("connection skipped for exclusion warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		defer c.stopPumps()
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 100},
+			ExcludeDatabases:      []string{"db_a", "db_b"},
+			ExcludeUsers:          []string{"user_a", "user_b"},
+			PrometheusExporter: &PrometheusExporterArguments{
+				AutoDiscovery: exporter_postgres.AutoDiscovery{
+					DatabaseDenylist: []string{"db_b", "rdsadmin", "db_a"},
+				},
+				StatStatementFlags: &exporter_postgres.StatStatementFlags{
+					Limit:            100,
+					ExcludeDatabases: []string{"db_b", "db_a"},
+					ExcludeUsers:     []string{"user_b", "rdsadmin", "user_a"},
+				},
+			},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "differ; prefer setting top-level")
+	})
+
+	t.Run("does not log warning when embedded postgres exporter not used", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, fmt.Errorf("connection skipped for exclusion warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		defer c.stopPumps()
+		args := Arguments{
+			DataSourceName:   alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			Targets:          []discovery.Target{discovery.NewTargetFromMap(map[string]string{"job": "external"})},
+			ExcludeDatabases: []string{"postgres"},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "differ; prefer setting top-level")
+	})
+
+	t.Run("does not log stat_statements exclusion warnings when stat_statements is disabled", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, fmt.Errorf("connection skipped for exclusion warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		defer c.stopPumps()
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 100},
+			PrometheusExporter: &PrometheusExporterArguments{
+				EnabledCollectors: []string{"wal"},
+				StatStatementFlags: &exporter_postgres.StatStatementFlags{
+					ExcludeDatabases: []string{"stat_statements_db"},
+					ExcludeUsers:     []string{"stat_statements_user"},
+				},
+			},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "stat_statements exclude_databases differ")
+		assert.NotContains(t, logs.String(), "stat_statements exclude_users differ")
+	})
+
+	t.Run("logs warning when autodiscovery database_allowlist differs from top-level include_databases", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, fmt.Errorf("connection skipped for exclusion warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		defer c.stopPumps()
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 100},
+			IncludeDatabases:      []string{"top_level_db"},
+			PrometheusExporter: &PrometheusExporterArguments{
+				AutoDiscovery: exporter_postgres.AutoDiscovery{
+					DatabaseAllowlist: []string{"autodiscovery_db"},
+				},
+			},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.Contains(t, logs.String(), "include_databases and prometheus_exporter autodiscovery database_allowlist differ; prefer setting top-level include_databases only")
+	})
+}
+
+func TestValidate_IncludeAndExcludeDatabasesAndUsers(t *testing.T) {
+	t.Run("rejects overlapping include_databases and exclude_databases", func(t *testing.T) {
+		cfg := `
+			data_source_name  = "postgresql://user:pass@localhost:5432/db"
+			forward_to        = []
+			include_databases = ["app_db", "shared_db"]
+			exclude_databases = ["other_db", "shared_db"]
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.EqualError(t, err, `include_databases and exclude_databases cannot both contain "shared_db"`)
+	})
+
+	t.Run("rejects overlapping include_users and exclude_users", func(t *testing.T) {
+		cfg := `
+			data_source_name = "postgresql://user:pass@localhost:5432/db"
+			forward_to       = []
+			include_users    = ["app_user", "shared_user"]
+			exclude_users    = ["other_user", "shared_user"]
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.EqualError(t, err, `include_users and exclude_users cannot both contain "shared_user"`)
+	})
+
+	t.Run("accepts include_databases overlapping default exclude_databases when not explicitly excluded", func(t *testing.T) {
+		cfg := `
+			data_source_name  = "postgresql://user:pass@localhost:5432/db"
+			forward_to        = []
+			include_databases = ["app_db", "rdsadmin"]
+			exclude_databases = ["legacy_only"]
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		require.Equal(t, []string{"app_db", "rdsadmin"}, args.IncludeDatabases)
+	})
+
+	t.Run("rejects include_databases overlapping always-excluded databases", func(t *testing.T) {
+		cfg := `
+			data_source_name  = "postgresql://user:pass@localhost:5432/db"
+			forward_to        = []
+			include_databases = ["app_db", "azure_maintenance"]
+			exclude_databases = ["legacy_only"]
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.EqualError(t, err, `include_databases and exclude_databases cannot both contain "azure_maintenance"`)
+	})
+
+	t.Run("accepts include_users overlapping default exclude_users when not explicitly excluded", func(t *testing.T) {
+		cfg := `
+			data_source_name = "postgresql://user:pass@localhost:5432/db"
+			forward_to       = []
+			include_users    = ["app_user", "rdsadmin"]
+			exclude_users    = ["legacy_only"]
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		require.Equal(t, []string{"app_user", "rdsadmin"}, args.IncludeUsers)
+	})
+
+	t.Run("accepts disjoint include and exclude lists", func(t *testing.T) {
+		cfg := `
+			data_source_name  = "postgresql://user:pass@localhost:5432/db"
+			forward_to        = []
+			include_databases = ["app_db"]
+			exclude_databases = ["legacy_db"]
+			include_users     = ["app_user"]
+			exclude_users     = ["legacy_user"]
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		require.Equal(t, []string{"app_db"}, args.IncludeDatabases)
+		require.Equal(t, []string{"app_user"}, args.IncludeUsers)
 	})
 }

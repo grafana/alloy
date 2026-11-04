@@ -17,6 +17,7 @@ type Discovery struct {
 	ExcludeOtelInstrumentedServicesSpanMetrics bool                  `alloy:"exclude_otel_instrumented_services_span_metrics,attr,optional"`
 	ExcludeServices                            Services              `alloy:"exclude_services,block,optional"`
 	ExcludedLinuxSystemPaths                   []string              `alloy:"excluded_linux_system_paths,attr,optional"`
+	InstrumentAllLocal                         bool                  `alloy:"instrument_all_local,attr,optional"`
 	Instrument                                 Services              `alloy:"instrument,block,optional"`
 	MinProcessAge                              time.Duration         `alloy:"min_process_age,attr,optional"`
 	PollInterval                               time.Duration         `alloy:"poll_interval,attr,optional"`
@@ -24,7 +25,7 @@ type Discovery struct {
 	RouteHarvesterTimeout                      time.Duration         `alloy:"route_harvester_timeout,attr,optional"`
 	Services                                   Services              `alloy:"services,block,optional"`
 	SkipGoSpecificTracers                      bool                  `alloy:"skip_go_specific_tracers,attr,optional"`
-	Survey                                     Services              `alloy:"survey,block,optional"`
+	Survey                                     SurveyServices        `alloy:"survey,block,optional"`
 }
 
 type EBPFBufferSizes struct {
@@ -255,15 +256,21 @@ type DotnetRuntimeMetrics struct {
 }
 
 type CloudMetadata struct {
-	ClusterName string `alloy:"cluster_name,attr,optional"`
-	Region      string `alloy:"region,attr,optional"`
+	ClusterName     string          `alloy:"cluster_name,attr,optional"`
+	Region          string          `alloy:"region,attr,optional"`
+	RefreshInterval time.Duration   `alloy:"refresh_interval,attr,optional"`
+	Route53         Route53Metadata `alloy:"route53,block,optional"`
 }
 
 type NameResolver struct {
-	Sources     []string        `alloy:"sources,attr,optional"`
-	CacheLen    int             `alloy:"cache_len,attr,optional"`
-	CacheExpiry time.Duration   `alloy:"cache_expiry,attr,optional"`
-	ECS         ECSNameResolver `alloy:"ecs,block,optional"`
+	Sources     []string      `alloy:"sources,attr,optional"`
+	CacheLen    int           `alloy:"cache_len,attr,optional"`
+	CacheExpiry time.Duration `alloy:"cache_expiry,attr,optional"`
+
+	// Deprecated: Use cloud_metadata.refresh_interval instead.
+	ECS   ECSNameResolver   `alloy:"ecs,block,optional"`
+	GCE   GCENameResolver   `alloy:"gce,block,optional"`
+	Azure AzureNameResolver `alloy:"azure,block,optional"`
 }
 
 type ECSNameResolver struct {
@@ -313,4 +320,33 @@ type Stats struct {
 	GeoIp        GeoIP      `alloy:"geo_ip,block,optional"`
 	Print        bool       `alloy:"print_stats,attr,optional"`
 	ReverseDns   ReverseDNS `alloy:"reverse_dns,block,optional"`
+}
+
+// SurveyService adds socket eligibility to the common service selectors.
+type SurveyService struct {
+	Service    Service           `alloy:",squash"`
+	SocketApps SocketAppSelector `alloy:"socket_apps,block,optional"`
+}
+
+type SurveyServices []SurveyService
+
+type SocketAppSelector struct {
+	Enabled bool `alloy:"enabled,attr,optional"`
+	NonRoot bool `alloy:"non_root,attr,optional"`
+}
+
+type GCENameResolver struct {
+	ProjectID string `alloy:"project_id,attr,optional"`
+	Zone      string `alloy:"zone,attr,optional"`
+	Endpoint  string `alloy:"endpoint,attr,optional"`
+}
+
+type AzureNameResolver struct {
+	SubscriptionID string `alloy:"subscription_id,attr,optional"`
+	ResourceGroup  string `alloy:"resource_group,attr,optional"`
+}
+
+type Route53Metadata struct {
+	HostedZoneIDs   []string      `alloy:"hosted_zone_ids,attr,optional"`
+	RefreshInterval time.Duration `alloy:"refresh_interval,attr,optional"`
 }
