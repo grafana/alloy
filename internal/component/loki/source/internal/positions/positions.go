@@ -27,7 +27,7 @@ const (
 
 // Config describes where to get position information from.
 type Config struct {
-	PositionsFile string
+	Path string
 }
 
 // Positions tracks how far through each file we've read.
@@ -169,7 +169,7 @@ func (p *positions) save() {
 	maps.Copy(positions, p.positions)
 	p.mtx.Unlock()
 
-	if err := writePositionFile(p.cfg.PositionsFile, positions); err != nil {
+	if err := writePositionFile(p.cfg.Path, positions); err != nil {
 		p.logger.Error("error writing positions file", "error", err)
 	}
 }
@@ -207,7 +207,7 @@ func (p *positions) cleanup() {
 }
 
 func readPositionsFile(cfg Config, logger *slog.Logger) (map[Entry]string, error) {
-	cleanfn := filepath.Clean(cfg.PositionsFile)
+	cleanfn := filepath.Clean(cfg.Path)
 	buf, err := os.ReadFile(cleanfn)
 	if err != nil {
 		if os.IsNotExist(err) {

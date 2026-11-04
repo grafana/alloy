@@ -231,7 +231,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		}
 	}
 	positionsFile, err := positions.New(o.Logger, positions.Config{
-		PositionsFile: newPositionsPath,
+		Path: newPositionsPath,
 	})
 	if err != nil {
 		return nil, err

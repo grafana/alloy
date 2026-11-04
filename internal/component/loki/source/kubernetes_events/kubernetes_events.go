@@ -108,7 +108,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 	positionsFile, err := positions.New(o.Logger, positions.Config{
-		PositionsFile: filepath.Join(o.DataPath, "positions.yml"),
+		Path: filepath.Join(o.DataPath, "positions.yml"),
 	})
 	if err != nil {
 		return nil, err

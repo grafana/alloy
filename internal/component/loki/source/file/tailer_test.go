@@ -28,7 +28,7 @@ func TestTailer(t *testing.T) {
 		logFile, err := os.CreateTemp(tempDir, "example")
 		require.NoError(t, err)
 		positionsFile, err := positions.New(l, positions.Config{
-			PositionsFile: filepath.Join(tempDir, "positions.yaml"),
+			Path: filepath.Join(tempDir, "positions.yaml"),
 		})
 		require.NoError(t, err)
 		labels := model.LabelSet{
@@ -124,7 +124,7 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 		logFile, err := os.CreateTemp(tempDir, "example")
 		require.NoError(t, err)
 		positionsFile, err := positions.New(l, positions.Config{
-			PositionsFile: filepath.Join(tempDir, "positions.yaml"),
+			Path: filepath.Join(tempDir, "positions.yaml"),
 		})
 		require.NoError(t, err)
 		labels := model.LabelSet{
@@ -191,7 +191,7 @@ func TestTailerDeleteFileInstant(t *testing.T) {
 		logFile, err := os.CreateTemp(tempDir, "example")
 		require.NoError(t, err)
 		positionsFile, err := positions.New(l, positions.Config{
-			PositionsFile: filepath.Join(tempDir, "positions.yaml"),
+			Path: filepath.Join(tempDir, "positions.yaml"),
 		})
 		require.NoError(t, err)
 		labels := model.LabelSet{
@@ -272,7 +272,7 @@ func testTailerCancelWhileSendBlocked(t *testing.T, newBatcher func(model.LabelS
 	file.Close()
 
 	positionsFile, err := positions.New(l, positions.Config{
-		PositionsFile: filepath.Join(tempDir, "positions.yaml"),
+		Path: filepath.Join(tempDir, "positions.yaml"),
 	})
 	require.NoError(t, err)
 	defer positionsFile.Stop()
@@ -349,7 +349,7 @@ func TestTailerCorruptedPositions(t *testing.T) {
 		require.NoError(t, err)
 
 		positionsFile, err := positions.New(l, positions.Config{
-			PositionsFile: filepath.Join(tempDir, "positions.yaml"),
+			Path: filepath.Join(tempDir, "positions.yaml"),
 		})
 		require.NoError(t, err)
 		defer positionsFile.Stop()
@@ -447,7 +447,7 @@ func TestTailer_Compressions(t *testing.T) {
 	runTailerTest(t, func(t *testing.T, newBatcher func(model.LabelSet) loki.StreamBatcher, received func() []loki.Entry) {
 		logger := logging.NewSlogNop()
 		positionsFile, err := positions.New(logger, positions.Config{
-			PositionsFile: filepath.Join(t.TempDir(), "positions.yaml"),
+			Path: filepath.Join(t.TempDir(), "positions.yaml"),
 		})
 		require.NoError(t, err)
 		defer positionsFile.Stop()
