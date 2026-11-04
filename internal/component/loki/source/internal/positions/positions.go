@@ -22,7 +22,7 @@ const (
 
 // CursorKey returns a key that can be saved as a cursor that is never deleted.
 func CursorKey(key string) string {
-	return fmt.Sprintf("%s%s", cursorKeyPrefix, key)
+	return cursorKeyPrefix + key
 }
 
 // Config describes where to get position information from.
@@ -215,4 +215,14 @@ func readPositionsFile(cfg Config) (map[Entry]string, error) {
 	}
 
 	return p.Positions, nil
+}
+
+func writePositionFile(path string, positions map[Entry]string) error {
+	buf, err := yaml.Marshal(positionFile{
+		Positions: positions,
+	})
+	if err != nil {
+		return err
+	}
+	return writeFileAtomic(filepath.Clean(path), buf)
 }
