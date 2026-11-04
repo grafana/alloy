@@ -47,9 +47,9 @@ func TestPrometheusExporterKafka(t *testing.T) {
 		Topics:    []string{topic},
 	})
 	kafkaGen := deps.NewKafkaGen(deps.KafkaGenOptions{
-		Namespace: ns.Name(),
-		Topic:     topic,
-		Group:     "test_consumer_group",
+		Kafka: kafka,
+		Topic: topic,
+		Group: "test_consumer_group",
 	})
 	mimir := deps.NewMimir(deps.MimirOptions{Namespace: ns.Name()})
 	alloy := deps.NewAlloy(deps.AlloyOptions{

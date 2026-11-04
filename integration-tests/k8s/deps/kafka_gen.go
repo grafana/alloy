@@ -2,7 +2,9 @@ package deps
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/grafana/alloy/integration-tests/k8s/harness"
@@ -20,8 +22,9 @@ const (
 
 var _ harness.Dependency = (*KafkaGen)(nil)
 
-// KafkaGen produces a record a second to a topic of the Kafka dependency and
-// consumes them in a consumer group, so the group has offsets and lag.
+// KafkaGen produces a record a second to a topic of a Kafka dependency and
+// consumes them in a consumer group, so the group has offsets and lag. List it
+// after that Kafka dependency.
 type KafkaGen struct {
 	opts      KafkaGenOptions
 	manifest  string
@@ -29,8 +32,9 @@ type KafkaGen struct {
 }
 
 type KafkaGenOptions struct {
-	Namespace string
-	// Topic must already exist. Create it with KafkaOptions.Topics.
+	// Kafka is the broker to run against. KafkaGen runs in its namespace.
+	Kafka *Kafka
+	// Topic must be one of Kafka's KafkaOptions.Topics.
 	Topic string
 	Group string
 }
@@ -42,25 +46,31 @@ func NewKafkaGen(opts KafkaGenOptions) *KafkaGen {
 func (k *KafkaGen) Name() string { return "kafka-gen" }
 
 func (k *KafkaGen) Install(_ *harness.TestContext) error {
-	if k.opts.Namespace == "" || k.opts.Topic == "" || k.opts.Group == "" {
-		return fmt.Errorf("kafka-gen namespace, topic and group are required")
+	kafka := k.opts.Kafka
+	if kafka == nil || k.opts.Topic == "" || k.opts.Group == "" {
+		return errors.New("kafka-gen kafka, topic and group are required")
 	}
-	// The Kafka dependency loads the same image, so this is normally a no-op.
-	if err := ensureKindImage(kafkaImage); err != nil {
-		return fmt.Errorf("failed to load kafka image: %w", err)
+	// A ready Kafka has also loaded the image kafka-gen runs.
+	if !kafka.ready {
+		return errors.New("kafka-gen must be listed after its kafka dependency")
+	}
+	// The broker auto-creates unknown topics with one partition and no leader
+	// wait, so require a topic Kafka created.
+	if !slices.Contains(kafka.opts.Topics, k.opts.Topic) {
+		return fmt.Errorf("kafka-gen topic %q is not one of the kafka dependency's topics %v", k.opts.Topic, kafka.opts.Topics)
 	}
 	k.manifest = strings.NewReplacer(
 		kafkaGenTopicPlaceholder, k.opts.Topic,
 		kafkaGenGroupPlaceholder, k.opts.Group,
 	).Replace(kafkaGenManifest)
 	if err := util.Step("apply kafka-gen manifest", func() error {
-		return harness.ApplyManifest(k.opts.Namespace, k.manifest)
+		return harness.ApplyManifest(kafka.opts.Namespace, k.manifest)
 	}); err != nil {
 		return err
 	}
 	k.installed = true
 	return util.Step("wait for kafka-gen pod ready", func() error {
-		return harness.WaitForReady(k.opts.Namespace, kafkaGenSelector)
+		return harness.WaitForReady(kafka.opts.Namespace, kafkaGenSelector)
 	})
 }
 
@@ -68,5 +78,5 @@ func (k *KafkaGen) Cleanup() {
 	if !k.installed {
 		return
 	}
-	_ = harness.DeleteManifest(k.opts.Namespace, k.manifest)
+	_ = harness.DeleteManifest(k.opts.Kafka.opts.Namespace, k.manifest)
 }
