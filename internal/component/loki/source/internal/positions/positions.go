@@ -19,13 +19,14 @@ import (
 )
 
 const (
+	syncPeriod = 10 * time.Second
+
 	cursorKeyPrefix  = "cursor-"
 	journalKeyPrefix = "journal-"
 )
 
 // Config describes where to get position information from.
 type Config struct {
-	SyncPeriod    time.Duration
 	PositionsFile string
 }
 
@@ -140,7 +141,7 @@ func (p *positions) remove(path, labels string) {
 }
 
 func (p *positions) SyncPeriod() time.Duration {
-	return p.cfg.SyncPeriod
+	return syncPeriod
 }
 
 func (p *positions) run() {
@@ -150,7 +151,7 @@ func (p *positions) run() {
 		close(p.done)
 	}()
 
-	ticker := time.NewTicker(p.cfg.SyncPeriod)
+	ticker := time.NewTicker(syncPeriod)
 	for {
 		select {
 		case <-p.quit:

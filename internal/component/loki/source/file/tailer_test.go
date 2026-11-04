@@ -28,7 +28,6 @@ func TestTailer(t *testing.T) {
 		logFile, err := os.CreateTemp(tempDir, "example")
 		require.NoError(t, err)
 		positionsFile, err := positions.New(l, positions.Config{
-			SyncPeriod:    50 * time.Millisecond,
 			PositionsFile: filepath.Join(tempDir, "positions.yaml"),
 		})
 		require.NoError(t, err)
@@ -125,7 +124,6 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 		logFile, err := os.CreateTemp(tempDir, "example")
 		require.NoError(t, err)
 		positionsFile, err := positions.New(l, positions.Config{
-			SyncPeriod:    50 * time.Millisecond,
 			PositionsFile: filepath.Join(tempDir, "positions.yaml"),
 		})
 		require.NoError(t, err)
@@ -193,7 +191,6 @@ func TestTailerDeleteFileInstant(t *testing.T) {
 		logFile, err := os.CreateTemp(tempDir, "example")
 		require.NoError(t, err)
 		positionsFile, err := positions.New(l, positions.Config{
-			SyncPeriod:    50 * time.Millisecond,
 			PositionsFile: filepath.Join(tempDir, "positions.yaml"),
 		})
 		require.NoError(t, err)
@@ -275,7 +272,6 @@ func testTailerCancelWhileSendBlocked(t *testing.T, newBatcher func(model.LabelS
 	file.Close()
 
 	positionsFile, err := positions.New(l, positions.Config{
-		SyncPeriod:    50 * time.Millisecond,
 		PositionsFile: filepath.Join(tempDir, "positions.yaml"),
 	})
 	require.NoError(t, err)
@@ -353,7 +349,6 @@ func TestTailerCorruptedPositions(t *testing.T) {
 		require.NoError(t, err)
 
 		positionsFile, err := positions.New(l, positions.Config{
-			SyncPeriod:    50 * time.Millisecond,
 			PositionsFile: filepath.Join(tempDir, "positions.yaml"),
 		})
 		require.NoError(t, err)
@@ -452,7 +447,6 @@ func TestTailer_Compressions(t *testing.T) {
 	runTailerTest(t, func(t *testing.T, newBatcher func(model.LabelSet) loki.StreamBatcher, received func() []loki.Entry) {
 		logger := logging.NewSlogNop()
 		positionsFile, err := positions.New(logger, positions.Config{
-			SyncPeriod:    50 * time.Millisecond,
 			PositionsFile: filepath.Join(t.TempDir(), "positions.yaml"),
 		})
 		require.NoError(t, err)

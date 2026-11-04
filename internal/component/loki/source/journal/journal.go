@@ -61,7 +61,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 
 	positionsFile, err := positions.New(o.Logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
 		PositionsFile: positionFile,
 	})
 	if err != nil {

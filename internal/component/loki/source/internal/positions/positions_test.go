@@ -8,7 +8,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -154,7 +153,6 @@ positions:
 		t.Fatal(err)
 	}
 	p, err := New(logging.NewSlogNop(), Config{
-		SyncPeriod:    20 * time.Second,
 		PositionsFile: temp,
 	})
 	if err != nil {
