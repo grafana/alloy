@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
@@ -29,18 +30,6 @@ import (
 const (
 	ExplainPlansCollector = "explain_plans"
 )
-
-const selectDigestsForExplainPlan = `
-	SELECT
-		SCHEMA_NAME,
-		DIGEST,
-		QUERY_SAMPLE_TEXT,
-		LAST_SEEN
-	FROM performance_schema.events_statements_summary_by_digest
-	WHERE LAST_SEEN > ?
-	AND QUERY_SAMPLE_TEXT IS NOT NULL
-	AND DIGEST IS NOT NULL
-	AND SCHEMA_NAME NOT IN %s`
 
 const selectExplainPlanPrefix = `EXPLAIN FORMAT=JSON `
 
@@ -528,11 +517,13 @@ var unrecoverableSQLCodes = []knownSQLCodes{
 }
 
 type ExplainPlansArguments struct {
-	DB              *sql.DB
+	DB *sql.DB
+	// Statements gives the queries to explain: the top ones by total running
+	// time.
+	Statements      *StatementsSnapshot
 	ScrapeInterval  time.Duration
 	PerScrapeRatio  float64
 	InitialLookback time.Time
-	ExcludeSchemas  []string
 	EntryHandler    loki.EntryHandler
 
 	Logger *slog.Logger
@@ -540,10 +531,10 @@ type ExplainPlansArguments struct {
 
 type ExplainPlans struct {
 	dbConnection     *sql.DB
+	statements       *StatementsSnapshot
 	scrapeInterval   time.Duration
 	queryCache       map[string]*queryInfo
 	queryDenylist    map[string]struct{}
-	excludeSchemas   []string
 	perScrapeRatio   float64
 	currentBatchSize int
 	entryHandler     loki.EntryHandler
@@ -558,11 +549,14 @@ type ExplainPlans struct {
 }
 
 func NewExplainPlans(args ExplainPlansArguments) (*ExplainPlans, error) {
+	if args.Statements == nil {
+		return nil, errors.New("explain plans need a statements snapshot")
+	}
 	return &ExplainPlans{
 		dbConnection:   args.DB,
+		statements:     args.Statements,
 		scrapeInterval: args.ScrapeInterval,
 		perScrapeRatio: args.PerScrapeRatio,
-		excludeSchemas: args.ExcludeSchemas,
 		lastSeen:       args.InitialLookback,
 		queryCache:     make(map[string]*queryInfo),
 		queryDenylist:  make(map[string]struct{}),
@@ -686,34 +680,32 @@ func (c *ExplainPlans) Stop() {
 func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 	c.pruneExpiredThrottle()
 
-	query := fmt.Sprintf(selectDigestsForExplainPlan, buildExcludedSchemasClause(c.excludeSchemas))
-	rs, err := c.dbConnection.QueryContext(ctx, query, c.lastSeen)
+	statements, err := c.statements.Get(ctx)
 	if err != nil {
 		c.logger.Error("failed to fetch digests for explain plans", "err", err)
 		return err
 	}
-	defer rs.Close()
 
-	// Populate cache
-	for rs.Next() {
-		generatedAt := time.Now().Format(time.RFC3339)
-		var schemaName, digest, queryText string
-		var ls time.Time
-		if err = rs.Scan(&schemaName, &digest, &queryText, &ls); err != nil {
-			c.logger.Error("failed to scan digest for explain plans", "err", err)
-			return err
+	// Only the top queries that ran since the last poll are explained, so a
+	// query that stopped running isn't explained again. The rows are in order
+	// of running time, so the last poll's time is only moved after all of
+	// them are compared with it.
+	lastSeen := c.lastSeen
+	for _, st := range statements {
+		if st.Digest == "" || st.QuerySampleText == "" || !st.LastSeen.After(c.lastSeen) {
+			continue
 		}
-
-		qi := newQueryInfo(schemaName, digest, queryText)
-		if ls.After(c.lastSeen) {
-			c.lastSeen = ls
+		generatedAt := time.Now().Format(time.RFC3339)
+		qi := newQueryInfo(st.SchemaName, st.Digest, st.QuerySampleText)
+		if st.LastSeen.After(lastSeen) {
+			lastSeen = st.LastSeen
 		}
 
 		if _, ok := c.queryDenylist[qi.uniqueKey]; ok {
 			if !c.isThrottled(qi.uniqueKey) {
 				err := c.sendExplainPlansOutput(
-					schemaName,
-					digest,
+					st.SchemaName,
+					st.Digest,
 					generatedAt,
 					database_observability.ExplainProcessingResultSkipped,
 					"query denylisted",
@@ -731,11 +723,7 @@ func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 		}
 		c.queryCache[qi.uniqueKey] = qi
 	}
-
-	if err := rs.Err(); err != nil {
-		c.logger.Error("failed to iterate digest rows for explain plans", "err", err)
-		return err
-	}
+	c.lastSeen = lastSeen
 
 	// Calculate batch size based on current cache size
 	c.currentBatchSize = int(math.Ceil(float64(len(c.queryCache)) * c.perScrapeRatio))

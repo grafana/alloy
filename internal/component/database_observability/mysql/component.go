@@ -66,6 +66,7 @@ type Arguments struct {
 	EnableCollectors              []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors             []string            `alloy:"disable_collectors,attr,optional"`
 	ExcludeSchemas                []string            `alloy:"exclude_schemas,attr,optional"`
+	StatementsLimit               int                 `alloy:"statements_limit,attr,optional"`
 	AllowUpdatePerfSchemaSettings bool                `alloy:"allow_update_performance_schema_settings,attr,optional"`
 
 	Databases []DatabaseArguments `alloy:"database_instance,block,optional"`
@@ -193,9 +194,15 @@ const eventsStatementsCollector = "perf_schema.eventsstatements"
 // slave_status (replication).
 var defaultEnabledCollectors = []string{eventsStatementsCollector, "global_status", "global_variables", "slave_status"}
 
+// defaultStatementsLimit is the number of top queries the explain_plans
+// collector works on by default, the same as the embedded exporter's
+// perf_schema.eventsstatements limit.
+const defaultStatementsLimit = 100
+
 func defaultArguments() Arguments {
 	return Arguments{
 		ExcludeSchemas:                defaultExcludedSchemas(),
+		StatementsLimit:               defaultStatementsLimit,
 		AllowUpdatePerfSchemaSettings: false,
 
 		QueryDetailsArguments: QueryDetailsArguments{
@@ -253,6 +260,10 @@ func (a *Arguments) SetToDefault() {
 var databaseNameRegex = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 func (a *Arguments) Validate() error {
+	if a.StatementsLimit < 0 {
+		return errors.New("statements_limit must not be negative")
+	}
+
 	if len(a.Databases) == 0 {
 		_, err := mysql.ParseDSN(string(a.DataSourceName))
 		if err != nil {
@@ -510,6 +521,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.args = newArgs
 	c.warnOnStatementLimitMismatch()
 	c.warnOnExclusionsMismatch()
+	c.warnOnInitialLookbackOverWindow()
 	c.fanout.UpdateChildren(c.args.ForwardTo)
 
 	c.replaceInstances(instances)
@@ -531,7 +543,51 @@ func (c *Component) eventsStatementsExporterArgs() (exporter_mysql.Arguments, bo
 	return exporter_mysql.Arguments{}, false
 }
 
+// statementsLimit returns how many top queries the statements snapshot holds:
+// statements_limit, or its default when it is 0.
+func (c *Component) statementsLimit() int {
+	if c.args.StatementsLimit > 0 {
+		return c.args.StatementsLimit
+	}
+	return defaultStatementsLimit
+}
+
+// warnOnInitialLookbackOverWindow warns when explain_plans.initial_lookback
+// reaches past the statements snapshot, which only holds queries seen within
+// collector.StatementsWindow, so a longer lookback acts like that window.
+func (c *Component) warnOnInitialLookbackOverWindow() {
+	if !enableOrDisableCollectors(c.args)[collector.ExplainPlansCollector] {
+		return
+	}
+	if lookback := c.args.ExplainPlansArguments.InitialLookback; lookback > collector.StatementsWindow {
+		c.opts.Logger.Warn(
+			"explain_plans initial_lookback is longer than the window of queries it explains, and acts like that window",
+			"initial_lookback", lookback,
+			"window", collector.StatementsWindow,
+		)
+	}
+}
+
 func (c *Component) warnOnStatementLimitMismatch() {
+	if enableOrDisableCollectors(c.args)[collector.ExplainPlansCollector] {
+		if exporterArgs, ok := c.eventsStatementsExporterArgs(); ok {
+			if c.statementsLimit() != exporterArgs.PerfSchemaEventsStatements.Limit {
+				c.opts.Logger.Warn(
+					"statements_limit and prometheus_exporter perf_schema.eventsstatements limits differ",
+					"statements_limit", c.statementsLimit(),
+					"eventsstatements_limit", exporterArgs.PerfSchemaEventsStatements.Limit,
+				)
+			}
+			if window := time.Duration(exporterArgs.PerfSchemaEventsStatements.TimeLimit) * time.Second; window != collector.StatementsWindow {
+				c.opts.Logger.Warn(
+					"prometheus_exporter perf_schema.eventsstatements time_limit differs from the window of queries explain_plans works on",
+					"eventsstatements_time_limit", window,
+					"window", collector.StatementsWindow,
+				)
+			}
+		}
+	}
+
 	queryDetailsEnabled := enableOrDisableCollectors(c.args)[collector.QueryDetailsCollector]
 	if !queryDetailsEnabled {
 		return
@@ -978,6 +1034,16 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 
 	collectors := enableOrDisableCollectors(c.args)
 
+	// statements is the top queries of the digest table, read once for the
+	// collectors that work on them. A read is reused for half the explain
+	// plans interval, so that each poll on that interval reads the table again.
+	statements := collector.NewStatementsSnapshot(collector.StatementsSnapshotArguments{
+		DB:             inst.dbConnection,
+		Limit:          c.statementsLimit(),
+		ExcludeSchemas: excludeSchemas,
+		MaxAge:         c.args.ExplainPlansArguments.CollectInterval / 2,
+	})
+
 	var tableRegistry *collector.TableRegistry
 
 	if collectors[collector.SchemaDetailsCollector] {
@@ -1121,9 +1187,9 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 	if collectors[collector.ExplainPlansCollector] {
 		epCollector, err := collector.NewExplainPlans(collector.ExplainPlansArguments{
 			DB:              inst.dbConnection,
+			Statements:      statements,
 			ScrapeInterval:  c.args.ExplainPlansArguments.CollectInterval,
 			PerScrapeRatio:  c.args.ExplainPlansArguments.PerCollectRatio,
-			ExcludeSchemas:  excludeSchemas,
 			InitialLookback: time.Now().Add(-c.args.ExplainPlansArguments.InitialLookback),
 			Logger:          c.opts.Logger,
 			EntryHandler:    entryHandler,

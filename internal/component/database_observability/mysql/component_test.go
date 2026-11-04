@@ -1965,6 +1965,100 @@ func Test_query_details_eventsstatements_different_limits_warning(t *testing.T) 
 	})
 }
 
+func Test_statements_limit(t *testing.T) {
+	newComponent := func(t *testing.T, args Arguments) (*Component, *bytes.Buffer) {
+		t.Helper()
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, errors.New("connection skipped for limit warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		args.DataSourceName = alloytypes.Secret("user:pass@tcp(localhost:3306)/db")
+		require.NoError(t, c.Update(args))
+		return c, &logs
+	}
+	const warning = "statements_limit and prometheus_exporter perf_schema.eventsstatements limits differ"
+	exporterLimit := func(limit int) *PrometheusExporterArguments {
+		return &PrometheusExporterArguments{PerfSchemaEventsStatements: exporter_mysql.PerfSchemaEventsStatements{Limit: limit}}
+	}
+
+	t.Run("defaults to 100, which matches the embedded exporter's default", func(t *testing.T) {
+		require.Equal(t, 100, defaultArguments().StatementsLimit)
+		c, logs := newComponent(t, Arguments{})
+		require.Equal(t, 100, c.statementsLimit(), "0 means the default")
+		assert.NotContains(t, logs.String(), warning)
+	})
+
+	t.Run("sets the snapshot's limit and leaves the exporter's alone", func(t *testing.T) {
+		c, logs := newComponent(t, Arguments{StatementsLimit: 300})
+		require.Equal(t, 300, c.statementsLimit())
+		require.Equal(t, 100, resolveExporterArgs(c.args.PrometheusExporter, c.args.ExcludeSchemas).PerfSchemaEventsStatements.Limit)
+		assert.Contains(t, logs.String(), warning)
+		assert.Contains(t, logs.String(), "statements_limit=300")
+		assert.Contains(t, logs.String(), "eventsstatements_limit=100")
+	})
+
+	t.Run("warns when only the embedded exporter's limit is changed", func(t *testing.T) {
+		c, logs := newComponent(t, Arguments{PrometheusExporter: exporterLimit(50)})
+		require.Equal(t, 100, c.statementsLimit())
+		assert.Contains(t, logs.String(), warning)
+		assert.Contains(t, logs.String(), "eventsstatements_limit=50")
+	})
+
+	t.Run("does not warn when the embedded exporter is not used", func(t *testing.T) {
+		_, logs := newComponent(t, Arguments{StatementsLimit: 300, Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{"__address__": "localhost:9104"})}})
+		assert.NotContains(t, logs.String(), warning)
+	})
+
+	t.Run("does not warn when explain_plans is disabled", func(t *testing.T) {
+		_, logs := newComponent(t, Arguments{StatementsLimit: 300, DisableCollectors: []string{collector.ExplainPlansCollector}})
+		assert.NotContains(t, logs.String(), warning)
+	})
+
+	t.Run("warns when the embedded exporter's time_limit isn't the 24-hour window", func(t *testing.T) {
+		const timeWarning = "prometheus_exporter perf_schema.eventsstatements time_limit differs from the window of queries explain_plans works on"
+		_, logs := newComponent(t, Arguments{PrometheusExporter: &PrometheusExporterArguments{PerfSchemaEventsStatements: exporter_mysql.PerfSchemaEventsStatements{Limit: 100, TimeLimit: 3600}}})
+		assert.Contains(t, logs.String(), timeWarning)
+		assert.Contains(t, logs.String(), "eventsstatements_time_limit=1h0m0s")
+
+		_, logs = newComponent(t, Arguments{})
+		assert.NotContains(t, logs.String(), timeWarning)
+	})
+
+	t.Run("must not be negative", func(t *testing.T) {
+		args := defaultArguments()
+		args.DataSourceName = alloytypes.Secret("user:pass@tcp(localhost:3306)/db")
+		require.NoError(t, args.Validate())
+		args.StatementsLimit = -1
+		require.ErrorContains(t, args.Validate(), "statements_limit must not be negative")
+	})
+}
+
+func Test_initial_lookback_over_window_warning(t *testing.T) {
+	const warning = "explain_plans initial_lookback is longer than the window of queries it explains"
+	update := func(t *testing.T, args Arguments) string {
+		t.Helper()
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, errors.New("connection skipped for lookback warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		args.DataSourceName = alloytypes.Secret("user:pass@tcp(localhost:3306)/db")
+		require.NoError(t, c.Update(args))
+		return logs.String()
+	}
+
+	logs := update(t, Arguments{ExplainPlansArguments: ExplainPlansArguments{InitialLookback: 48 * time.Hour}})
+	assert.Contains(t, logs, warning)
+	assert.Contains(t, logs, "initial_lookback=48h0m0s")
+
+	assert.NotContains(t, update(t, Arguments{ExplainPlansArguments: ExplainPlansArguments{InitialLookback: 24 * time.Hour}}), warning)
+	assert.NotContains(t, update(t, Arguments{
+		ExplainPlansArguments: ExplainPlansArguments{InitialLookback: 48 * time.Hour},
+		DisableCollectors:     []string{collector.ExplainPlansCollector},
+	}), warning)
+}
+
 func Test_exclude_schemas_eventsstatements_mismatch_warning(t *testing.T) {
 	t.Run("logs warning when nested exclude_schemas differs from top-level exclude_schemas", func(t *testing.T) {
 		var logs bytes.Buffer
