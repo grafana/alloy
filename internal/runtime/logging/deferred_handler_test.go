@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
+	"sync"
 	"testing"
 	"testing/slogtest"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -213,4 +216,42 @@ func logError(ctx context.Context, sl *slog.Logger, alloyL *slog.Logger, msg str
 
 func equal(sl *bytes.Buffer, alloy *bytes.Buffer) bool {
 	return sl.String() == alloy.String()
+}
+
+func TestDeferredConcurrentWithAttrsAllBuilt(t *testing.T) {
+	buf := &bytes.Buffer{}
+	l, err := NewDeferred(buf)
+	require.NoError(t, err)
+
+	const n = 64
+	children := make([]slog.Handler, n)
+	var wg sync.WaitGroup
+	wg.Add(n)
+	for i := 0; i < n; i++ {
+		go func(i int) {
+			defer wg.Done()
+			children[i] = l.Handler().WithAttrs([]slog.Attr{slog.String("component", fmt.Sprintf("c%d", i))})
+		}(i)
+	}
+	wg.Wait()
+
+	for i, child := range children {
+		rec := slog.NewRecord(time.Now(), slog.LevelInfo, fmt.Sprintf("buffered %d", i), 0)
+		require.NoError(t, child.Handle(context.Background(), rec))
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		done <- l.Update(Options{Level: LevelInfo, Format: FormatLogfmt})
+	}()
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("Update did not return: a child registered concurrently was not built")
+	}
+
+	for i := range children {
+		require.Contains(t, buf.String(), fmt.Sprintf("component=c%d", i))
+	}
 }
