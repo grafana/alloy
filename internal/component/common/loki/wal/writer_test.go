@@ -155,6 +155,7 @@ func TestWriter_WriteBatch(t *testing.T) {
 
 		wl, err := New(logger, reg, dir)
 		require.NoError(t, err)
+		defer wl.Close()
 
 		writer := NewWriter(logger, NewWriterMetrics(reg), wl, Config{
 			MaxSegmentAge: time.Minute,
