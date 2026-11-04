@@ -30,7 +30,6 @@ func TestTailer(t *testing.T) {
 		positionsFile, err := positions.New(l, positions.Config{
 			SyncPeriod:    50 * time.Millisecond,
 			PositionsFile: filepath.Join(tempDir, "positions.yaml"),
-			ReadOnly:      false,
 		})
 		require.NoError(t, err)
 		labels := model.LabelSet{
@@ -128,7 +127,6 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 		positionsFile, err := positions.New(l, positions.Config{
 			SyncPeriod:    50 * time.Millisecond,
 			PositionsFile: filepath.Join(tempDir, "positions.yaml"),
-			ReadOnly:      false,
 		})
 		require.NoError(t, err)
 		labels := model.LabelSet{
@@ -197,7 +195,6 @@ func TestTailerDeleteFileInstant(t *testing.T) {
 		positionsFile, err := positions.New(l, positions.Config{
 			SyncPeriod:    50 * time.Millisecond,
 			PositionsFile: filepath.Join(tempDir, "positions.yaml"),
-			ReadOnly:      false,
 		})
 		require.NoError(t, err)
 		labels := model.LabelSet{
@@ -280,7 +277,6 @@ func testTailerCancelWhileSendBlocked(t *testing.T, newBatcher func(model.LabelS
 	positionsFile, err := positions.New(l, positions.Config{
 		SyncPeriod:    50 * time.Millisecond,
 		PositionsFile: filepath.Join(tempDir, "positions.yaml"),
-		ReadOnly:      false,
 	})
 	require.NoError(t, err)
 	defer positionsFile.Stop()
@@ -359,7 +355,6 @@ func TestTailerCorruptedPositions(t *testing.T) {
 		positionsFile, err := positions.New(l, positions.Config{
 			SyncPeriod:    50 * time.Millisecond,
 			PositionsFile: filepath.Join(tempDir, "positions.yaml"),
-			ReadOnly:      false,
 		})
 		require.NoError(t, err)
 		defer positionsFile.Stop()

@@ -27,7 +27,6 @@ const (
 type Config struct {
 	SyncPeriod    time.Duration
 	PositionsFile string
-	ReadOnly      bool
 }
 
 // Positions tracks how far through each file we've read.
@@ -164,9 +163,6 @@ func (p *positions) run() {
 }
 
 func (p *positions) save() {
-	if p.cfg.ReadOnly {
-		return
-	}
 	p.mtx.Lock()
 	positions := make(map[Entry]string, len(p.positions))
 	maps.Copy(positions, p.positions)
