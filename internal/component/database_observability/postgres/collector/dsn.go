@@ -56,8 +56,8 @@ func databaseNameFromDSN(dsn string) (string, error) {
 // pg_database (readable from any single connection) -- used to fan out
 // per-database connections, since most stat views only report on the
 // database a connection is actually established to.
-func discoverDatabases(ctx context.Context, conn *sql.DB, excludeDatabases []string) ([]string, error) {
-	query := fmt.Sprintf(selectAllDatabases, buildExcludedDatabasesClause(excludeDatabases))
+func discoverDatabases(ctx context.Context, conn *sql.DB, excludeDatabases, includeDatabases []string) ([]string, error) {
+	query := fmt.Sprintf(selectAllDatabases, buildDatabaseFilterClause(excludeDatabases, includeDatabases, "datname"))
 	rows, err := conn.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to discover databases: %w", err)

@@ -654,6 +654,35 @@ func TestQueryDetailsExcludeSchemas(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+func TestQueryDetailsIncludeSchemas(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	c, err := NewQueryDetails(QueryDetailsArguments{
+		DB:              db,
+		CollectInterval: time.Millisecond,
+		StatementsLimit: 250,
+		IncludeSchemas:  []string{"included_schema"},
+		EntryHandler:    lokiClient,
+		Logger:          util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+
+	mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, buildSchemaFilterClause(nil, []string{"included_schema"}, "schema_name"), 250)).
+		WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+		"digest", "digest_text", "schema_name", "query_sample_text",
+	}))
+
+	require.NoError(t, c.tablesFromEventsStatements(t.Context()))
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestQueryDetails_ResolvesTableNameCasingAndPreservesValidation(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
