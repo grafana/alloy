@@ -82,7 +82,7 @@ type Positions interface {
 
 // New makes a new Positions.
 func New(logger *slog.Logger, cfg Config) (Positions, error) {
-	positionData, err := readPositionsFile(cfg, logger)
+	positionData, err := readPositionsFile(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +206,7 @@ func (p *positions) cleanup() {
 	}
 }
 
-func readPositionsFile(cfg Config, logger *slog.Logger) (map[Entry]string, error) {
+func readPositionsFile(cfg Config) (map[Entry]string, error) {
 	cleanfn := filepath.Clean(cfg.Path)
 	buf, err := os.ReadFile(cleanfn)
 	if err != nil {

@@ -17,7 +17,7 @@ func TestLegacyConversion(t *testing.T) {
 	ConvertLegacyPositionsFile(legacy, positionsPath, logging.NewSlogNop())
 	ps, err := readPositionsFile(Config{
 		Path: positionsPath,
-	}, logging.NewSlogNop())
+	})
 	require.NoError(t, err)
 	require.Len(t, ps, 1)
 	for k, v := range ps {
@@ -40,7 +40,7 @@ func TestLegacyConversionWithNewFile(t *testing.T) {
 	ConvertLegacyPositionsFile(legacy, positionsPath, logging.NewSlogNop())
 	ps, err := readPositionsFile(Config{
 		Path: positionsPath,
-	}, logging.NewSlogNop())
+	})
 	require.NoError(t, err)
 	require.Len(t, ps, 1)
 	for k, v := range ps {
@@ -62,7 +62,7 @@ func TestLegacyConversionWithNoLegacyFile(t *testing.T) {
 	ConvertLegacyPositionsFile(legacy, positionsPath, logging.NewSlogNop())
 	ps, err := readPositionsFile(Config{
 		Path: positionsPath,
-	}, logging.NewSlogNop())
+	})
 	require.NoError(t, err)
 	require.Len(t, ps, 1)
 	for k, v := range ps {

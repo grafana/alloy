@@ -34,7 +34,7 @@ positions:
 
 		pos, err := readPositionsFile(Config{
 			Path: temp,
-		}, logging.NewSlogNop())
+		})
 
 		require.NoError(t, err)
 		require.Equal(t, "17623", pos[Entry{
@@ -63,7 +63,7 @@ positions:
 
 		pos, err := readPositionsFile(Config{
 			Path: temp,
-		}, logging.NewSlogNop())
+		})
 
 		require.NoError(t, err)
 		require.Equal(t, "17623", pos[Entry{
@@ -87,7 +87,7 @@ func TestReadPositionsEmptyFile(t *testing.T) {
 
 	pos, err := readPositionsFile(Config{
 		Path: temp,
-	}, logging.NewSlogNop())
+	})
 
 	require.NoError(t, err)
 	require.NotNil(t, pos)
@@ -106,7 +106,7 @@ func TestReadPositionsFromDir(t *testing.T) {
 
 	_, err = readPositionsFile(Config{
 		Path: temp,
-	}, logging.NewSlogNop())
+	})
 
 	require.Error(t, err)
 	require.True(t, strings.Contains(err.Error(), temp)) // error must contain filename
@@ -131,7 +131,7 @@ positions:
 
 	_, err = readPositionsFile(Config{
 		Path: temp,
-	}, logging.NewSlogNop())
+	})
 
 	require.Error(t, err)
 	require.True(t, strings.Contains(err.Error(), temp)) // error must contain filename
@@ -171,7 +171,7 @@ positions:
 	p.(*positions).save()
 	out, err := readPositionsFile(Config{
 		Path: temp,
-	}, logging.NewSlogNop())
+	})
 
 	require.NoError(t, err)
 	require.Equal(t, map[Entry]string{
@@ -207,7 +207,7 @@ positions:
 
 	pos, err := readPositionsFile(Config{
 		Path: temp,
-	}, logging.NewSlogNop())
+	})
 
 	require.NoError(t, err)
 	require.Equal(t, "10020", pos[Entry{
