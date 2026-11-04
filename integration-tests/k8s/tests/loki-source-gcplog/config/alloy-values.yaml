@@ -1,0 +1,9 @@
+controller:
+  type: deployment
+  replicas: 1
+alloy:
+  initialDelaySeconds: 1
+  extraEnv:
+    # Points the Google Pub/Sub client in loki.source.gcplog at the emulator.
+    - name: PUBSUB_EMULATOR_HOST
+      value: pubsub-emulator:8681
