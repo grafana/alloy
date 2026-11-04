@@ -52,11 +52,6 @@ type Entry struct {
 	Labels string `yaml:"labels"`
 }
 
-// File format for the positions data.
-type File struct {
-	Positions map[Entry]string `yaml:"positions"`
-}
-
 type Positions interface {
 	// GetString returns how far we've through a file as a string.
 	// JournalTarget writes a journal cursor to the positions file, while
@@ -200,6 +195,11 @@ func (p *positions) cleanup() {
 	}
 }
 
+// positionFile is the on-disk format of the positions file.
+type positionFile struct {
+	Positions map[Entry]string `yaml:"positions"`
+}
+
 func readPositionsFile(cfg Config) (map[Entry]string, error) {
 	cleanfn := filepath.Clean(cfg.Path)
 	buf, err := os.ReadFile(cleanfn)
@@ -210,7 +210,7 @@ func readPositionsFile(cfg Config) (map[Entry]string, error) {
 		return nil, err
 	}
 
-	var p File
+	var p positionFile
 	err = yaml.Unmarshal(buf, &p)
 	if err != nil {
 		return nil, fmt.Errorf("invalid yaml positions file [%s]: %v", cleanfn, err)

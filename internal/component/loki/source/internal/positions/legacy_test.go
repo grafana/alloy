@@ -5,9 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
+
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 func TestLegacyConversion(t *testing.T) {
@@ -94,7 +95,7 @@ func TestConvertLegacyPositionsFileJournal(t *testing.T) {
 	f, err = os.Open(newFile)
 	require.NoError(t, err)
 
-	var posFile File
+	var posFile positionFile
 	require.NoError(t, yaml.NewDecoder(f).Decode(&posFile))
 	require.NoError(t, f.Close())
 

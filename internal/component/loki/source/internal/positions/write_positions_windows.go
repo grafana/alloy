@@ -14,7 +14,7 @@ import (
 )
 
 func writePositionFile(filename string, positions map[Entry]string) error {
-	buf, err := yaml.Marshal(File{
+	buf, err := yaml.Marshal(positionFile{
 		Positions: positions,
 	})
 	if err != nil {
