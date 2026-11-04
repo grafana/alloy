@@ -21,9 +21,13 @@ import (
 const (
 	syncPeriod = 10 * time.Second
 
-	cursorKeyPrefix  = "cursor-"
-	journalKeyPrefix = "journal-"
+	cursorKeyPrefix = "cursor-"
 )
+
+// CursorKey returns a key that can be saved as a cursor that is never deleted.
+func CursorKey(key string) string {
+	return fmt.Sprintf("%s%s", cursorKeyPrefix, key)
+}
 
 // Config describes where to get position information from.
 type Config struct {
@@ -163,11 +167,6 @@ func (p *positions) save() {
 	}
 }
 
-// CursorKey returns a key that can be saved as a cursor that is never deleted.
-func CursorKey(key string) string {
-	return fmt.Sprintf("%s%s", cursorKeyPrefix, key)
-}
-
 func (p *positions) cleanup() {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
@@ -175,8 +174,7 @@ func (p *positions) cleanup() {
 	for k := range p.positions {
 		// If the position file is prefixed with cursor, it's a
 		// cursor and not a file on disk.
-		// We still have to support journal files, so we keep the previous check to avoid breaking change.
-		if strings.HasPrefix(k.Path, cursorKeyPrefix) || strings.HasPrefix(k.Path, journalKeyPrefix) {
+		if strings.HasPrefix(k.Path, cursorKeyPrefix) {
 			continue
 		}
 
