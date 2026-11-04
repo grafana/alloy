@@ -74,8 +74,6 @@ type Positions interface {
 	Put(path, labels string, pos int64)
 	// Remove removes the position tracking for a filepath
 	Remove(path, labels string)
-	// SyncPeriod returns how often the positions file gets resynced
-	SyncPeriod() time.Duration
 	// Stop the Position tracker.
 	Stop()
 }
@@ -138,10 +136,6 @@ func (p *positions) Remove(path, labels string) {
 
 func (p *positions) remove(path, labels string) {
 	delete(p.positions, Entry{path, labels})
-}
-
-func (p *positions) SyncPeriod() time.Duration {
-	return syncPeriod
 }
 
 func (p *positions) run() {
