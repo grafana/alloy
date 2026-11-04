@@ -1,0 +1,130 @@
+config: |
+  prometheus.exporter.static "input" {
+    text = `
+  # HELP routed_requests_total Requests used to test routing.
+  # TYPE routed_requests_total counter
+  routed_requests_total{tenant="a",priority="critical"} 7
+  routed_requests_total{tenant="a",priority="normal"} 3
+  routed_requests_total{tenant="b",priority="normal"} 9
+  `
+  }
+
+  prometheus.scrape "input" {
+    targets         = prometheus.exporter.static.input.targets
+    forward_to      = [prometheus.route.test.receiver]
+    scrape_interval = "1s"
+    scrape_timeout  = "500ms"
+    honor_metadata  = true
+  }
+
+  prometheus.route "test" {
+    default_forward_to = [prometheus.relabel.other.receiver]
+
+    route {
+      selector   = "{tenant=\"a\"}"
+      forward_to = [prometheus.relabel.tenant_a.receiver]
+    }
+
+    route {
+      selector   = "{priority=\"critical\"}"
+      forward_to = [prometheus.relabel.critical.receiver]
+    }
+  }
+
+  // Label each destination independently so the sink can verify routing.
+  prometheus.relabel "tenant_a" {
+    forward_to = [pipelinetest.prometheus.receiver]
+    rule {
+      target_label = "destination"
+      replacement  = "tenant_a"
+    }
+  }
+
+  prometheus.relabel "critical" {
+    forward_to = [pipelinetest.prometheus.receiver]
+    rule {
+      target_label = "destination"
+      replacement  = "critical"
+    }
+  }
+
+  prometheus.relabel "other" {
+    forward_to = [pipelinetest.prometheus.receiver]
+    rule {
+      target_label = "destination"
+      replacement  = "other"
+    }
+  }
+
+assert:
+  prometheus:
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            __name__: routed_requests_total
+            tenant: a
+            priority: critical
+            destination: tenant_a
+        value: 7
+        metadata:
+          type: counter
+          help: Requests used to test routing.
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            __name__: routed_requests_total
+            tenant: a
+            priority: critical
+            destination: critical
+        value: 7
+        metadata:
+          type: counter
+          help: Requests used to test routing.
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            __name__: routed_requests_total
+            tenant: a
+            priority: normal
+            destination: tenant_a
+        value: 3
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            __name__: routed_requests_total
+            tenant: b
+            priority: normal
+            destination: other
+        value: 9
+    - type: count
+      count: 0
+      match:
+        labels:
+          mode: partial
+          values:
+            tenant: a
+            destination: other
+    - type: count
+      count: 0
+      match:
+        labels:
+          mode: partial
+          values:
+            priority: normal
+            destination: critical
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            __name__: up
+            destination: other
+        value: 1
