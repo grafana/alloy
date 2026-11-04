@@ -44,7 +44,8 @@ type Positions interface {
 
 var _ Positions = (*File)(nil)
 
-// File is a Positions backed by a file on disk.
+// File is a Positions backed by a file on disk. Positions are kept in memory
+// and written to the file periodically and on Stop.
 type File struct {
 	logger    *slog.Logger
 	cfg       Config
@@ -66,8 +67,7 @@ type Config struct {
 	Path string
 }
 
-// New reads the positions file at cfg.Path and returns a File that
-// periodically writes positions back to it.
+// New returns a File that reads and writes positions at cfg.Path.
 func New(logger *slog.Logger, cfg Config) (*File, error) {
 	positionData, err := readPositionsFile(cfg)
 	if err != nil {
