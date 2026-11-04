@@ -420,8 +420,6 @@ type sourceOptions struct {
 
 // newSource will return a decompressor source if enabled, otherwise a tailer source.
 func (c *Component) newSource(opts sourceOptions) (source.Source[positions.Entry], error) {
-	//logger := c.opts.Logger.With("component", "tailer", "path", opts.path)
-
 	tailer := newTailer(
 		c.metrics,
 		c.opts.Logger,
