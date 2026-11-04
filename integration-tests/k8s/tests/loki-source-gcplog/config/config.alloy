@@ -6,7 +6,7 @@ livedebugging {
   enabled = true
 }
 
-// Subscribes to the subscription the pubsub-emulator dep creates. The push
+// Subscribes to the subscription the gcp-pubsub dep creates. The push
 // receiver is covered by the loki-source-gcplog pipeline test.
 loki.source.gcplog "pull" {
   pull {

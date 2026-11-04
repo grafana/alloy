@@ -18,7 +18,7 @@ const (
 	severity        = "INFO"
 )
 
-var logName = fmt.Sprintf("projects/%s/logs/integration-test", deps.PubSubEmulatorProject)
+var logName = fmt.Sprintf("projects/%s/logs/integration-test", deps.GCPPubSubProject)
 
 // gcpLogEntry is the subset of a Cloud Logging LogEntry the gcplog parser reads.
 type gcpLogEntry struct {
@@ -57,7 +57,7 @@ var shapes = []resourceShape{
 	},
 }
 
-// TestLokiSourceGcplog publishes Cloud Logging entries to a Pub/Sub emulator
+// TestLokiSourceGcplog publishes Cloud Logging entries to a GCP Pub/Sub emulator
 // topic. loki.source.gcplog must pull them from the subscription and apply its
 // relabel rules.
 func TestLokiSourceGcplog(t *testing.T) {
@@ -65,7 +65,7 @@ func TestLokiSourceGcplog(t *testing.T) {
 		Name:   "test-loki-source-gcplog",
 		Labels: map[string]string{"alloy-integration-test": "true"},
 	})
-	pubsub := deps.NewPubSubEmulator(deps.PubSubEmulatorOptions{Namespace: ns.Name()})
+	gcpPubSub := deps.NewGCPPubSub(deps.GCPPubSubOptions{Namespace: ns.Name()})
 	loki := deps.NewLoki(deps.LokiOptions{Namespace: ns.Name()})
 	alloy := deps.NewAlloy(deps.AlloyOptions{
 		Namespace:  ns.Name(),
@@ -74,7 +74,7 @@ func TestLokiSourceGcplog(t *testing.T) {
 		ValuesPath: "./config/alloy-values.yaml",
 	})
 	harness.Setup(t, harness.Options{
-		Dependencies: []harness.Dependency{ns, pubsub, loki, alloy},
+		Dependencies: []harness.Dependency{ns, gcpPubSub, loki, alloy},
 	})
 
 	now := time.Now().UTC()
@@ -103,7 +103,7 @@ func TestLokiSourceGcplog(t *testing.T) {
 	// Nothing outside the published messages reaches Loki.
 	expected = append(expected, deps.ExpectedLogResult{EntryCount: entriesPerShape * len(shapes)})
 
-	pubsub.Publish(t, messages...)
+	gcpPubSub.Publish(t, messages...)
 
 	loki.QueryLogs(t, testName, expected...)
 	loki.QueryLabelsNotIndexed(t, testName, "severity", "log_name")

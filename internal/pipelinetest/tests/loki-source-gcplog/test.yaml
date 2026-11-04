@@ -76,7 +76,7 @@ config: |
     }
   }
 
-# Each request is a Pub/Sub push envelope. message.data is a base64-encoded
+# Each request is a GCP Pub/Sub push envelope. message.data is a base64-encoded
 # Cloud Logging LogEntry with logName, resource, timestamp, severity and
 # textPayload.
 inputs:
