@@ -25,32 +25,6 @@ func CursorKey(key string) string {
 	return cursorKeyPrefix + key
 }
 
-// Config describes where to get position information from.
-type Config struct {
-	Path string
-}
-
-type positions struct {
-	logger    *slog.Logger
-	cfg       Config
-	mtx       sync.Mutex
-	positions map[Entry]string
-	quit      chan struct{}
-	done      chan struct{}
-}
-
-// Entry describes a positions file entry consisting of an absolute file path and
-// the matching label set.
-// An entry expects the string representation of a LabelSet or a Labels slice
-// so that it can be utilized as a YAML key. The caller should make sure that
-// the order and structure of the passed string representation is reproducible,
-// and maintains the same format for both reading and writing from/to the
-// positions file.
-type Entry struct {
-	Path   string `yaml:"path"`
-	Labels string `yaml:"labels"`
-}
-
 type Positions interface {
 	// GetString returns how far we've through a file as a string.
 	// JournalTarget writes a journal cursor to the positions file, while
@@ -72,14 +46,44 @@ type Positions interface {
 	Stop()
 }
 
-// New makes a new Positions.
-func New(logger *slog.Logger, cfg Config) (Positions, error) {
+var _ Positions = (*File)(nil)
+
+// File is a Positions backed by a file on disk.
+type File struct {
+	logger    *slog.Logger
+	cfg       Config
+	mtx       sync.Mutex
+	positions map[Entry]string
+	quit      chan struct{}
+	done      chan struct{}
+}
+
+// Entry describes a positions file entry consisting of an absolute file path and
+// the matching label set.
+// An entry expects the string representation of a LabelSet or a Labels slice
+// so that it can be utilized as a YAML key. The caller should make sure that
+// the order and structure of the passed string representation is reproducible,
+// and maintains the same format for both reading and writing from/to the
+// positions file.
+type Entry struct {
+	Path   string `yaml:"path"`
+	Labels string `yaml:"labels"`
+}
+
+// Config describes where to get position information from.
+type Config struct {
+	Path string
+}
+
+// New reads the positions file at cfg.Path and returns a File that
+// periodically writes positions back to it.
+func New(logger *slog.Logger, cfg Config) (*File, error) {
 	positionData, err := readPositionsFile(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	p := &positions{
+	p := &File{
 		logger:    logger,
 		cfg:       cfg,
 		positions: positionData,
@@ -91,28 +95,28 @@ func New(logger *slog.Logger, cfg Config) (Positions, error) {
 	return p, nil
 }
 
-func (p *positions) Stop() {
+func (p *File) Stop() {
 	close(p.quit)
 	<-p.done
 }
 
-func (p *positions) PutString(path, labels string, pos string) {
+func (p *File) PutString(path, labels string, pos string) {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
 	p.positions[Entry{path, labels}] = pos
 }
 
-func (p *positions) Put(path, labels string, pos int64) {
+func (p *File) Put(path, labels string, pos int64) {
 	p.PutString(path, labels, strconv.FormatInt(pos, 10))
 }
 
-func (p *positions) GetString(path, labels string) string {
+func (p *File) GetString(path, labels string) string {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
 	return p.positions[Entry{path, labels}]
 }
 
-func (p *positions) Get(path, labels string) (int64, error) {
+func (p *File) Get(path, labels string) (int64, error) {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
 	pos, ok := p.positions[Entry{path, labels}]
@@ -122,17 +126,17 @@ func (p *positions) Get(path, labels string) (int64, error) {
 	return strconv.ParseInt(pos, 10, 64)
 }
 
-func (p *positions) Remove(path, labels string) {
+func (p *File) Remove(path, labels string) {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
 	p.remove(path, labels)
 }
 
-func (p *positions) remove(path, labels string) {
+func (p *File) remove(path, labels string) {
 	delete(p.positions, Entry{path, labels})
 }
 
-func (p *positions) run() {
+func (p *File) run() {
 	defer func() {
 		p.save()
 		p.logger.Debug("positions saved")
@@ -151,7 +155,7 @@ func (p *positions) run() {
 	}
 }
 
-func (p *positions) save() {
+func (p *File) save() {
 	p.mtx.Lock()
 	positions := make(map[Entry]string, len(p.positions))
 	maps.Copy(positions, p.positions)
@@ -162,7 +166,7 @@ func (p *positions) save() {
 	}
 }
 
-func (p *positions) cleanup() {
+func (p *File) cleanup() {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
 	toRemove := []Entry{}

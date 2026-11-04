@@ -164,7 +164,7 @@ positions:
 		t.Fatal(err)
 	}
 	require.Equal(t, int64(10030), pos)
-	p.(*positions).save()
+	p.save()
 	out, err := readPositionsFile(Config{
 		Path: temp,
 	})
