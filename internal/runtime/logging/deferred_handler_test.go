@@ -218,9 +218,6 @@ func equal(sl *bytes.Buffer, alloy *bytes.Buffer) bool {
 	return sl.String() == alloy.String()
 }
 
-// Children registered concurrently before the logging config is applied must
-// all be reached by buildHandlers. Appending under the read lock could lose a
-// child, and a record buffered by that child made Update deadlock on replay.
 func TestDeferredConcurrentWithAttrsAllBuilt(t *testing.T) {
 	buf := &bytes.Buffer{}
 	l, err := NewDeferred(buf)

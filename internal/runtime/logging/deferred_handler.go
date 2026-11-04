@@ -56,9 +56,6 @@ func (d *deferredSlogHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	}
 	d.mut.RUnlock()
 
-	// Appending to children needs the write lock: two appends under the read
-	// lock can lose one child, which buildHandlers then never reaches, and
-	// that child's buffered records deadlock the flush.
 	d.mut.Lock()
 	defer d.mut.Unlock()
 
