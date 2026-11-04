@@ -102,7 +102,7 @@ BUILDER_USER         		?= $(shell whoami)
 BUILDER_HOST         		?= $(shell hostname)
 # OCB (OpenTelemetry Collector Builder) version. Keep in sync with the OTel
 # Collector core version in collector/builder-config.yaml.
-BUILDER_VERSION      		?= v0.162.0
+BUILDER_VERSION      		?= v0.164.0
 JSONNET              		?= go run github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
 JB                   		?= go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0
 GRIZZLY              		?= go run github.com/grafana/grizzly/cmd/grr@v0.7.1
@@ -357,7 +357,7 @@ alloy-image:
 	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t $(ALLOY_IMAGE) -f Dockerfile .
 
 alloy-image-distroless:
-	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t $(ALLOY_IMAGE_DISTROLESS) -f Dockerfile.chisel .
+	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) --build-arg SKIP_CODE_GENERATION=$(SKIP_CODE_GENERATION) -t $(ALLOY_IMAGE_DISTROLESS) -f Dockerfile.chisel .
 
 # Test fixture image used by the k8s integration tests as a Prometheus scrape
 # target. The runner builds this alongside alloy-image so the tests don't have

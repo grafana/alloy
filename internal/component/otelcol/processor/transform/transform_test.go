@@ -830,7 +830,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			errorMsg: `statement has invalid syntax at 1:18 near ` + backtick + `where attr` + backtick + `: (expected ")" Key*)`,
+			errorMsg: `1:18: statement has invalid syntax near ` + backtick + `where attr` + backtick + `: (expected ")" Key*)`,
 		},
 		{
 			testName: "bad_syntax_metric",
@@ -844,7 +844,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			errorMsg: `statement has invalid syntax at 1:18 near ` + backtick + `where attr` + backtick + `: (expected ")" Key*)`,
+			errorMsg: `1:18: statement has invalid syntax near ` + backtick + `where attr` + backtick + `: (expected ")" Key*)`,
 		},
 		{
 			testName: "bad_syntax_trace",
@@ -858,7 +858,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			errorMsg: `statement has invalid syntax at 1:18 near ` + backtick + `where attr` + backtick + `: (expected ")" Key*)`,
+			errorMsg: `1:18: statement has invalid syntax near ` + backtick + `where attr` + backtick + `: (expected ")" Key*)`,
 		},
 		{
 			testName: "unknown_function_log",
@@ -872,7 +872,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			errorMsg: `unable to parse OTTL statement "not_a_function(log.attributes, [\"http.method\", \"http.path\"])": undefined function "not_a_function"`,
+			errorMsg: `undefined function "not_a_function"`,
 		},
 		{
 			testName: "unknown_function_metric",
@@ -886,7 +886,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			errorMsg: `unable to parse OTTL statement "not_a_function(datapoint.attributes, [\"http.method\", \"http.path\"])": undefined function "not_a_function"`,
+			errorMsg: `undefined function "not_a_function"`,
 		},
 		{
 			testName: "unknown_function_trace",
@@ -900,7 +900,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			errorMsg: `unable to parse OTTL statement "not_a_function(span.attributes, [\"http.method\", \"http.path\"])": undefined function "not_a_function"`,
+			errorMsg: `undefined function "not_a_function"`,
 		},
 		{
 			testName: "unknown_context",
