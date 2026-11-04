@@ -713,14 +713,22 @@ func TestUpdateKeepsConsumerWhenSettingsAreUnchanged(t *testing.T) {
 				DataPath:      t.TempDir(),
 				MinStability:  featuregate.StabilityExperimental,
 				OnStateChange: func(component.Exports) {},
+				GetServiceData: func(name string) (any, error) {
+					if name == lokipipelinev2.ServiceName {
+						return lokipipelinev2.New(lokipipelinev2.Options{}).Data(), nil
+					}
+					return nil, fmt.Errorf("service not found %s", name)
+				},
 			}, newArgs("http://localhost:1", `{}`))
 			require.NoError(t, err)
+
 			t.Cleanup(func() {
 				c.consumer.Stop()
 				if c.wal != nil {
 					c.wal.Close()
 				}
 			})
+
 			first := c.consumer
 
 			require.NoError(t, c.Update(newArgs("http://localhost:1", `{}`)))
