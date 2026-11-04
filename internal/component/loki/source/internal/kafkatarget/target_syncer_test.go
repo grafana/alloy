@@ -330,3 +330,52 @@ func Test_withAuthentication(t *testing.T) {
 	assert.NotNil(t, saslCfg.Net.TLS.Config.RootCAs)
 	assert.NoError(t, saslCfg.Validate())
 }
+
+func Test_newSaramaConfig_RackID(t *testing.T) {
+	cfg := Config{
+		KafkaConfig: TargetConfig{
+			Brokers: []string{"localhost:9092"},
+			Topics:  []string{"topic1"},
+			Version: "2.2.1",
+			RackID:  "eu-west-1a",
+		},
+	}
+
+	saramaCfg, err := newSaramaConfig(cfg)
+	require.NoError(t, err)
+	require.Equal(t, "eu-west-1a", saramaCfg.RackID)
+}
+
+func Test_newSaramaConfig_Assignor(t *testing.T) {
+	tests := map[string]struct {
+		assignor string
+		expected string
+		wantErr  bool
+	}{
+		"empty defaults to range": {assignor: "", expected: sarama.RangeBalanceStrategyName},
+		"range":                   {assignor: "range", expected: sarama.RangeBalanceStrategyName},
+		"roundrobin":              {assignor: "roundrobin", expected: sarama.RoundRobinBalanceStrategyName},
+		"sticky":                  {assignor: "sticky", expected: sarama.StickyBalanceStrategyName},
+		"unknown":                 {assignor: "nonexistent", wantErr: true},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			saramaCfg, err := newSaramaConfig(Config{
+				KafkaConfig: TargetConfig{
+					Brokers:  []string{"localhost:9092"},
+					Topics:   []string{"topic1"},
+					Version:  "2.2.1",
+					Assignor: tt.assignor,
+				},
+			})
+
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, saramaCfg.Consumer.Group.Rebalance.Strategy.Name())
+		})
+	}
+}
