@@ -25,10 +25,10 @@ const (
 
 // Config describes where to get position information from.
 type Config struct {
-	SyncPeriod        time.Duration `mapstructure:"sync_period" yaml:"sync_period"`
-	PositionsFile     string        `mapstructure:"filename" yaml:"filename"`
-	IgnoreInvalidYaml bool          `mapstructure:"ignore_invalid_yaml" yaml:"ignore_invalid_yaml"`
-	ReadOnly          bool          `mapstructure:"-" yaml:"-"`
+	SyncPeriod        time.Duration
+	PositionsFile     string
+	IgnoreInvalidYaml bool
+	ReadOnly          bool
 }
 
 // Positions tracks how far through each file we've read.
