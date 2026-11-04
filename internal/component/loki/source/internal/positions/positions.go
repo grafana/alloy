@@ -135,6 +135,8 @@ func (p *File) run() {
 	}()
 
 	ticker := time.NewTicker(syncPeriod)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case <-p.quit:
@@ -148,8 +150,7 @@ func (p *File) run() {
 
 func (p *File) save() {
 	p.mtx.Lock()
-	positions := make(map[Entry]string, len(p.positions))
-	maps.Copy(positions, p.positions)
+	positions := maps.Clone(p.positions)
 	p.mtx.Unlock()
 
 	if err := writePositionFile(p.cfg.Path, positions); err != nil {
