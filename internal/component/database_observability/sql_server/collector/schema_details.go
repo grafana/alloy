@@ -27,7 +27,9 @@ type SchemaDetailsArguments struct {
 	CollectInterval  time.Duration
 	QueryTimeout     time.Duration
 	ExcludeSchemas   []string
+	IncludeSchemas   []string
 	ExcludeDatabases []string
+	IncludeDatabases []string
 	EntryHandler     loki.EntryHandler
 
 	Logger *slog.Logger
@@ -38,7 +40,9 @@ type SchemaDetails struct {
 	collectInterval  time.Duration
 	queryTimeout     time.Duration
 	excludeSchemas   []string
+	includeSchemas   []string
 	excludeDatabases []string
+	includeDatabases []string
 	entryHandler     loki.EntryHandler
 	tableRegistry    *TableRegistry
 
@@ -294,7 +298,9 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 		collectInterval:  args.CollectInterval,
 		queryTimeout:     queryTimeoutOrDefault(args.QueryTimeout),
 		excludeSchemas:   args.ExcludeSchemas,
+		includeSchemas:   args.IncludeSchemas,
 		excludeDatabases: args.ExcludeDatabases,
+		includeDatabases: args.IncludeDatabases,
 		entryHandler:     args.EntryHandler,
 		tableRegistry:    NewTableRegistry(),
 		lastEmittedAt:    map[string]map[string]time.Time{},
@@ -420,14 +426,14 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 }
 
 func (c *SchemaDetails) listDatabases(ctx context.Context) ([]databaseName, error) {
-	return listDatabases(ctx, c.dbConnection, c.queryTimeout, c.excludeDatabases)
+	return listDatabases(ctx, c.dbConnection, c.queryTimeout, c.excludeDatabases, c.includeDatabases)
 }
 
 // listDatabases lists the non-excluded, accessible, online databases on the
 // instance. It's shared by SchemaDetails and HealthCheck so both iterate
 // databases the same way.
-func listDatabases(ctx context.Context, db *sql.DB, queryTimeout time.Duration, excludeDatabases []string) ([]databaseName, error) {
-	query := fmt.Sprintf(selectDatabasesTemplate, buildExcludedDatabasesClause(excludeDatabases))
+func listDatabases(ctx context.Context, db *sql.DB, queryTimeout time.Duration, excludeDatabases, includeDatabases []string) ([]databaseName, error) {
+	query := fmt.Sprintf(selectDatabasesTemplate, buildDatabaseFilterClause(excludeDatabases, includeDatabases, "name"))
 	var databases []databaseName
 	err := withQueryTimeout(ctx, queryTimeout, func(queryCtx context.Context) error {
 		rs, err := db.QueryContext(queryCtx, query)
@@ -461,7 +467,7 @@ func listDatabases(ctx context.Context, db *sql.DB, queryTimeout time.Duration, 
 // scan failure yields a partial view and pruning is skipped so we never
 // evict entries for tables we simply did not observe this cycle.
 func (c *SchemaDetails) extractSchemaForDatabase(ctx context.Context, conn *sql.Conn, dbName string, now time.Time) error {
-	query := fmt.Sprintf(selectTablesTemplate, buildExcludedSchemasClause(c.excludeSchemas))
+	query := fmt.Sprintf(selectTablesTemplate, buildSchemaFilterClause(c.excludeSchemas, c.includeSchemas, "table_schema"))
 	tables := []*tableInfo{}
 	// scanComplete tracks whether we iterated the tables result set without
 	// bailing out early. If false we have a partial view and must skip the
