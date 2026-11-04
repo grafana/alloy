@@ -2,6 +2,7 @@ package build
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -67,8 +68,9 @@ func toAppAgentReceiverV2(config *app_agent_receiver_v2.Config) *receiver.Argume
 			Locations:           toLocationArguments(config.SourceMaps.FileSystem),
 		},
 		Output: receiver.OutputArguments{
-			Logs:   []loki.LogsReceiver{logsReceiver},
-			Traces: []otelcol.Consumer{},
+			Logs:            []loki.LogsReceiver{logsReceiver},
+			Traces:          []otelcol.Consumer{},
+			LogsSendTimeout: 2 * time.Second,
 		},
 	}
 }
