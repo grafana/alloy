@@ -101,7 +101,9 @@ type QuerySamplesArguments struct {
 	DB                            *sql.DB
 	CollectInterval               time.Duration
 	ExcludeDatabases              []string
+	IncludeDatabases              []string
 	ExcludeUsers                  []string
+	IncludeUsers                  []string
 	EntryHandler                  loki.EntryHandler
 	Logger                        *slog.Logger
 	DisableQueryRedaction         bool
@@ -113,7 +115,9 @@ type QuerySamples struct {
 	dbConnection                  *sql.DB
 	collectInterval               time.Duration
 	excludeDatabases              []string
+	includeDatabases              []string
 	excludeUsers                  []string
+	includeUsers                  []string
 	entryHandler                  loki.EntryHandler
 	disableQueryRedaction         bool
 	excludeCurrentUser            bool
@@ -229,7 +233,9 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		dbConnection:                  args.DB,
 		collectInterval:               args.CollectInterval,
 		excludeDatabases:              args.ExcludeDatabases,
+		includeDatabases:              args.IncludeDatabases,
 		excludeUsers:                  args.ExcludeUsers,
+		includeUsers:                  args.IncludeUsers,
 		entryHandler:                  args.EntryHandler,
 		disableQueryRedaction:         args.DisableQueryRedaction,
 		excludeCurrentUser:            args.ExcludeCurrentUser,
@@ -297,9 +303,9 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 		excludeCurrentUserClauseField = excludeCurrentUserClause
 	}
 
-	excludedDatabasesClause := buildExcludedDatabasesClause(c.excludeDatabases)
-	excludedUsersClause := buildExcludedUsersClause(c.excludeUsers, "s.usename")
-	query := fmt.Sprintf(selectPgStatActivity, excludedDatabasesClause, excludeCurrentUserClauseField, excludedUsersClause)
+	databasesClause := buildDatabaseFilterClause(c.excludeDatabases, c.includeDatabases, "d.datname")
+	usersClause := buildUserFilterClause(c.excludeUsers, c.includeUsers, "s.usename")
+	query := fmt.Sprintf(selectPgStatActivity, databasesClause, excludeCurrentUserClauseField, usersClause)
 	rows, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to query pg_stat_activity: %w", err)

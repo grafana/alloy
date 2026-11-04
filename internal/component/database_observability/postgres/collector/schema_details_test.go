@@ -2325,3 +2325,35 @@ func Test_Postgres_SchemaDetails_ExcludeDatabases(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
+
+func TestSchemaDetails_IncludeDatabases(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	collector, err := NewSchemaDetails(SchemaDetailsArguments{
+		DB:               db,
+		DSN:              "postgres://user:pass@localhost:5432/testdb",
+		CollectInterval:  time.Millisecond,
+		IncludeDatabases: []string{"included_database"},
+		EntryHandler:     lokiClient,
+		Logger:           util.TestAlloyLogger(t).Slog(),
+		dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+			return db, nil
+		},
+	})
+	require.NoError(t, err)
+
+	expectedQuery := fmt.Sprintf(selectAllDatabases, buildDatabaseFilterClause(nil, []string{"included_database"}, "datname"))
+	mock.ExpectQuery(expectedQuery).
+		WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"datname"}))
+
+	_, err = collector.getAllDatabases(context.Background())
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}

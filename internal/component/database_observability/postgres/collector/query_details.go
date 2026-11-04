@@ -49,7 +49,9 @@ type QueryDetailsArguments struct {
 	CollectInterval           time.Duration
 	StatementsLimit           int
 	ExcludeDatabases          []string
+	IncludeDatabases          []string
 	ExcludeUsers              []string
+	IncludeUsers              []string
 	EntryHandler              loki.EntryHandler
 	TableRegistry             *TableRegistry
 	EnableErrorLogsProcessing bool
@@ -62,7 +64,9 @@ type QueryDetails struct {
 	collectInterval           time.Duration
 	statementsLimit           int
 	excludeDatabases          []string
+	includeDatabases          []string
 	excludeUsers              []string
+	includeUsers              []string
 	entryHandler              loki.EntryHandler
 	tableRegistry             *TableRegistry
 	enableErrorLogsProcessing bool
@@ -81,7 +85,9 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 		collectInterval:           args.CollectInterval,
 		statementsLimit:           args.StatementsLimit,
 		excludeDatabases:          args.ExcludeDatabases,
+		includeDatabases:          args.IncludeDatabases,
 		excludeUsers:              args.ExcludeUsers,
+		includeUsers:              args.IncludeUsers,
 		entryHandler:              args.EntryHandler,
 		tableRegistry:             args.TableRegistry,
 		enableErrorLogsProcessing: args.EnableErrorLogsProcessing,
@@ -138,9 +144,9 @@ func (c *QueryDetails) Stop() {
 }
 
 func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
-	excludedDatabasesClause := buildExcludedDatabasesClause(c.excludeDatabases)
-	excludedUsersClause := buildExcludedUsersClause(c.excludeUsers, "pg_get_userbyid(pg_stat_statements.userid)")
-	query := fmt.Sprintf(selectQueriesFromActivity, excludedDatabasesClause, excludedUsersClause, c.statementsLimit)
+	databasesClause := buildDatabaseFilterClause(c.excludeDatabases, c.includeDatabases, "pg_database.datname")
+	usersClause := buildUserFilterClause(c.excludeUsers, c.includeUsers, "pg_get_userbyid(pg_stat_statements.userid)")
+	query := fmt.Sprintf(selectQueriesFromActivity, databasesClause, usersClause, c.statementsLimit)
 	rs, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to fetch statements from pg_stat_statements view: %w", err)
