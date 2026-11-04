@@ -1785,11 +1785,15 @@ func Test_resolveExporterArgs(t *testing.T) {
 
 		exporterArgs := resolveExporterArgs(userBlock, []string{"top_level"})
 
-		assert.Equal(t, []string{"mysql", "performance_schema", "sys", "information_schema", "top_level"}, exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas)
+		assert.Equal(t, []string{
+			"mysql", "performance_schema", "sys", "information_schema",
+			"alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin",
+			"top_level",
+		}, exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas)
 		assert.Nil(t, userBlock.PerfSchemaEventsStatements.ExcludeSchemas)
 	})
 
-	t.Run("nested schema exclusions override top-level exclusions", func(t *testing.T) {
+	t.Run("nested schema exclusions override custom top-level exclusions while preserving default exclusions", func(t *testing.T) {
 		userBlock := &PrometheusExporterArguments{
 			PerfSchemaEventsStatements: exporter_mysql.PerfSchemaEventsStatements{
 				ExcludeSchemas: []string{"exporter_only"},
@@ -1798,11 +1802,15 @@ func Test_resolveExporterArgs(t *testing.T) {
 
 		exporterArgs := resolveExporterArgs(userBlock, []string{"top_level"})
 
-		assert.Equal(t, []string{"mysql", "performance_schema", "sys", "information_schema", "exporter_only"}, exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas)
+		assert.Equal(t, []string{
+			"mysql", "performance_schema", "sys", "information_schema",
+			"alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin",
+			"exporter_only",
+		}, exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas)
 		assert.Equal(t, []string{"exporter_only"}, userBlock.PerfSchemaEventsStatements.ExcludeSchemas)
 	})
 
-	t.Run("explicit empty nested schema exclusions override top-level exclusions", func(t *testing.T) {
+	t.Run("explicit empty nested schema exclusions override custom top-level exclusions while preserving default exclusions", func(t *testing.T) {
 		cfg := `
 			data_source_name = "user:pass@tcp(localhost:3306)/db"
 			forward_to = []
@@ -1819,13 +1827,19 @@ func Test_resolveExporterArgs(t *testing.T) {
 
 		exporterArgs := resolveExporterArgs(args.PrometheusExporter, []string{"top_level"})
 
-		assert.Equal(t, []string{"mysql", "performance_schema", "sys", "information_schema"}, exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas)
+		assert.Equal(t, []string{
+			"mysql", "performance_schema", "sys", "information_schema",
+			"alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin",
+		}, exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas)
 	})
 
-	t.Run("schema exclusions preserve mandatory system schema exclusion without configuration", func(t *testing.T) {
+	t.Run("schema exclusions preserve default schema exclusions without configuration", func(t *testing.T) {
 		exporterArgs := resolveExporterArgs(nil, nil)
 
-		assert.Equal(t, []string{"mysql", "performance_schema", "sys", "information_schema"}, exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas)
+		assert.Equal(t, []string{
+			"mysql", "performance_schema", "sys", "information_schema",
+			"alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin",
+		}, exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas)
 	})
 }
 
@@ -1948,6 +1962,113 @@ func Test_query_details_eventsstatements_different_limits_warning(t *testing.T) 
 		require.NoError(t, c.Update(args))
 
 		assert.NotContains(t, logs.String(), "query_details and prometheus_exporter perf_schema.eventsstatements limits differ")
+	})
+}
+
+func Test_exclude_schemas_eventsstatements_mismatch_warning(t *testing.T) {
+	t.Run("logs warning when nested exclude_schemas differs from top-level exclude_schemas", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, errors.New("connection skipped for exclusion warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("user:pass@tcp(localhost:3306)/db"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 100},
+			ExcludeSchemas:        []string{"top_level_schema"},
+			PrometheusExporter: &PrometheusExporterArguments{
+				PerfSchemaEventsStatements: exporter_mysql.PerfSchemaEventsStatements{
+					Limit:          100,
+					ExcludeSchemas: []string{"nested_schema"},
+				},
+			},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.Contains(t, logs.String(), "exclude_schemas and prometheus_exporter perf_schema.eventsstatements exclude_schemas differ; prefer setting top-level exclude_schemas only")
+	})
+
+	t.Run("does not log warning when nested exclude_schemas is unset", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, errors.New("connection skipped for exclusion warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("user:pass@tcp(localhost:3306)/db"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 100},
+			ExcludeSchemas:        []string{"top_level_schema"},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "exclude_schemas and prometheus_exporter perf_schema.eventsstatements exclude_schemas differ")
+	})
+
+	t.Run("does not log warning when nested exclude_schemas resolves to the same set in different order", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, errors.New("connection skipped for exclusion warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("user:pass@tcp(localhost:3306)/db"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 100},
+			ExcludeSchemas:        []string{"schema_a", "schema_b"},
+			PrometheusExporter: &PrometheusExporterArguments{
+				PerfSchemaEventsStatements: exporter_mysql.PerfSchemaEventsStatements{
+					Limit:          100,
+					ExcludeSchemas: []string{"schema_b", "rdsadmin", "schema_a"},
+				},
+			},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "exclude_schemas and prometheus_exporter perf_schema.eventsstatements exclude_schemas differ")
+	})
+
+	t.Run("does not log warning when embedded exporter is not used", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, errors.New("connection skipped for exclusion warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		args := Arguments{
+			DataSourceName: alloytypes.Secret("user:pass@tcp(localhost:3306)/db"),
+			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
+				"__address__": "localhost:9104",
+			})},
+			ExcludeSchemas: []string{"top_level_schema"},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "exclude_schemas and prometheus_exporter perf_schema.eventsstatements exclude_schemas differ")
+	})
+
+	t.Run("does not log warning when eventsstatements is disabled", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, errors.New("connection skipped for exclusion warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("user:pass@tcp(localhost:3306)/db"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 100},
+			ExcludeSchemas:        []string{"top_level_schema"},
+			PrometheusExporter: &PrometheusExporterArguments{
+				DisableCollectors: []string{eventsStatementsCollector},
+				PerfSchemaEventsStatements: exporter_mysql.PerfSchemaEventsStatements{
+					ExcludeSchemas: []string{"nested_schema"},
+				},
+			},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "exclude_schemas and prometheus_exporter perf_schema.eventsstatements exclude_schemas differ")
 	})
 }
 

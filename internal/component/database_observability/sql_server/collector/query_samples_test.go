@@ -159,6 +159,16 @@ func TestNewQuerySamplesNormalizesExcludedUsers(t *testing.T) {
 	require.Equal(t, []string{"admin", "monitor"}, collector.excludeUsers)
 }
 
+func TestNewQuerySamplesMergesExcludedDatabases(t *testing.T) {
+	collector, err := NewQuerySamples(QuerySamplesArguments{
+		Logger:           util.TestAlloyLogger(t).Slog(),
+		ExcludeDatabases: []string{"books_store", "tempdb", "books_store"},
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"master", "model", "msdb", "tempdb", "books_store"}, collector.excludeDatabases)
+	require.True(t, collector.databaseExcluded("TempDB"))
+}
+
 func TestQuerySamples_NoTrackerIsNoOp(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
