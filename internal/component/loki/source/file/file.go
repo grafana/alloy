@@ -231,10 +231,9 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		}
 	}
 	positionsFile, err := positions.New(o.Logger, positions.Config{
-		SyncPeriod:        10 * time.Second,
-		PositionsFile:     newPositionsPath,
-		IgnoreInvalidYaml: false,
-		ReadOnly:          false,
+		SyncPeriod:    10 * time.Second,
+		PositionsFile: newPositionsPath,
+		ReadOnly:      false,
 	})
 	if err != nil {
 		return nil, err

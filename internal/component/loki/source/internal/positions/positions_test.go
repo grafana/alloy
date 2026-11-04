@@ -138,32 +138,6 @@ positions:
 	require.True(t, strings.Contains(err.Error(), temp)) // error must contain filename
 }
 
-func TestReadPositionsFromBadYamlIgnoreCorruption(t *testing.T) {
-	temp := tempFilename(t)
-	defer func() {
-		_ = os.Remove(temp)
-	}()
-
-	badYaml := []byte(`
-positions:
-  ? path: /tmp/random.log
-    labels: "{}"
-  : "176
-`)
-	err := os.WriteFile(temp, badYaml, 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	out, err := readPositionsFile(Config{
-		PositionsFile:     temp,
-		IgnoreInvalidYaml: true,
-	}, logging.NewSlogNop())
-
-	require.NoError(t, err)
-	require.Equal(t, map[Entry]string{}, out)
-}
-
 func Test_ReadOnly(t *testing.T) {
 	temp := tempFilename(t)
 	defer func() {
@@ -197,9 +171,8 @@ positions:
 	require.Equal(t, int64(17623), pos)
 	p.(*positions).save()
 	out, err := readPositionsFile(Config{
-		PositionsFile:     temp,
-		IgnoreInvalidYaml: true,
-		ReadOnly:          true,
+		PositionsFile: temp,
+		ReadOnly:      true,
 	}, logging.NewSlogNop())
 
 	require.NoError(t, err)
@@ -242,9 +215,8 @@ positions:
 	require.Equal(t, int64(10030), pos)
 	p.(*positions).save()
 	out, err := readPositionsFile(Config{
-		PositionsFile:     temp,
-		IgnoreInvalidYaml: true,
-		ReadOnly:          false,
+		PositionsFile: temp,
+		ReadOnly:      false,
 	}, logging.NewSlogNop())
 
 	require.NoError(t, err)

@@ -25,10 +25,9 @@ const (
 
 // Config describes where to get position information from.
 type Config struct {
-	SyncPeriod        time.Duration
-	PositionsFile     string
-	IgnoreInvalidYaml bool
-	ReadOnly          bool
+	SyncPeriod    time.Duration
+	PositionsFile string
+	ReadOnly      bool
 }
 
 // Positions tracks how far through each file we've read.
@@ -223,12 +222,6 @@ func readPositionsFile(cfg Config, logger *slog.Logger) (map[Entry]string, error
 	var p File
 	err = yaml.Unmarshal(buf, &p)
 	if err != nil {
-		// return empty if cfg option enabled
-		if cfg.IgnoreInvalidYaml {
-			logger.Debug("ignoring invalid positions file", "file", cleanfn, "error", err)
-			return map[Entry]string{}, nil
-		}
-
 		return nil, fmt.Errorf("invalid yaml positions file [%s]: %v", cleanfn, err)
 	}
 
