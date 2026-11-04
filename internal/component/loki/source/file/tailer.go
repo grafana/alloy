@@ -214,7 +214,7 @@ func (t *tailer) tail(ctx context.Context, pos int64) {
 
 	// flush delivers added entries and then advances deliveredOffset. Entries that
 	// fail to be delivered are dropped, unless the tailer is stopping so they are
-	// read again on the next run. The metrics are always updated when eof is true.
+	// read again on the next run. Metrics are always updated when eof is true.
 	flush := func(eof bool) {
 		if err := t.batcher.Flush(ctx); err != nil {
 			if ctx.Err() != nil {
