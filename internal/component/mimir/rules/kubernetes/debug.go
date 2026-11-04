@@ -29,7 +29,7 @@ func (c *Component) DebugInfo() any {
 
 	currentState := c.eventProcessor.getMimirState()
 	for namespace := range currentState {
-		if !isManagedMimirNamespace(c.args.MimirNameSpacePrefix, namespace) {
+		if !isManagedMimirNamespace(c.args.MimirNameSpacePrefix, c.args.MimirNamespaceSeparator, namespace) {
 			continue
 		}
 
