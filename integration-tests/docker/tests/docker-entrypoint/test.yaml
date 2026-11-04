@@ -1,0 +1,3 @@
+alloy_container:
+  environment:
+    GRAFANA_ALLOY_BASE64_CONFIG: "bG9nZ2luZyB7CiAgbGV2ZWwgPSAiaW5mbyIKfQo="
