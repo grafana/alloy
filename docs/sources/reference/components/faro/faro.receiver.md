@@ -96,7 +96,7 @@ Clients using the [Grafana Faro Web SDK][faro-sdk] forward telemetry data to thi
 | `listen_address`             | `string`       | Address to listen for HTTP traffic on.                          | `"127.0.0.1"` | no       |
 | `listen_port`                | `number`       | Port to listen for HTTP traffic on.                             | `12347`       | no       |
 | `cors_allowed_origins`       | `list(string)` | Origins for which cross-origin requests are permitted.          | `[]`          | no       |
-| `cors_extra_allowed_headers` | `list(string)` | Additional request headers to allow for cross-origin requests.  | `[]`          | no       |
+| `cors_allowed_headers`       | `list(string)` | Request headers to allow for cross-origin requests.             | `["content-type", "content-encoding", "idempotency-key", "traceparent", "x-api-key", "x-faro-session-id", "x-scope-orgid"]` | no |
 | `api_key`                    | `secret`       | Optional API key to validate client requests with.              | `""`          | no       |
 | `max_allowed_payload_size`   | `string`       | Maximum size (in bytes) for client requests.                    | `"5MiB"`      | no       |
 | `include_metadata`           | `bool`         | Propagate incoming connection metadata to downstream consumers. | `false`       | no       |
@@ -109,10 +109,12 @@ The default value, `[]`, disables CORS support.
 To support requests from all origins, set `cors_allowed_origins` to `["*"]`.
 The `*` character indicates a wildcard.
 
-You can use the following headers for cross-domain requests: `Content-Type`, `Content-Encoding`, `Idempotency-Key`, `Traceparent`, `X-API-Key`, `X-Faro-Session-Id`, or `X-Scope-OrgID`.
+By default, you can use the following headers for cross-domain requests: `Content-Type`, `Content-Encoding`, `Idempotency-Key`, `Traceparent`, `X-API-Key`, `X-Faro-Session-Id`, or `X-Scope-OrgID`.
 
-Use `cors_extra_allowed_headers` to allow additional request headers alongside these built-in headers.
-Omitting the argument or setting it to `[]` preserves the built-in allowlist.
+Use `cors_allowed_headers` to configure the request headers allowed for cross-origin requests.
+Omitting the argument preserves the default list above.
+A configured list replaces the defaults, so include every header your Faro clients send.
+Setting it to `[]` uses the CORS library defaults: `Accept`, `Content-Type`, and `X-Requested-With`.
 Header names are case-insensitive.
 Setting it to `["*"]` allows any request header.
 This argument doesn't change `cors_allowed_origins` or enable CORS when it's disabled.
@@ -122,8 +124,17 @@ For example, allow an application-specific header from an allowed origin:
 ```alloy
 faro.receiver "default" {
   server {
-    cors_allowed_origins       = ["https://example.com"]
-    cors_extra_allowed_headers = ["X-Custom-Header"]
+    cors_allowed_origins = ["https://example.com"]
+    cors_allowed_headers = [
+      "content-type",
+      "content-encoding",
+      "idempotency-key",
+      "traceparent",
+      "x-api-key",
+      "x-faro-session-id",
+      "x-scope-orgid",
+      "X-Custom-Header",
+    ]
   }
   output {}
 }

@@ -51,6 +51,7 @@ func toAppAgentReceiverV2(config *app_agent_receiver_v2.Config) *receiver.Argume
 			Host:                  config.Server.Host,
 			Port:                  config.Server.Port,
 			CORSAllowedOrigins:    config.Server.CORSAllowedOrigins,
+			CORSAllowedHeaders:    common.DefaultValue[receiver.ServerArguments]().CORSAllowedHeaders,
 			APIKey:                alloytypes.Secret(config.Server.APIKey),
 			MaxAllowedPayloadSize: units.Base2Bytes(config.Server.MaxAllowedPayloadSize),
 			RateLimiting: receiver.RateLimitingArguments{
