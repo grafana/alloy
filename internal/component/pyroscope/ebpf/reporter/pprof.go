@@ -52,6 +52,8 @@ type PPROFReporter struct {
 	symbols  irsymcache.NativeSymbolResolver
 
 	traceEvents xsync.RWMutex[samples.TraceEventsTree]
+	// Protected by traceEvents; marks the start of the current collection window.
+	intervalStart time.Time
 
 	sd discovery.TargetProducer
 
@@ -68,12 +70,13 @@ func NewPPROF(log *slog.Logger,
 
 	tree := make(samples.TraceEventsTree)
 	return &PPROFReporter{
-		cfg:         cfg,
-		log:         log,
-		traceEvents: xsync.NewRWMutex(tree),
-		sd:          sd,
-		consumer:    consumer,
-		symbols:     symbols,
+		cfg:           cfg,
+		log:           log,
+		traceEvents:   xsync.NewRWMutex(tree),
+		intervalStart: time.Now(),
+		sd:            sd,
+		consumer:      consumer,
+		symbols:       symbols,
 	}
 }
 
@@ -158,6 +161,9 @@ func (p *PPROFReporter) Stop() {
 
 func (p *PPROFReporter) reportProfile(ctx context.Context) {
 	traceEventsPtr := p.traceEvents.WLock()
+	intervalEnd := time.Now()
+	intervalStart := p.intervalStart
+	p.intervalStart = intervalEnd
 	reportedEvents := *traceEventsPtr
 	newEvents := make(samples.TraceEventsTree)
 	*traceEventsPtr = newEvents
@@ -165,7 +171,7 @@ func (p *PPROFReporter) reportProfile(ctx context.Context) {
 	var profiles []PPROF
 	for resourceKey, rtp := range reportedEvents {
 		for profileType, events := range rtp.Events {
-			pp := p.createProfile(resourceKey, profileType, events)
+			pp := p.createProfile(intervalStart, intervalEnd, resourceKey, profileType, events)
 			profiles = append(profiles, pp...)
 		}
 	}
@@ -178,7 +184,7 @@ func (p *PPROFReporter) reportProfile(ctx context.Context) {
 	p.log.Debug("pprof report successful", "count", len(profiles), "total-size", sz)
 }
 
-func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, profileType *samples.TypeMetadata, events map[samples.SampleKey]*samples.TraceEvents) []PPROF {
+func (p *PPROFReporter) createProfile(intervalStart, intervalEnd time.Time, resourceKey samples.ResourceKey, profileType *samples.TypeMetadata, events map[samples.SampleKey]*samples.TraceEvents) []PPROF {
 	defer func() {
 		if p.symbols != nil {
 			p.symbols.Cleanup()
@@ -189,6 +195,8 @@ func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, profileTy
 		SampleRate:    p.cfg.SamplesPerSecond,
 		PerPIDProfile: true,
 		ProfileType:   profileType,
+		TimeNanos:     intervalStart.UnixNano(),
+		DurationNanos: intervalEnd.Sub(intervalStart).Nanoseconds(),
 	})
 
 	for sampleKey, traceInfo := range events {
