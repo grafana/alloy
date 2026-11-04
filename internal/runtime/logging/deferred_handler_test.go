@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
+	"sync"
 	"testing"
 	"testing/slogtest"
 	"time"
@@ -216,22 +218,30 @@ func equal(sl *bytes.Buffer, alloy *bytes.Buffer) bool {
 	return sl.String() == alloy.String()
 }
 
-// A child that buildHandlers did not reach must build itself from its parent
-// on first use. Before, its buffered records were replayed into addRecord
-// while flushBuffer held bufferMut, and Update never returned.
-func TestDeferredChildMissedByBuildIsBuiltFromParent(t *testing.T) {
+// Children registered concurrently before the logging config is applied must
+// all be reached by buildHandlers. Appending under the read lock could lose a
+// child, and a record buffered by that child made Update deadlock on replay.
+func TestDeferredConcurrentWithAttrsAllBuilt(t *testing.T) {
 	buf := &bytes.Buffer{}
 	l, err := NewDeferred(buf)
 	require.NoError(t, err)
 
-	child := l.Handler().WithAttrs([]slog.Attr{slog.String("component", "orphan")})
-	// Detach the child, as a lost append under concurrent WithAttrs calls did.
-	l.deferredSlog.mut.Lock()
-	l.deferredSlog.children = nil
-	l.deferredSlog.mut.Unlock()
+	const n = 64
+	children := make([]slog.Handler, n)
+	var wg sync.WaitGroup
+	wg.Add(n)
+	for i := 0; i < n; i++ {
+		go func(i int) {
+			defer wg.Done()
+			children[i] = l.Handler().WithAttrs([]slog.Attr{slog.String("component", fmt.Sprintf("c%d", i))})
+		}(i)
+	}
+	wg.Wait()
 
-	rec := slog.NewRecord(time.Now(), slog.LevelInfo, "buffered before update", 0)
-	require.NoError(t, child.Handle(context.Background(), rec))
+	for i, child := range children {
+		rec := slog.NewRecord(time.Now(), slog.LevelInfo, fmt.Sprintf("buffered %d", i), 0)
+		require.NoError(t, child.Handle(context.Background(), rec))
+	}
 
 	done := make(chan error, 1)
 	go func() {
@@ -241,12 +251,10 @@ func TestDeferredChildMissedByBuildIsBuiltFromParent(t *testing.T) {
 	case err := <-done:
 		require.NoError(t, err)
 	case <-time.After(5 * time.Second):
-		t.Fatal("Update did not return: flushBuffer deadlocked on the orphaned child")
+		t.Fatal("Update did not return: a child registered concurrently was not built")
 	}
 
-	rec = slog.NewRecord(time.Now(), slog.LevelInfo, "after update", 0)
-	require.NoError(t, child.Handle(context.Background(), rec))
-	require.Contains(t, buf.String(), "buffered before update")
-	require.Contains(t, buf.String(), "after update")
-	require.Contains(t, buf.String(), `component=orphan`)
+	for i := range children {
+		require.Contains(t, buf.String(), fmt.Sprintf("component=c%d", i))
+	}
 }
