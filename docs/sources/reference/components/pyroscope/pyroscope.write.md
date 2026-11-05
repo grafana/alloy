@@ -21,6 +21,11 @@ When `pyroscope.write` forwards profiles, it drops all labels that start with a 
 
 You can specify multiple `pyroscope.write` components by giving them different labels.
 
+{{< admonition type="note" >}}
+Experimental debug-info upload is no longer supported.
+Remove `debug_info_upload_timeout` from every `endpoint` block in your configuration.
+{{< /admonition >}}
+
 ## Usage
 
 ```alloy
