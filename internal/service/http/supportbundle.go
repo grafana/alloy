@@ -40,6 +40,7 @@ type Bundle struct {
 	remoteCfg            []byte
 	heapBuf              *bytes.Buffer
 	goroutineBuf         *bytes.Buffer
+	goroutineDumpBuf     *bytes.Buffer
 	blockBuf             *bytes.Buffer
 	mutexBuf             *bytes.Buffer
 	cpuBuf               *bytes.Buffer
@@ -111,11 +112,12 @@ func ExportSupportBundle(
 
 	// Export pprof data.
 	var (
-		cpuBuf       bytes.Buffer
-		heapBuf      bytes.Buffer
-		goroutineBuf bytes.Buffer
-		blockBuf     bytes.Buffer
-		mutexBuf     bytes.Buffer
+		cpuBuf           bytes.Buffer
+		heapBuf          bytes.Buffer
+		goroutineBuf     bytes.Buffer
+		goroutineDumpBuf bytes.Buffer
+		blockBuf         bytes.Buffer
+		mutexBuf         bytes.Buffer
 	)
 	err = pprof.StartCPUProfile(&cpuBuf)
 	if err != nil {
@@ -133,6 +135,9 @@ func ExportSupportBundle(
 	}
 	p = pprof.Lookup("goroutine")
 	if err := p.WriteTo(&goroutineBuf, 0); err != nil {
+		return nil, err
+	}
+	if err := p.WriteTo(&goroutineDumpBuf, 2); err != nil {
 		return nil, err
 	}
 	p = pprof.Lookup("block")
@@ -164,6 +169,7 @@ func ExportSupportBundle(
 		environmentVariables: []byte(strings.Join(retrieveEnvironmentVariables(os.Getenv), "\n")),
 		heapBuf:              &heapBuf,
 		goroutineBuf:         &goroutineBuf,
+		goroutineDumpBuf:     &goroutineDumpBuf,
 		blockBuf:             &blockBuf,
 		mutexBuf:             &mutexBuf,
 		cpuBuf:               &cpuBuf,
@@ -242,6 +248,7 @@ func ServeSupportBundle(rw http.ResponseWriter, b *Bundle, logsBuf []byte) error
 		"pprof/cpu.pprof":                b.cpuBuf.Bytes(),
 		"pprof/heap.pprof":               b.heapBuf.Bytes(),
 		"pprof/goroutine.pprof":          b.goroutineBuf.Bytes(),
+		"pprof/goroutine.txt":            b.goroutineDumpBuf.Bytes(),
 		"pprof/mutex.pprof":              b.mutexBuf.Bytes(),
 		"pprof/block.pprof":              b.blockBuf.Bytes(),
 	}
