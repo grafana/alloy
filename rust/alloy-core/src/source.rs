@@ -1,6 +1,7 @@
 use std::sync::mpsc::{Receiver, RecvError, SendError, SyncSender, sync_channel};
 
-use crate::{Batch, Component, Context};
+use crate::logs::LogBatch;
+use crate::{Component, Context};
 
 /// A component that produces batches.
 pub trait Source: Component {
@@ -14,7 +15,7 @@ pub trait Source: Component {
 /// is busy.
 #[derive(Clone)]
 pub struct Output {
-    tx: SyncSender<Batch>,
+    tx: SyncSender<LogBatch<'static>>,
 }
 
 #[derive(Debug)]
@@ -22,20 +23,20 @@ pub struct Closed;
 
 impl Output {
     /// Fails once the receiving end is gone.
-    pub fn send(&self, batch: Batch) -> Result<(), Closed> {
+    pub fn send(&self, batch: LogBatch<'static>) -> Result<(), Closed> {
         self.tx.send(batch).map_err(|SendError(_)| Closed)
     }
 }
 
 /// The receiving end of an [`Output`].
 pub struct OutputReceiver {
-    rx: Receiver<Batch>,
+    rx: Receiver<LogBatch<'static>>,
 }
 
 impl OutputReceiver {
     /// Blocks until the next batch. Fails once every `Output` is dropped
     /// and all batches are received.
-    pub fn recv(&self) -> Result<Batch, Closed> {
+    pub fn recv(&self) -> Result<LogBatch<'static>, Closed> {
         self.rx.recv().map_err(|RecvError| Closed)
     }
 }

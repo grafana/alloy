@@ -1,6 +1,7 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use alloy_core::{Batch, Component, Context, Error, Output, Source};
+use alloy_core::logs::{LogBatch, LogEntry};
+use alloy_core::{Component, Context, Error, Output, Source};
 
 #[alloy_core::arguments]
 pub struct Args {
@@ -35,9 +36,10 @@ impl Source for Rustgen {
                 .unwrap()
                 .as_nanos() as i64;
 
-            let mut batch = Batch::new();
+            let mut batch = LogBatch::new();
             for _ in 0..self.args.lines_per_batch {
-                batch.push(ts, &format!("rustgen line {}", self.counter));
+                let line = format!("rustgen line {}", self.counter);
+                batch.push(&[], LogEntry::new(ts, line));
                 self.counter += 1;
             }
 

@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"maps"
-	"math"
 	"sync"
+	"time"
 
-	"github.com/grafana/loki/pkg/push"
+	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component"
@@ -118,14 +119,51 @@ func (c *lokiSource[A]) drain(ctx context.Context, src *Source, labels map[strin
 		ls[model.LabelName(k)] = model.LabelValue(v)
 	}
 
-	// Flush once per Rust batch rather than by size.
-	batcher := loki.NewStreamBatcherV2(c.opts.Logger, c.fanout, ls, math.MaxInt)
-
 	// Keep receiving after ctx is canceled, the Rust side can only stop once
 	// everything it sent has been received.
-	for src.Recv(func(e push.Entry) { batcher.Add(e) }) {
-		if err := batcher.Flush(ctx); err != nil && ctx.Err() == nil {
+	for {
+		batch, ok, err := src.Recv(ls)
+		if !ok {
+			return
+		}
+		if err != nil {
+			c.opts.Logger.Error("failed to decode batch from Rust, this is a bug", "err", err)
+			continue
+		}
+		if err := c.consume(ctx, batch); err != nil && ctx.Err() == nil {
 			c.opts.Logger.Error("failed to send entries", "err", err)
+		}
+	}
+}
+
+var consumerBackoff = backoff.Config{
+	MinBackoff: time.Millisecond,
+	MaxBackoff: time.Second,
+}
+
+// consume passes batch to the fanout, retrying while a consumer has stopped,
+// following the loki.Consumer contract.
+func (c *lokiSource[A]) consume(ctx context.Context, batch loki.Batch) error {
+	var retry *backoff.Backoff
+	for {
+		// Downstream may modify the batch, so every attempt gets its own copy.
+		err := c.fanout.Consume(ctx, batch.Clone())
+		if err == nil {
+			return nil
+		}
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if !errors.Is(err, loki.ErrConsumerStopped) {
+			return fmt.Errorf("unexpected error from consumer, this is most likely a bug: %w", err)
+		}
+
+		if retry == nil {
+			retry = backoff.New(ctx, consumerBackoff)
+		}
+		retry.Wait()
+		if !retry.Ongoing() {
+			return retry.Err()
 		}
 	}
 }

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["alloy-core", "alloy-core-macros", "alloy-ffi", "alloy-gen", "alloy-loki-source"]
+members = ["alloy-core", "alloy-core-macros", "alloy-ffi", "alloy-gen", "alloy-loki-sink", "alloy-loki-source"]
 
 [workspace.package]
 edition = "2024"

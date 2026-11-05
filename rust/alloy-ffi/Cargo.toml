@@ -10,4 +10,5 @@ crate-type = ["staticlib", "rlib"]
 
 [dependencies]
 alloy-core = { path = "../alloy-core" }
+alloy-loki-sink = { version = "0.1.0", path = "../alloy-loki-sink" }
 alloy-loki-source = { path = "../alloy-loki-source" }

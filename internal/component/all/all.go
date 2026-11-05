@@ -44,6 +44,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/loki/process"                             // Import loki.process
 	_ "github.com/grafana/alloy/internal/component/loki/relabel"                             // Import loki.relabel
 	_ "github.com/grafana/alloy/internal/component/loki/rules/kubernetes"                    // Import loki.rules.kubernetes
+	_ "github.com/grafana/alloy/internal/component/loki/rustecho"                            // Import loki.rustecho
 	_ "github.com/grafana/alloy/internal/component/loki/secretfilter"                        // Import loki.secretfilter
 	_ "github.com/grafana/alloy/internal/component/loki/source/api"                          // Import loki.source.api
 	_ "github.com/grafana/alloy/internal/component/loki/source/aws_firehose"                 // Import loki.source.awsfirehose

@@ -42,7 +42,11 @@ fn write_component(root: &Path, c: &ComponentInfo) -> PathBuf {
 }
 
 fn generate(c: &ComponentInfo) -> String {
-    let Kind::Source = c.kind;
+    let is_source = c.kind == Kind::Source;
+    let register = match c.kind {
+        Kind::Source => "RegisterLokiSource",
+        Kind::Sink => "RegisterLokiSink",
+    };
     let pkg = c.name.rsplit('.').next().unwrap();
 
     let checks: Vec<_> = c.args.iter().flat_map(checks).collect();
@@ -72,7 +76,7 @@ fn generate(c: &ComponentInfo) -> String {
     wl(
         w,
         &format!(
-            "\trustcomponent.RegisterLokiSource[Arguments]({:?}, featuregate.{})",
+            "\trustcomponent.{register}[Arguments]({:?}, featuregate.{})",
             c.name,
             stability(c.stability)
         ),
@@ -82,9 +86,13 @@ fn generate(c: &ComponentInfo) -> String {
 
     wl(w, &format!("// Arguments holds values which are used to configure the {} component.", c.name));
     wl(w, "type Arguments struct {");
-    wl(w, "\tSource rustcomponent.LokiSourceArguments `alloy:\",squash\"`");
-    for f in c.args {
-        wl(w, "");
+    if is_source {
+        wl(w, "\tSource rustcomponent.LokiSourceArguments `alloy:\",squash\"`");
+    }
+    for (i, f) in c.args.iter().enumerate() {
+        if is_source || i > 0 {
+            wl(w, "");
+        }
         wl(w, &format!("\t// {}", f.doc));
         let optional = if f.default.is_some() { ",optional" } else { "" };
         wl(
@@ -123,11 +131,13 @@ fn generate(c: &ComponentInfo) -> String {
     }
     wl(w, "\treturn nil");
     wl(w, "}");
-    wl(w, "");
 
-    wl(w, "func (a Arguments) LokiSource() rustcomponent.LokiSourceArguments {");
-    wl(w, "\treturn a.Source");
-    wl(w, "}");
+    if is_source {
+        wl(w, "");
+        wl(w, "func (a Arguments) LokiSource() rustcomponent.LokiSourceArguments {");
+        wl(w, "\treturn a.Source");
+        wl(w, "}");
+    }
 
     out
 }

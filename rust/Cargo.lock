@@ -23,6 +23,7 @@ name = "alloy-ffi"
 version = "0.1.0"
 dependencies = [
  "alloy-core",
+ "alloy-loki-sink",
  "alloy-loki-source",
 ]
 
@@ -32,6 +33,13 @@ version = "0.1.0"
 dependencies = [
  "alloy-core",
  "alloy-ffi",
+]
+
+[[package]]
+name = "alloy-loki-sink"
+version = "0.1.0"
+dependencies = [
+ "alloy-core",
 ]
 
 [[package]]
