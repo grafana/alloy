@@ -95,10 +95,14 @@ func (c *Component) Run(ctx context.Context) error {
 		args := c.args
 		c.mut.Unlock()
 
-		gen := newGenerator(args.LinesPerBatch, args.Interval)
+		gen, err := newGenerator(args.LinesPerBatch, args.Interval)
+		if err != nil {
+			return err
+		}
 		genCtx, cancel := context.WithCancel(ctx)
 
 		var wg sync.WaitGroup
+		wg.Go(gen.run)
 		wg.Go(func() { c.generate(genCtx, gen, args) })
 
 		select {
@@ -124,11 +128,10 @@ func (c *Component) generate(ctx context.Context, gen *generator, args Arguments
 	}
 
 	batcher := loki.NewStreamBatcherV2(c.opts.Logger, c.fanout, labels, args.LinesPerBatch)
+	// Keep receiving after ctx is canceled, the Rust side can only stop once
+	// everything it sent has been received.
 	for gen.next(func(e push.Entry) { batcher.Add(e) }) {
-		if err := batcher.Flush(ctx); err != nil {
-			if ctx.Err() != nil {
-				return
-			}
+		if err := batcher.Flush(ctx); err != nil && ctx.Err() == nil {
 			c.opts.Logger.Error("failed to send entries", "err", err)
 		}
 	}

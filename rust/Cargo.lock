@@ -3,5 +3,20 @@
 version = 4
 
 [[package]]
-name = "rustgen"
+name = "alloy-core"
 version = "0.1.0"
+
+[[package]]
+name = "alloy-ffi"
+version = "0.1.0"
+dependencies = [
+ "alloy-core",
+ "alloy-loki-source",
+]
+
+[[package]]
+name = "alloy-loki-source"
+version = "0.1.0"
+dependencies = [
+ "alloy-core",
+]
