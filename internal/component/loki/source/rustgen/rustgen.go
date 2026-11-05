@@ -12,6 +12,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/rustcomponent"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/lokipipelinev2"
 )
@@ -32,8 +33,8 @@ func init() {
 // component.
 type Arguments struct {
 	ForwardTo     []loki.LogsReceiver `alloy:"forward_to,attr"`
-	LinesPerBatch int                 `alloy:"lines_per_batch,attr,optional"`
-	Interval      time.Duration       `alloy:"interval,attr,optional"`
+	LinesPerBatch int                 `alloy:"lines_per_batch,attr,optional" rust:"u32"`
+	Interval      time.Duration       `alloy:"interval,attr,optional" rust:"duration_ms"`
 	Labels        map[string]string   `alloy:"labels,attr,optional"`
 }
 
@@ -95,14 +96,18 @@ func (c *Component) Run(ctx context.Context) error {
 		args := c.args
 		c.mut.Unlock()
 
-		gen, err := newGenerator(args.LinesPerBatch, args.Interval)
+		raw, err := rustcomponent.EncodeArgs(args)
+		if err != nil {
+			return err
+		}
+		gen, err := rustcomponent.NewSource("loki.source.rustgen", raw)
 		if err != nil {
 			return err
 		}
 		genCtx, cancel := context.WithCancel(ctx)
 
 		var wg sync.WaitGroup
-		wg.Go(gen.run)
+		wg.Go(gen.Run)
 		wg.Go(func() { c.generate(genCtx, gen, args) })
 
 		select {
@@ -111,9 +116,9 @@ func (c *Component) Run(ctx context.Context) error {
 		}
 
 		cancel()
-		gen.close()
+		gen.Close()
 		wg.Wait()
-		gen.free()
+		gen.Free()
 
 		if ctx.Err() != nil {
 			return nil
@@ -121,7 +126,7 @@ func (c *Component) Run(ctx context.Context) error {
 	}
 }
 
-func (c *Component) generate(ctx context.Context, gen *generator, args Arguments) {
+func (c *Component) generate(ctx context.Context, gen *rustcomponent.Source, args Arguments) {
 	labels := make(model.LabelSet, len(args.Labels))
 	for k, v := range args.Labels {
 		labels[model.LabelName(k)] = model.LabelValue(v)
@@ -130,7 +135,7 @@ func (c *Component) generate(ctx context.Context, gen *generator, args Arguments
 	batcher := loki.NewStreamBatcherV2(c.opts.Logger, c.fanout, labels, args.LinesPerBatch)
 	// Keep receiving after ctx is canceled, the Rust side can only stop once
 	// everything it sent has been received.
-	for gen.next(func(e push.Entry) { batcher.Add(e) }) {
+	for gen.Recv(func(e push.Entry) { batcher.Add(e) }) {
 		if err := batcher.Flush(ctx); err != nil && ctx.Err() == nil {
 			c.opts.Logger.Error("failed to send entries", "err", err)
 		}
