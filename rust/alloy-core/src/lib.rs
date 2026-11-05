@@ -9,6 +9,10 @@ mod source;
 
 pub use alloy_core_macros::{arguments, component};
 pub use arguments::Arguments;
+#[doc(hidden)]
+pub use arguments::__private;
+#[doc(hidden)]
+pub use serde;
 pub use component::{Component, ComponentMeta};
 pub use context::Context;
 pub use registry::{DynSink, DynSource, Instance, Registry};

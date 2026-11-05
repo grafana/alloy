@@ -50,7 +50,7 @@ fn generate(c: &ComponentInfo) -> String {
     let pkg = c.name.rsplit('.').next().unwrap();
 
     let checks: Vec<_> = c.args.iter().flat_map(checks).collect();
-    let uses_time = c.args.iter().any(|f| f.ty == FieldType::DurationMs);
+    let uses_time = c.args.iter().any(|f| f.ty == FieldType::Duration);
 
     let mut out = String::new();
     let w = &mut out;
@@ -87,7 +87,7 @@ fn generate(c: &ComponentInfo) -> String {
     wl(w, &format!("// Arguments holds values which are used to configure the {} component.", c.name));
     wl(w, "type Arguments struct {");
     if is_source {
-        wl(w, "\tSource rustcomponent.LokiSourceArguments `alloy:\",squash\"`");
+        wl(w, "\tSource rustcomponent.LokiSourceArguments `alloy:\",squash\" cbor:\"-\"`");
     }
     for (i, f) in c.args.iter().enumerate() {
         if is_source || i > 0 {
@@ -98,11 +98,11 @@ fn generate(c: &ComponentInfo) -> String {
         wl(
             w,
             &format!(
-                "\t{} {} `alloy:\"{},attr{optional}\" rust:\"{}\"`",
+                "\t{} {} `alloy:\"{},attr{optional}\" cbor:\"{}\"`",
                 go_name(f.name),
                 go_type(f.ty),
                 f.name,
-                rust_tag(f.ty)
+                f.name
             ),
         );
     }
@@ -147,7 +147,7 @@ fn wl(w: &mut String, line: &str) {
 }
 
 /// Bounds checks for a field: the schema's min/max, otherwise the range of
-/// its Raw type where a Go int can exceed it.
+/// its Rust type where a Go int can exceed it.
 fn checks(f: &Field) -> Vec<String> {
     let (type_min, type_max) = type_range(f.ty);
     let min = f.min.or(type_min);
@@ -190,8 +190,8 @@ fn type_range(ty: FieldType) -> (Option<Value>, Option<Value>) {
         I8 => int(8),
         I16 => int(16),
         I32 => int(32),
-        I64 | F32 | F64 | Bool => (None, None),
-        DurationMs => (Some(Value::Duration(Duration::ZERO)), None),
+        I64 | F32 | F64 | Bool | String | StringMap => (None, None),
+        Duration => (Some(Value::Duration(std::time::Duration::ZERO)), None),
     }
 }
 
@@ -213,25 +213,9 @@ fn go_type(ty: FieldType) -> &'static str {
         U8 | U16 | U32 | U64 | I8 | I16 | I32 | I64 => "int",
         F32 | F64 => "float64",
         Bool => "bool",
-        DurationMs => "time.Duration",
-    }
-}
-
-fn rust_tag(ty: FieldType) -> &'static str {
-    use FieldType::*;
-    match ty {
-        U8 => "u8",
-        U16 => "u16",
-        U32 => "u32",
-        U64 => "u64",
-        I8 => "i8",
-        I16 => "i16",
-        I32 => "i32",
-        I64 => "i64",
-        F32 => "f32",
-        F64 => "f64",
-        Bool => "bool",
-        DurationMs => "duration_ms",
+        Duration => "time.Duration",
+        String => "string",
+        StringMap => "map[string]string",
     }
 }
 
@@ -242,7 +226,25 @@ fn go_value(v: Value) -> String {
         Value::Float(f) => format!("{f:?}"),
         Value::Bool(b) => b.to_string(),
         Value::Duration(d) => go_duration(d),
+        Value::Str(s) => go_string(s),
     }
+}
+
+fn go_string(s: &str) -> String {
+    let mut out = String::from("\"");
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\t' => out.push_str("\\t"),
+            '\r' => out.push_str("\\r"),
+            c if c.is_control() => out.push_str(&format!("\\u{:04x}", c as u32)),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
 }
 
 fn go_duration(d: Duration) -> String {

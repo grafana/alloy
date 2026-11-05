@@ -1,14 +1,22 @@
-use crate::Error;
+use serde::de::DeserializeOwned;
+
 use crate::schema::Field;
 
-/// Arguments of a component. Go has already applied defaults and validated
-/// them, and passes them as `Raw`.
-pub trait Arguments: Sized + Send + 'static {
-    /// The struct Go fills in. Must be `#[repr(C)]`, only contain FFI-safe
-    /// fields, and have the fields of `schema` in the same order.
-    type Raw: Copy;
-
-    fn from_raw(raw: &Self::Raw) -> Result<Self, Error>;
-
+/// Arguments of a component, decoded from CBOR that Go encodes from the
+/// generated Go arguments. Go has already applied defaults and validated
+/// them. Implement with `#[alloy_core::arguments]`.
+pub trait Arguments: DeserializeOwned + Send + 'static {
     fn schema() -> &'static [Field];
+}
+
+#[doc(hidden)]
+pub mod __private {
+    use std::time::Duration;
+
+    use serde::{Deserialize, Deserializer};
+
+    /// Go encodes `time.Duration` as integer nanoseconds.
+    pub fn duration_nanos<'de, D: Deserializer<'de>>(d: D) -> Result<Duration, D::Error> {
+        Ok(Duration::from_nanos(u64::deserialize(d)?))
+    }
 }

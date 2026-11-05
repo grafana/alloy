@@ -82,7 +82,7 @@ impl Registry {
         self.components.values().map(|e| &e.info)
     }
 
-    /// Builds the component registered as `name` from its `Raw` arguments.
+    /// Builds the component registered as `name` from its CBOR arguments.
     pub fn build(&self, name: &str, args: &[u8]) -> Result<Instance, Error> {
         match self.components.get(name) {
             Some(e) => (e.build)(args),
@@ -91,16 +91,13 @@ impl Registry {
     }
 }
 
-fn build<C: Component>(args: &[u8]) -> Result<C, Error> {
-    type Raw<C> = <<C as Component>::Args as Arguments>::Raw;
-
-    let want = size_of::<Raw<C>>();
-    if args.len() != want {
-        return Err(format!("arguments are {} bytes, expected {want}", args.len()).into());
+fn build<C: Component>(mut args: &[u8]) -> Result<C, Error> {
+    let decoded: C::Args = ciborium::from_reader(&mut args).map_err(|e| match e {
+        ciborium::de::Error::Semantic(_, msg) => format!("decoding arguments: {msg}"),
+        e => format!("decoding arguments: {e:?}"),
+    })?;
+    if !args.is_empty() {
+        return Err(format!("{} trailing bytes after arguments", args.len()).into());
     }
-
-    // SAFETY: the length matches, and Arguments requires Raw to be the C
-    // struct Go encodes.
-    let raw = unsafe { (args.as_ptr() as *const Raw<C>).read_unaligned() };
-    C::new(C::Args::from_raw(&raw)?)
+    C::new(decoded)
 }

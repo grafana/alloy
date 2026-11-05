@@ -23,8 +23,7 @@ pub struct ComponentInfo {
     pub args: &'static [Field],
 }
 
-/// An argument of a component. The fields of `Arguments::schema` must be in
-/// the same order as the fields of `Arguments::Raw`.
+/// An argument of a component.
 #[derive(Debug)]
 pub struct Field {
     /// The attribute name in the Alloy config.
@@ -37,7 +36,7 @@ pub struct Field {
     pub doc: &'static str,
 }
 
-/// How a field is passed in `Raw`.
+/// The type of a field, as decoded in Rust.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FieldType {
     U8,
@@ -51,8 +50,10 @@ pub enum FieldType {
     F32,
     F64,
     Bool,
-    /// `u64` milliseconds.
-    DurationMs,
+    Duration,
+    String,
+    /// A map from string to string.
+    StringMap,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -62,4 +63,5 @@ pub enum Value {
     Float(f64),
     Bool(bool),
     Duration(Duration),
+    Str(&'static str),
 }

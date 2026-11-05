@@ -7,3 +7,5 @@ publish.workspace = true
 
 [dependencies]
 alloy-core-macros = { version = "0.1.0", path = "../alloy-core-macros" }
+ciborium = "0.2.2"
+serde = { version = "1.0.229", features = ["derive"] }

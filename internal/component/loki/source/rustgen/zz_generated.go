@@ -16,13 +16,13 @@ func init() {
 
 // Arguments holds values which are used to configure the loki.source.rustgen component.
 type Arguments struct {
-	Source rustcomponent.LokiSourceArguments `alloy:",squash"`
+	Source rustcomponent.LokiSourceArguments `alloy:",squash" cbor:"-"`
 
 	// Number of lines in each batch.
-	LinesPerBatch int `alloy:"lines_per_batch,attr,optional" rust:"u32"`
+	LinesPerBatch int `alloy:"lines_per_batch,attr,optional" cbor:"lines_per_batch"`
 
 	// How often to generate a batch.
-	Interval time.Duration `alloy:"interval,attr,optional" rust:"duration_ms"`
+	Interval time.Duration `alloy:"interval,attr,optional" cbor:"interval"`
 }
 
 var DefaultArguments = Arguments{

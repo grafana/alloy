@@ -1,15 +1,17 @@
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
-use quote::{format_ident, quote};
+use quote::quote;
 use syn::{Expr, ExprLit, ExprUnary, Fields, ItemStruct, Lit, Type, UnOp, parse_macro_input};
 
-/// Turns a struct into component arguments: generates its `Raw` C struct
-/// (`<Name>Raw`), `from_raw` and `schema`, see `alloy_core::Arguments`.
+/// Turns a struct into component arguments: derives serde's `Deserialize`
+/// (rejecting unknown fields) and implements `alloy_core::Arguments` with the
+/// struct's schema.
 ///
-/// Fields can be integers, floats, `bool` or `Duration`. Doc comments become
-/// the field's doc, and `#[arg(default = .., min = .., max = ..)]` sets the
-/// rest of its schema. Durations take strings like `"1s"` or `"500ms"`.
-/// Fields without a default are required.
+/// Fields can be integers, floats, `bool`, `Duration`, `String` or a
+/// `BTreeMap`/`HashMap` of `String` to `String`. Doc comments become the
+/// field's doc, and `#[arg(default = .., min = .., max = ..)]` sets the rest of
+/// its schema. Durations take strings like `"1s"` or `"500ms"`. Fields without
+/// a default are required.
 #[proc_macro_attribute]
 pub fn arguments(attr: TokenStream, item: TokenStream) -> TokenStream {
     if !attr.is_empty() {
@@ -83,6 +85,8 @@ enum Ty {
     Float(&'static str),
     Bool,
     Duration,
+    String,
+    StringMap,
 }
 
 struct FieldSpec {
@@ -104,27 +108,17 @@ fn expand(mut item: ItemStruct) -> syn::Result<TokenStream2> {
 
     let mut specs = Vec::new();
     for field in fields.named.iter_mut() {
-        specs.push(parse_field(field)?);
+        let spec = parse_field(field)?;
         field.attrs.retain(|a| !a.path().is_ident("arg"));
+        if let Ty::Duration = spec.ty {
+            field.attrs.push(syn::parse_quote! {
+                #[serde(deserialize_with = "::alloy_core::__private::duration_nanos")]
+            });
+        }
+        specs.push(spec);
     }
 
     let ident = &item.ident;
-    let vis = &item.vis;
-    let raw_ident = format_ident!("{ident}Raw");
-
-    let raw_fields = specs.iter().map(|s| {
-        let name = &s.ident;
-        let ty = raw_type(s.ty);
-        quote! { pub #name: #ty }
-    });
-
-    let conversions = specs.iter().map(|s| {
-        let name = &s.ident;
-        match s.ty {
-            Ty::Duration => quote! { #name: ::std::time::Duration::from_millis(raw.#name) },
-            _ => quote! { #name: raw.#name },
-        }
-    });
 
     let schema = specs.iter().map(|s| {
         let name = s.ident.to_string();
@@ -148,24 +142,11 @@ fn expand(mut item: ItemStruct) -> syn::Result<TokenStream2> {
     });
 
     Ok(quote! {
+        #[derive(::alloy_core::serde::Deserialize)]
+        #[serde(crate = "::alloy_core::serde", deny_unknown_fields)]
         #item
 
-        #[doc(hidden)]
-        #[repr(C)]
-        #[derive(Clone, Copy)]
-        #vis struct #raw_ident {
-            #(#raw_fields,)*
-        }
-
         impl ::alloy_core::Arguments for #ident {
-            type Raw = #raw_ident;
-
-            fn from_raw(raw: &#raw_ident) -> ::core::result::Result<Self, ::alloy_core::Error> {
-                ::core::result::Result::Ok(Self {
-                    #(#conversions,)*
-                })
-            }
-
             fn schema() -> &'static [::alloy_core::schema::Field] {
                 const SCHEMA: &[::alloy_core::schema::Field] = &[#(#schema,)*];
                 SCHEMA
@@ -202,14 +183,17 @@ fn parse_field(field: &syn::Field) -> syn::Result<FieldSpec> {
 
     for attr in field.attrs.iter().filter(|a| a.path().is_ident("arg")) {
         attr.parse_nested_meta(|meta| {
+            let bounds = !matches!(ty, Ty::Bool | Ty::String | Ty::StringMap);
             let slot = if meta.path.is_ident("default") {
                 &mut spec.default
-            } else if meta.path.is_ident("min") {
+            } else if meta.path.is_ident("min") && bounds {
                 &mut spec.min
-            } else if meta.path.is_ident("max") {
+            } else if meta.path.is_ident("max") && bounds {
                 &mut spec.max
-            } else {
+            } else if bounds {
                 return Err(meta.error("expected default, min or max"));
+            } else {
+                return Err(meta.error("expected default, only numbers and durations have min or max"));
             };
             let expr: Expr = meta.value()?.parse()?;
             *slot = Some(value(ty, &expr)?);
@@ -222,7 +206,10 @@ fn parse_field(field: &syn::Field) -> syn::Result<FieldSpec> {
 
 fn parse_type(ty: &Type) -> syn::Result<Ty> {
     let unsupported = || {
-        syn::Error::new_spanned(ty, "unsupported argument type, expected an integer, float, bool or Duration")
+        syn::Error::new_spanned(
+            ty,
+            "unsupported argument type, expected an integer, float, bool, Duration, String or a map of String to String",
+        )
     };
     let Type::Path(path) = ty else {
         return Err(unsupported());
@@ -243,25 +230,31 @@ fn parse_type(ty: &Type) -> syn::Result<Ty> {
         "f64" => Ty::Float("f64"),
         "bool" => Ty::Bool,
         "Duration" => Ty::Duration,
+        "String" => Ty::String,
+        "BTreeMap" | "HashMap" => {
+            let syn::PathArguments::AngleBracketed(args) = &last.arguments else {
+                return Err(unsupported());
+            };
+            let is_string = |arg: &syn::GenericArgument| {
+                matches!(arg, syn::GenericArgument::Type(Type::Path(p))
+                    if p.path.segments.last().is_some_and(|s| s.ident == "String"))
+            };
+            if args.args.len() != 2 || !args.args.iter().all(is_string) {
+                return Err(unsupported());
+            }
+            Ty::StringMap
+        }
         _ => return Err(unsupported()),
     })
-}
-
-fn raw_type(ty: Ty) -> TokenStream2 {
-    let name = match ty {
-        Ty::Uint(name, _) | Ty::Int(name, _) | Ty::Float(name) => name,
-        Ty::Bool => "bool",
-        Ty::Duration => "u64",
-    };
-    let ident = syn::Ident::new(name, Span::call_site());
-    quote! { #ident }
 }
 
 fn field_type(ty: Ty) -> TokenStream2 {
     let variant = match ty {
         Ty::Uint(name, _) | Ty::Int(name, _) | Ty::Float(name) => name.to_uppercase(),
         Ty::Bool => "Bool".to_string(),
-        Ty::Duration => "DurationMs".to_string(),
+        Ty::Duration => "Duration".to_string(),
+        Ty::String => "String".to_string(),
+        Ty::StringMap => "StringMap".to_string(),
     };
     let ident = syn::Ident::new(&variant, Span::call_site());
     quote! { ::alloy_core::schema::FieldType::#ident }
@@ -313,16 +306,16 @@ fn value(ty: Ty, expr: &Expr) -> syn::Result<TokenStream2> {
             Ok(quote! { ::alloy_core::schema::Value::Bool(#v) })
         }
         (Ty::Duration, Lit::Str(s)) if !negative => match parse_duration(&s.value()) {
-            Some(ns) => {
-                if ns % 1_000_000 != 0 {
-                    return err("durations are passed as milliseconds, use a whole number of ms");
-                }
-                Ok(quote! {
-                    ::alloy_core::schema::Value::Duration(::std::time::Duration::from_nanos(#ns))
-                })
-            }
+            Some(ns) => Ok(quote! {
+                ::alloy_core::schema::Value::Duration(::std::time::Duration::from_nanos(#ns))
+            }),
             None => err("expected a duration like \"1s\" or \"500ms\""),
         },
+        (Ty::String, Lit::Str(s)) if !negative => {
+            let v = s.value();
+            Ok(quote! { ::alloy_core::schema::Value::Str(#v) })
+        }
+        (Ty::StringMap, _) => err("map fields can't have a default, min or max"),
         _ => err("value doesn't match the field's type"),
     }
 }
