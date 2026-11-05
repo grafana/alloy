@@ -265,22 +265,128 @@ func Test_NoConsumeAfterPause(t *testing.T) {
 	require.Zero(t, violations.Load(), "Consume* calls reached the consumer after Pause returned")
 }
 
+// Test_PauseCancelsStuckConsume covers a downstream that blocks until its
+// context ends, like an exporter retrying against a failing backend: Pause
+// cancels the call after drainTimeout instead of waiting for it indefinitely.
+func Test_PauseCancelsStuckConsume(t *testing.T) {
+	goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	entered := make(chan struct{}, 1)
+	c := New(componenttest.TestContext(t), "test_component")
+	c.drainTimeout = 50 * time.Millisecond
+	setConsumersFunc(t, c, func(ctx context.Context) error {
+		entered <- struct{}{}
+		<-ctx.Done()
+		return context.Cause(ctx)
+	})
+
+	consumeErr := make(chan error, 1)
+	go func() {
+		consumeErr <- c.ConsumeTraces(componenttest.TestContext(t), ptrace.NewTraces())
+	}()
+	waitFor(t, entered, "the Consume* call to reach the consumer")
+
+	start := time.Now()
+	c.Pause()
+	require.GreaterOrEqual(t, time.Since(start), c.drainTimeout, "Pause should give in-flight calls drainTimeout to return")
+	require.ErrorIs(t, <-consumeErr, errPaused)
+
+	// Calls made after Resume get a context that isn't cancelled.
+	c.Resume()
+	setConsumersFunc(t, c, func(ctx context.Context) error {
+		return ctx.Err()
+	})
+	require.NoError(t, c.ConsumeTraces(componenttest.TestContext(t), ptrace.NewTraces()))
+}
+
+// Test_PauseDoesNotWaitForeverOnCallsIgnoringContext covers a downstream that
+// ignores its context: Pause returns after twice drainTimeout regardless.
+func Test_PauseDoesNotWaitForeverOnCallsIgnoringContext(t *testing.T) {
+	goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	c := New(componenttest.TestContext(t), "test_component")
+	c.drainTimeout = 50 * time.Millisecond
+	setConsumers(t, c, func() {
+		close(entered)
+		<-release
+	})
+
+	consumeDone := make(chan struct{})
+	go func() {
+		_ = c.ConsumeLogs(componenttest.TestContext(t), plog.NewLogs())
+		close(consumeDone)
+	}()
+	waitFor(t, entered, "the Consume* call to reach the consumer")
+
+	pauseDone := make(chan struct{})
+	go func() {
+		c.Pause()
+		close(pauseDone)
+	}()
+	waitFor(t, pauseDone, "Pause to give up on the call")
+	require.True(t, c.IsPaused())
+
+	close(release)
+	waitFor(t, consumeDone, "the Consume* call to return")
+	c.Resume()
+}
+
+// Test_PausedConsumeReturnsWhenContextEnds covers a consumer that stays paused
+// after its components shut down: the calls waiting on it return once the
+// consumer's context ends instead of blocking forever.
+func Test_PausedConsumeReturnsWhenContextEnds(t *testing.T) {
+	goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	ctx, cancel := context.WithCancel(componenttest.TestContext(t))
+	c := NewPaused(ctx, "test_component")
+	setConsumers(t, c, func() {
+		t.Error("data reached the consumer of a stopped component")
+	})
+
+	consumeErr := make(chan error, 1)
+	go func() {
+		consumeErr <- c.ConsumeMetrics(componenttest.TestContext(t), pmetric.NewMetrics())
+	}()
+	select {
+	case err := <-consumeErr:
+		t.Fatalf("Consume* returned while paused: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	cancel()
+	select {
+	case err := <-consumeErr:
+		require.ErrorIs(t, err, context.Canceled)
+	case <-time.After(5 * time.Second):
+		t.Fatal("Consume* did not return after the consumer's context ended")
+	}
+}
+
 // setConsumers sets consumers for all signals that call fn for each request.
 func setConsumers(t *testing.T, c *Consumer, fn func()) {
 	t.Helper()
-	traces, err := otelconsumer.NewTraces(func(context.Context, ptrace.Traces) error {
+	setConsumersFunc(t, c, func(context.Context) error {
 		fn()
 		return nil
 	})
-	require.NoError(t, err)
-	metrics, err := otelconsumer.NewMetrics(func(context.Context, pmetric.Metrics) error {
-		fn()
-		return nil
+}
+
+// setConsumersFunc sets consumers for all signals that return fn's result for
+// each request.
+func setConsumersFunc(t *testing.T, c *Consumer, fn func(ctx context.Context) error) {
+	t.Helper()
+	traces, err := otelconsumer.NewTraces(func(ctx context.Context, _ ptrace.Traces) error {
+		return fn(ctx)
 	})
 	require.NoError(t, err)
-	logs, err := otelconsumer.NewLogs(func(context.Context, plog.Logs) error {
-		fn()
-		return nil
+	metrics, err := otelconsumer.NewMetrics(func(ctx context.Context, _ pmetric.Metrics) error {
+		return fn(ctx)
+	})
+	require.NoError(t, err)
+	logs, err := otelconsumer.NewLogs(func(ctx context.Context, _ plog.Logs) error {
+		return fn(ctx)
 	})
 	require.NoError(t, err)
 	c.SetConsumers(traces, metrics, logs)
