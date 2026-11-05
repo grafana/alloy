@@ -6,6 +6,7 @@ mod registry;
 pub mod schema;
 mod source;
 
+pub use alloy_core_macros::arguments;
 pub use arguments::Arguments;
 pub use batch::Batch;
 pub use component::Component;

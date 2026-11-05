@@ -1,51 +1,16 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use alloy_core::schema::{Field, FieldType, Value};
-use alloy_core::{Arguments, Batch, Component, Context, Error, Output, Source};
+use alloy_core::{Batch, Component, Context, Error, Output, Source};
 
+#[alloy_core::arguments]
 pub struct Args {
+    /// Number of lines in each batch.
+    #[arg(default = 100, min = 1)]
     pub lines_per_batch: u32,
+
+    /// How often to generate a batch.
+    #[arg(default = "1s", min = "1ms")]
     pub interval: Duration,
-}
-
-#[repr(C)]
-#[derive(Clone, Copy)]
-pub struct ArgsRaw {
-    pub lines_per_batch: u32,
-    pub interval_ms: u64,
-}
-
-impl Arguments for Args {
-    type Raw = ArgsRaw;
-
-    fn from_raw(raw: &ArgsRaw) -> Result<Self, Error> {
-        Ok(Self {
-            lines_per_batch: raw.lines_per_batch,
-            interval: Duration::from_millis(raw.interval_ms),
-        })
-    }
-
-    fn schema() -> &'static [Field] {
-        const SCHEMA: &[Field] = &[
-            Field {
-                name: "lines_per_batch",
-                ty: FieldType::U32,
-                default: Some(Value::Uint(100)),
-                min: Some(Value::Uint(1)),
-                max: None,
-                doc: "Number of lines in each batch.",
-            },
-            Field {
-                name: "interval",
-                ty: FieldType::DurationMs,
-                default: Some(Value::Duration(Duration::from_secs(1))),
-                min: Some(Value::Duration(Duration::from_millis(1))),
-                max: None,
-                doc: "How often to generate a batch.",
-            },
-        ];
-        SCHEMA
-    }
 }
 
 pub struct Rustgen {
