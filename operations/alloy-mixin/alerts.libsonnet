@@ -1,5 +1,6 @@
 local clusterAlerts = (import './alerts/clustering.libsonnet');
 local controllerAlerts = (import './alerts/controller.libsonnet');
+local lokiAlerts = (import './alerts/loki.libsonnet');
 local openTelemetryAlerts = (import './alerts/opentelemetry.libsonnet');
 
 {
@@ -7,7 +8,8 @@ local openTelemetryAlerts = (import './alerts/opentelemetry.libsonnet');
 
   local otherAlerts = [
     controllerAlerts.newControllerAlertsGroup($._config.enableK8sCluster),
-    openTelemetryAlerts.newOpenTelemetryAlertsGroup($._config.enableK8sCluster)
+    openTelemetryAlerts.newOpenTelemetryAlertsGroup($._config.enableK8sCluster),
+    lokiAlerts.newLokiAlertsGroup($._config.enableK8sCluster),
   ],
 
   prometheusAlerts+:: {
