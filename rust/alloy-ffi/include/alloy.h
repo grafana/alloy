@@ -25,10 +25,4 @@ int32_t alloy_source_recv(const alloy_component *c, alloy_buf *out);
 
 void alloy_buf_free(alloy_buf *buf);
 
-/* loki.source.rustgen */
-typedef struct {
-  uint32_t lines_per_batch;
-  uint64_t interval_ms;
-} rustgen_args;
-
 #endif

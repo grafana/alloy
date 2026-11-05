@@ -50,6 +50,7 @@
 ##
 ##   generate                  Generate everything.
 ##   generate-helm-docs        Generate Helm chart documentation.
+##   generate-rust-components  Generate the Go side of Rust components.
 ##   generate-helm-tests       Generate Helm chart tests.
 ##   generate-ui               Generate the UI assets.
 ##   generate-graphql          Generate the GraphQL assets.
@@ -389,6 +390,10 @@ alloy-image-windows:
 
 .PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-source-code generate-otel-collector-distro generate-graphql
 generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-otel-collector-distro generate-graphql
+
+.PHONY: generate-rust-components
+generate-rust-components:
+	cd ./rust && cargo run -q -p alloy-gen -- ..
 
 generate-graphql:
 ifeq ($(USE_CONTAINER),1)

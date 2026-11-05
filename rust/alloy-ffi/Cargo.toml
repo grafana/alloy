@@ -6,7 +6,7 @@ license.workspace = true
 publish.workspace = true
 
 [lib]
-crate-type = ["staticlib"]
+crate-type = ["staticlib", "rlib"]
 
 [dependencies]
 alloy-core = { path = "../alloy-core" }

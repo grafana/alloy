@@ -1,17 +1,19 @@
 use std::ffi::{CStr, c_char, c_void};
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
 
-use alloy_core::{Arguments, Context, Error, Output, OutputReceiver, Source, output};
-use alloy_loki_source::rustgen::Rustgen;
+use alloy_core::{Context, DynSource, Error, Output, OutputReceiver, Registry, output};
 
 pub const ALLOY_OK: i32 = 0;
 pub const ALLOY_CLOSED: i32 = 1;
 
-fn build(name: &str, args: *const c_void, args_size: usize) -> Result<AlloyComponent, Error> {
-    match name {
-        "loki.source.rustgen" => unsafe { build_source::<Rustgen>(args, args_size) },
-        _ => Err(format!("unknown component {name}").into()),
-    }
+/// Every Rust component, as linked into Alloy.
+pub fn registry() -> &'static Registry {
+    static REGISTRY: OnceLock<Registry> = OnceLock::new();
+    REGISTRY.get_or_init(|| {
+        let mut r = Registry::new();
+        alloy_loki_source::register(&mut r);
+        r
+    })
 }
 
 #[repr(C)]
@@ -32,18 +34,6 @@ impl Buf {
     }
 }
 
-// Source can't be a trait object because of Component's associated type and
-// constructor, so instances hold this instead.
-trait DynSource: Send {
-    fn run(&mut self, ctx: &Context, out: &Output);
-}
-
-impl<S: Source> DynSource for S {
-    fn run(&mut self, ctx: &Context, out: &Output) {
-        Source::run(self, ctx, out)
-    }
-}
-
 pub struct AlloyComponent {
     ctx: Context,
     source: Mutex<Box<dyn DynSource>>,
@@ -51,26 +41,12 @@ pub struct AlloyComponent {
     rx: Mutex<OutputReceiver>,
 }
 
-/// # Safety
-/// `args` must point to `args_size` readable bytes.
-unsafe fn build_source<S: Source>(
-    args: *const c_void,
-    args_size: usize,
-) -> Result<AlloyComponent, Error> {
-    type Raw<S> = <<S as alloy_core::Component>::Args as Arguments>::Raw;
-
-    let want = size_of::<Raw<S>>();
-    if args_size != want {
-        return Err(format!("arguments are {args_size} bytes, expected {want}").into());
-    }
-
-    let raw = unsafe { (args as *const Raw<S>).read_unaligned() };
-    let source = S::new(S::Args::from_raw(&raw)?)?;
+fn build(name: &str, args: &[u8]) -> Result<AlloyComponent, Error> {
+    let source = registry().build_source(name, args)?;
     let (out, rx) = output();
-
     Ok(AlloyComponent {
         ctx: Context::new(),
-        source: Mutex::new(Box::new(source)),
+        source: Mutex::new(source),
         out: Mutex::new(Some(out)),
         rx: Mutex::new(rx),
     })
@@ -88,8 +64,9 @@ pub unsafe extern "C" fn alloy_component_new(
     args_size: usize,
     err: *mut Buf,
 ) -> *mut AlloyComponent {
+    let args = unsafe { std::slice::from_raw_parts(args as *const u8, args_size) };
     let res = match unsafe { CStr::from_ptr(name) }.to_str() {
-        Ok(name) => build(name, args, args_size),
+        Ok(name) => build(name, args),
         Err(e) => Err(e.into()),
     };
 

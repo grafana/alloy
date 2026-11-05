@@ -15,6 +15,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "alloy-gen"
+version = "0.1.0"
+dependencies = [
+ "alloy-core",
+ "alloy-ffi",
+]
+
+[[package]]
 name = "alloy-loki-source"
 version = "0.1.0"
 dependencies = [
