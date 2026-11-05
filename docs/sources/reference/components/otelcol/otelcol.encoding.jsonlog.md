@@ -10,7 +10,7 @@ title: otelcol.encoding.jsonlog
 
 # `otelcol.encoding.jsonlog`
 
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/otelcol_experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.encoding.jsonlog` encodes and decodes OpenTelemetry log records as JSON.
 It exposes a handler that compatible `otelcol` components can use to marshal and unmarshal logs.
@@ -18,8 +18,10 @@ It exposes a handler that compatible `otelcol` components can use to marshal and
 {{< admonition type="note" >}}
 `otelcol.encoding.jsonlog` is a wrapper over the upstream OpenTelemetry Collector [`jsonlogencodingextension`][] extension.
 Grafana Labs redirects bug reports or feature requests to the upstream repository when necessary.
+Upstream [stability][otel-stability]: alpha.
 
 [`jsonlogencodingextension`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/encoding/jsonlogencodingextension
+[otel-stability]: https://github.com/open-telemetry/opentelemetry-collector/blob/{{< param "OTEL_VERSION" >}}/docs/component-stability.md
 {{< /admonition >}}
 
 You can specify multiple `otelcol.encoding.jsonlog` components by giving them different labels.

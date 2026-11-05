@@ -41,8 +41,10 @@ title: otelcol.connector.spanmetrics
 {{< admonition type="note" >}}
 `otelcol.connector.spanmetrics` is a wrapper over the upstream OpenTelemetry Collector [`spanmetrics`][] connector.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+Upstream [stability][otel-stability]: alpha for traces to metrics.
 
 [`spanmetrics`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/connector/spanmetricsconnector
+[otel-stability]: https://github.com/open-telemetry/opentelemetry-collector/blob/{{< param "OTEL_VERSION" >}}/docs/component-stability.md
 {{< /admonition >}}
 
 You can specify multiple `otelcol.connector.spanmetrics` components by giving them different labels.
