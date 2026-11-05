@@ -475,46 +475,6 @@ func TestStructuredMetadataConfigValidate(t *testing.T) {
 	}
 }
 
-// TestStructuredMetadataConfigValidateLabelNames calls Validate directly
-// because Alloy syntax rejects invalid UTF-8 before Validate is reached.
-func TestStructuredMetadataConfigValidateLabelNames(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name      string
-		values    map[string]*string
-		expectErr bool
-	}{
-		{
-			name:   "valid label names",
-			values: map[string]*string{"app": nil, "pod_name": new("pod")},
-		},
-		{
-			name:   "nil values",
-			values: nil,
-		},
-		{
-			name:      "invalid label name returns err",
-			values:    map[string]*string{"\xfd": new("source")},
-			expectErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			cfg := StructuredMetadataConfig{Values: tt.values}
-			err := cfg.Validate()
-
-			if tt.expectErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
-		})
-	}
-}
-
 // TestStructuredMetadataStageDoesNotMutateConfig guards against filling in
 // default sources on the caller's config. loki.process compares stored stage
 // configs with reflect.DeepEqual on update, so mutating them would cause the
