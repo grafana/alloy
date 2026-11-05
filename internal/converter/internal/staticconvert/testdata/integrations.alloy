@@ -440,7 +440,13 @@ prometheus.scrape "integrations_mysqld_exporter" {
 	}
 }
 
-prometheus.exporter.unix "integrations_node_exporter" { }
+prometheus.exporter.unix "integrations_node_exporter" {
+	enable_collectors = ["qdisc"]
+
+	qdisc {
+		device_exclude = "^(veth|cali).*"
+	}
+}
 
 discovery.relabel "integrations_node_exporter" {
 	targets = prometheus.exporter.unix.integrations_node_exporter.targets
