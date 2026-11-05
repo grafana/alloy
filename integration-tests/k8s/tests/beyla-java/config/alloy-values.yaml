@@ -1,0 +1,12 @@
+controller:
+  type: deployment
+  replicas: 1
+  # Beyla must see the PIDs of the processes it instruments.
+  hostPID: true
+alloy:
+  initialDelaySeconds: 1
+  securityContext:
+    privileged: true
+  extraEnv:
+    - name: OTEL_EBPF_JAVAAGENT_ATTACH_TIMEOUT
+      value: "30s"
