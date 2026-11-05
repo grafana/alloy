@@ -84,6 +84,10 @@ func toNodeExporter(config *node_exporter.Config) *unix.Arguments {
 		Powersupply: unix.PowersupplyConfig{
 			IgnoredSupplies: config.PowersupplyIgnoredSupplies,
 		},
+		Qdisc: unix.QdiscConfig{
+			DeviceExclude: config.QdiscDeviceExclude,
+			DeviceInclude: config.QdiscDeviceInclude,
+		},
 		Runit: unix.RunitConfig{
 			ServiceDir: config.RunitServiceDir,
 		},

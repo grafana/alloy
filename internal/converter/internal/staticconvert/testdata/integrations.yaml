@@ -129,6 +129,8 @@ integrations:
       replacement: server-a
   node_exporter:
     enabled: true
+    enable_collectors: [qdisc]
+    qdisc_device_exclude: "^(veth|cali).*"
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_id
