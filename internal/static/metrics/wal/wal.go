@@ -1137,17 +1137,26 @@ func (a *appender) log() error {
 		buf = buf[:0]
 	}
 
-	if len(a.pendingSamples) > 0 {
-		buf = encoder.Samples(a.pendingSamples, buf)
+	// Drop samples that are older than the last timestamp of their series. They
+	// would be rejected by the remote, so they must not reach the WAL.
+	lastTs := make(map[*memSeries]int64)
+	var dropped int
+	samples, sampleSeries := dropOutOfOrder(a.pendingSamples, a.sampleSeries, func(s record.RefSample) int64 { return s.T }, lastTs, &dropped)
+	histograms, histogramSeries := dropOutOfOrder(a.pendingHistograms, a.histogramSeries, func(s record.RefHistogramSample) int64 { return s.T }, lastTs, &dropped)
+	floatHistograms, floatHistogramSeries := dropOutOfOrder(a.pendingFloatHistograms, a.floatHistogramSeries, func(s record.RefFloatHistogramSample) int64 { return s.T }, lastTs, &dropped)
+	a.w.metrics.totalOutOfOrderSamples.Add(float64(dropped))
+
+	if len(samples) > 0 {
+		buf = encoder.Samples(samples, buf)
 		if err := a.w.wal.Log(buf); err != nil {
 			return err
 		}
 		buf = buf[:0]
 	}
 
-	if len(a.pendingHistograms) > 0 {
+	if len(histograms) > 0 {
 		var customBucketsHistograms []record.RefHistogramSample
-		buf, customBucketsHistograms = encoder.HistogramSamples(a.pendingHistograms, buf)
+		buf, customBucketsHistograms = encoder.HistogramSamples(histograms, buf)
 		if len(buf) > 0 {
 			if err := a.w.wal.Log(buf); err != nil {
 				return err
@@ -1163,9 +1172,9 @@ func (a *appender) log() error {
 		}
 	}
 
-	if len(a.pendingFloatHistograms) > 0 {
+	if len(floatHistograms) > 0 {
 		var customBucketsFloatHistograms []record.RefFloatHistogramSample
-		buf, customBucketsFloatHistograms = encoder.FloatHistogramSamples(a.pendingFloatHistograms, buf)
+		buf, customBucketsFloatHistograms = encoder.FloatHistogramSamples(floatHistograms, buf)
 		if len(buf) > 0 {
 			if err := a.w.wal.Log(buf); err != nil {
 				return err
@@ -1194,20 +1203,20 @@ func (a *appender) log() error {
 	}
 
 	var series *memSeries
-	for i, s := range a.pendingSamples {
-		series = a.sampleSeries[i]
+	for i, s := range samples {
+		series = sampleSeries[i]
 		if !series.updateTimestamp(s.T) {
 			a.w.metrics.totalOutOfOrderSamples.Inc()
 		}
 	}
-	for i, s := range a.pendingHistograms {
-		series = a.histogramSeries[i]
+	for i, s := range histograms {
+		series = histogramSeries[i]
 		if !series.updateTimestamp(s.T) {
 			a.w.metrics.totalOutOfOrderSamples.Inc()
 		}
 	}
-	for i, s := range a.pendingFloatHistograms {
-		series = a.floatHistogramSeries[i]
+	for i, s := range floatHistograms {
+		series = floatHistogramSeries[i]
 		if !series.updateTimestamp(s.T) {
 			a.w.metrics.totalOutOfOrderSamples.Inc()
 		}
@@ -1220,6 +1229,44 @@ func (a *appender) log() error {
 	}
 
 	return nil
+}
+
+// dropOutOfOrder returns the samples, and the series they belong to, that are
+// not older than the last timestamp of their series. lastTs tracks the latest
+// timestamp seen per series in the current batch and is shared between sample
+// types. The input slices are not modified, so a failed Commit can be retried.
+func dropOutOfOrder[S any](pending []S, series []*memSeries, ts func(S) int64, lastTs map[*memSeries]int64, dropped *int) ([]S, []*memSeries) {
+	var (
+		kept       []S
+		keptSeries []*memSeries
+	)
+	for i, s := range pending {
+		ms := series[i]
+		last, ok := lastTs[ms]
+		if !ok {
+			ms.Lock()
+			last = ms.lastTs
+			ms.Unlock()
+		}
+		if t := ts(s); t >= last {
+			lastTs[ms] = t
+		} else {
+			*dropped++
+			if kept == nil {
+				kept = append(make([]S, 0, len(pending)), pending[:i]...)
+				keptSeries = append(make([]*memSeries, 0, len(pending)), series[:i]...)
+			}
+			continue
+		}
+		if kept != nil {
+			kept = append(kept, s)
+			keptSeries = append(keptSeries, ms)
+		}
+	}
+	if kept == nil {
+		return pending, series
+	}
+	return kept, keptSeries
 }
 
 // clearData clears all pending data.
