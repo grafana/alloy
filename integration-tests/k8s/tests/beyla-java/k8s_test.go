@@ -21,10 +21,7 @@ func TestBeylaJava(t *testing.T) {
 		Labels: map[string]string{"alloy-integration-test": "true"},
 	})
 	mimir := deps.NewMimir(deps.MimirOptions{Namespace: ns.Name()})
-	javaApp := deps.NewCustomWorkloads(deps.CustomWorkloadsOptions{
-		Namespace: ns.Name(),
-		Path:      "./config/java-app.yaml",
-	})
+	javaApp := deps.NewJavaApp(deps.JavaAppOptions{Namespace: ns.Name()})
 	alloy := deps.NewAlloy(deps.AlloyOptions{
 		Namespace:  ns.Name(),
 		Release:    "alloy-test-beyla-java",
