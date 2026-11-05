@@ -1,5 +1,4 @@
-# A JVM serving HTTP on 8080, for Beyla to inject the Java SDK into, and a
-# client that keeps sending it requests.
+# A JVM serving HTTP on 8080 and a client that keeps sending it requests.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -35,6 +34,7 @@ spec:
     metadata:
       labels:
         app: java-app
+        component: java-app
     spec:
       containers:
         - name: java-app
@@ -42,6 +42,10 @@ spec:
           command: ["java", "/app/Server.java"]
           ports:
             - containerPort: 8080
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            periodSeconds: 1
           volumeMounts:
             - name: app
               mountPath: /app
@@ -74,6 +78,7 @@ spec:
     metadata:
       labels:
         app: java-app-client
+        component: java-app
     spec:
       containers:
         - name: client
