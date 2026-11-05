@@ -25,6 +25,57 @@ pub fn arguments(attr: TokenStream, item: TokenStream) -> TokenStream {
     }
 }
 
+/// Implements `alloy_core::ComponentMeta`:
+/// `#[alloy_core::component(name = "loki.source.file", stability = Experimental)]`.
+/// Stability is one of `Experimental`, `PublicPreview` or `GenerallyAvailable`.
+#[proc_macro_attribute]
+pub fn component(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let item = parse_macro_input!(item as syn::DeriveInput);
+
+    let mut name = None;
+    let mut stability = None;
+    let parser = syn::meta::parser(|meta| {
+        if meta.path.is_ident("name") {
+            name = Some(meta.value()?.parse::<syn::LitStr>()?);
+            Ok(())
+        } else if meta.path.is_ident("stability") {
+            let ident: syn::Ident = meta.value()?.parse()?;
+            match ident.to_string().as_str() {
+                "Experimental" | "PublicPreview" | "GenerallyAvailable" => {
+                    stability = Some(ident);
+                    Ok(())
+                }
+                _ => Err(syn::Error::new_spanned(
+                    ident,
+                    "expected Experimental, PublicPreview or GenerallyAvailable",
+                )),
+            }
+        } else {
+            Err(meta.error("expected name or stability"))
+        }
+    });
+    parse_macro_input!(attr with parser);
+
+    let (Some(name), Some(stability)) = (name, stability) else {
+        return syn::Error::new(Span::call_site(), "component needs name and stability")
+            .to_compile_error()
+            .into();
+    };
+
+    let ident = &item.ident;
+    let (impl_generics, ty_generics, where_clause) = item.generics.split_for_impl();
+    quote! {
+        #item
+
+        impl #impl_generics ::alloy_core::ComponentMeta for #ident #ty_generics #where_clause {
+            const NAME: &'static str = #name;
+            const STABILITY: ::alloy_core::schema::Stability =
+                ::alloy_core::schema::Stability::#stability;
+        }
+    }
+    .into()
+}
+
 #[derive(Clone, Copy)]
 enum Ty {
     Uint(&'static str, u32),

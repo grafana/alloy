@@ -13,6 +13,7 @@ pub struct Args {
     pub interval: Duration,
 }
 
+#[alloy_core::component(name = "loki.source.rustgen", stability = Experimental)]
 pub struct Rustgen {
     args: Args,
     counter: u64,

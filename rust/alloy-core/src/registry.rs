@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::schema::{ComponentInfo, Kind, Stability};
+use crate::schema::{ComponentInfo, Kind};
 use crate::{Arguments, Component, Context, Error, Output, Source};
 
 /// Object-safe view of a [`Source`], which can't be a trait object itself
@@ -33,13 +33,14 @@ impl Registry {
         Self::default()
     }
 
-    /// Panics if `name` is already registered.
-    pub fn register_source<S: Source>(&mut self, name: &'static str, stability: Stability) {
+    /// Panics if a component with the same name is already registered.
+    pub fn register_source<S: Source>(&mut self) {
+        let name = S::NAME;
         let entry = Entry {
             info: ComponentInfo {
                 name,
                 kind: Kind::Source,
-                stability,
+                stability: S::STABILITY,
                 args: S::Args::schema(),
             },
             build: build_source::<S>,
