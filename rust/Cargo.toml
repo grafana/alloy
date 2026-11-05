@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = []
+members = ["rustgen"]
 
 [workspace.package]
 edition = "2024"

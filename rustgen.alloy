@@ -1,0 +1,11 @@
+// Run with:
+//   ./build/alloy run --stability.level=experimental --feature.loki.pipeline-v2.enabled rustgen.alloy
+
+loki.source.rustgen "demo" {
+  lines_per_batch = 5
+  interval        = "1s"
+  labels          = { job = "rustgen" }
+  forward_to      = [loki.echo.out.receiver]
+}
+
+loki.echo "out" {}

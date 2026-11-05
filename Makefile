@@ -28,6 +28,7 @@
 ##   alloy           Compiles Alloy to $(ALLOY_BINARY) (auto-downloads Beyla if needed)
 ##   alloy-service   Compiles internal/cmd/alloy-service to $(SERVICE_BINARY)
 ##   download-beyla  Download Beyla binaries for embedding
+##   rust            Compiles the Rust static library linked into Alloy
 ##
 ## Targets for building Docker images:
 ##
@@ -280,6 +281,10 @@ binaries: alloy
 .PHONY: beyla
 beyla: download-beyla
 
+.PHONY: rust
+rust:
+	cd ./rust && cargo build --release
+
 .PHONY: sync-beyla-docs-version
 sync-beyla-docs-version:
 	@for f in docs/sources/_index.md.t docs/sources/_index.md; do \
@@ -318,7 +323,7 @@ $(BEYLA_SCHEMA):
 	curl -fsSL -o $@ \
 	  "https://raw.githubusercontent.com/grafana/beyla/$(BEYLA_VERSION)/docs/config-schema.json"
 
-alloy: generate-ui generate-source-code beyla
+alloy: generate-ui generate-source-code beyla rust
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
