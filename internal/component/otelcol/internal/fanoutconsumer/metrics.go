@@ -27,6 +27,14 @@ func Metrics(in []otelcol.Consumer) otelconsumer.Metrics {
 // MetricsFromConsumers creates a new fanout consumer for metrics from
 // metrics-only consumers.
 func MetricsFromConsumers(in []otelconsumer.Metrics) otelconsumer.Metrics {
+	var valid []otelconsumer.Metrics
+	for _, c := range in {
+		if c != nil {
+			valid = append(valid, c)
+		}
+	}
+	in = valid
+
 	if len(in) == 0 {
 		return &metricsFanout{}
 	} else if len(in) == 1 {
@@ -38,9 +46,6 @@ func MetricsFromConsumers(in []otelconsumer.Metrics) otelconsumer.Metrics {
 	// Iterate through all the consumers besides the last.
 	for i := 0; i < len(in)-1; i++ {
 		consumer := in[i]
-		if consumer == nil {
-			continue
-		}
 
 		if consumer.Capabilities().MutatesData {
 			clone = append(clone, consumer)
