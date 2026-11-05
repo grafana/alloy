@@ -280,6 +280,7 @@ func TestAppenderBufferResetAfterWALWriteError(t *testing.T) {
 			name: "log",
 			prepare: func(a *appender) {
 				a.pendingSamples = append(a.pendingSamples, record.RefSample{Ref: 1, T: 1, V: 1})
+				a.sampleSeries = append(a.sampleSeries, &memSeries{ref: 1})
 			},
 			log: func(a *appender) error {
 				return a.log()
@@ -1294,4 +1295,60 @@ func TestStorage_AppendHistogramSTZeroSample(t *testing.T) {
 	require.Equal(t, histogram.CounterReset, zero.H.CounterResetHint)
 	require.Zero(t, zero.H.Count)
 	require.Equal(t, int64(100), collector.histograms[1].T)
+}
+
+// Samples older than the last committed timestamp of their series must not be
+// written to the WAL, otherwise they are forwarded to the remote and rejected.
+func TestStorage_OutOfOrderSamplesNotLogged(t *testing.T) {
+	s, err := NewStorage(logging.NewSlogNop(), nil, t.TempDir())
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, s.Close())
+	}()
+
+	floatSeries := labels.FromStrings("__name__", "test_float")
+	histSeries := labels.FromStrings("__name__", "test_histogram")
+	floatHistSeries := labels.FromStrings("__name__", "test_float_histogram")
+
+	app := s.Appender(t.Context())
+	_, err = app.Append(0, floatSeries, 200, 1)
+	require.NoError(t, err)
+	_, err = app.AppendHistogram(0, histSeries, 200, tsdbutil.GenerateTestHistogram(1), nil)
+	require.NoError(t, err)
+	_, err = app.AppendHistogram(0, floatHistSeries, 200, nil, tsdbutil.GenerateTestFloatHistogram(1))
+	require.NoError(t, err)
+	require.NoError(t, app.Commit())
+
+	// Older than the committed timestamp: dropped. The in-order sample of the
+	// same series in the same batch is kept.
+	app = s.Appender(t.Context())
+	_, err = app.Append(0, floatSeries, 100, 2)
+	require.NoError(t, err)
+	_, err = app.Append(0, floatSeries, 300, 3)
+	require.NoError(t, err)
+	_, err = app.Append(0, floatSeries, 250, 4) // older than 300 from this batch
+	require.NoError(t, err)
+	_, err = app.AppendHistogram(0, histSeries, 100, tsdbutil.GenerateTestHistogram(2), nil)
+	require.NoError(t, err)
+	_, err = app.AppendHistogram(0, floatHistSeries, 100, nil, tsdbutil.GenerateTestFloatHistogram(2))
+	require.NoError(t, err)
+	require.NoError(t, app.Commit())
+
+	require.Equal(t, 4.0, testutil.ToFloat64(s.metrics.totalOutOfOrderSamples))
+
+	collector := walDataCollector{}
+	replayer := walReplayer{w: &collector}
+	require.NoError(t, replayer.Replay(s.wal.Dir()))
+
+	var floatTs []int64
+	for _, smpl := range collector.samples {
+		floatTs = append(floatTs, smpl.T)
+	}
+	sort.Slice(floatTs, func(i, j int) bool { return floatTs[i] < floatTs[j] })
+	require.Equal(t, []int64{200, 300}, floatTs)
+
+	require.Len(t, collector.histograms, 1)
+	require.Equal(t, int64(200), collector.histograms[0].T)
+	require.Len(t, collector.floatHistograms, 1)
+	require.Equal(t, int64(200), collector.floatHistograms[0].T)
 }
