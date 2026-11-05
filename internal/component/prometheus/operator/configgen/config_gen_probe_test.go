@@ -355,6 +355,93 @@ func TestGenerateProbeConfig(t *testing.T) {
 	}
 }
 
+func TestGenerateProbeConfigParams(t *testing.T) {
+	for _, targets := range []struct {
+		name    string
+		targets promopv1.ProbeTargets
+	}{
+		{
+			name: "static",
+			targets: promopv1.ProbeTargets{
+				StaticConfig: &promopv1.ProbeTargetStaticConfig{Targets: []string{"https://example.com"}},
+			},
+		},
+		{
+			name: "ingress",
+			targets: promopv1.ProbeTargets{
+				Ingress: &promopv1.ProbeTargetIngress{},
+			},
+		},
+	} {
+		t.Run(targets.name, func(t *testing.T) {
+			for _, tc := range []struct {
+				name     string
+				params   []promopv1.ProbeParam
+				module   string
+				expected url.Values
+			}{
+				{name: "nil params"},
+				{name: "empty params", params: []promopv1.ProbeParam{}},
+				{name: "module only", module: "http_2xx", expected: url.Values{"module": {"http_2xx"}}},
+				{
+					name:     "custom params",
+					params:   []promopv1.ProbeParam{{Name: "filter", Values: []string{"component one", "component&two", ""}}},
+					expected: url.Values{"filter": {"component one", "component&two", ""}},
+				},
+				{
+					name:     "custom params with module",
+					params:   []promopv1.ProbeParam{{Name: "filter", Values: []string{"one", "two"}}},
+					module:   "http_2xx",
+					expected: url.Values{"filter": {"one", "two"}, "module": {"http_2xx"}},
+				},
+				{
+					name:     "module param",
+					params:   []promopv1.ProbeParam{{Name: "module", Values: []string{"custom", "other"}}},
+					expected: url.Values{"module": {"custom", "other"}},
+				},
+				{
+					name: "module takes precedence",
+					params: []promopv1.ProbeParam{
+						{Name: "filter", Values: []string{"one", "two"}},
+						{Name: "module", Values: []string{"custom", "other"}},
+					},
+					module:   "http_2xx",
+					expected: url.Values{"filter": {"one", "two"}, "module": {"http_2xx"}},
+				},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					m := &promopv1.Probe{
+						ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "myprobe"},
+						Spec: promopv1.ProbeSpec{
+							ProberSpec: promopv1.ProberSpec{URL: "blackbox:9115"},
+							Targets:    targets.targets,
+							Params:     tc.params,
+							Module:     tc.module,
+						},
+					}
+					original := m.DeepCopy()
+					cg := &ConfigGenerator{Client: &kubernetes.ClientArguments{}}
+					cfg, err := cg.GenerateProbeConfig(m)
+					require.NoError(t, err)
+					assert.Equal(t, tc.expected, cfg.Params)
+					assert.Equal(t, original, m)
+
+					if cfg.Params != nil {
+						for key, values := range cfg.Params {
+							if len(values) > 0 {
+								values[0] = "changed"
+							}
+							cfg.Params[key] = []string{"replaced"}
+						}
+						cfg.Params["added"] = []string{"value"}
+						assert.Equal(t, original, m)
+					}
+				})
+			}
+		})
+	}
+}
+
 func TestGenerateProbeConfigScrapeClass(t *testing.T) {
 	cg := scrapeClassTestGenerator()
 	m := &promopv1.Probe{
