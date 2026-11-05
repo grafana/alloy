@@ -9,6 +9,11 @@ pub enum Kind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SignalKind {
+    Logs,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Stability {
     Experimental,
     PublicPreview,
@@ -19,6 +24,7 @@ pub enum Stability {
 pub struct ComponentInfo {
     pub name: &'static str,
     pub kind: Kind,
+    pub signal: SignalKind,
     pub stability: Stability,
     pub args: &'static [Field],
 }

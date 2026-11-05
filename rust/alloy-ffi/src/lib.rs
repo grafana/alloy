@@ -1,10 +1,7 @@
 use std::ffi::{CStr, c_char, c_void};
-use std::sync::{Mutex, OnceLock};
+use std::sync::OnceLock;
 
-use alloy_core::logs::LogBatch;
-use alloy_core::{
-    Context, DynSink, DynSource, Error, Instance, Output, OutputReceiver, Registry, output,
-};
+use alloy_core::{Context, DynSink, DynSource, Error, Instance, Registry};
 
 pub const ALLOY_OK: i32 = 0;
 pub const ALLOY_CLOSED: i32 = 1;
@@ -45,24 +42,13 @@ pub struct AlloyComponent {
 }
 
 enum Kind {
-    Source {
-        source: Mutex<Box<dyn DynSource>>,
-        out: Mutex<Option<Output>>,
-        rx: Mutex<OutputReceiver>,
-    },
+    Source(Box<dyn DynSource>),
     Sink(Box<dyn DynSink>),
 }
 
 fn build(name: &str, args: &[u8]) -> Result<AlloyComponent, Error> {
     let kind = match registry().build(name, args)? {
-        Instance::Source(source) => {
-            let (out, rx) = output();
-            Kind::Source {
-                source: Mutex::new(source),
-                out: Mutex::new(Some(out)),
-                rx: Mutex::new(rx),
-            }
-        }
+        Instance::Source(source) => Kind::Source(source),
         Instance::Sink(sink) => Kind::Sink(sink),
     };
     Ok(AlloyComponent {
@@ -114,13 +100,9 @@ pub unsafe extern "C" fn alloy_component_new(
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn alloy_source_run(c: *const AlloyComponent) {
     let c = unsafe { &*c };
-    let Kind::Source { source, out, .. } = &c.kind else {
-        return;
-    };
-    let Some(out) = out.lock().unwrap().take() else {
-        return;
-    };
-    source.lock().unwrap().run(&c.ctx, &out);
+    if let Kind::Source(source) = &c.kind {
+        source.run(&c.ctx);
+    }
 }
 
 /// Blocks until the next batch and fills `out`. Returns `ALLOY_CLOSED`
@@ -133,19 +115,19 @@ pub unsafe extern "C" fn alloy_source_run(c: *const AlloyComponent) {
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn alloy_source_recv(c: *const AlloyComponent, out: *mut Buf) -> i32 {
     let c = unsafe { &*c };
-    let Kind::Source { rx, .. } = &c.kind else {
+    let Kind::Source(source) = &c.kind else {
         return ALLOY_CLOSED;
     };
-    match rx.lock().unwrap().recv() {
-        Ok(batch) => {
-            unsafe { *out = Buf::from_vec(batch.encode()) };
+    match source.recv() {
+        Some(buf) => {
+            unsafe { *out = Buf::from_vec(buf) };
             ALLOY_OK
         }
-        Err(_) => ALLOY_CLOSED,
+        None => ALLOY_CLOSED,
     }
 }
 
-/// Passes the batch in `buf` (see `alloy_core::logs`) to the sink. Returns
+/// Passes the batch in `buf`, encoded for the sink's signal, to the sink. Returns
 /// `ALLOY_CLOSED` once the component is closed, or `ALLOY_ERROR` with `err`
 /// filled. Safe to call concurrently.
 ///
@@ -173,7 +155,7 @@ pub unsafe extern "C" fn alloy_sink_consume(
     } else {
         unsafe { std::slice::from_raw_parts(buf, len) }
     };
-    match LogBatch::read(buf).and_then(|batch| sink.consume(&batch)) {
+    match sink.consume(buf) {
         Ok(()) => ALLOY_OK,
         Err(e) => {
             set_err(err, e);

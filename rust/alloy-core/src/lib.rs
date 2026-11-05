@@ -4,6 +4,7 @@ mod context;
 pub mod logs;
 mod registry;
 pub mod schema;
+mod signal;
 mod sink;
 mod source;
 
@@ -16,6 +17,7 @@ pub use serde;
 pub use component::{Component, ComponentMeta};
 pub use context::Context;
 pub use registry::{DynSink, DynSource, Instance, Registry};
+pub use signal::Signal;
 pub use sink::Sink;
 pub use source::{Closed, Output, OutputReceiver, Source, output};
 

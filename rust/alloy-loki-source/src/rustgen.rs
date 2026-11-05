@@ -1,6 +1,6 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use alloy_core::logs::{LogBatch, LogEntry};
+use alloy_core::logs::{LogBatch, LogEntry, Logs};
 use alloy_core::{Component, Context, Error, Output, Source};
 
 #[alloy_core::arguments]
@@ -28,8 +28,8 @@ impl Component for Rustgen {
     }
 }
 
-impl Source for Rustgen {
-    fn run(&mut self, ctx: &Context, out: &Output) {
+impl Source<Logs> for Rustgen {
+    fn run(&mut self, ctx: &Context, out: &Output<Logs>) {
         while ctx.sleep(self.args.interval) {
             let ts = SystemTime::now()
                 .duration_since(UNIX_EPOCH)

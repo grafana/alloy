@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Duration;
 
-use alloy_core::schema::{ComponentInfo, Field, FieldType, Kind, Stability, Value};
+use alloy_core::schema::{ComponentInfo, Field, FieldType, Kind, SignalKind, Stability, Value};
 
 fn main() {
     let root = std::env::args()
@@ -43,9 +43,9 @@ fn write_component(root: &Path, c: &ComponentInfo) -> PathBuf {
 
 fn generate(c: &ComponentInfo) -> String {
     let is_source = c.kind == Kind::Source;
-    let register = match c.kind {
-        Kind::Source => "RegisterLokiSource",
-        Kind::Sink => "RegisterLokiSink",
+    let register = match (c.kind, c.signal) {
+        (Kind::Source, SignalKind::Logs) => "RegisterLokiSource",
+        (Kind::Sink, SignalKind::Logs) => "RegisterLokiSink",
     };
     let pkg = c.name.rsplit('.').next().unwrap();
 

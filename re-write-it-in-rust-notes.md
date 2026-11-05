@@ -86,25 +86,45 @@ as a low-stakes warm-up if learning comes first.
 
 - Approach 2 (Go control plane, Rust data plane).
 - First step: a Rust-based loki source feeding the existing Go loki
-  pipeline (v2), i.e. a mixed Rust -> Go chain.
-- The Rust source is a toy generator (synthetic lines), not a file tailer.
-- Go pulls (Rust -> Go edges only): a Go goroutine calls a blocking Rust
-  `next_batch`, converts to `loki.Batch` and calls `Consume`. No Rust -> Go
-  callbacks.
-- Rust -> Rust edges link directly inside Rust, no FFI per batch. Go keeps
-  the graph: a Rust component's exported receiver carries an opaque handle
-  to its Rust consumer. On `forward_to` updates the Go shell of a Rust
-  component splits children into Rust handles (passed to a Rust-side
-  fanout, called directly) and Go consumers (served via the pull path).
-  FFI is used only for rewiring and at real Rust -> Go edges.
-  Needs: a Rust mirror of `FanoutV2` (incl. `ErrConsumerStopped`
-  semantics on reload) and ref-counted component lifetimes so handles held
-  by Go stay valid.
-- FFI format: Rust fills a hand-rolled length-prefixed byte buffer (not
-  the FlatBuffers library), Go decodes and copies into `loki.Batch`.
-  Revisit FlatBuffers once labels/structured metadata cross the boundary.
-- Layout: cargo `staticlib` in repo-root `rust/`, linked via cgo, Go side
-  behind a build tag.
+  pipeline (v2), i.e. a mixed Rust -> Go chain. The source is a toy
+  generator (`loki.source.rustgen`), then a toy sink (`loki.rustecho`).
+- Rust -> Go edges: Go pulls. A Go goroutine drains a blocking Rust
+  `recv`; no Rust -> Go callbacks.
+- Rust -> Rust edges link directly inside Rust, no FFI per batch (not
+  built yet). Go keeps the graph: a Rust component's exported receiver
+  carries an opaque handle to its Rust consumer. On `forward_to` updates
+  the Go shell splits children into Rust handles (Rust-side fanout,
+  called directly) and Go consumers (pull path). Needs a Rust mirror of
+  `FanoutV2` (incl. `ErrConsumerStopped` on reload) and ref-counted
+  component lifetimes.
+- Sources push: `run(&mut self, ctx, out)` sends into a cloneable
+  `Output`, so multi-producer sources (e.g. prometheus.scrape) fit.
+- Only add component kinds when needed. `Component` (args, `new`,
+  name/stability via `ComponentMeta`) is the supertrait; kinds so far:
+  `Source`, `Sink` (processor parked). Discovery/exporters will need
+  `Exports`.
+- Kinds are generic over the signal: `Source<S: Signal>`, `Sink<S:
+  Signal>`. A generic parameter (not an associated type) so one type can
+  implement several signals, as `otelcol.*` components do. `Signal {
+  type Batch<'a>; const KIND; encode; read }`; only `Logs` exists.
+  Prometheus later: `MetricBatch` (series with samples, native
+  histograms, exemplars, metadata); Go adapts `storage.Appender`
+  (buffer appends, `Commit` = consume OK, `Rollback` = discard);
+  `SeriesRef` caching stays on each side.
+- Layout: cargo workspace in repo-root `rust/`, one staticlib
+  (`alloy-ffi`) linked via cgo. Build tag skipped for now.
+- Arguments: Go owns defaults and validation (generated). Encoded as
+  CBOR, keyed by field name (`fxamacker/cbor/v2` in Go, serde +
+  `ciborium` in Rust). No JSON, no C structs.
+- Generate the Go side of every Rust component from the Rust registry
+  with a Rust binary (`alloy-gen`). Rust is the source of truth for
+  args. Generated code is checked in; validation is generated into Go;
+  custom Go goes in a handwritten file next to `zz_generated.go`.
+- Registration: explicit `register()` list per crate. Auto-registration
+  (inventory/linkme) rejected for now: the linker can drop entries in a
+  staticlib linked into Go, and it hides the list.
+- One batch type and wire format in both directions (`LogBatch`).
+  Handwritten for now; FlatBuffers/protobuf deferred.
 
 ## Seam: loki pipeline v2
 
@@ -118,24 +138,120 @@ as a low-stakes warm-up if learning comes first.
 
 ## Progress
 
-- `rust/`: cargo workspace.
-- `rust/rustgen`: single staticlib crate for now (no lib-crate split yet).
-  C API in `include/rustgen.h`: `rg_new(lines_per_batch, interval_ms)`,
-  blocking `rg_next_batch`, `rg_buf_free`, `rg_close` (unblocks, safe to
-  call concurrently), `rg_free` (only after no call is running). Buffer is
-  repeated `i64 LE ts nanos | u32 LE len | line bytes`; labels are not in
-  the buffer. Not wired into Go yet.
-- `make rust`: `cargo build --release` in `rust/`, output
-  `rust/target/release/librustgen.a`. `make alloy` depends on it.
-- Build tag: skipped for now.
-- `loki.source.rustgen` (`internal/component/loki/source/rustgen`):
-  experimental, v2 only. Args `forward_to`, `lines_per_batch` (100),
-  `interval` (1s), `labels`. `generator.go` is the cgo wrapper; `Run`
-  loops on the blocking `rg_next_batch` in a goroutine and flushes through
-  `loki.StreamBatcherV2` (retry on `ErrConsumerStopped`). Changing
-  anything but `forward_to` recreates the generator (close, wait, free).
-  Linked statically via `${SRCDIR}` path to `librustgen.a`.
+### Rust workspace (`rust/`)
+
+- `alloy-core`: component traits and shared plumbing.
+  - `Component: ComponentMeta + Send` (`type Args`, `new`),
+    `ComponentMeta { NAME, STABILITY }`.
+  - `Signal` (`type Batch<'a>: Send`, `KIND`, `encode`, `read`).
+  - `Source<S> { run(&mut self, ctx, out: &Output<S>) }`,
+    `Sink<S>: Sync { consume(&self, &S::Batch) }`.
+  - `Context` (closed flag, `sleep`), `Output<S>`/`OutputReceiver<S>` (bounded
+    channel, cap 1, `send` blocks = backpressure). Shutdown: close ctx ->
+    `run` returns and drops all `Output`s -> `recv` fails -> Go's drain
+    loop ends.
+  - `logs`: `Logs` signal, `LogBatch`/`LogStream`/`LogEntry`/`Label`,
+    strings as `Cow<str>`. `read` borrows from the buffer (invalid UTF-8
+    replaced), `push(labels, LogEntry::new(ts, line))` builds owned
+    batches, `encode()`. Wire format: LE,
+    length-prefixed; streams with labels, entries with ts nanos, line,
+    structured metadata.
+  - `Arguments: DeserializeOwned + Send { fn schema() }`.
+  - `schema`: `ComponentInfo { name, kind, signal, stability, args }`,
+    `Field { name, ty, default, min, max, doc }`, `FieldType` (ints,
+    floats, bool, `Duration`, `String`, `StringMap`), `Value` (incl.
+    `Str`).
+  - `Registry`: `register_source::<Logs, C>()` /
+    `register_sink::<Logs, C>()`, `build(name, args) ->
+    Instance::{Source, Sink}` (CBOR decode with `ciborium`, rejects
+    trailing bytes, then `new`), `components()`. Signal-erased
+    `DynSource { run(ctx), recv() -> Option<Vec<u8>> }` (owns the typed
+    channel) and `DynSink { consume(&[u8]) }`, so the C API stays byte
+    based and signal-agnostic.
+- `alloy-core-macros` (re-exported from `alloy-core`):
+  - `#[arguments]` on one struct derives serde `Deserialize` with
+    `deny_unknown_fields` (via `alloy_core::serde`, so component crates
+    don't depend on serde) and implements `Arguments::schema()`. Field
+    types: ints, floats, bool, `Duration` (decoded from integer nanos,
+    Go's encoding), `String`, `BTreeMap`/`HashMap<String, String>`. Doc
+    comments -> `doc`, `#[arg(default, min, max)]` with literals
+    (durations as `"1s"`; min/max only on numbers and durations; maps
+    can't have defaults), no default = required. Values checked at
+    compile time. Errors name the field, e.g. "unknown field `nope`,
+    expected `lines_per_batch` or `interval`" / "missing field ..".
+  - `#[component(name = "..", stability = Experimental)]` implements
+    `ComponentMeta`.
+  - Inspect output with `cargo expand -p <crate> <module>` (needs nightly)
+    or `RUSTC_BOOTSTRAP=1 cargo rustc -p <crate> --profile=check --
+    -Zunpretty=expanded`.
+- `alloy-loki-source`: `loki.source.rustgen` (`lines_per_batch: u32`,
+  `interval: Duration`; emits streams without labels).
+- `alloy-loki-sink`: `loki.rustecho` (prints labels, ts, line,
+  structured metadata to stderr until Rust logging exists).
+- `alloy-ffi`: the single staticlib (`liballoy_ffi.a`, also `rlib`).
+  `registry()` built once from each crate's `register()`. C API in
+  `include/alloy.h`: `alloy_component_new(name, args, size, &err)`,
+  `alloy_source_run` (blocking), `alloy_source_recv` (blocking,
+  `ALLOY_CLOSED` at end), `alloy_sink_consume(c, buf, len, &err)`
+  (`ALLOY_OK`/`ALLOY_CLOSED`/`ALLOY_ERROR`), `alloy_component_close`,
+  `alloy_component_free`, `alloy_buf_free`. No per-component types in the
+  header. Zero-length args/buffers passed as null.
+- `alloy-gen <repo root>`: writes
+  `internal/component/<name dots->slashes>/zz_generated.go` per component
+  and gofmts it: register call by kind, `Arguments` (one field per
+  schema field with `alloy` and `cbor:"<name>"` tags; sources also get
+  squashed `LokiSourceArguments` with `cbor:"-"`), `DefaultArguments`,
+  `SetToDefault`, `Validate` (schema min/max, else the Rust type's range;
+  durations >= 0), `LokiSource()` for sources. Go types: ints -> `int`,
+  floats -> `float64`, `time.Duration`, `string`, `map[string]string`.
+
+### Go
+
+- `internal/component/common/rustcomponent`: the only package with cgo /
+  link flags.
+  - `EncodeArgs(v)`: `cbor.Marshal` of the generated arguments.
+  - `Source` (`NewSource`, `Run`, `Recv(labels) (loki.Batch, bool,
+    error)`, `Close`, `Free`), `Sink` (`NewSink`, `Consume`, `Close`,
+    `Free`). `encodeBatch`/`decodeBatch` for the wire format
+    (`decodeBatch` merges the component's static labels; Rust stream
+    labels win).
+  - `RegisterLokiSource[A]`: v2 check, fanout, two goroutines (`Run` +
+    drain loop on `Recv`), own retry on `ErrConsumerStopped` (fresh
+    `Clone` per attempt, dskit backoff 1ms..1s), restart when encoded
+    args or labels change. Drain keeps receiving after cancel until
+    `ALLOY_CLOSED`. Stop order: cancel ctx, close, wait both, free.
+    Shared args `LokiSourceArguments { forward_to, labels }` via a named
+    `alloy:",squash"` field (Alloy syntax panics on embedded fields).
+  - `RegisterLokiSink[A]`: exports `receiver`, Rust sink created in `New`,
+    `Consume` under RLock (`ErrConsumerStopped` once stopped), `Update`
+    swaps the sink when args change, `Run` closes + frees under Lock.
+- Generated packages: `internal/component/loki/source/rustgen`,
+  `internal/component/loki/rustecho` (only `zz_generated.go`). `all.go`
+  imports added by hand.
+- `make rust` (cargo release build, `make alloy` depends on it),
+  `make generate-rust-components` (not in `make generate`, no CI check).
+- Configs: `rustgen.alloy` (rustgen -> `loki.echo`), `rustecho.alloy`
+  (rustgen -> rustecho, Rust -> Go -> Rust today).
+
+### Known gaps
+
+- `TestRegisteredComponents` needs `-update`; no docs pages for the new
+  components (docs generator test).
+- `make test`/`make lint` don't build Rust; Go may not notice when
+  `liballoy_ffi.a` changes (unverified, stale test cache/binaries).
+- Rust panics abort Alloy (no `catch_unwind`); Rust can't log through
+  Alloy yet.
+- `NewSource` on a sink name (or vice versa) isn't rejected.
+- Label order in `encodeBatch` follows Go map iteration.
+- Processor: parked (trait removed from the tree). Planned path: Go
+  `Consume` encodes -> `alloy_processor_process(c, in, len, &out, &err)`
+  -> Go decodes -> `fanout.Consume`, returning its error (same retry
+  semantics as Go processors). `RegisterLokiProcessor[A]` with squashed
+  `forward_to`, generator `Kind::Processor`.
 
 ## Open questions
 
 - What is the goal of the experiment?
+- Next component: `loki.rustaddlabels` (map args now supported).
+  - Batches (hot path): maybe Loki's own `push.proto` via `prost` +
+    `protox` later; keep handwritten for now.

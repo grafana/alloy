@@ -1,4 +1,4 @@
-use alloy_core::logs::{Label, LogBatch};
+use alloy_core::logs::{Label, LogBatch, Logs};
 use alloy_core::{Component, Error, Sink};
 
 #[alloy_core::arguments]
@@ -16,7 +16,7 @@ impl Component for Rustecho {
     }
 }
 
-impl Sink for Rustecho {
+impl Sink<Logs> for Rustecho {
     fn consume(&self, batch: &LogBatch<'_>) -> Result<(), Error> {
         for stream in &batch.streams {
             let labels = format_labels(&stream.labels);

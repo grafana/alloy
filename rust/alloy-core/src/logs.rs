@@ -12,7 +12,25 @@
 
 use std::borrow::Cow;
 
-use crate::Error;
+use crate::schema::SignalKind;
+use crate::{Error, Signal};
+
+/// Log streams, as passed through loki components.
+pub struct Logs;
+
+impl Signal for Logs {
+    type Batch<'a> = LogBatch<'a>;
+
+    const KIND: SignalKind = SignalKind::Logs;
+
+    fn encode(batch: &LogBatch<'_>) -> Vec<u8> {
+        batch.encode()
+    }
+
+    fn read(buf: &[u8]) -> Result<LogBatch<'_>, Error> {
+        LogBatch::read(buf)
+    }
+}
 
 /// A batch of log streams. Batches read from Go borrow from the buffer they
 /// were read from; batches built in Rust are usually `LogBatch<'static>`.

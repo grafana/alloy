@@ -1,36 +1,63 @@
 use std::collections::HashMap;
+use std::marker::PhantomData;
+use std::sync::Mutex;
 
-use crate::logs::LogBatch;
 use crate::schema::{ComponentInfo, Kind};
-use crate::{Arguments, Component, Context, Error, Output, Sink, Source};
+use crate::{
+    Arguments, Component, Context, Error, Output, OutputReceiver, Signal, Sink, Source, output,
+};
 
-/// Object-safe view of a [`Source`], which can't be a trait object itself
-/// because of [`Component`]'s associated type and constructor.
-pub trait DynSource: Send {
-    fn run(&mut self, ctx: &Context, out: &Output);
+/// A source built by the registry, with batches encoded for Go.
+pub trait DynSource: Send + Sync {
+    /// Runs the source until `ctx` is closed. Only the first call runs it.
+    fn run(&self, ctx: &Context);
+
+    /// Blocks until the next encoded batch. `None` once the source has
+    /// stopped and every batch has been received.
+    fn recv(&self) -> Option<Vec<u8>>;
 }
 
-impl<S: Source> DynSource for S {
-    fn run(&mut self, ctx: &Context, out: &Output) {
-        Source::run(self, ctx, out)
-    }
-}
-
-/// Object-safe view of a [`Sink`].
+/// A sink built by the registry, taking batches encoded by Go.
 pub trait DynSink: Send + Sync {
-    fn consume(&self, batch: &LogBatch<'_>) -> Result<(), Error>;
-}
-
-impl<S: Sink> DynSink for S {
-    fn consume(&self, batch: &LogBatch<'_>) -> Result<(), Error> {
-        Sink::consume(self, batch)
-    }
+    fn consume(&self, buf: &[u8]) -> Result<(), Error>;
 }
 
 /// A component built by the registry.
 pub enum Instance {
     Source(Box<dyn DynSource>),
     Sink(Box<dyn DynSink>),
+}
+
+struct SourceInstance<S: Signal, C> {
+    source: Mutex<C>,
+    out: Mutex<Option<Output<S>>>,
+    rx: Mutex<OutputReceiver<S>>,
+}
+
+impl<S: Signal, C: Source<S>> DynSource for SourceInstance<S, C> {
+    fn run(&self, ctx: &Context) {
+        let Some(out) = self.out.lock().unwrap().take() else {
+            return;
+        };
+        self.source.lock().unwrap().run(ctx, &out);
+    }
+
+    fn recv(&self) -> Option<Vec<u8>> {
+        let batch = self.rx.lock().unwrap().recv().ok()?;
+        Some(S::encode(&batch))
+    }
+}
+
+// fn() -> S keeps the instance Send + Sync whatever S is.
+struct SinkInstance<S: Signal, C> {
+    sink: C,
+    signal: PhantomData<fn() -> S>,
+}
+
+impl<S: Signal, C: Sink<S>> DynSink for SinkInstance<S, C> {
+    fn consume(&self, buf: &[u8]) -> Result<(), Error> {
+        self.sink.consume(&S::read(buf)?)
+    }
 }
 
 type Builder = fn(&[u8]) -> Result<Instance, Error>;
@@ -51,23 +78,36 @@ impl Registry {
         Self::default()
     }
 
-    /// Panics if a component with the same name is already registered.
-    pub fn register_source<S: Source>(&mut self) {
-        self.register::<S>(Kind::Source, |args| {
-            Ok(Instance::Source(Box::new(build::<S>(args)?)))
+    /// Registers `C` as a source of signal `S`. Panics if a component with the
+    /// same name is already registered.
+    pub fn register_source<S: Signal, C: Source<S>>(&mut self) {
+        self.register::<S, C>(Kind::Source, |args| {
+            let (out, rx) = output::<S>();
+            Ok(Instance::Source(Box::new(SourceInstance {
+                source: Mutex::new(build::<C>(args)?),
+                out: Mutex::new(Some(out)),
+                rx: Mutex::new(rx),
+            })))
         });
     }
 
-    /// Panics if a component with the same name is already registered.
-    pub fn register_sink<S: Sink>(&mut self) {
-        self.register::<S>(Kind::Sink, |args| Ok(Instance::Sink(Box::new(build::<S>(args)?))));
+    /// Registers `C` as a sink of signal `S`. Panics if a component with the
+    /// same name is already registered.
+    pub fn register_sink<S: Signal, C: Sink<S>>(&mut self) {
+        self.register::<S, C>(Kind::Sink, |args| {
+            Ok(Instance::Sink(Box::new(SinkInstance {
+                sink: build::<C>(args)?,
+                signal: PhantomData::<fn() -> S>,
+            })))
+        });
     }
 
-    fn register<C: Component>(&mut self, kind: Kind, build: Builder) {
+    fn register<S: Signal, C: Component>(&mut self, kind: Kind, build: Builder) {
         let entry = Entry {
             info: ComponentInfo {
                 name: C::NAME,
                 kind,
+                signal: S::KIND,
                 stability: C::STABILITY,
                 args: C::Args::schema(),
             },
