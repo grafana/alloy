@@ -181,7 +181,7 @@ func convertPack(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 	return stages.StageConfig{
 		PackConfig: &stages.PackConfig{
 			Labels:          pPack.Labels,
-			IngestTimestamp: defaultFalse(pPack.IngestTimestamp),
+			IngestTimestamp: defaultTrue(pPack.IngestTimestamp),
 		},
 	}, true
 }
@@ -194,7 +194,8 @@ func convertMultiline(cfg any, diags *diag.Diagnostics) (stages.StageConfig, boo
 		return stages.StageConfig{}, false
 	}
 
-	var maxWaitTime time.Duration
+	// Promtail uses 3s for max_wait_time and 128 for max_lines when they are unset.
+	maxWaitTime := 3 * time.Second
 	if pMulti.MaxWaitTime != nil {
 		d, err := time.ParseDuration(*pMulti.MaxWaitTime)
 		if err != nil {
@@ -212,7 +213,7 @@ func convertMultiline(cfg any, diags *diag.Diagnostics) (stages.StageConfig, boo
 	return stages.StageConfig{
 		MultilineConfig: &stages.MultilineConfig{
 			Expression:   expr,
-			MaxLines:     defaultZero(pMulti.MaxLines),
+			MaxLines:     defaultUint64(pMulti.MaxLines, 128),
 			MaxWaitTime:  maxWaitTime,
 			TrimNewlines: true,
 		},
@@ -490,7 +491,8 @@ func convertMetrics(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool)
 func toAlloyMetricsProcessStage(name string, pMetric promtailstages.MetricConfig, diags *diag.Diagnostics) (stages.MetricConfig, bool) {
 	var fMetric stages.MetricConfig
 
-	var maxIdle time.Duration
+	// Promtail uses 5m for max_idle_duration when it is unset.
+	maxIdle := 5 * time.Minute
 	if pMetric.IdleDuration != nil {
 		d, err := time.ParseDuration(*pMetric.IdleDuration)
 		if err != nil {
@@ -652,9 +654,16 @@ func defaultFalse(s *bool) bool {
 	return *s
 }
 
-func defaultZero(s *uint64) uint64 {
+func defaultTrue(s *bool) bool {
 	if s == nil {
-		return 0
+		return true
+	}
+	return *s
+}
+
+func defaultUint64(s *uint64, def uint64) uint64 {
+	if s == nil {
+		return def
 	}
 	return *s
 }
