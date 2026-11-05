@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
-	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
@@ -24,8 +22,6 @@ const (
 var NoopAppendable = AppendableFunc(func(_ context.Context, _ labels.Labels, _ []*RawSample) error { return nil })
 
 type Appendable interface {
-	debuginfo.Appender
-
 	Appender() Appender
 }
 
@@ -60,24 +56,6 @@ type Fanout struct {
 	componentID    string
 	writeLatency   prometheus.Histogram
 	samplesCounter prometheus.Counter
-}
-
-func (f *Fanout) DebugInfoClients() []*debuginfoclient.Client {
-	f.mut.RLock()
-	defer f.mut.RUnlock()
-	var clients []*debuginfoclient.Client
-	for _, c := range f.children {
-		clients = append(clients, c.DebugInfoClients()...)
-	}
-	return clients
-}
-
-func (f *Fanout) Upload(j debuginfo.UploadJob) {
-	f.mut.RLock()
-	defer f.mut.RUnlock()
-	for _, c := range f.children {
-		c.Upload(j)
-	}
 }
 
 // NewFanout creates a fanout appendable.

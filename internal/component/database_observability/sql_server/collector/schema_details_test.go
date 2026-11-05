@@ -1159,6 +1159,38 @@ func TestSchemaDetailsExcludeDatabases(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+func TestSchemaDetailsIncludeDatabasesAndSchemas(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	c, err := NewSchemaDetails(SchemaDetailsArguments{
+		DB:               db,
+		CollectInterval:  time.Millisecond,
+		IncludeDatabases: []string{"included_db"},
+		IncludeSchemas:   []string{"included_schema"},
+		EntryHandler:     lokiClient,
+		Logger:           util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+
+	mock.ExpectQuery(fmt.Sprintf(selectDatabasesTemplate, buildDatabaseFilterClause(nil, []string{"included_db"}, "name"))).
+		WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"name", "quoted_name"}).AddRow("included_db", "[included_db]"))
+	expectUseDatabase(mock, "included_db")
+	mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, buildSchemaFilterClause(nil, []string{"included_schema"}, "table_schema"))).
+		WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+		"TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME", "TABLE_TYPE",
+	}))
+
+	require.NoError(t, c.extractSchema(t.Context()))
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 // TestSchemaDetailsMultiDatabase exercises the full multi-database iteration
 // path: one discovery, N USE statements, and per-database bulk metadata.
 func TestSchemaDetailsMultiDatabase(t *testing.T) {

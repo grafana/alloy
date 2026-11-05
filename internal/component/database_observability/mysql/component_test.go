@@ -295,8 +295,6 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SetupActorsCollector:    true,
 			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          false,
-			collector.TableStatsCollector:     false,
-			collector.IndexStatsCollector:     false,
 		}, actualCollectors)
 	})
 
@@ -322,8 +320,6 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SetupActorsCollector:    true,
 			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          true,
-			collector.TableStatsCollector:     false,
-			collector.IndexStatsCollector:     false,
 		}, actualCollectors)
 	})
 
@@ -349,8 +345,6 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SetupActorsCollector:    false,
 			collector.ExplainPlansCollector:   false,
 			collector.LocksCollector:          false,
-			collector.TableStatsCollector:     false,
-			collector.IndexStatsCollector:     false,
 		}, actualCollectors)
 	})
 
@@ -377,8 +371,6 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SetupActorsCollector:    true,
 			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          true,
-			collector.TableStatsCollector:     false,
-			collector.IndexStatsCollector:     false,
 		}, actualCollectors)
 	})
 
@@ -405,8 +397,6 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SetupActorsCollector:    false,
 			collector.ExplainPlansCollector:   false,
 			collector.LocksCollector:          false,
-			collector.TableStatsCollector:     false,
-			collector.IndexStatsCollector:     false,
 		}, actualCollectors)
 	})
 
@@ -433,8 +423,6 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SetupActorsCollector:    true,
 			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          false,
-			collector.TableStatsCollector:     false,
-			collector.IndexStatsCollector:     false,
 		}, actualCollectors)
 	})
 }
@@ -1647,7 +1635,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas, args.IncludeSchemas)
 		assert.Equal(t, wantDefaultCollectors, exporterArgs.SetCollectors)
 		assert.ElementsMatch(t, wantDefaultCollectors, scraperNames(exporterArgs))
 		assert.Equal(t, 100, exporterArgs.PerfSchemaEventsStatements.Limit)
@@ -1666,7 +1654,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas, args.IncludeSchemas)
 		assert.Equal(t, wantDefaultCollectors, exporterArgs.SetCollectors)
 		assert.Equal(t, 50, exporterArgs.PerfSchemaEventsStatements.Limit)
 		assert.Equal(t, 0, exporterArgs.PerfSchemaEventsStatements.TextLimit)
@@ -1683,7 +1671,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas, args.IncludeSchemas)
 		assert.Equal(t, 120, exporterArgs.PerfSchemaEventsStatements.TextLimit)
 	})
 
@@ -1697,7 +1685,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas, args.IncludeSchemas)
 		assert.Equal(t, []string{"global_status"}, exporterArgs.SetCollectors)
 	})
 
@@ -1711,7 +1699,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas, args.IncludeSchemas)
 		assert.Equal(t, wantDefaultCollectors, exporterArgs.SetCollectors)
 	})
 
@@ -1726,7 +1714,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas, args.IncludeSchemas)
 		assert.ElementsMatch(t, []string{"global_status", "global_variables", "slave_status"}, scraperNames(exporterArgs))
 	})
 
@@ -1740,7 +1728,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas, args.IncludeSchemas)
 		assert.Equal(t, 100, exporterArgs.PerfSchemaEventsStatements.Limit)
 	})
 
@@ -1753,7 +1741,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas, args.IncludeSchemas)
 		assert.Equal(t, 100, exporterArgs.PerfSchemaEventsStatements.Limit)
 		assert.Equal(t, wantDefaultCollectors, exporterArgs.SetCollectors)
 	})
@@ -1768,7 +1756,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas, args.IncludeSchemas)
 		assert.Equal(t, 100, exporterArgs.PerfSchemaEventsStatements.Limit)
 		assert.ElementsMatch(t,
 			[]string{eventsStatementsCollector, "global_status", "global_variables", "slave_status", "perf_schema.eventswaits"},
@@ -1783,26 +1771,34 @@ func Test_resolveExporterArgs(t *testing.T) {
 			},
 		}
 
-		exporterArgs := resolveExporterArgs(userBlock, []string{"top_level"})
+		exporterArgs := resolveExporterArgs(userBlock, []string{"top_level"}, nil)
 
-		assert.Equal(t, []string{"mysql", "performance_schema", "sys", "information_schema", "top_level"}, exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas)
+		assert.Equal(t, []string{
+			"mysql", "performance_schema", "sys", "information_schema",
+			"alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin",
+			"top_level",
+		}, exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas)
 		assert.Nil(t, userBlock.PerfSchemaEventsStatements.ExcludeSchemas)
 	})
 
-	t.Run("nested schema exclusions override top-level exclusions", func(t *testing.T) {
+	t.Run("nested schema exclusions override custom top-level exclusions while preserving default exclusions", func(t *testing.T) {
 		userBlock := &PrometheusExporterArguments{
 			PerfSchemaEventsStatements: exporter_mysql.PerfSchemaEventsStatements{
 				ExcludeSchemas: []string{"exporter_only"},
 			},
 		}
 
-		exporterArgs := resolveExporterArgs(userBlock, []string{"top_level"})
+		exporterArgs := resolveExporterArgs(userBlock, []string{"top_level"}, nil)
 
-		assert.Equal(t, []string{"mysql", "performance_schema", "sys", "information_schema", "exporter_only"}, exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas)
+		assert.Equal(t, []string{
+			"mysql", "performance_schema", "sys", "information_schema",
+			"alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin",
+			"exporter_only",
+		}, exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas)
 		assert.Equal(t, []string{"exporter_only"}, userBlock.PerfSchemaEventsStatements.ExcludeSchemas)
 	})
 
-	t.Run("explicit empty nested schema exclusions override top-level exclusions", func(t *testing.T) {
+	t.Run("explicit empty nested schema exclusions override custom top-level exclusions while preserving default exclusions", func(t *testing.T) {
 		cfg := `
 			data_source_name = "user:pass@tcp(localhost:3306)/db"
 			forward_to = []
@@ -1817,15 +1813,30 @@ func Test_resolveExporterArgs(t *testing.T) {
 		require.NotNil(t, args.PrometheusExporter)
 		require.NotNil(t, args.PrometheusExporter.PerfSchemaEventsStatements.ExcludeSchemas)
 
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, []string{"top_level"})
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, []string{"top_level"}, nil)
 
-		assert.Equal(t, []string{"mysql", "performance_schema", "sys", "information_schema"}, exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas)
+		assert.Equal(t, []string{
+			"mysql", "performance_schema", "sys", "information_schema",
+			"alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin",
+		}, exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas)
 	})
 
-	t.Run("schema exclusions preserve mandatory system schema exclusion without configuration", func(t *testing.T) {
-		exporterArgs := resolveExporterArgs(nil, nil)
+	t.Run("schema exclusions preserve default schema exclusions without configuration", func(t *testing.T) {
+		exporterArgs := resolveExporterArgs(nil, nil, nil)
 
-		assert.Equal(t, []string{"mysql", "performance_schema", "sys", "information_schema"}, exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas)
+		assert.Equal(t, []string{
+			"mysql", "performance_schema", "sys", "information_schema",
+			"alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin",
+		}, exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas)
+	})
+
+	t.Run("include_schemas removes matching default schema exclusions from exporter", func(t *testing.T) {
+		exporterArgs := resolveExporterArgs(nil, defaultExcludedSchemas(), []string{"rdsadmin", "app_db"})
+
+		assert.Equal(t, []string{
+			"mysql", "performance_schema", "sys", "information_schema",
+			"alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin",
+		}, exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas)
 	})
 }
 
@@ -1948,6 +1959,176 @@ func Test_query_details_eventsstatements_different_limits_warning(t *testing.T) 
 		require.NoError(t, c.Update(args))
 
 		assert.NotContains(t, logs.String(), "query_details and prometheus_exporter perf_schema.eventsstatements limits differ")
+	})
+}
+
+func Test_exclude_schemas_eventsstatements_mismatch_warning(t *testing.T) {
+	t.Run("logs warning when nested exclude_schemas differs from top-level exclude_schemas", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, errors.New("connection skipped for exclusion warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("user:pass@tcp(localhost:3306)/db"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 100},
+			ExcludeSchemas:        []string{"top_level_schema"},
+			PrometheusExporter: &PrometheusExporterArguments{
+				PerfSchemaEventsStatements: exporter_mysql.PerfSchemaEventsStatements{
+					Limit:          100,
+					ExcludeSchemas: []string{"nested_schema"},
+				},
+			},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.Contains(t, logs.String(), "exclude_schemas and prometheus_exporter perf_schema.eventsstatements exclude_schemas differ; prefer setting top-level exclude_schemas only")
+	})
+
+	t.Run("does not log warning when nested exclude_schemas is unset", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, errors.New("connection skipped for exclusion warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("user:pass@tcp(localhost:3306)/db"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 100},
+			ExcludeSchemas:        []string{"top_level_schema"},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "exclude_schemas and prometheus_exporter perf_schema.eventsstatements exclude_schemas differ")
+	})
+
+	t.Run("does not log warning when nested exclude_schemas resolves to the same set in different order", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, errors.New("connection skipped for exclusion warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("user:pass@tcp(localhost:3306)/db"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 100},
+			ExcludeSchemas:        []string{"schema_a", "schema_b"},
+			PrometheusExporter: &PrometheusExporterArguments{
+				PerfSchemaEventsStatements: exporter_mysql.PerfSchemaEventsStatements{
+					Limit:          100,
+					ExcludeSchemas: []string{"schema_b", "rdsadmin", "schema_a"},
+				},
+			},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "exclude_schemas and prometheus_exporter perf_schema.eventsstatements exclude_schemas differ")
+	})
+
+	t.Run("does not log warning when embedded exporter is not used", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, errors.New("connection skipped for exclusion warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		args := Arguments{
+			DataSourceName: alloytypes.Secret("user:pass@tcp(localhost:3306)/db"),
+			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
+				"__address__": "localhost:9104",
+			})},
+			ExcludeSchemas: []string{"top_level_schema"},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "exclude_schemas and prometheus_exporter perf_schema.eventsstatements exclude_schemas differ")
+	})
+
+	t.Run("does not log warning when eventsstatements is disabled", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, errors.New("connection skipped for exclusion warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("user:pass@tcp(localhost:3306)/db"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 100},
+			ExcludeSchemas:        []string{"top_level_schema"},
+			PrometheusExporter: &PrometheusExporterArguments{
+				DisableCollectors: []string{eventsStatementsCollector},
+				PerfSchemaEventsStatements: exporter_mysql.PerfSchemaEventsStatements{
+					ExcludeSchemas: []string{"nested_schema"},
+				},
+			},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.NotContains(t, logs.String(), "exclude_schemas and prometheus_exporter perf_schema.eventsstatements exclude_schemas differ")
+	})
+}
+
+func TestValidate_IncludeAndExcludeSchemas(t *testing.T) {
+	t.Run("rejects overlapping include_schemas and exclude_schemas", func(t *testing.T) {
+		cfg := `
+			data_source_name = "user:pass@tcp(localhost:3306)/db"
+			forward_to       = []
+			include_schemas  = ["app_db", "shared_schema"]
+			exclude_schemas  = ["other_schema", "shared_schema"]
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.EqualError(t, err, `include_schemas and exclude_schemas cannot both contain "shared_schema"`)
+	})
+
+	t.Run("accepts include_schemas overlapping default exclude_schemas when exclude_schemas is not overridden", func(t *testing.T) {
+		cfg := `
+			data_source_name = "user:pass@tcp(localhost:3306)/db"
+			forward_to       = []
+			include_schemas  = ["app_db", "rdsadmin"]
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		require.Equal(t, []string{"app_db", "rdsadmin"}, args.IncludeSchemas)
+	})
+
+	t.Run("accepts include_schemas overlapping default exclude_schemas when exclude_schemas is overridden with other schemas", func(t *testing.T) {
+		cfg := `
+			data_source_name = "user:pass@tcp(localhost:3306)/db"
+			forward_to       = []
+			include_schemas  = ["app_db", "rdsadmin"]
+			exclude_schemas  = ["legacy_only"]
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		require.Equal(t, []string{"app_db", "rdsadmin"}, args.IncludeSchemas)
+		require.Equal(t, []string{"legacy_only"}, args.ExcludeSchemas)
+	})
+
+	t.Run("rejects include_schemas overlapping always-excluded schemas", func(t *testing.T) {
+		cfg := `
+			data_source_name = "user:pass@tcp(localhost:3306)/db"
+			forward_to       = []
+			include_schemas  = ["app_db", "information_schema"]
+			exclude_schemas  = ["legacy_only"]
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.EqualError(t, err, `include_schemas and exclude_schemas cannot both contain "information_schema"`)
+	})
+
+	t.Run("accepts disjoint include_schemas and exclude_schemas", func(t *testing.T) {
+		cfg := `
+			data_source_name = "user:pass@tcp(localhost:3306)/db"
+			forward_to       = []
+			include_schemas  = ["app_db"]
+			exclude_schemas  = ["legacy_db"]
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		require.Equal(t, []string{"app_db"}, args.IncludeSchemas)
+		require.Equal(t, []string{"legacy_db"}, args.ExcludeSchemas)
 	})
 }
 

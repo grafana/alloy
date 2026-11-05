@@ -1240,3 +1240,40 @@ func TestSchemaDenylist(t *testing.T) {
 	require.Equal(t, 1, len(c.queryCache))
 	require.Equal(t, 0, len(c.queryDenylist))
 }
+
+func TestSchemaAllowlist(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lastSeen := time.Now().Add(-time.Hour)
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	c, err := NewExplainPlans(ExplainPlansArguments{
+		DB:              db,
+		Logger:          util.TestAlloyLogger(t).Slog(),
+		ScrapeInterval:  time.Second,
+		PerScrapeRatio:  1,
+		IncludeSchemas:  []string{"allowed_schema"},
+		EntryHandler:    lokiClient,
+		InitialLookback: lastSeen,
+	})
+	require.NoError(t, err)
+
+	mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, buildSchemaFilterClause(nil, []string{"allowed_schema"}, "SCHEMA_NAME"))).WithArgs(lastSeen).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+		"schema_name",
+		"digest",
+		"query_sample_text",
+		"last_seen",
+	}).AddRow(
+		"allowed_schema",
+		"some_digest2",
+		"select * from some_table where id = 2",
+		lastSeen,
+	))
+
+	require.NoError(t, c.populateQueryCache(t.Context()))
+	require.Equal(t, 1, len(c.queryCache))
+	require.NoError(t, mock.ExpectationsWereMet())
+}
