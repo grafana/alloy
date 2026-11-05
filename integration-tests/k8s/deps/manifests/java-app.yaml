@@ -1,0 +1,89 @@
+# A JVM serving HTTP on 8080 and a client that keeps sending it requests.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: java-app
+data:
+  Server.java: |
+    import com.sun.net.httpserver.HttpServer;
+    import java.net.InetSocketAddress;
+
+    public class Server {
+        public static void main(String[] args) throws Exception {
+            HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
+            server.createContext("/", exchange -> {
+                byte[] body = "ok\n".getBytes();
+                exchange.sendResponseHeaders(200, body.length);
+                exchange.getResponseBody().write(body);
+                exchange.close();
+            });
+            server.start();
+        }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: java-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: java-app
+  template:
+    metadata:
+      labels:
+        app: java-app
+        component: java-app
+    spec:
+      containers:
+        - name: java-app
+          image: eclipse-temurin:21.0.8_9-jdk-noble
+          command: ["java", "/app/Server.java"]
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            periodSeconds: 1
+          volumeMounts:
+            - name: app
+              mountPath: /app
+      volumes:
+        - name: app
+          configMap:
+            name: java-app
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: java-app
+spec:
+  selector:
+    app: java-app
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: java-app-client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: java-app-client
+  template:
+    metadata:
+      labels:
+        app: java-app-client
+        component: java-app
+    spec:
+      containers:
+        - name: client
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - while true; do wget -q -O /dev/null http://java-app:8080/; sleep 1; done

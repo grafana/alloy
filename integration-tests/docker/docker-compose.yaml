@@ -12,27 +12,6 @@ services:
     networks:
       - integration-tests
 
-  tempo:
-    image: grafana/tempo:2.6.1
-    command: ["-config.file=/etc/tempo.yaml"]
-    volumes:
-      - ./configs/tempo/tempo.yaml:/etc/tempo.yaml
-    ports:
-      - "14268:14268"  # jaeger ingest
-      - "3200:3200"    # tempo
-      - "9095:9095"    # tempo grpc
-      - "4319:4317"    # otlp grpc
-      - "4320:4318"    # otlp http
-      - "9411:9411"    # zipkin
-    healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3200/ready"]
-      interval: 2s
-      timeout: 5s
-      retries: 30
-      start_period: 30s
-    networks:
-      - integration-tests
-
   loki:
     image: grafana/loki:3.7.2@sha256:191d4fdfb7264f16989f0a57f320872620a5a7c2ceeec6229212c4190ec49b86
     command: -config.file=/etc/loki/local-config.yaml
