@@ -1145,6 +1145,7 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 		DB:               inst.dbConnection,
 		CollectInterval:  c.args.HealthCheckArguments.CollectInterval,
 		QueryTimeout:     c.args.QueryTimeout,
+		EngineEdition:    engineEdition,
 		ExcludeDatabases: excludeDatabases,
 		IncludeDatabases: includeDatabases,
 		EntryHandler:     entryHandler,
