@@ -116,6 +116,12 @@ stable Alloy release then publishes the chart from the same tag.
 Confirm that the `Release Helm chart` workflow completes successfully. If it needs to be recovered,
 run that workflow manually with the existing stable Alloy release tag.
 
+Confirm that the OCI chart is publicly accessible, using the chart version from `Chart.yaml`:
+
+```sh
+helm show chart oci://ghcr.io/grafana/helm-charts/alloy --version <CHART_VERSION>
+```
+
 ### 7. Update Homebrew
 
 **_NOTE: Publishing a release should automatically create a PR against the Homebrew repo to bump the
