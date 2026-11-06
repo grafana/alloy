@@ -35,8 +35,6 @@ type tailer struct {
 
 	running *atomic.Bool
 
-	componentStopping func() bool
-
 	report sync.Once
 
 	file          *tail.File
@@ -49,7 +47,6 @@ func newTailer(
 	logger *slog.Logger,
 	newBatcher func(labels model.LabelSet) loki.StreamBatcher,
 	pos positions.Positions,
-	componentStopping func() bool,
 	opts sourceOptions,
 ) *tailer {
 
@@ -69,14 +66,13 @@ func newTailer(
 			MinPollFrequency: opts.fileWatch.MinPollFrequency,
 			MaxPollFrequency: opts.fileWatch.MaxPollFrequency,
 		},
-		componentStopping: componentStopping,
-		report:            sync.Once{},
-		encoding:          opts.encoding,
-		decompression:     opts.decompressionConfig,
+		report:        sync.Once{},
+		encoding:      opts.encoding,
+		decompression: opts.decompressionConfig,
 	}
 }
 
-func (t *tailer) Run(ctx, _ context.Context) {
+func (t *tailer) Run(ctx, stop context.Context) {
 	// Check if context was canceled between two calls to Run.
 	select {
 	case <-ctx.Done():
@@ -97,7 +93,7 @@ func (t *tailer) Run(ctx, _ context.Context) {
 
 	// We call report so that retries won't log.
 	t.report.Do(func() {})
-	t.tail(ctx, pos)
+	t.tail(ctx, stop, pos)
 }
 
 func (t *tailer) initRun() (int64, error) {
@@ -163,7 +159,7 @@ func (t *tailer) initRun() (int64, error) {
 
 // tail reads lines from the file and forwards them to the batcher, periodically
 // recording the read offset. It blocks until ctx is canceled or the file is fully read.
-func (t *tailer) tail(ctx context.Context, pos int64) {
+func (t *tailer) tail(ctx, stop context.Context, pos int64) {
 	t.running.Store(true)
 	t.metrics.filesActive.Add(1.)
 	t.logger.Info("start tailing file")
@@ -207,7 +203,7 @@ func (t *tailer) tail(ctx context.Context, pos int64) {
 
 		// We need to cleanup created metrics.
 		t.cleanupMetrics()
-		if !t.shouldKeepPosition() {
+		if !t.shouldKeepPosition(stop) {
 			t.positions.Remove(t.key.Path, t.key.Labels)
 		}
 	}()
@@ -288,12 +284,12 @@ func (t *tailer) Key() positions.Entry {
 	return t.key
 }
 
-func (t *tailer) shouldKeepPosition() bool {
-	// NOTE: We want to keep position if component is stopping or decompression is enabled.
-	// If component is not stopping that means that target is gone and we should no longer tail the file.
+func (t *tailer) shouldKeepPosition(stop context.Context) bool {
+	// NOTE: We want to keep position if stop is canceled (scheduler is stopping) or decompression is enabled.
+	// If only ctx is canceled the target is gone and we should no longer tail the file.
 	// If decompression is enabled we read file until we reach EOF and stop so tailer will exit, but we need
 	// to remember the position so that we don't re-ingest it on restart.
-	return t.componentStopping() || t.decompression.Enabled
+	return stop.Err() != nil || t.decompression.Enabled
 }
 
 // cleanupMetrics removes all metrics exported by this tailer
