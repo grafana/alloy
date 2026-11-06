@@ -74,10 +74,8 @@ func newTailer(
 
 func (t *tailer) Run(ctx, stop context.Context) {
 	// Check if context was canceled between two calls to Run.
-	select {
-	case <-ctx.Done():
+	if ctx.Err() != nil {
 		return
-	default:
 	}
 
 	pos, err := t.initRun()
@@ -209,11 +207,11 @@ func (t *tailer) tail(ctx, stop context.Context, pos int64) {
 	}()
 
 	// flush delivers added entries and then advances deliveredOffset. Entries that
-	// fail to be delivered are dropped, unless the tailer is stopping so they are
+	// fail to be delivered are dropped, unless the scheduler is stopping so they are
 	// read again on the next run. Metrics are always updated when eof is true.
 	flush := func(eof bool) {
-		if err := t.batcher.Flush(ctx); err != nil {
-			if ctx.Err() != nil {
+		if err := t.batcher.Flush(stop); err != nil {
+			if stop.Err() != nil {
 				return
 			}
 			t.logger.Error("failed to send entries, dropping them", "err", err)
@@ -231,7 +229,7 @@ func (t *tailer) tail(ctx, stop context.Context, pos int64) {
 	}
 
 	for {
-		if ctx.Err() != nil {
+		if stop.Err() != nil {
 			return
 		}
 
@@ -245,10 +243,14 @@ func (t *tailer) tail(ctx, stop context.Context, pos int64) {
 		case errors.Is(err, io.EOF):
 			// Nothing more to read right now so we flush what we have.
 			flush(true)
-			if t.decompression.Enabled {
+			if t.decompression.Enabled || ctx.Err() != nil {
 				return
 			}
 			if err := t.file.Wait(ctx); err != nil {
+				if ctx.Err() != nil {
+					// We were removed while waiting so read what is left.
+					continue
+				}
 				if !errors.Is(err, context.Canceled) && !errors.Is(err, io.EOF) {
 					t.logger.Error("failed to wait for new data", "err", err)
 				}
@@ -258,7 +260,10 @@ func (t *tailer) tail(ctx, stop context.Context, pos int64) {
 		case err != nil:
 			// Lines read before the error are not guaranteed to be read again, so deliver them.
 			flush(false)
-			t.logger.Error("failed to tail file", "err", err)
+			// The file is closed if we were removed while waiting for it to be recreated.
+			if ctx.Err() == nil || !util.IsEphemeralOrFileClosed(err) {
+				t.logger.Error("failed to tail file", "err", err)
+			}
 			return
 		}
 
