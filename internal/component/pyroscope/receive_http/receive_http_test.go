@@ -23,8 +23,7 @@ import (
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/util/testlog"
-	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
-	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
+	"github.com/grafana/alloy/syntax"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -547,14 +546,6 @@ func (a *testAppender) AppendIngest(_ context.Context, profile *pyroscope.Incomi
 	return a.appendErr
 }
 
-func (a *testAppender) DebugInfoClients() []*debuginfoclient.Client {
-	return nil
-}
-
-func (a *testAppender) Upload(_ debuginfo.UploadJob) {
-	// no-op for tests
-}
-
 // TestUpdateArgs verifies that the component can be updated with new arguments. This explicitly also makes sure that the server is restarted when the server configuration changes. And there are no metric registration conflicts.
 func TestUpdateArgs(t *testing.T) {
 	ports, err := freeport.GetFreePorts(2)
@@ -687,6 +678,29 @@ func TestAPIToAlloySamples(t *testing.T) {
 				require.Equal(t, expected.ID, result[i].ID, "ID mismatch at index %d", i)
 				require.Equal(t, expected.RawProfile, result[i].RawProfile, "RawProfile mismatch at index %d", i)
 			}
+		})
+	}
+}
+
+func TestRejectDebugInfoUploadTimeout(t *testing.T) {
+	var args Arguments
+	err := syntax.Unmarshal([]byte(`
+forward_to = []
+debug_info_upload_timeout = "2m"
+`), &args)
+	require.ErrorContains(t, err, `unrecognized attribute name "debug_info_upload_timeout"`)
+}
+
+func TestDebugInfoEndpointsRemoved(t *testing.T) {
+	appendables := createTestAppendables([]error{nil})
+	port := startComponent(t, appendables)
+	for _, method := range []string{"ShouldInitiateUpload", "UploadFinished", "Upload/test-build-id"} {
+		t.Run(method, func(t *testing.T) {
+			_, resp := sendCustomRequest(t, port, http.MethodPost,
+				"/debuginfo.v1alpha1.DebuginfoService/"+method, "", []string{"application/json"}, 0)
+			defer resp.Body.Close()
+			require.Equal(t, http.StatusNotFound, resp.StatusCode)
+			require.Zero(t, countForwardedProfiles(appendables))
 		})
 	}
 }

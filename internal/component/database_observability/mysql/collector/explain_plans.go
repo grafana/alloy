@@ -533,6 +533,7 @@ type ExplainPlansArguments struct {
 	PerScrapeRatio  float64
 	InitialLookback time.Time
 	ExcludeSchemas  []string
+	IncludeSchemas  []string
 	EntryHandler    loki.EntryHandler
 
 	Logger *slog.Logger
@@ -544,6 +545,7 @@ type ExplainPlans struct {
 	queryCache       map[string]*queryInfo
 	queryDenylist    map[string]struct{}
 	excludeSchemas   []string
+	includeSchemas   []string
 	perScrapeRatio   float64
 	currentBatchSize int
 	entryHandler     loki.EntryHandler
@@ -563,6 +565,7 @@ func NewExplainPlans(args ExplainPlansArguments) (*ExplainPlans, error) {
 		scrapeInterval: args.ScrapeInterval,
 		perScrapeRatio: args.PerScrapeRatio,
 		excludeSchemas: args.ExcludeSchemas,
+		includeSchemas: args.IncludeSchemas,
 		lastSeen:       args.InitialLookback,
 		queryCache:     make(map[string]*queryInfo),
 		queryDenylist:  make(map[string]struct{}),
@@ -686,7 +689,7 @@ func (c *ExplainPlans) Stop() {
 func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 	c.pruneExpiredThrottle()
 
-	query := fmt.Sprintf(selectDigestsForExplainPlan, buildExcludedSchemasClause(c.excludeSchemas))
+	query := fmt.Sprintf(selectDigestsForExplainPlan, buildSchemaFilterClause(c.excludeSchemas, c.includeSchemas, "SCHEMA_NAME"))
 	rs, err := c.dbConnection.QueryContext(ctx, query, c.lastSeen)
 	if err != nil {
 		c.logger.Error("failed to fetch digests for explain plans", "err", err)

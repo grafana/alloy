@@ -295,8 +295,13 @@ func (args *Arguments) Validate() error {
 	if args.NameResolver.ECS.RefreshInterval != 0 && args.CloudMetadata.RefreshInterval != 0 {
 		return fmt.Errorf("name_resolver.ecs.refresh_interval is deprecated and can't be combined with cloud_metadata.refresh_interval; set only cloud_metadata.refresh_interval")
 	}
-	if args.Discovery.InstrumentAllLocal && (len(args.Discovery.Instrument) > 0 || len(args.Discovery.Services) > 0) {
-		return fmt.Errorf("discovery.instrument_all_local can't be combined with discovery.instrument or discovery.services")
+	if args.Discovery.InstrumentAllLocal && (len(args.Discovery.Instrument) > 0 || len(args.Discovery.Services) > 0 ||
+		args.Port != "" || args.ExecutableName != "") {
+
+		return fmt.Errorf("discovery.instrument_all_local can't be combined with discovery.instrument, discovery.services, open_port, or executable_name")
+	}
+	if err := args.Discovery.Survey.Validate(); err != nil {
+		return fmt.Errorf("invalid survey configuration: %s", err.Error())
 	}
 	if err := args.DotnetRuntimeMetrics.Validate(); err != nil {
 		return err
@@ -333,13 +338,6 @@ func (args *Arguments) Validate() error {
 		if len(args.Discovery.Services) > 0 {
 			if err := args.Discovery.Services.Validate(); err != nil {
 				return fmt.Errorf("invalid discovery configuration: %s", err.Error())
-			}
-		}
-
-		// Validate survey field
-		if len(args.Discovery.Survey) > 0 {
-			if err := args.Discovery.Survey.Validate(); err != nil {
-				return fmt.Errorf("invalid survey configuration: %s", err.Error())
 			}
 		}
 

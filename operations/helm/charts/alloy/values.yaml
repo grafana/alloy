@@ -163,6 +163,10 @@ image:
   # -- (string) Grafana Alloy image tag. When empty, the Chart's appVersion is
   # used.
   tag: null
+  # -- Use a distroless version of Grafana Alloy image (experimental).
+  #
+  # Appends "-distroless" to the image tag (or the chart's appVersion when tag is empty). Ignored when image.digest is set.
+  distroless: false
   # -- Grafana Alloy image's SHA256 digest (either in format "sha256:XYZ" or "XYZ"). When set, will override `image.tag`.
   digest: null
   # -- Grafana Alloy image pull policy.
@@ -259,7 +263,7 @@ configReloader:
     # -- Repository to get config reloader image from.
     repository: prometheus-operator/prometheus-config-reloader
     # -- Tag of image to use for config reloading.
-    tag: v0.94.0@sha256:142a1f11df8dd165f00375b0b1826aecb9c9adeb05c39855893138d7c7575ff7
+    tag: v0.94.2@sha256:a1897c67478bc23434534e91ad3855280771196b1daf17144db9dbcb655bef71
     # -- SHA256 digest of image to use for config reloading (either in format "sha256:XYZ" or "XYZ"). When set, will override `configReloader.image.tag`
     digest: ""
     # -- Config reloader image pull policy.

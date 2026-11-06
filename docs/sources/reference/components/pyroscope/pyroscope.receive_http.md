@@ -21,6 +21,12 @@ You can specify multiple `pyroscope.receive_http` components by giving them diff
 [ingest-api]: https://grafana.com/docs/pyroscope/latest/reference-server-api/
 [pusher-service]: https://github.com/grafana/pyroscope/blob/main/api/push/v1/push.proto
 
+{{< admonition type="note" >}}
+The experimental debug-info proxy is no longer supported.
+Remove `debug_info_upload_timeout` from your configuration.
+Requests to `/debuginfo.v1alpha1.DebuginfoService/` endpoints return HTTP `404`.
+{{< /admonition >}}
+
 ## Usage
 
 ```alloy

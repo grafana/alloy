@@ -1,11 +1,6 @@
 package positions
 
-// This code is copied from Promtail. The positions package allows logging
-// components to keep track of read file offsets on disk and continue from the
-// same place in case of a restart.
-
 import (
-	"flag"
 	"fmt"
 	"log/slog"
 	"maps"
@@ -20,33 +15,38 @@ import (
 )
 
 const (
-	cursorKeyPrefix  = "cursor-"
-	journalKeyPrefix = "journal-"
+	syncPeriod = 10 * time.Second
+
+	cursorKeyPrefix = "cursor-"
 )
 
-// Config describes where to get position information from.
-type Config struct {
-	SyncPeriod        time.Duration `mapstructure:"sync_period" yaml:"sync_period"`
-	PositionsFile     string        `mapstructure:"filename" yaml:"filename"`
-	IgnoreInvalidYaml bool          `mapstructure:"ignore_invalid_yaml" yaml:"ignore_invalid_yaml"`
-	ReadOnly          bool          `mapstructure:"-" yaml:"-"`
+// CursorKey returns a key that can be saved as a cursor that is never deleted.
+func CursorKey(key string) string {
+	return cursorKeyPrefix + key
 }
 
-// RegisterFlagsWithPrefix registers flags where every name is prefixed by
-// prefix. If prefix is a non-empty string, prefix should end with a period.
-func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
-	f.DurationVar(&cfg.SyncPeriod, prefix+"positions.sync-period", 10*time.Second, "Period with this to sync the position file.")
-	f.StringVar(&cfg.PositionsFile, prefix+"positions.file", "/var/log/positions.yaml", "Location to read/write positions from.")
-	f.BoolVar(&cfg.IgnoreInvalidYaml, prefix+"positions.ignore-invalid-yaml", false, "whether to ignore & later overwrite positions files that are corrupted")
+// Positions stores read positions keyed by path and labels.
+type Positions interface {
+	// GetString returns the stored position, or "" if there is none.
+	GetString(path, labels string) string
+	// Get returns the stored position as an integer, or 0 if there is none.
+	// It returns an error if the stored value is not an integer.
+	Get(path, labels string) (int64, error)
+	// PutString stores a position that isn't an integer, such as a cursor.
+	PutString(path, labels string, pos string)
+	// Put stores an integer position, such as a file offset.
+	Put(path, labels string, pos int64)
+	// Remove deletes the stored position.
+	Remove(path, labels string)
+	// Stop stops syncing and persists positions one last time.
+	Stop()
 }
 
-// RegisterFlags register flags.
-func (cfg *Config) RegisterFlags(flags *flag.FlagSet) {
-	cfg.RegisterFlagsWithPrefix("", flags)
-}
+var _ Positions = (*File)(nil)
 
-// Positions tracks how far through each file we've read.
-type positions struct {
+// File is a Positions backed by a file on disk. Positions are kept in memory
+// and written to the file periodically and on Stop.
+type File struct {
 	logger    *slog.Logger
 	cfg       Config
 	mtx       sync.Mutex
@@ -55,178 +55,26 @@ type positions struct {
 	done      chan struct{}
 }
 
-// Entry describes a positions file entry consisting of an absolute file path and
-// the matching label set.
-// An entry expects the string representation of a LabelSet or a Labels slice
-// so that it can be utilized as a YAML key. The caller should make sure that
-// the order and structure of the passed string representation is reproducible,
-// and maintains the same format for both reading and writing from/to the
-// positions file.
+// Entry is the key for a stored position: a file path or cursor key, and the
+// string form of its labels. Callers must format labels the same way on
+// every read and write.
 type Entry struct {
 	Path   string `yaml:"path"`
 	Labels string `yaml:"labels"`
 }
 
-// File format for the positions data.
-type File struct {
-	Positions map[Entry]string `yaml:"positions"`
+type Config struct {
+	Path string
 }
 
-type Positions interface {
-	// GetString returns how far we've through a file as a string.
-	// JournalTarget writes a journal cursor to the positions file, while
-	// FileTarget writes an integer offset. Use Get to read the integer
-	// offset.
-	GetString(path, labels string) string
-	// Get returns how far we've read through a file. Returns an error
-	// if the value stored for the file is not an integer.
-	Get(path, labels string) (int64, error)
-	// PutString records (asynchronously) how far we've read through a file.
-	// Unlike Put, it records a string offset and is only useful for
-	// JournalTargets which doesn't have integer offsets.
-	PutString(path, labels string, pos string)
-	// Put records (asynchronously) how far we've read through a file.
-	Put(path, labels string, pos int64)
-	// Remove removes the position tracking for a filepath
-	Remove(path, labels string)
-	// SyncPeriod returns how often the positions file gets resynced
-	SyncPeriod() time.Duration
-	// Stop the Position tracker.
-	Stop()
-}
-
-// LegacyFile is the copied struct for the static mode positions file.
-type LegacyFile struct {
-	Positions map[string]string `yaml:"positions"`
-}
-
-// ConvertLegacyPositionsFile will convert the legacy positions file to the new format if:
-// 1. There is no file at the newpath
-// 2. There is a file at the legacy path and that it is valid yaml
-//
-// Returns an error if the legacy file exists but couldn't be read (#5493).
-func ConvertLegacyPositionsFile(legacyPath, newPath string, l *slog.Logger) error {
-	legacyPositions, err := readLegacyFile(legacyPath, l)
-	if err != nil {
-		return fmt.Errorf("legacy positions file %q exists but could not be read, refusing to start to avoid re-ingesting logs: %w", legacyPath, err)
-	}
-	// legacyPositions did not exist or was invalid so return.
-	if legacyPositions == nil {
-		l.Info("will not convert the legacy positions file as it is not valid or does not exist", "legacy_path", legacyPath)
-		return nil
-	}
-	fi, err := os.Stat(newPath)
-	// If the newpath exists, then don't convert.
-	if err == nil && fi.Size() > 0 {
-		l.Info("will not convert the legacy positions file as the new positions file already exists", "path", newPath)
-		return nil
-	}
-
-	newPositions := make(map[Entry]string)
-	for k, v := range legacyPositions.Positions {
-		newPositions[Entry{
-			Path: k,
-			// This is a map of labels but must be an empty map since that is what the new positions expects.
-			Labels: "{}",
-		}] = v
-	}
-	err = writePositionFile(newPath, newPositions)
-	if err != nil {
-		l.Error("error writing new positions file converted from legacy", "path", newPath, "error", err)
-	}
-	l.Info("successfully converted legacy positions file to the new format", "path", newPath, "legacy_path", legacyPath)
-	return nil
-}
-
-// ConvertLegacyPositionsFileJournal will convert the legacy positions file to the new format for a journal job if:
-// 1. There is no file at the newpath
-// 2. There is a file at the legacy path and that it is valid yaml
-//
-// legacyJob is the name of the journal job in e.g. promatil or agent static.
-func ConvertLegacyPositionsFileJournal(legacyPath, legacyJob string, newPath string, componentID string, l *slog.Logger) error {
-	legacyPositions, err := readLegacyFile(legacyPath, l)
-	if err != nil {
-		return fmt.Errorf("legacy positions file %q exists but could not be read, refusing to start to avoid re-ingesting logs: %w", legacyPath, err)
-	}
-	// legacyPositions did not exist or was invalid so return.
-	if legacyPositions == nil {
-		l.Info("will not convert the legacy positions file as it is not valid or does not exist", "legacy_path", legacyPath)
-		return nil
-	}
-	fi, err := os.Stat(newPath)
-	// If the newpath exists, then don't convert.
-	if err == nil && fi.Size() > 0 {
-		l.Info("will not convert the legacy positions file as the new positions file already exists", "path", newPath)
-		return nil
-	}
-
-	var (
-		legacyCursor = CursorKey(legacyJob)
-		newCursor    = CursorKey(componentID)
-	)
-
-	newPositions := make(map[Entry]string)
-	for k, v := range legacyPositions.Positions {
-		if k == legacyCursor {
-			newPositions[Entry{
-				Path:   newCursor,
-				Labels: "{}",
-			}] = v
-			break
-		}
-	}
-	err = writePositionFile(newPath, newPositions)
-	if err != nil {
-		l.Error("error writing new positions file converted from legacy", "path", newPath, "error", err)
-	}
-	l.Info("successfully converted legacy positions file to the new format", "path", newPath, "legacy_path", legacyPath)
-	return nil
-}
-
-// readLegacyFile reads and parses the legacy positions file.
-//
-// Returns (nil, nil) if the file doesn't exist or is empty. Returns (nil,
-// err) if it exists but a genuine I/O error (e.g. permission denied)
-// prevented reading it (#5493). Malformed YAML remains non-fatal.
-func readLegacyFile(legacyPath string, l *slog.Logger) (*LegacyFile, error) {
-	oldFile, err := os.Stat(legacyPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			l.Info("no legacy positions file found", "path", legacyPath)
-			return nil, nil
-		}
-		// Real error, not "doesn't exist".
-		return nil, fmt.Errorf("error checking legacy positions file %q: %w", legacyPath, err)
-	}
-	if oldFile.Size() == 0 {
-		l.Info("no legacy positions file found", "path", legacyPath)
-		return nil, nil
-	}
-	// Try to read and parse the legacy file.
-	clean := filepath.Clean(legacyPath)
-	buf, err := os.ReadFile(clean)
-	if err != nil {
-		// Exists but couldn't be read, e.g. permission denied (#5493).
-		return nil, fmt.Errorf("error reading legacy positions file %q: %w", clean, err)
-	}
-	legacyPositions := &LegacyFile{}
-	err = yaml.UnmarshalStrict(buf, legacyPositions)
-	if err != nil {
-		// Malformed content remains non-fatal; only I/O errors are in scope.
-		l.Error("error parsing legacy positions file", "path", clean, "error", err)
-		return nil, nil
-	}
-	return legacyPositions, nil
-}
-
-// New makes a new Positions.
-func New(logger *slog.Logger, cfg Config) (Positions, error) {
-	positionData, err := readPositionsFile(cfg, logger)
+// New returns a File that reads and writes positions at cfg.Path.
+func New(logger *slog.Logger, cfg Config) (*File, error) {
+	positionData, err := readPositionsFile(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	p := &positions{
+	p := &File{
 		logger:    logger,
 		cfg:       cfg,
 		positions: positionData,
@@ -238,28 +86,28 @@ func New(logger *slog.Logger, cfg Config) (Positions, error) {
 	return p, nil
 }
 
-func (p *positions) Stop() {
+func (p *File) Stop() {
 	close(p.quit)
 	<-p.done
 }
 
-func (p *positions) PutString(path, labels string, pos string) {
+func (p *File) PutString(path, labels string, pos string) {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
 	p.positions[Entry{path, labels}] = pos
 }
 
-func (p *positions) Put(path, labels string, pos int64) {
+func (p *File) Put(path, labels string, pos int64) {
 	p.PutString(path, labels, strconv.FormatInt(pos, 10))
 }
 
-func (p *positions) GetString(path, labels string) string {
+func (p *File) GetString(path, labels string) string {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
 	return p.positions[Entry{path, labels}]
 }
 
-func (p *positions) Get(path, labels string) (int64, error) {
+func (p *File) Get(path, labels string) (int64, error) {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
 	pos, ok := p.positions[Entry{path, labels}]
@@ -269,28 +117,26 @@ func (p *positions) Get(path, labels string) (int64, error) {
 	return strconv.ParseInt(pos, 10, 64)
 }
 
-func (p *positions) Remove(path, labels string) {
+func (p *File) Remove(path, labels string) {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
 	p.remove(path, labels)
 }
 
-func (p *positions) remove(path, labels string) {
+func (p *File) remove(path, labels string) {
 	delete(p.positions, Entry{path, labels})
 }
 
-func (p *positions) SyncPeriod() time.Duration {
-	return p.cfg.SyncPeriod
-}
-
-func (p *positions) run() {
+func (p *File) run() {
 	defer func() {
 		p.save()
 		p.logger.Debug("positions saved")
 		close(p.done)
 	}()
 
-	ticker := time.NewTicker(p.cfg.SyncPeriod)
+	ticker := time.NewTicker(syncPeriod)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case <-p.quit:
@@ -302,34 +148,24 @@ func (p *positions) run() {
 	}
 }
 
-func (p *positions) save() {
-	if p.cfg.ReadOnly {
-		return
-	}
+func (p *File) save() {
 	p.mtx.Lock()
-	positions := make(map[Entry]string, len(p.positions))
-	maps.Copy(positions, p.positions)
+	positions := maps.Clone(p.positions)
 	p.mtx.Unlock()
 
-	if err := writePositionFile(p.cfg.PositionsFile, positions); err != nil {
+	if err := writePositionFile(p.cfg.Path, positions); err != nil {
 		p.logger.Error("error writing positions file", "error", err)
 	}
 }
 
-// CursorKey returns a key that can be saved as a cursor that is never deleted.
-func CursorKey(key string) string {
-	return fmt.Sprintf("%s%s", cursorKeyPrefix, key)
-}
-
-func (p *positions) cleanup() {
+func (p *File) cleanup() {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
 	toRemove := []Entry{}
 	for k := range p.positions {
 		// If the position file is prefixed with cursor, it's a
 		// cursor and not a file on disk.
-		// We still have to support journal files, so we keep the previous check to avoid breaking change.
-		if strings.HasPrefix(k.Path, cursorKeyPrefix) || strings.HasPrefix(k.Path, journalKeyPrefix) {
+		if strings.HasPrefix(k.Path, cursorKeyPrefix) {
 			continue
 		}
 
@@ -348,8 +184,13 @@ func (p *positions) cleanup() {
 	}
 }
 
-func readPositionsFile(cfg Config, logger *slog.Logger) (map[Entry]string, error) {
-	cleanfn := filepath.Clean(cfg.PositionsFile)
+// positionFile is the on-disk format of the positions file.
+type positionFile struct {
+	Positions map[Entry]string `yaml:"positions"`
+}
+
+func readPositionsFile(cfg Config) (map[Entry]string, error) {
+	cleanfn := filepath.Clean(cfg.Path)
 	buf, err := os.ReadFile(cleanfn)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -358,15 +199,9 @@ func readPositionsFile(cfg Config, logger *slog.Logger) (map[Entry]string, error
 		return nil, err
 	}
 
-	var p File
+	var p positionFile
 	err = yaml.Unmarshal(buf, &p)
 	if err != nil {
-		// return empty if cfg option enabled
-		if cfg.IgnoreInvalidYaml {
-			logger.Debug("ignoring invalid positions file", "file", cleanfn, "error", err)
-			return map[Entry]string{}, nil
-		}
-
 		return nil, fmt.Errorf("invalid yaml positions file [%s]: %v", cleanfn, err)
 	}
 
@@ -376,4 +211,14 @@ func readPositionsFile(cfg Config, logger *slog.Logger) (map[Entry]string, error
 	}
 
 	return p.Positions, nil
+}
+
+func writePositionFile(path string, positions map[Entry]string) error {
+	buf, err := yaml.Marshal(positionFile{
+		Positions: positions,
+	})
+	if err != nil {
+		return err
+	}
+	return writeFileAtomic(filepath.Clean(path), buf)
 }

@@ -26,9 +26,18 @@ The component exposes metrics that can be collected by a Prometheus scrape compo
 {{< param "PRODUCT_NAME" >}} spawns Beyla as a child process and transfers the required capabilities through the kernel's inheritable and ambient capability sets.
 You don't need `SETPCAP`.
 
-The required capabilities are: `BPF`, `NET_ADMIN`, `NET_RAW`, `PERFMON`, `DAC_READ_SEARCH`, `SYS_PTRACE`, `CHECKPOINT_RESTORE`, `SYS_RESOURCE` on kernels earlier than 5.11, and `SYS_ADMIN` for library-level instrumentation only.
+The required capabilities are: `BPF`, `NET_ADMIN`, `NET_RAW`, `PERFMON`, `DAC_READ_SEARCH`, `SYS_PTRACE`, and `CHECKPOINT_RESTORE`, plus `SYS_RESOURCE` on kernels earlier than 5.11.
+The `tracefs` probe attachment fallback can also require `DAC_OVERRIDE`.
 The exact set depends on your use case.
 Refer to [Beyla capabilities][] for more information.
+
+On kernels 5.8 and later, Beyla can attach uprobes without `SYS_ADMIN`.
+When access to the performance monitoring unit (PMU) is denied, Beyla falls back to attaching probes through `tracefs`.
+For this fallback, provide a read-write `tracefs` mount visible to Beyla, such as `/sys/kernel/tracing`.
+`DAC_OVERRIDE` lets Beyla bypass file permission checks when writing probe events to `tracefs`.
+
+Go library-level context propagation on kernels 5.10 and later, and log injection, require `SYS_ADMIN` because they use `bpf_probe_write_user`.
+If you enable these features, add `SYS_ADMIN` to the capabilities in the following examples.
 
 In Kubernetes, set `hostPID: true` in the Pod spec and configure an [Unconfined AppArmor profile][].
 
@@ -39,7 +48,7 @@ On a standard Linux system, root processes inherit all capabilities from the bou
 If systemd or another tool restricts the bounding set, grant the required capabilities explicitly:
 
 ```bash
-setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_read_search,cap_sys_ptrace,cap_checkpoint_restore,cap_sys_resource,cap_sys_admin+ep' /path/to/alloy
+setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_override,cap_dac_read_search,cap_sys_ptrace,cap_checkpoint_restore,cap_sys_resource+ep' /path/to/alloy
 ```
 
 ### Standalone: non-root
@@ -48,7 +57,7 @@ Set file capabilities on the {{< param "PRODUCT_NAME" >}} binary with the `+ip` 
 This seeds the permitted set but doesn't grant effective capabilities to {{< param "PRODUCT_NAME" >}}, so {{< param "PRODUCT_NAME" >}} holds them only to pass to Beyla:
 
 ```bash
-setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_read_search,cap_sys_ptrace,cap_checkpoint_restore,cap_sys_resource,cap_sys_admin+ip' /path/to/alloy
+setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_override,cap_dac_read_search,cap_sys_ptrace,cap_checkpoint_restore,cap_sys_resource+ip' /path/to/alloy
 ```
 
 {{< admonition type="note" >}}
@@ -80,11 +89,11 @@ spec:
             - NET_ADMIN
             - NET_RAW
             - PERFMON
+            - DAC_OVERRIDE  # tracefs probe attachment fallback
             - DAC_READ_SEARCH
             - SYS_PTRACE
             - CHECKPOINT_RESTORE
             - SYS_RESOURCE  # kernels < 5.11
-            - SYS_ADMIN  # only for library-level instrumentation
 ```
 
 Unlike `privileged: true`, this keeps `seccomp` and AppArmor profiles active.
@@ -95,7 +104,7 @@ For the most restrictive posture, run as a non-root UID.
 Add `setcap +ip` to the binary when you build a custom image:
 
 ```dockerfile
-RUN setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_read_search,cap_sys_ptrace,cap_checkpoint_restore,cap_sys_resource,cap_sys_admin+ip' /bin/alloy
+RUN setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_override,cap_dac_read_search,cap_sys_ptrace,cap_checkpoint_restore,cap_sys_resource+ip' /bin/alloy
 ```
 
 Then configure the Pod security context:
@@ -116,11 +125,11 @@ spec:
             - NET_ADMIN
             - NET_RAW
             - PERFMON
+            - DAC_OVERRIDE  # tracefs probe attachment fallback
             - DAC_READ_SEARCH
             - SYS_PTRACE
             - CHECKPOINT_RESTORE
             - SYS_RESOURCE  # kernels < 5.11
-            - SYS_ADMIN  # only for library-level instrumentation
 ```
 
 ## Usage
@@ -413,7 +422,7 @@ Use it to disable automatic HTTP route harvesting for specific languages while r
 A process qualifies once Beyla observes it using sockets, including sockets that are already open when Beyla starts.
 A process that runs as root qualifies only if it listens on a port below 1024.
 Beyla excludes the same system processes as in survey mode, and it still applies `exclude_instrument` and `default_exclude_instrument`.
-You can't combine `instrument_all_local` with `instrument` or `services`.
+You can't combine `instrument_all_local` with `instrument`, `services`, `open_port`, or `executable_name`.
 Survey reporting stays independent, so configure `survey` to emit `survey_info` as well.
 
 It contains the following blocks:
@@ -445,7 +454,7 @@ If the executable matches only one of the ports in the list, it's considered to 
 
 `exports` specifies what types of telemetry data to export for the matching service.
 You can specify `"metrics"`, `"traces"`, or both.
-If empty, the service will export both metrics and traces by default.
+If empty, the service exports both metrics and traces by default.
 
 #### `exclude_instrument`
 
@@ -463,7 +472,7 @@ Set to empty to allow Alloy to instrument itself as well as these other componen
 #### `survey`
 
 The `survey` block configures services for discovery without instrumentation using glob patterns.
-Instead of instrumenting matching services, the component will only emit a `survey_info` metric for each discovered service.
+The component emits a `survey_info` metric for each discovered service without instrumenting it.
 This can be helpful for informing external applications of the services available for instrumentation.
 
 The `survey` block uses the same configuration options as the `instrument` block.
@@ -660,7 +669,7 @@ The `ebpf` block configures eBPF-specific settings.
 
 | Name                    | Type       | Description                                                                   | Default      | Required |
 |-------------------------|------------|-------------------------------------------------------------------------------|--------------|----------|
-| `wakeup_len`            | `int`      | Number of messages to accumulate before wakeup request.                       | `""`         | no       |
+| `wakeup_len`            | `int`      | Number of messages to accumulate before notifying the consumer.                       | `""`         | no       |
 | `track_request_headers` | `bool`     | Enable tracking of request headers for **Traceparent** fields.                | `false`      | no       |
 | `http_request_timeout`  | `duration` | Timeout for HTTP requests.                                                    | `"30s"`      | no       |
 | `context_propagation`   | `string`   | Enables injecting of the **Traceparent** header value for outgoing HTTP requests. | `"disabled"` | no       |
@@ -1141,7 +1150,7 @@ Unset or zero values use the defaults defined in Beyla.
 
 ### `cloud_metadata`
 
-The `cloud_metadata` block overrides automatically detected cloud metadata.
+The `cloud_metadata` block configures cloud inventory refreshes and overrides automatically detected cloud metadata.
 
 | Name | Type | Description | Default | Required |
 |------|------|-------------|---------|----------|
@@ -1189,8 +1198,8 @@ The cloud sources work only when Beyla detects the matching cloud environment:
 
 * `ecs` resolves Amazon ECS task IP addresses. It requires the `ecs:ListTasks` and `ecs:DescribeTasks` permissions.
 * `route53` resolves IP addresses from Amazon Route 53 A and AAAA records. It requires detected EC2 metadata and the `route53:ListResourceRecordSets` permission. Configure it in the [`route53`](#route53) block.
-* `gce` resolves Google Compute Engine VM addresses to managed instance group names. It requires read access to the Compute Engine inventory, for example through the Compute Viewer role.
-* `azure` resolves Azure VM addresses to scale set names. It requires read access to the VM, scale set, and network interface inventories, for example through the Reader role. Beyla doesn't use this source when it detects Kubernetes.
+* `gce` resolves Google Compute Engine VM addresses to managed instance group names. It requires the `compute.instanceGroupManagers.list`, `compute.instanceGroupManagers.get`, and `compute.instances.get` permissions, for example through the [Compute Viewer role][].
+* `azure` resolves Azure VM addresses to scale set names. It requires read access to the VM, scale set, and network interface inventories, for example through the [Azure Reader role][]. Beyla doesn't use this source when it detects Kubernetes.
 
 When both `ecs` and `route53` resolve the same IP address, Beyla uses the ECS name.
 The `cloud_metadata` block lets you override automatic cluster and region detection, and sets how often Beyla refreshes the cloud inventory.
@@ -1531,6 +1540,8 @@ Replace the following:
 [Beyla exported metrics]: /docs/beyla/latest/metrics/
 [Beyla capabilities]: https://grafana.com/docs/beyla/latest/security/#list-of-capabilities-required-by-beyla
 [Unconfined AppArmor profile]: https://kubernetes.io/docs/tutorials/security/apparmor/#securing-a-pod
+[Compute Viewer role]: https://docs.cloud.google.com/iam/docs/roles-permissions/compute#compute.viewer
+[Azure Reader role]: https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles/general#reader
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

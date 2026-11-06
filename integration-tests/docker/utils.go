@@ -179,7 +179,7 @@ func prepareContainerFiles(absTestDir string) ([]testcontainers.ContainerFile, [
 }
 
 // Create a container request based on the test directory.
-func createContainerRequest(dirName, testDir string, port int, networkName string, containerFiles []testcontainers.ContainerFile, cfg TestConfig, alloyImage string) testcontainers.ContainerRequest {
+func createContainerRequest(dirName string, port int, networkName string, containerFiles []testcontainers.ContainerFile, cfg TestConfig, alloyImage string) testcontainers.ContainerRequest {
 	defaultPortStr := fmt.Sprintf("%d/tcp", port)
 	hostIP := netip.MustParseAddr("0.0.0.0")
 
@@ -202,19 +202,6 @@ func createContainerRequest(dirName, testDir string, port int, networkName strin
 	}
 
 	var mounts []mount.Mount
-	if cfg.Container.UseMount {
-		mountDir := filepath.Join(testDir, "mount")
-		mountSrc, err := filepath.Abs(mountDir)
-		if err != nil {
-			panic(err)
-		}
-		mounts = append(mounts, mount.Mount{
-			Type:     mount.TypeBind,
-			Source:   mountSrc,
-			Target:   "/etc/alloy/mount",
-			ReadOnly: true,
-		})
-	}
 	if cfg.Container.UseDockerSock {
 		mounts = append(mounts, mount.Mount{
 			Type:     mount.TypeBind,
@@ -300,16 +287,6 @@ func runTestWithTestcontainers(ctx context.Context, testDir string, port int, st
 		}
 	}()
 
-	if cfg.Container.UseMount {
-		// Ensure mountDir exists
-		mountDir := filepath.Join(absTestDir, "mount")
-		if _, err := os.Stat(mountDir); os.IsNotExist(err) {
-			if err := os.MkdirAll(mountDir, 0o755); err != nil {
-				panic(fmt.Sprintf("failed to create mount directory: %v\n", err))
-			}
-		}
-	}
-
 	df := cfg.Container.Dockerfile
 	alloyImage := alloyIntegrationImageTag(dirName, df)
 	if skipBuild && df != "" {
@@ -335,7 +312,7 @@ func runTestWithTestcontainers(ctx context.Context, testDir string, port int, st
 		}
 	}()
 
-	req := createContainerRequest(dirName, testDir, port, networkName, containerFiles, cfg, alloyImage)
+	req := createContainerRequest(dirName, port, networkName, containerFiles, cfg, alloyImage)
 
 	// Start container
 	containerStartTime := time.Now()
@@ -360,14 +337,6 @@ func runTestWithTestcontainers(ctx context.Context, testDir string, port int, st
 				AlloyLog: fmt.Sprintf("failed to terminate Alloy container: %v", err),
 				IsError:  true,
 			})
-		}
-
-		if cfg.Container.UseMount {
-			// Cleanup mount directory
-			mountDir := filepath.Join(absTestDir, "mount")
-			if err := os.RemoveAll(mountDir); err != nil {
-				panic(fmt.Sprintf("failed to remove mount directory: %v\n", err))
-			}
 		}
 	}()
 

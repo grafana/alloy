@@ -47,6 +47,7 @@ You can use the following arguments with `otelcol.receiver.kafka`:
 | `brokers`                                  | `list(string)` | Kafka brokers to connect to.                                                                                          | `[]`               | yes      |
 | `protocol_version`                         | `string`       | Kafka protocol version to use.                                                                                        | `""`               | yes      |
 | `client_id`                                | `string`       | Consumer client ID to use.                                                                                            | `"otel-collector"` | no       |
+| `dial_timeout`                             | `duration`     | Timeout for establishing a connection to a broker.                                                                    | `"10s"`            | no       |
 | `conn_idle_timeout`                        | `duration`     | Time after which idle connections are not reused and may be closed.                                                   | `"9m"`             | no       |
 | `encoding`                                 | `string`       | (Deprecated) Encoding of payload read from Kafka.                                                                     | `"otlp_proto"`     | no       |
 | `group_id`                                 | `string`       | Consumer group to consume messages from.                                                                              | `"otel-collector"` | no       |
@@ -57,6 +58,7 @@ You can use the following arguments with `otelcol.receiver.kafka`:
 | `initial_offset`                           | `string`       | Initial offset to use if no offset was previously committed.                                                          | `"latest"`         | no       |
 | `max_fetch_size`                           | `int`          | The maximum number of message bytes to fetch in a request.                                                            | `1048576`          | no       |
 | `max_fetch_wait`                           | `duration`     | The maximum amount of time the broker should wait for `min_fetch_size` bytes to be available before returning anyway. | `"250ms"`          | no       |
+| `max_decompress_batch_bytes`               | `int`          | Maximum size in bytes of a decompressed record batch. Larger batches are rejected.                                    | `1073741824`       | no       |
 | `max_partition_fetch_size`                 | `int`          | The default number of message bytes to fetch per partition in a request.                                              | `1048576`          | no       |
 | `min_fetch_size`                           | `int`          | The minimum number of message bytes to fetch in a request.                                                            | `1`                | no       |
 | `rack_id`                                  | `string`       | The rack identifier for this client. Used for rack-aware replica selection when supported by the brokers.             | `""`               | no       |
@@ -359,11 +361,38 @@ The following arguments are supported:
 | Name                   | Type   | Description                                                                     | Default | Required |
 | ---------------------- | ------ | -------------------------------------------------------------------------------- | ------- | -------- |
 | `independent`          | `bool` | Enables ordered processing by independent partition workers.                    | `false` | no       |
-| `max_buffered_batches` | `int`  | Bounds the number of fetched batches waiting for each partition worker.         | `1`     | no       |
+| `max_buffered_batches` | `int`  | Deprecated. Use `max_prefetch.batches` instead.                                 | `1`     | no       |
 
 Enabling `independent` lets each assigned partition be processed by its own worker, instead of a single event loop handling all partitions in sequence, which can improve throughput when one partition falls behind or the next consumer is slow.
 
 `independent` requires `autocommit.enable` to be `true`.
+
+The `max_buffered_batches` argument is deprecated and will be removed in a future release. Use `max_prefetch` > `batches` instead.
+You can't set `max_buffered_batches` and `max_prefetch` > `batches` to non-default values at the same time.
+
+#### `max_prefetch`
+
+The `max_prefetch` block limits the fetched batches waiting for each independent partition worker.
+
+| Name      | Type  | Description                                                                                        | Default | Required |
+| --------- | ----- | -------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `batches` | `int` | How many fetched batches may wait for each partition worker. Must be greater than `0`.             | `1`     | no       |
+| `bytes`   | `int` | Pauses fetching for a partition once the waiting batches reach this many bytes. `0` means no cap. | `0`     | no       |
+
+The `bytes` limit only takes effect when `batches` is greater than `1`.
+A batch that crosses the limit is still admitted, so the limit can be exceeded by one fetched batch and isn't a hard memory bound.
+
+#### `max_in_flight`
+
+The `max_in_flight` block limits concurrent decode-and-forward calls for each independent partition worker.
+
+| Name      | Type     | Description                                                                                                  | Default       | Required |
+| --------- | -------- | ------------------------------------------------------------------------------------------------------------ | ------------- | -------- |
+| `records` | `int`    | How many calls may run at once for a partition. Above `1`, records may be forwarded out of order.            | `1`           | no       |
+| `bytes`   | `int`    | Caps the bytes of records in flight. `0` means no cap. Only takes effect when `records` is greater than `1`. | `0`           | no       |
+| `window`  | `string` | Either `per_fetch` or `cross_fetch`. `cross_fetch` requires `records` above `1` and `bytes` above `0`.      | `"per_fetch"` | no       |
+
+A single record larger than the `bytes` limit still runs, alone, so the limit isn't a hard per-record bound.
 
 ## Exported fields
 

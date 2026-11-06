@@ -1,0 +1,9 @@
+controller:
+  type: deployment
+  replicas: 1
+  # Beyla must see the PIDs of the processes it instruments.
+  hostPID: true
+alloy:
+  initialDelaySeconds: 1
+  securityContext:
+    privileged: true

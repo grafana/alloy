@@ -227,7 +227,9 @@ type ExplainPlansArguments struct {
 	ScrapeInterval   time.Duration
 	PerScrapeRatio   float64
 	ExcludeDatabases []string
+	IncludeDatabases []string
 	ExcludeUsers     []string
+	IncludeUsers     []string
 	EntryHandler     loki.EntryHandler
 	DBVersion        string
 	TableRegistry    *TableRegistry
@@ -245,7 +247,9 @@ type ExplainPlans struct {
 	queryDenylist       map[string]struct{}
 	finishedQueryCache  map[string]processedQueryInfo
 	excludeDatabases    []string
+	includeDatabases    []string
 	excludeUsers        []string
+	includeUsers        []string
 	perScrapeRatio      float64
 	currentBatchSize    int
 	entryHandler        loki.EntryHandler
@@ -267,7 +271,9 @@ func NewExplainPlan(args ExplainPlansArguments) (*ExplainPlans, error) {
 		scrapeInterval:      args.ScrapeInterval,
 		perScrapeRatio:      args.PerScrapeRatio,
 		excludeDatabases:    args.ExcludeDatabases,
+		includeDatabases:    args.IncludeDatabases,
 		excludeUsers:        args.ExcludeUsers,
+		includeUsers:        args.IncludeUsers,
 		queryCache:          make(map[string]*queryInfo),
 		queryDenylist:       make(map[string]struct{}),
 		finishedQueryCache:  make(map[string]processedQueryInfo),
@@ -410,11 +416,12 @@ func (c *ExplainPlans) Stop() {
 func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 	var selectStatement string
 	var resetTS time.Time
-	excludedDatabasesClause := buildExcludedDatabasesClause(c.excludeDatabases)
-	excludedUsersClause := buildExcludedUsersClause(c.excludeUsers, "pg_get_userbyid(s.userid)")
+	databasesClause := buildDatabaseFilterClause(c.excludeDatabases, c.includeDatabases, "d.datname")
+	usersClause := buildUserFilterClause(c.excludeUsers, c.includeUsers, "pg_get_userbyid(s.userid)")
 	version17Plus := semver.MustParseRange(">=17.0.0")(c.dbVersion)
 	if version17Plus {
-		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", excludedDatabasesClause, excludedUsersClause)
+		// nosemgrep: go.lang.security.audit.database.string-formatted-query.string-formatted-query
+		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", databasesClause, usersClause) // #nosec G201 -- filter values are quote-escaped before interpolation
 	} else {
 		statReset := c.dbConnection.QueryRowContext(ctx, "SELECT stats_reset FROM pg_stat_statements_info")
 		if err := statReset.Err(); err != nil {
@@ -423,7 +430,8 @@ func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 		if err := statReset.Scan(&resetTS); err != nil {
 			return fmt.Errorf("failed to scan stats reset time for explain plans: %w", err)
 		}
-		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "NOW() AT TIME ZONE 'UTC' AS stats_since", excludedDatabasesClause, excludedUsersClause)
+		// nosemgrep: go.lang.security.audit.database.string-formatted-query.string-formatted-query
+		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "NOW() AT TIME ZONE 'UTC' AS stats_since", databasesClause, usersClause) // #nosec G201 -- filter values are quote-escaped before interpolation
 	}
 
 	rs, err := c.dbConnection.QueryContext(ctx, selectStatement)

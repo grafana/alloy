@@ -821,6 +821,14 @@ func TestArguments_Validate_Beyla341Options(t *testing.T) {
 		{"instrument_all_local with services", Arguments{
 			Discovery: Discovery{InstrumentAllLocal: true, Services: Services{{OpenPorts: "80"}}},
 		}, "discovery.instrument_all_local can't be combined"},
+		{"instrument_all_local with open_port", Arguments{
+			Port:      "80",
+			Discovery: Discovery{InstrumentAllLocal: true},
+		}, "discovery.instrument_all_local can't be combined"},
+		{"instrument_all_local with executable_name", Arguments{
+			ExecutableName: "app",
+			Discovery:      Discovery{InstrumentAllLocal: true},
+		}, "discovery.instrument_all_local can't be combined"},
 		{"instrument_all_local with survey", Arguments{
 			Metrics:   appFeatures,
 			Discovery: Discovery{InstrumentAllLocal: true, Survey: SurveyServices{{Service: Service{Path: "*"}}}},
@@ -835,6 +843,9 @@ func TestArguments_Validate_Beyla341Options(t *testing.T) {
 		}, "socket_apps.non_root requires socket_apps.enabled"},
 		{"survey entry without criteria", Arguments{
 			Metrics:   appFeatures,
+			Discovery: Discovery{Survey: SurveyServices{{Service: Service{Name: "svc"}}}},
+		}, "discovery.survey[0] must define at least one of"},
+		{"survey is validated without application features", Arguments{
 			Discovery: Discovery{Survey: SurveyServices{{Service: Service{Name: "svc"}}}},
 		}, "discovery.survey[0] must define at least one of"},
 	}

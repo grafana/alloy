@@ -1092,7 +1092,7 @@ The `openshift` block supports the following attributes:
 | Attribute | Type     | Description                                              | Default     | Required |
 | --------- | -------- | -------------------------------------------------------- | ----------- | -------- |
 | `address` | `string` | Address of the OpenShift API server.                     | _See below_ | no       |
-| `token`   | `string` | Token used to identify against the OpenShift API server. | ""          | no       |
+| `token`   | `secret` | Token used to identify against the OpenShift API server. | ""          | no       |
 
 The "get", "watch", and "list" permissions are required:
 

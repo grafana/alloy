@@ -1,0 +1,119 @@
+// otel-gen sends metrics and traces here through the Alloy Service.
+otelcol.receiver.otlp "default" {
+  http {}
+
+  output {
+    metrics = [otelcol.processor.attributes.default.input, otelcol.exporter.prometheus.otlp_to_prom.input]
+    traces  = [otelcol.processor.attributes.default.input]
+  }
+}
+
+otelcol.processor.attributes "default" {
+  action {
+    key    = "alloy_test_name"
+    value  = "otlp"
+    action = "insert"
+  }
+
+  output {
+    metrics = [otelcol.processor.batch.default.input]
+    traces  = [otelcol.processor.batch.default.input]
+  }
+}
+
+otelcol.processor.batch "default" {
+  output {
+    metrics = [otelcol.exporter.otlphttp.mimir.input]
+    traces  = [otelcol.exporter.otlphttp.trace_sink.input, otelcol.exporter.otlphttp.failing.input]
+  }
+}
+
+// OTLP metrics, written as is.
+otelcol.exporter.otlphttp "mimir" {
+  client {
+    endpoint = "http://mimir:9009/otlp"
+
+    tls {
+      insecure             = true
+      insecure_skip_verify = true
+    }
+  }
+}
+
+// OTLP metrics converted to Prometheus and remote written.
+otelcol.exporter.prometheus "otlp_to_prom" {
+  forward_to = [prometheus.remote_write.otlp_to_prom.receiver]
+}
+
+prometheus.remote_write "otlp_to_prom" {
+  endpoint {
+    url                    = "http://mimir:9009/api/v1/push"
+    send_native_histograms = true
+  }
+
+  external_labels = {
+    alloy_test_name = "otlp-to-prom",
+  }
+}
+
+// Traces go to one exporter that succeeds and one that fails, so Alloy reports
+// both sent and failed spans.
+//
+// TODO: send to a Tempo dependency instead of the sink below once another
+// test needs one.
+otelcol.exporter.otlphttp "trace_sink" {
+  client {
+    endpoint = "http://localhost:4319"
+
+    tls {
+      insecure = true
+    }
+  }
+}
+
+otelcol.receiver.otlp "trace_sink" {
+  http {
+    endpoint = "0.0.0.0:4319"
+  }
+
+  output {
+    traces = [otelcol.exporter.debug.trace_sink.input]
+  }
+}
+
+otelcol.exporter.debug "trace_sink" {}
+
+otelcol.exporter.otlphttp "failing" {
+  client {
+    endpoint = "http://localhost:1"
+
+    tls {
+      insecure = true
+    }
+  }
+
+  retry_on_failure {
+    enabled = false
+  }
+}
+
+// Alloy's own metrics, including the otelcol ones the k8s-monitoring chart
+// relies on.
+prometheus.exporter.self "alloy" {}
+
+prometheus.scrape "alloy" {
+  targets         = prometheus.exporter.self.alloy.targets
+  forward_to      = [prometheus.remote_write.alloy.receiver]
+  scrape_interval = "1s"
+  scrape_timeout  = "500ms"
+}
+
+prometheus.remote_write "alloy" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+  }
+
+  external_labels = {
+    alloy_test_name = "alloy-self",
+  }
+}
