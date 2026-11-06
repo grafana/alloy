@@ -178,11 +178,14 @@ func convertPack(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 		addInvalidStageError(diags, cfg, err)
 		return stages.StageConfig{}, false
 	}
+	fPack := &stages.PackConfig{}
+	fPack.SetToDefault()
+	fPack.Labels = pPack.Labels
+	if pPack.IngestTimestamp != nil {
+		fPack.IngestTimestamp = *pPack.IngestTimestamp
+	}
 	return stages.StageConfig{
-		PackConfig: &stages.PackConfig{
-			Labels:          pPack.Labels,
-			IngestTimestamp: defaultTrue(pPack.IngestTimestamp),
-		},
+		PackConfig: fPack,
 	}, true
 }
 
@@ -194,14 +197,17 @@ func convertMultiline(cfg any, diags *diag.Diagnostics) (stages.StageConfig, boo
 		return stages.StageConfig{}, false
 	}
 
-	// Promtail uses 3s for max_wait_time and 128 for max_lines when they are unset.
-	maxWaitTime := 3 * time.Second
+	fMulti := &stages.MultilineConfig{}
+	fMulti.SetToDefault()
 	if pMulti.MaxWaitTime != nil {
 		d, err := time.ParseDuration(*pMulti.MaxWaitTime)
 		if err != nil {
 			diags.Add(diag.SeverityLevelError, fmt.Sprintf("invalid pipeline_stages.multiline.max_wait_time: %s", *pMulti.MaxWaitTime))
 		}
-		maxWaitTime = d
+		fMulti.MaxWaitTime = d
+	}
+	if pMulti.MaxLines != nil {
+		fMulti.MaxLines = *pMulti.MaxLines
 	}
 
 	expr, err := regexp.Compile(defaultEmpty(pMulti.Expression))
@@ -209,14 +215,10 @@ func convertMultiline(cfg any, diags *diag.Diagnostics) (stages.StageConfig, boo
 		addInvalidStageError(diags, cfg, err)
 		return stages.StageConfig{}, false
 	}
+	fMulti.Expression = expr
 
 	return stages.StageConfig{
-		MultilineConfig: &stages.MultilineConfig{
-			Expression:   expr,
-			MaxLines:     defaultUint64(pMulti.MaxLines, 128),
-			MaxWaitTime:  maxWaitTime,
-			TrimNewlines: true,
-		},
+		MultilineConfig: fMulti,
 	}, true
 }
 
@@ -491,15 +493,14 @@ func convertMetrics(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool)
 func toAlloyMetricsProcessStage(name string, pMetric promtailstages.MetricConfig, diags *diag.Diagnostics) (stages.MetricConfig, bool) {
 	var fMetric stages.MetricConfig
 
-	// Promtail uses 5m for max_idle_duration when it is unset.
-	maxIdle := 5 * time.Minute
+	var maxIdle *time.Duration
 	if pMetric.IdleDuration != nil {
 		d, err := time.ParseDuration(*pMetric.IdleDuration)
 		if err != nil {
 			diags.Add(diag.SeverityLevelError, fmt.Sprintf("failed to parse duration: %s - %v", *pMetric.IdleDuration, err))
 			return stages.MetricConfig{}, false
 		}
-		maxIdle = d
+		maxIdle = &d
 	}
 
 	// Create metric according to type
@@ -510,47 +511,53 @@ func toAlloyMetricsProcessStage(name string, pMetric promtailstages.MetricConfig
 			diags.Add(diag.SeverityLevelError, fmt.Sprintf("failed to create counter metric process stage: %v", err))
 			return stages.MetricConfig{}, false
 		}
-		fMetric.Counter = &metric.CounterConfig{
-			Name:            name,
-			Description:     pMetric.Description,
-			Source:          defaultEmpty(pMetric.Source),
-			Prefix:          pMetric.Prefix,
-			MaxIdle:         maxIdle,
-			Value:           defaultEmpty(cfg.Value),
-			Action:          cfg.Action,
-			MatchAll:        defaultFalse(cfg.MatchAll),
-			CountEntryBytes: defaultFalse(cfg.CountBytes),
+		fMetric.Counter = &metric.CounterConfig{}
+		fMetric.Counter.SetToDefault()
+		fMetric.Counter.Name = name
+		fMetric.Counter.Description = pMetric.Description
+		fMetric.Counter.Source = defaultEmpty(pMetric.Source)
+		fMetric.Counter.Prefix = pMetric.Prefix
+		if maxIdle != nil {
+			fMetric.Counter.MaxIdle = *maxIdle
 		}
+		fMetric.Counter.Value = defaultEmpty(cfg.Value)
+		fMetric.Counter.Action = cfg.Action
+		fMetric.Counter.MatchAll = defaultFalse(cfg.MatchAll)
+		fMetric.Counter.CountEntryBytes = defaultFalse(cfg.CountBytes)
 	case promtailstages.MetricTypeGauge:
 		cfg, err := promtailmetric.ParseGaugeConfig(pMetric.Config)
 		if err != nil {
 			diags.Add(diag.SeverityLevelError, fmt.Sprintf("failed to create gauge metric process stage: %v", err))
 			return stages.MetricConfig{}, false
 		}
-		fMetric.Gauge = &metric.GaugeConfig{
-			Name:        name,
-			Description: pMetric.Description,
-			Source:      defaultEmpty(pMetric.Source),
-			Prefix:      pMetric.Prefix,
-			MaxIdle:     maxIdle,
-			Value:       defaultEmpty(cfg.Value),
-			Action:      cfg.Action,
+		fMetric.Gauge = &metric.GaugeConfig{}
+		fMetric.Gauge.SetToDefault()
+		fMetric.Gauge.Name = name
+		fMetric.Gauge.Description = pMetric.Description
+		fMetric.Gauge.Source = defaultEmpty(pMetric.Source)
+		fMetric.Gauge.Prefix = pMetric.Prefix
+		if maxIdle != nil {
+			fMetric.Gauge.MaxIdle = *maxIdle
 		}
+		fMetric.Gauge.Value = defaultEmpty(cfg.Value)
+		fMetric.Gauge.Action = cfg.Action
 	case promtailstages.MetricTypeHistogram:
 		cfg, err := promtailmetric.ParseHistogramConfig(pMetric.Config)
 		if err != nil {
 			diags.Add(diag.SeverityLevelError, fmt.Sprintf("failed to create histogram metric process stage: %v", err))
 			return stages.MetricConfig{}, false
 		}
-		fMetric.Histogram = &metric.HistogramConfig{
-			Name:        name,
-			Description: pMetric.Description,
-			Source:      defaultEmpty(pMetric.Source),
-			Prefix:      pMetric.Prefix,
-			MaxIdle:     maxIdle,
-			Value:       defaultEmpty(cfg.Value),
-			Buckets:     cfg.Buckets,
+		fMetric.Histogram = &metric.HistogramConfig{}
+		fMetric.Histogram.SetToDefault()
+		fMetric.Histogram.Name = name
+		fMetric.Histogram.Description = pMetric.Description
+		fMetric.Histogram.Source = defaultEmpty(pMetric.Source)
+		fMetric.Histogram.Prefix = pMetric.Prefix
+		if maxIdle != nil {
+			fMetric.Histogram.MaxIdle = *maxIdle
 		}
+		fMetric.Histogram.Value = defaultEmpty(cfg.Value)
+		fMetric.Histogram.Buckets = cfg.Buckets
 	}
 	return fMetric, true
 }
@@ -650,20 +657,6 @@ func defaultEmpty(s *string) string {
 func defaultFalse(s *bool) bool {
 	if s == nil {
 		return false
-	}
-	return *s
-}
-
-func defaultTrue(s *bool) bool {
-	if s == nil {
-		return true
-	}
-	return *s
-}
-
-func defaultUint64(s *uint64, def uint64) uint64 {
-	if s == nil {
-		return def
 	}
 	return *s
 }
