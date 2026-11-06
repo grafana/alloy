@@ -2170,3 +2170,13 @@ func newTestComponent(t *testing.T, openSQL func(string, string) (*sql.DB, error
 	}})
 	return c
 }
+
+func Test_explainPlansRegistry(t *testing.T) {
+	inst := &dbInstance{registry: prometheus.NewRegistry()}
+
+	c := &Component{}
+	require.Nil(t, c.explainPlansRegistry(inst), "off by default")
+
+	c.args.ExplainPlansArguments.EnableFullScanMetrics = true
+	require.Same(t, inst.registry, c.explainPlansRegistry(inst))
+}
