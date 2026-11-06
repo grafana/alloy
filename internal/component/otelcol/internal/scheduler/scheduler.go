@@ -144,10 +144,9 @@ func (cs *Scheduler) Run(ctx context.Context) error {
 	defer func() {
 		cs.schedMut.Lock()
 		defer cs.schedMut.Unlock()
+		// Pause before stopping and stay paused: resuming would let the waiting calls reach the stopped components.
+		cs.onPause()
 		stopComponents(context.Background(), cs.log, cs.schedComponents...)
-		// this Resume call should not be needed but is added for robustness to ensure that
-		// it does not ever exit in "paused" state.
-		cs.onResume()
 	}()
 
 	<-ctx.Done()

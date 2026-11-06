@@ -2,6 +2,7 @@ package scheduler_test
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -115,9 +116,10 @@ func TestScheduler(t *testing.T) {
 		// Stop the scheduler
 		cancel()
 
+		// Shutdown pauses before stopping the components and doesn't resume, so no data reaches them afterwards.
 		require.EventuallyWithT(t, func(t *assert.CollectT) {
-			assert.Equal(t, 3, toInt(pauseCalls), "pause callback should not be called on shutdown")
-			assert.Equal(t, 4, toInt(resumeCalls), "resume callback should be called on shutdown")
+			assert.Equal(t, 4, toInt(pauseCalls), "pause callback should be called on shutdown")
+			assert.Equal(t, 3, toInt(resumeCalls), "resume callback should not be called on shutdown")
 		}, 5*time.Second, 10*time.Millisecond, "pause/resume callbacks not called correctly")
 	})
 
@@ -147,6 +149,65 @@ func TestScheduler(t *testing.T) {
 		require.NoError(t, started.Wait(5*time.Second), "component did not start")
 		cancel()
 		require.NoError(t, stopped.Wait(5*time.Second), "component did not shutdown")
+	})
+
+	t.Run("Shutdown pauses before stopping components", func(t *testing.T) {
+		var (
+			mut    sync.Mutex
+			events []string
+			record = func(event string) {
+				mut.Lock()
+				defer mut.Unlock()
+				events = append(events, event)
+			}
+			l  = util.TestAlloyLogger(t)
+			cs = scheduler.NewWithPauseCallbacks(
+				l.Slog(),
+				func() { record("pause") },
+				func() { record("resume") },
+			)
+			h = scheduler.NewHost()
+		)
+
+		ctx, cancel := context.WithCancel(componenttest.TestContext(t))
+		defer cancel()
+
+		runDone := make(chan struct{})
+		go func() {
+			defer close(runDone)
+			err := cs.Run(ctx)
+			require.NoError(t, err)
+		}()
+
+		started := util.NewWaitTrigger()
+		component := &fakeComponent{
+			StartFunc: func(_ context.Context, _ otelcomponent.Host) error {
+				started.Trigger()
+				return nil
+			},
+			ShutdownFunc: func(_ context.Context) error {
+				record("shutdown")
+				return nil
+			},
+		}
+		cs.Schedule(ctx, func() {}, h, component)
+		require.NoError(t, started.Wait(5*time.Second), "component did not start")
+
+		// Only look at what the shutdown does.
+		mut.Lock()
+		events = nil
+		mut.Unlock()
+
+		cancel()
+		select {
+		case <-runDone:
+		case <-time.After(5 * time.Second):
+			t.Fatal("Run did not return")
+		}
+
+		mut.Lock()
+		defer mut.Unlock()
+		require.Equal(t, []string{"pause", "shutdown"}, events, "shutdown should pause, then stop the components, and not resume")
 	})
 }
 
