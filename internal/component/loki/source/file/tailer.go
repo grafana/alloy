@@ -76,7 +76,7 @@ func newTailer(
 	}
 }
 
-func (t *tailer) Run(ctx context.Context) {
+func (t *tailer) Run(ctx, _ context.Context) {
 	// Check if context was canceled between two calls to Run.
 	select {
 	case <-ctx.Done():

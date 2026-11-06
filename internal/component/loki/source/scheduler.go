@@ -38,16 +38,15 @@ func (s *Scheduler[Key]) ScheduleSource(source Source[Key]) {
 	}
 
 	ctx, cancel := context.WithCancel(s.ctx)
-	st := scheduledSource[Key]{
+	ss := scheduledSource[Key]{
 		ctx:    ctx,
 		cancel: cancel,
 		source: source,
 	}
 
-	s.sources[k] = st
-
+	s.sources[k] = ss
 	s.running.Go(func() {
-		st.source.Run(st.ctx)
+		ss.source.Run(ss.ctx, s.ctx)
 	})
 }
 
@@ -103,9 +102,12 @@ func (s *Scheduler[Key]) Reset() {
 }
 
 type Source[Key comparable] interface {
-	// Run should start the source.
-	// It should run until there is no more work or context is canceled.
-	Run(ctx context.Context)
+	// Run runs the source and blocks until there is no more work or it is stopped.
+	// ctx is canceled when the source is removed or the scheduler stops. The source
+	// should then take on no new work, finish what it has already read, and return.
+	// stop is canceled only when the scheduler stops, and ctx is then canceled as well.
+	// The source must then return as soon as possible, dropping anything not yet delivered.
+	Run(ctx, stop context.Context)
 	// Key is used to uniquely identify the source.
 	Key() Key
 }
@@ -126,11 +128,11 @@ type SourceWithRetry[Key comparable] struct {
 	config backoff.Config
 }
 
-func (s *SourceWithRetry[Key]) Run(ctx context.Context) {
+func (s *SourceWithRetry[Key]) Run(ctx, stop context.Context) {
 	backoff := backoff.New(ctx, s.config)
 
 	for backoff.Ongoing() {
-		s.source.Run(ctx)
+		s.source.Run(ctx, stop)
 		backoff.Wait()
 	}
 }
