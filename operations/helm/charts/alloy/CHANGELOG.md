@@ -1,17 +1,6 @@
 # Changelog
 
-> _Contributors should read our [contributors guide][] for instructions on how
-> to update the changelog._
-
-This document contains a historical list of changes between releases. Only
-changes that impact end-user behavior are listed; changes to documentation or
-internal API changes are not present.
-
-Unreleased
-----------
-
-1.15.0 (2026-10-29)
-----------
+## [1.15.0](https://github.com/grafana/alloy/compare/helm-chart/1.14.4...helm-chart/1.15.0) (2026-10-29)
 
 ### Enhancements
 

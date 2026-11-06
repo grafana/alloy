@@ -41,6 +41,10 @@
         {
           "type": "generic",
           "path": "collector/VERSION"
+        },
+        {
+          "type": "generic",
+          "path": "operations/helm/charts/alloy/Chart.yaml"
         }
       ]
     },
@@ -56,6 +60,14 @@
           "path": "/go.mod"
         }
       ]
+    },
+    "operations/helm/charts/alloy": {
+      "component": "helm-chart",
+      "package-name": "alloy",
+      "release-type": "helm",
+      "include-component-in-tag": true,
+      "include-v-in-tag": false,
+      "skip-github-release": true
     }
   }
 }
