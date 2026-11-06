@@ -28,7 +28,7 @@ type testSource struct {
 	running    atomic.Bool
 }
 
-func (t *testSource) Run(ctx context.Context) {
+func (t *testSource) Run(ctx, _ context.Context) {
 	t.numStarts.Inc()
 	t.running.Store(true)
 	defer t.running.Store(false)
@@ -48,7 +48,7 @@ func (t *testSource) IsRunning() bool {
 }
 
 func TestScheduler(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
 	t.Run("should ignore duplicated keys", func(t *testing.T) {
 		scheduler := NewScheduler[int]()
@@ -92,7 +92,7 @@ func TestScheduler(t *testing.T) {
 }
 
 func TestScheduler_SourceWithRetry(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
 	scheduler := NewScheduler[int]()
 	s := newTestSource(1, true)
@@ -105,4 +105,60 @@ func TestScheduler_SourceWithRetry(t *testing.T) {
 	time.Sleep(1 * time.Second)
 	require.True(t, s.numStarts.Load() > 1)
 	scheduler.Stop()
+}
+
+var _ Source[int] = (*contextSource)(nil)
+
+// contextSource keeps the contexts it was run with so tests can inspect them.
+type contextSource struct {
+	key     int
+	started chan struct{}
+	ctx     context.Context
+	stop    context.Context
+}
+
+func newContextSource(key int) *contextSource {
+	return &contextSource{key: key, started: make(chan struct{})}
+}
+
+func (c *contextSource) Run(ctx, stop context.Context) {
+	c.ctx, c.stop = ctx, stop
+	close(c.started)
+	<-ctx.Done()
+}
+
+func (c *contextSource) Key() int {
+	return c.key
+}
+
+func TestScheduler_Contexts(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	t.Run("removing a source cancels ctx but not stop", func(t *testing.T) {
+		scheduler := NewScheduler[int]()
+		s := newContextSource(1)
+		scheduler.ScheduleSource(s)
+		<-s.started
+
+		scheduler.StopSource(s)
+
+		require.Eventually(t, func() bool {
+			return s.ctx.Err() != nil
+		}, 3*time.Second, 10*time.Millisecond)
+		require.NoError(t, s.stop.Err())
+
+		scheduler.Stop()
+	})
+
+	t.Run("stopping the scheduler cancels stop and ctx", func(t *testing.T) {
+		scheduler := NewScheduler[int]()
+		s := newContextSource(1)
+		scheduler.ScheduleSource(s)
+		<-s.started
+
+		// Stop waits for all sources to return.
+		scheduler.Stop()
+		require.Error(t, s.stop.Err())
+		require.Error(t, s.ctx.Err())
+	})
 }

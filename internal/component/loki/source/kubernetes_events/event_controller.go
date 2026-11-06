@@ -64,7 +64,7 @@ func newEventController(opts eventControllerOptions) *eventController {
 	}
 }
 
-func (ctrl *eventController) Run(ctx context.Context) {
+func (ctrl *eventController) Run(ctx, _ context.Context) {
 	defer ctrl.handler.Stop()
 
 	ctrl.opts.Log.Info("watching events for namespace", "namespace", ctrl.opts.Namespace)
