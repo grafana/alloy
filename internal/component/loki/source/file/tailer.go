@@ -10,87 +10,23 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/util"
 )
 
-type sendFunc func(ctx context.Context, entry loki.Entry) error
-
-func sendToV1(recv loki.LogsReceiver) sendFunc {
-	return func(ctx context.Context, entry loki.Entry) error {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case recv.Chan() <- entry:
-			return nil
-		}
-	}
-}
-
-var consumerBackoffConfig = backoff.Config{
-	MinBackoff: 1 * time.Millisecond,
-	MaxBackoff: 1 * time.Second,
-}
-
-func sendToV2(logger *slog.Logger, c loki.Consumer) sendFunc {
-	// The batch is reused to reduce allocations, so each tailer needs its own sendToV2.
-	batch := loki.NewBatch()
-
-	return func(ctx context.Context, entry loki.Entry) error {
-		var retry *backoff.Backoff
-		for {
-			// Rebuild the batch on every attempt, since downstream may have modified it.
-			batch.Reset()
-			batch.AddEntry(entry.Labels, entry.Created(), entry.Entry)
-
-			// The error handling must follow the Consume contract, including the order of the checks.
-			err := c.Consume(ctx, batch)
-			if err != nil {
-				if ctx.Err() != nil {
-					return err
-				}
-
-				if !errors.Is(err, loki.ErrConsumerStopped) {
-					return fmt.Errorf("unexpected error from consumer, this is most likely a bug: %w", err)
-				}
-
-				if retry == nil {
-					retry = backoff.New(ctx, consumerBackoffConfig)
-				}
-
-				if source.AllowRetryWarning() {
-					logger.Warn("failed to send entry, retrying until it is accepted", "err", err, "retries", retry.NumRetries())
-				}
-
-				retry.Wait()
-				if !retry.Ongoing() {
-					return retry.Err()
-				}
-
-				continue
-			}
-
-			return nil
-		}
-	}
-}
-
 type tailer struct {
 	metrics   *metrics
 	logger    *slog.Logger
-	send      sendFunc
+	batcher   loki.StreamBatcher
 	positions positions.Positions
 
 	key                positions.Entry
-	labels             model.LabelSet
 	legacyPositionUsed bool
 
 	tailFromEnd          bool
@@ -111,19 +47,20 @@ type tailer struct {
 func newTailer(
 	metrics *metrics,
 	logger *slog.Logger,
-	send sendFunc,
+	newBatcher func(labels model.LabelSet) loki.StreamBatcher,
 	pos positions.Positions,
 	componentStopping func() bool,
 	opts sourceOptions,
 ) *tailer {
 
+	labels := opts.labels.Merge(model.LabelSet{labelFilename: model.LabelValue(opts.path)})
+
 	return &tailer{
 		metrics:              metrics,
-		logger:               logger,
-		send:                 send,
+		logger:               logger.With("component", "tailer", "path", opts.path),
+		batcher:              newBatcher(labels),
 		positions:            pos,
 		key:                  positions.Entry{Path: opts.path, Labels: opts.labels.String()},
-		labels:               opts.labels.Merge(model.LabelSet{labelFilename: model.LabelValue(opts.path)}),
 		running:              atomic.NewBool(false),
 		tailFromEnd:          opts.tailFromEnd,
 		legacyPositionUsed:   opts.legacyPositionUsed,
@@ -224,7 +161,7 @@ func (t *tailer) initRun() (int64, error) {
 	return pos, nil
 }
 
-// tail reads lines from the file and forwards them to the receiver, periodically
+// tail reads lines from the file and forwards them to the batcher, periodically
 // recording the read offset. It blocks until ctx is canceled or the file is fully read.
 func (t *tailer) tail(ctx context.Context, pos int64) {
 	t.running.Store(true)
@@ -236,16 +173,24 @@ func (t *tailer) tail(ctx context.Context, pos int64) {
 		time.Sleep(t.decompression.InitialDelay)
 	}
 
+	// statsInterval is how often the file metrics are updated while the tailer is delivering entries.
+	const statsInterval = 10 * time.Second
+
 	var (
-		lastOffset          = pos
-		positionInterval    = t.positions.SyncPeriod()
-		lastUpdatedPosition = time.Time{}
+		lastUpdatedStats = time.Time{}
+
+		// readOffset is the offset after the last line added to the batcher,
+		// deliveredOffset after the last flushed one. Only deliveredOffset is
+		// stored in positions.
+		readOffset      = pos
+		deliveredOffset = pos
 	)
 
 	defer func() {
 		t.running.Store(false)
-		size, _ := t.file.Size()
-		t.updateStats(lastOffset, size)
+
+		t.positions.Put(t.key.Path, t.key.Labels, deliveredOffset)
+		t.updateStats(t.file, deliveredOffset)
 
 		if err := t.file.Close(); err != nil {
 			if util.IsEphemeralOrFileClosed(err) {
@@ -267,65 +212,76 @@ func (t *tailer) tail(ctx context.Context, pos int64) {
 		}
 	}()
 
-	nextLine := func() (*tail.Line, error) {
-		for {
-			select {
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			default:
+	// flush delivers added entries and then advances deliveredOffset. Entries that
+	// fail to be delivered are dropped, unless the tailer is stopping so they are
+	// read again on the next run. Metrics are always updated when eof is true.
+	flush := func(eof bool) {
+		if err := t.batcher.Flush(ctx); err != nil {
+			if ctx.Err() != nil {
+				return
 			}
+			t.logger.Error("failed to send entries, dropping them", "err", err)
+		}
 
-			line, err := t.file.Next()
-			if !errors.Is(err, io.EOF) {
-				return line, err
-			}
+		deliveredOffset = readOffset
+		t.positions.Put(t.key.Path, t.key.Labels, deliveredOffset)
 
-			if t.decompression.Enabled {
-				return t.file.Flush()
-			}
-
-			if err := t.file.Wait(ctx); err != nil {
-				return nil, err
-			}
+		// The metrics need a stat call, so outside of EOF they are only updated once per interval.
+		// FIXME(kalleep): We can remove the inteval check once we have fully migrated to V2.
+		if eof || time.Since(lastUpdatedStats) >= statsInterval {
+			lastUpdatedStats = time.Now()
+			t.updateStats(t.file, deliveredOffset)
 		}
 	}
 
 	for {
-		line, err := nextLine()
-		if err != nil {
-			if !errors.Is(err, context.Canceled) && !errors.Is(err, io.EOF) {
-				t.logger.Error("failed to tail file", "err", err)
-			}
+		if ctx.Err() != nil {
 			return
 		}
 
-		t.metrics.readLines.WithLabelValues(t.key.Path).Inc()
-		err = t.send(ctx, loki.NewEntry(t.labels, push.Entry{
-			Timestamp: line.Time,
-			Line:      line.Text,
-		}))
-
-		if err != nil {
-			if ctx.Err() != nil {
-				return
-			}
-			t.logger.Error("failed to send entry, dropping it", "err", err)
+		line, err := t.file.Next()
+		if errors.Is(err, io.EOF) && t.decompression.Enabled {
+			// Compressed files are read once, so return any trailing data without a newline.
+			line, err = t.file.Flush()
 		}
 
-		lastOffset = line.Offset
-		if time.Since(lastUpdatedPosition) >= positionInterval {
-			lastUpdatedPosition = time.Now()
-			size, _ := t.file.Size()
-			t.updateStats(lastOffset, size)
+		switch {
+		case errors.Is(err, io.EOF):
+			// Nothing more to read right now so we flush what we have.
+			flush(true)
+			if t.decompression.Enabled {
+				return
+			}
+			if err := t.file.Wait(ctx); err != nil {
+				if !errors.Is(err, context.Canceled) && !errors.Is(err, io.EOF) {
+					t.logger.Error("failed to wait for new data", "err", err)
+				}
+				return
+			}
+			continue
+		case err != nil:
+			// Lines read before the error are not guaranteed to be read again, so deliver them.
+			flush(false)
+			t.logger.Error("failed to tail file", "err", err)
+			return
+		}
+
+		readOffset = line.Offset
+		t.metrics.readLines.WithLabelValues(t.key.Path).Inc()
+		full := t.batcher.Add(push.Entry{
+			Timestamp: line.Time,
+			Line:      line.Text,
+		})
+		if full {
+			flush(false)
 		}
 	}
 }
 
-func (t *tailer) updateStats(offset int64, size int64) {
-	// Update metrics and the positions file together so the reported offset stays consistent.
+func (t *tailer) updateStats(f *tail.File, offset int64) {
+	size, _ := f.Size()
 	t.metrics.totalBytes.WithLabelValues(t.key.Path).Set(float64(size))
 	t.metrics.readBytes.WithLabelValues(t.key.Path).Set(float64(offset))
-	t.positions.Put(t.key.Path, t.key.Labels, offset)
 }
 
 func (t *tailer) Key() positions.Entry {

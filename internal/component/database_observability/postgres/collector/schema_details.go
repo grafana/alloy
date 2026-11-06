@@ -335,6 +335,7 @@ type SchemaDetailsArguments struct {
 	DSN              string
 	CollectInterval  time.Duration
 	ExcludeDatabases []string
+	IncludeDatabases []string
 	EntryHandler     loki.EntryHandler
 
 	Logger *slog.Logger
@@ -348,6 +349,7 @@ type SchemaDetails struct {
 	dbConnectionFactory databaseConnectionFactory
 	collectInterval     time.Duration
 	excludeDatabases    []string
+	includeDatabases    []string
 	entryHandler        loki.EntryHandler
 
 	// lastEmittedAt records the wall-clock time at which OP_CREATE_STATEMENT
@@ -380,6 +382,7 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 		dbConnectionFactory: factory,
 		collectInterval:     args.CollectInterval,
 		excludeDatabases:    args.ExcludeDatabases,
+		includeDatabases:    args.IncludeDatabases,
 		entryHandler:        args.EntryHandler,
 		lastEmittedAt:       map[database]map[string]time.Time{},
 		now:                 time.Now,
@@ -442,7 +445,7 @@ func (c *SchemaDetails) Stop() {
 }
 
 func (c *SchemaDetails) getAllDatabases(ctx context.Context) ([]string, error) {
-	databases, err := discoverDatabases(ctx, c.initialConnection, c.excludeDatabases)
+	databases, err := discoverDatabases(ctx, c.initialConnection, c.excludeDatabases, c.includeDatabases)
 	if err != nil {
 		c.logger.Error("failed to discover databases", "err", err)
 		return nil, err

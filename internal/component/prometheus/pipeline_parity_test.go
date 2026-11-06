@@ -178,6 +178,10 @@ func parityPipelines() []parityPipeline {
 						_, _ = hookCalls.record(0, l, parityEvent{kind: "st_hook", t: t, st: st})
 						return next.AppendSTZeroSample(ref, l, t, st)
 					}),
+					prometheus.WithHistogramSTZeroSampleHook(func(ref storage.SeriesRef, l labels.Labels, t, st int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error) {
+						_, _ = hookCalls.record(0, l, parityEvent{kind: "histogram_st_hook", t: t, st: st, h: h, fh: fh})
+						return next.AppendHistogramSTZeroSample(ref, l, t, st, h, fh)
+					}),
 				), append(dests, hookCalls), nil
 			},
 		},
