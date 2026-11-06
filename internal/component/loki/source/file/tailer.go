@@ -35,8 +35,6 @@ type tailer struct {
 
 	running *atomic.Bool
 
-	componentStopping func() bool
-
 	report sync.Once
 
 	file          *tail.File
@@ -49,7 +47,6 @@ func newTailer(
 	logger *slog.Logger,
 	newBatcher func(labels model.LabelSet) loki.StreamBatcher,
 	pos positions.Positions,
-	componentStopping func() bool,
 	opts sourceOptions,
 ) *tailer {
 
@@ -69,19 +66,16 @@ func newTailer(
 			MinPollFrequency: opts.fileWatch.MinPollFrequency,
 			MaxPollFrequency: opts.fileWatch.MaxPollFrequency,
 		},
-		componentStopping: componentStopping,
-		report:            sync.Once{},
-		encoding:          opts.encoding,
-		decompression:     opts.decompressionConfig,
+		report:        sync.Once{},
+		encoding:      opts.encoding,
+		decompression: opts.decompressionConfig,
 	}
 }
 
-func (t *tailer) Run(ctx context.Context) {
+func (t *tailer) Run(ctx, stop context.Context) {
 	// Check if context was canceled between two calls to Run.
-	select {
-	case <-ctx.Done():
+	if ctx.Err() != nil {
 		return
-	default:
 	}
 
 	pos, err := t.initRun()
@@ -97,7 +91,7 @@ func (t *tailer) Run(ctx context.Context) {
 
 	// We call report so that retries won't log.
 	t.report.Do(func() {})
-	t.tail(ctx, pos)
+	t.tail(ctx, stop, pos)
 }
 
 func (t *tailer) initRun() (int64, error) {
@@ -161,9 +155,11 @@ func (t *tailer) initRun() (int64, error) {
 	return pos, nil
 }
 
-// tail reads lines from the file and forwards them to the batcher, periodically
-// recording the read offset. It blocks until ctx is canceled or the file is fully read.
-func (t *tailer) tail(ctx context.Context, pos int64) {
+// tail forwards lines from the file to the batcher. It returns when ctx or stop
+// is canceled, or when a file that is read once reaches the end.
+// If ctx is canceled it delivers what is left in the file first, if stop is
+// canceled it returns without reading more.
+func (t *tailer) tail(ctx, stop context.Context, pos int64) {
 	t.running.Store(true)
 	t.metrics.filesActive.Add(1.)
 	t.logger.Info("start tailing file")
@@ -173,12 +169,11 @@ func (t *tailer) tail(ctx context.Context, pos int64) {
 		time.Sleep(t.decompression.InitialDelay)
 	}
 
-	// statsInterval is how often the file metrics are updated while the tailer is delivering entries.
-	const statsInterval = 10 * time.Second
+	// metricsInterval is how often the file metrics are updated while the tailer is delivering entries.
+	const metricsInterval = 10 * time.Second
+	var lastUpdatedMetrics = time.Time{}
 
 	var (
-		lastUpdatedStats = time.Time{}
-
 		// readOffset is the offset after the last line added to the batcher,
 		// deliveredOffset after the last flushed one. Only deliveredOffset is
 		// stored in positions.
@@ -186,74 +181,35 @@ func (t *tailer) tail(ctx context.Context, pos int64) {
 		deliveredOffset = pos
 	)
 
-	defer func() {
-		t.running.Store(false)
+	defer func() { t.finish(stop, deliveredOffset) }()
 
-		t.positions.Put(t.key.Path, t.key.Labels, deliveredOffset)
-		t.updateStats(t.file, deliveredOffset)
-
-		if err := t.file.Close(); err != nil {
-			if util.IsEphemeralOrFileClosed(err) {
-				// Don't log as error if the file is already closed, or we got an ephemeral error - it's a common case
-				// when files are rotating while being read and the tailer would have stopped correctly anyway.
-				t.logger.Debug("failed to stop tailer", "error", err)
-			} else if !errors.Is(err, os.ErrNotExist) {
-				// Log as error for other reasons, as a resource leak may have happened.
-				t.logger.Error("failed to stop tailer", "error", err)
-			}
-		}
-
-		t.logger.Info("stopped tailing file")
-
-		// We need to cleanup created metrics.
-		t.cleanupMetrics()
-		if !t.shouldKeepPosition() {
-			t.positions.Remove(t.key.Path, t.key.Labels)
-		}
-	}()
-
-	// flush delivers added entries and then advances deliveredOffset. Entries that
-	// fail to be delivered are dropped, unless the tailer is stopping so they are
-	// read again on the next run. Metrics are always updated when eof is true.
-	flush := func(eof bool) {
-		if err := t.batcher.Flush(ctx); err != nil {
-			if ctx.Err() != nil {
-				return
-			}
-			t.logger.Error("failed to send entries, dropping them", "err", err)
-		}
-
-		deliveredOffset = readOffset
-		t.positions.Put(t.key.Path, t.key.Labels, deliveredOffset)
-
-		// The metrics need a stat call, so outside of EOF they are only updated once per interval.
-		// FIXME(kalleep): We can remove the inteval check once we have fully migrated to V2.
-		if eof || time.Since(lastUpdatedStats) >= statsInterval {
-			lastUpdatedStats = time.Now()
-			t.updateStats(t.file, deliveredOffset)
-		}
-	}
+	var (
+		// stopped reports whether we should return right away.
+		stopped = func() bool { return stop.Err() != nil }
+		// draining reports whether we should finish what is in the file and return.
+		draining = func() bool { return ctx.Err() != nil }
+	)
 
 	for {
-		if ctx.Err() != nil {
+		if stopped() {
 			return
 		}
 
-		line, err := t.file.Next()
-		if errors.Is(err, io.EOF) && t.decompression.Enabled {
-			// Compressed files are read once, so return any trailing data without a newline.
-			line, err = t.file.Flush()
-		}
+		line, err := t.next()
 
 		switch {
 		case errors.Is(err, io.EOF):
 			// Nothing more to read right now so we flush what we have.
-			flush(true)
-			if t.decompression.Enabled {
+			deliveredOffset = t.flush(stop, readOffset, deliveredOffset)
+			t.updateMetrics(t.file, deliveredOffset)
+			if t.readOnce() || draining() {
 				return
 			}
-			if err := t.file.Wait(ctx); err != nil {
-				if !errors.Is(err, context.Canceled) && !errors.Is(err, io.EOF) {
+
+			// Wait returns early if ctx is canceled. We then read what is left and return above.
+			err := t.file.Wait(ctx)
+			if err != nil && !draining() {
+				if !errors.Is(err, io.EOF) {
 					t.logger.Error("failed to wait for new data", "err", err)
 				}
 				return
@@ -261,8 +217,13 @@ func (t *tailer) tail(ctx context.Context, pos int64) {
 			continue
 		case err != nil:
 			// Lines read before the error are not guaranteed to be read again, so deliver them.
-			flush(false)
-			t.logger.Error("failed to tail file", "err", err)
+			deliveredOffset = t.flush(stop, readOffset, deliveredOffset)
+
+			// While draining, a deleted file may already be closed, so the read fails. That is expected.
+			expected := draining() && util.IsEphemeralOrFileClosed(err)
+			if !expected {
+				t.logger.Error("failed to tail file", "err", err)
+			}
 			return
 		}
 
@@ -273,27 +234,90 @@ func (t *tailer) tail(ctx context.Context, pos int64) {
 			Line:      line.Text,
 		})
 		if full {
-			flush(false)
+			deliveredOffset = t.flush(stop, readOffset, deliveredOffset)
+			// The metrics need a stat call, so outside of EOF they are only updated once per interval.
+			// FIXME(kalleep): We can remove the inteval check once we have fully migrated to V2.
+			if time.Since(lastUpdatedMetrics) >= metricsInterval {
+				lastUpdatedMetrics = time.Now()
+				t.updateMetrics(t.file, deliveredOffset)
+			}
 		}
 	}
 }
 
-func (t *tailer) updateStats(f *tail.File, offset int64) {
-	size, _ := f.Size()
-	t.metrics.totalBytes.WithLabelValues(t.key.Path).Set(float64(size))
-	t.metrics.readBytes.WithLabelValues(t.key.Path).Set(float64(offset))
+// next returns the next line from the file.
+func (t *tailer) next() (*tail.Line, error) {
+	line, err := t.file.Next()
+	if errors.Is(err, io.EOF) && t.readOnce() {
+		// Compressed files are read once, so return any trailing data without a newline.
+		return t.file.Flush()
+	}
+
+	return line, err
+}
+
+// flush delivers added entries and returns the offset that is now delivered.
+// If stop is canceled the entries are not delivered and the offset is not advanced,
+// so they are read again on the next run. Other delivery errors drop the entries.
+func (t *tailer) flush(stop context.Context, readOffset, deliveredOffset int64) int64 {
+	if err := t.batcher.Flush(stop); err != nil {
+		if stop.Err() != nil {
+			return deliveredOffset
+		}
+		t.logger.Error("failed to send entries, dropping them", "err", err)
+	}
+
+	t.positions.Put(t.key.Path, t.key.Labels, readOffset)
+	return readOffset
+}
+
+// finish closes the file, stores or removes the position and cleans up metrics
+// when the tailer returns.
+func (t *tailer) finish(stop context.Context, deliveredOffset int64) {
+	t.running.Store(false)
+
+	if err := t.file.Close(); err != nil {
+		if util.IsEphemeralOrFileClosed(err) {
+			// Don't log as error if the file is already closed, or we got an ephemeral error - it's a common case
+			// when files are rotating while being read and the tailer would have stopped correctly anyway.
+			t.logger.Debug("failed to stop tailer", "error", err)
+		} else if !errors.Is(err, os.ErrNotExist) {
+			// Log as error for other reasons, as a resource leak may have happened.
+			t.logger.Error("failed to stop tailer", "error", err)
+		}
+	}
+
+	if t.shouldKeepPosition(stop) {
+		t.positions.Put(t.key.Path, t.key.Labels, deliveredOffset)
+	} else {
+		t.positions.Remove(t.key.Path, t.key.Labels)
+	}
+
+	t.cleanupMetrics()
+
+	t.logger.Info("stopped tailing file")
 }
 
 func (t *tailer) Key() positions.Entry {
 	return t.key
 }
 
-func (t *tailer) shouldKeepPosition() bool {
-	// NOTE: We want to keep position if component is stopping or decompression is enabled.
-	// If component is not stopping that means that target is gone and we should no longer tail the file.
-	// If decompression is enabled we read file until we reach EOF and stop so tailer will exit, but we need
-	// to remember the position so that we don't re-ingest it on restart.
-	return t.componentStopping() || t.decompression.Enabled
+// shouldKeepPosition reports whether the position is kept when the tailer returns.
+// It is kept if stop is canceled so we continue from it on restart, and for a file
+// that is read once so it is not ingested again.
+func (t *tailer) shouldKeepPosition(stop context.Context) bool {
+	return stop.Err() != nil || t.readOnce()
+}
+
+// readOnce reports whether the file is read to the end once and then the tailer exits.
+func (t *tailer) readOnce() bool {
+	return t.decompression.Enabled
+}
+
+func (t *tailer) updateMetrics(f *tail.File, offset int64) {
+	size, _ := f.Size()
+	t.metrics.totalBytes.WithLabelValues(t.key.Path).Set(float64(size))
+	t.metrics.readBytes.WithLabelValues(t.key.Path).Set(float64(offset))
 }
 
 // cleanupMetrics removes all metrics exported by this tailer
