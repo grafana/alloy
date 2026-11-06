@@ -46,14 +46,15 @@ prometheus.exporter.snmp "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.snmp`:
 
-| Name                    | Type                 | Description                                                                                                              | Default     | Required |
-| ----------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------ | ----------- | -------- |
-| `concurrency`           | `int`                | Number of modules to scrape in parallel for each target.                                                                 | `1`         | no       |
-| `config`                | `string` or `secret` | SNMP configuration as inline string.                                                                                     |             | no       |
-| `config_file`           | `string`             | Deprecated. Use `config_files` instead.                                                                                  |             | no       |
-| `config_files`          | `list(string)`       | Paths to YAML files that define SNMP modules and authentications.                                                        |             | no       |
-| `config_merge_strategy` | `string`             | Defines how `config` or `config_files` contents merge with the embedded SNMP configuration. Can be `replace` or `merge`. | `"replace"` | no       |
-| `targets`               | `list(map(string))`  | List of SNMP targets, where each target is a map of labels.                                                              |             | no       |
+| Name                    | Type                       | Description                                                                                                              | Default     | Required |
+| ----------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ----------- | -------- |
+| `concurrency`           | `int`                      | Number of modules to scrape in parallel for each target.                                                                 | `1`         | no       |
+| `config`                | `string` or `secret`       | Deprecated. Use `configs` instead.                                                                                       |             | no       |
+| `configs`               | List(`string` or `secret`) | SNMP configurations as inline string.                                                                                    |             | no       |
+| `config_file`           | `string`                   | Deprecated. Use `config_files` instead.                                                                                  |             | no       |
+| `config_files`          | `list(string)`             | Paths to YAML files that define SNMP modules and authentications.                                                        |             | no       |
+| `config_merge_strategy` | `string`                   | Defines how `config` or `config_files` contents merge with the embedded SNMP configuration. Can be `replace` or `merge`. | `"replace"` | no       |
+| `targets`               | `list(map(string))`        | List of SNMP targets, where each target is a map of labels.                                                              |             | no       |
 
 The `config_files` argument points to YAML files that define which `snmp_exporter` modules to use.
 Refer to the [`snmp_exporter` configuration documentation][snmp-exporter-config] for details on how to generate a configuration file.
@@ -61,16 +62,16 @@ Refer to the [`snmp_exporter` configuration documentation][snmp-exporter-config]
 The `config_file` and `config_files` arguments are mutually exclusive.
 If you set both, the component fails with an invalid configuration error.
 
-The `config` argument must be a YAML document as string defining which SNMP modules and authorizations to use.
-`config` is typically loaded by using the exports of another component.
+The `configs` argument must be list of valid YAML documents defining which SNMP modules and authorizations to use.
+`configs` is typically loaded by using the exports of another component.
 For example,
 
 - `local.file.LABEL.content`
 - `remote.http.LABEL.content`
 - `remote.s3.LABEL.content`
 
-Set either `config` or a configuration file argument, `config_files` or the deprecated `config_file`, not both.
-If you set `config` together with `config_files` or `config_file`, the component fails with an invalid configuration error.
+Set either `configs`, the deprecated `config` argument or a configuration file argument, `config_files` or the deprecated `config_file`, not both.
+If you set `configs` together with `config`,`config_files` or `config_file`, the component fails with an invalid configuration error.
 
 Set `config_merge_strategy` to `merge` to add additional configuration to the embedded SNMP configuration.
 For example, if you need to add a few custom `auth` settings without regenerating the whole configuration.
@@ -208,7 +209,7 @@ local.file "snmp_config" {
 }
 
 prometheus.exporter.snmp "example" {
-  config = local.file.snmp_config.content
+  configs = [local.file.snmp_config.content]
 
   target "network_switch_1" {
     address     = "192.168.1.2"

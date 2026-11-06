@@ -3,6 +3,7 @@ package snmp
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"time"
 
@@ -146,13 +147,14 @@ func (a *Arguments) SetToDefault() {
 }
 
 type Arguments struct {
-	ConfigFile          string                    `alloy:"config_file,attr,optional"`
-	ConfigFiles         []string                  `alloy:"config_files,attr,optional"`
-	SnmpConcurrency     int                       `alloy:"concurrency,attr,optional"`
-	Config              alloytypes.OptionalSecret `alloy:"config,attr,optional"`
-	ConfigMergeStrategy string                    `alloy:"config_merge_strategy,attr,optional"`
-	Targets             TargetBlock               `alloy:"target,block,optional"`
-	WalkParams          WalkParams                `alloy:"walk_param,block,optional"`
+	ConfigFile          string                      `alloy:"config_file,attr,optional"`
+	ConfigFiles         []string                    `alloy:"config_files,attr,optional"`
+	SnmpConcurrency     int                         `alloy:"concurrency,attr,optional"`
+	Config              alloytypes.OptionalSecret   `alloy:"config,attr,optional"`
+	Configs             []alloytypes.OptionalSecret `alloy:"configs,attr,optional"`
+	ConfigMergeStrategy string                      `alloy:"config_merge_strategy,attr,optional"`
+	Targets             TargetBlock                 `alloy:"target,block,optional"`
+	WalkParams          WalkParams                  `alloy:"walk_param,block,optional"`
 	ConfigStruct        snmp_config.Config
 
 	// New way of passing targets. This allows the component to receive targets from other components.
@@ -224,8 +226,12 @@ func (a *Arguments) UnmarshalAlloy(f func(any) error) error {
 		return errors.New("config_files and config_file are mutually exclusive")
 	}
 
-	if (a.ConfigFile != "" || len(a.ConfigFiles) > 0) && a.Config.Value != "" {
-		return errors.New("config and config_files are mutually exclusive")
+	if (a.ConfigFile != "" || len(a.ConfigFiles) > 0) && (a.Config.Value != "" || len(a.Configs) > 0) {
+		return errors.New("inline config and config_files are mutually exclusive")
+	}
+
+	if len(a.Configs) != 0 && a.Config.Value != "" {
+		return errors.New("configs and config are mutually exclusive")
 	}
 
 	if a.ConfigMergeStrategy != "replace" && a.ConfigMergeStrategy != "merge" {
@@ -245,9 +251,26 @@ func (a *Arguments) UnmarshalAlloy(f func(any) error) error {
 		}
 	}
 
-	err := yaml.UnmarshalStrict([]byte(a.Config.Value), &a.ConfigStruct)
-	if err != nil {
-		return fmt.Errorf("invalid snmp_exporter config: %s", err)
+	configs := a.Configs
+	if a.Config.Value != "" && len(configs) == 0 {
+		configs = append(configs, a.Config)
+	}
+
+	a.ConfigStruct = snmp_config.Config{
+		Auths:   map[string]*snmp_config.Auth{},
+		Modules: map[string]*snmp_config.Module{},
+	}
+	for _, cfg := range configs {
+		current := snmp_config.Config{}
+		err := yaml.UnmarshalStrict([]byte(cfg.Value), &current)
+		if err != nil {
+			return fmt.Errorf("invalid snmp_exporter config: %s", err)
+		}
+		maps.Copy(a.ConfigStruct.Auths, current.Auths)
+		maps.Copy(a.ConfigStruct.Modules, current.Modules)
+		if current.Version != 0 {
+			a.ConfigStruct.Version = current.Version
+		}
 	}
 
 	return nil
