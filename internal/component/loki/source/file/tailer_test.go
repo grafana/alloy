@@ -41,7 +41,6 @@ func TestTailer(t *testing.T) {
 				l,
 				newBatcher,
 				positionsFile,
-				func() bool { return true },
 				sourceOptions{
 					path:   logFile.Name(),
 					labels: labels,
@@ -136,7 +135,6 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 			l,
 			newBatcher,
 			positionsFile,
-			func() bool { return false },
 			sourceOptions{
 				path:   logFile.Name(),
 				labels: labels,
@@ -150,7 +148,7 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 		ctx, cancel := context.WithCancel(t.Context())
 		done := make(chan struct{})
 		go func() {
-			tailer.Run(ctx, ctx)
+			tailer.Run(ctx, context.Background())
 			close(done)
 		}()
 
@@ -203,7 +201,6 @@ func TestTailerDeleteFileInstant(t *testing.T) {
 			l,
 			newBatcher,
 			positionsFile,
-			func() bool { return true },
 			sourceOptions{
 				path:   logFile.Name(),
 				labels: labels,
@@ -290,7 +287,6 @@ func testTailerCancelWhileSendBlocked(t *testing.T, newBatcher func(model.LabelS
 		l,
 		newBatcher,
 		positionsFile,
-		func() bool { return true },
 		sourceOptions{
 			path:   path,
 			labels: labels,
@@ -365,7 +361,6 @@ func TestTailerCorruptedPositions(t *testing.T) {
 				l,
 				newBatcher,
 				positionsFile,
-				func() bool { return true },
 				sourceOptions{
 					path:   logFile.Name(),
 					labels: labels,
@@ -463,8 +458,6 @@ func TestTailer_Compressions(t *testing.T) {
 			logger,
 			newBatcher,
 			positionsFile,
-			// We return false here to verify that position is kept and we don't re-ingest the file.
-			func() bool { return false },
 			sourceOptions{
 				path:                 filename,
 				labels:               labels,
@@ -474,7 +467,7 @@ func TestTailer_Compressions(t *testing.T) {
 		)
 
 		// We expect tailer to exit when all compressed data have been consumed.
-		tailer.Run(t.Context(), t.Context())
+		tailer.Run(t.Context(), context.Background())
 
 		require.EventuallyWithT(t, func(c *assert.CollectT) {
 			entries := received()
@@ -489,7 +482,7 @@ func TestTailer_Compressions(t *testing.T) {
 		}, time.Second, 50*time.Millisecond)
 
 		// Run the decompressor again
-		tailer.Run(t.Context(), t.Context())
+		tailer.Run(t.Context(), context.Background())
 
 		// No new entries because the position was kept.
 		require.Len(t, received(), 1)
@@ -507,7 +500,6 @@ func TestTailer_GigantiqueGunzipFile(t *testing.T) {
 			logging.NewSlogNop(),
 			newBatcher,
 			positions.NewNop(),
-			func() bool { return false },
 			sourceOptions{
 				path:                file,
 				decompressionConfig: DecompressionConfig{Enabled: true, Format: "gz"},
@@ -515,7 +507,7 @@ func TestTailer_GigantiqueGunzipFile(t *testing.T) {
 		)
 
 		// We expect tailer to exit when all compressed data have been consumed.
-		tailer.Run(t.Context(), t.Context())
+		tailer.Run(t.Context(), context.Background())
 
 		require.EventuallyWithT(t, func(c *assert.CollectT) {
 			require.Equal(c, 100000, len(received()))
@@ -539,7 +531,6 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 				logging.NewSlogNop(),
 				newBatcher,
 				positions.NewNop(),
-				func() bool { return false },
 				sourceOptions{
 					path:                file,
 					decompressionConfig: DecompressionConfig{Enabled: true, Format: "gz"},
@@ -547,7 +538,7 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 			)
 
 			// We expect tailer to exit when all compressed data have been consumed.
-			tailer.Run(t.Context(), t.Context())
+			tailer.Run(t.Context(), context.Background())
 
 			require.Eventually(t, func() bool {
 				return len(received()) == 1
@@ -567,7 +558,6 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 				logging.NewSlogNop(),
 				newBatcher,
 				positions.NewNop(),
-				func() bool { return false },
 				sourceOptions{
 					path:                file,
 					decompressionConfig: DecompressionConfig{Enabled: true, Format: "bz2"},
@@ -575,7 +565,7 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 			)
 
 			// We expect tailer to exit when all compressed data have been consumed.
-			tailer.Run(t.Context(), t.Context())
+			tailer.Run(t.Context(), context.Background())
 
 			require.Eventually(t, func() bool {
 				return len(received()) == 1
@@ -595,7 +585,6 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 				logging.NewSlogNop(),
 				newBatcher,
 				positions.NewNop(),
-				func() bool { return false },
 				sourceOptions{
 					path:                file,
 					decompressionConfig: DecompressionConfig{Enabled: true, Format: "gz"},
@@ -603,7 +592,7 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 			)
 
 			// We expect tailer to exit when all compressed data have been consumed.
-			tailer.Run(t.Context(), t.Context())
+			tailer.Run(t.Context(), context.Background())
 
 			require.Eventually(t, func() bool {
 				return len(received()) == 1
