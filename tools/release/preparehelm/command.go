@@ -76,7 +76,7 @@ func run(ctx context.Context, flags flags) error {
 			}
 			return release.GetDraft(), release.GetPrerelease(), nil
 		},
-		helmChartTagSHA:  alloyClient.GetRefSHA,
+		helmChartTagSHA:  alloyClient.GetTagSHA,
 		helmChartIndexed: helmChartIndexed(helmClient),
 		readChart:        readChart,
 		headSHA: func() (string, error) {

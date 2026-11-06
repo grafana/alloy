@@ -140,16 +140,8 @@ func (c *Client) GetRefSHA(ctx context.Context, ref string) (string, error) {
 	}
 
 	// Try as a tag
-	tagRef, _, err := c.api.Git.GetRef(ctx, c.owner, c.repo, "tags/"+ref)
-	if err == nil {
-		sha := tagRef.GetObject().GetSHA()
-		if tagRef.GetObject().GetType() == "tag" {
-			tagObj, _, tagErr := c.api.Git.GetTag(ctx, c.owner, c.repo, sha)
-			if tagErr != nil {
-				return "", fmt.Errorf("dereferencing annotated tag %s: %w", ref, tagErr)
-			}
-			sha = tagObj.GetObject().GetSHA()
-		}
+	sha, tagErr := c.GetTagSHA(ctx, ref)
+	if tagErr == nil {
 		return sha, nil
 	}
 
@@ -163,7 +155,24 @@ func (c *Client) GetRefSHA(ctx context.Context, ref string) (string, error) {
 		return sha, nil
 	}
 
-	return "", fmt.Errorf("could not resolve ref: %s", ref)
+	return "", fmt.Errorf("could not resolve ref %s: %w", ref, tagErr)
+}
+
+// GetTagSHA resolves a tag to its commit SHA.
+func (c *Client) GetTagSHA(ctx context.Context, tag string) (string, error) {
+	tagRef, _, err := c.api.Git.GetRef(ctx, c.owner, c.repo, "tags/"+tag)
+	if err != nil {
+		return "", fmt.Errorf("resolving tag %s: %w", tag, err)
+	}
+	sha := tagRef.GetObject().GetSHA()
+	if tagRef.GetObject().GetType() == "tag" {
+		tagObj, _, err := c.api.Git.GetTag(ctx, c.owner, c.repo, sha)
+		if err != nil {
+			return "", fmt.Errorf("dereferencing annotated tag %s: %w", tag, err)
+		}
+		sha = tagObj.GetObject().GetSHA()
+	}
+	return sha, nil
 }
 
 // CreateBranch creates a new branch from the given SHA.
