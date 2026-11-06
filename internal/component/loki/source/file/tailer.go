@@ -213,7 +213,6 @@ func (t *tailer) tail(ctx, stop context.Context, pos int64) {
 					t.logger.Error("failed to wait for new data", "err", err)
 				}
 				return
-
 			}
 			continue
 		case err != nil:
