@@ -179,8 +179,8 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, "default", args.Discovery.ExcludeInstrument[0].Namespace)
 
 	require.Len(t, args.Discovery.Survey, 1)
-	require.Equal(t, "/app/microservice-*", args.Discovery.Survey[0].Path)
-	require.Equal(t, "microservice", args.Discovery.Survey[0].Name)
+	require.Equal(t, "/app/microservice-*", args.Discovery.Survey[0].Service.Path)
+	require.Equal(t, "microservice", args.Discovery.Survey[0].Service.Name)
 
 	// Verify metrics
 	require.Equal(t, []string{"application", "network"}, args.Metrics.Features)
@@ -422,15 +422,15 @@ func TestArguments_Validate(t *testing.T) {
 				},
 				Discovery: Discovery{
 					Instrument: Services{},
-					Survey:     Services{},
+					Survey:     SurveyServices{},
 				},
 			},
-			wantErr: "discovery.services, discovery.instrument, or discovery.survey is required when application features are enabled",
+			wantErr: "discovery.services, discovery.instrument, discovery.survey, or discovery.instrument_all_local is required when application features are enabled",
 		},
 		{
 			name:    "RED feature requires discovery",
 			args:    Arguments{Metrics: Metrics{Features: []string{"application_red"}}},
-			wantErr: "discovery.services, discovery.instrument, or discovery.survey is required when application features are enabled",
+			wantErr: "discovery.services, discovery.instrument, discovery.survey, or discovery.instrument_all_local is required when application features are enabled",
 		},
 		{
 			name: "valid application configuration",
@@ -452,14 +452,14 @@ func TestArguments_Validate(t *testing.T) {
 			args: Arguments{
 				Metrics: Metrics{Features: []string{"*"}},
 			},
-			wantErr: "discovery.services, discovery.instrument, or discovery.survey is required when application features are enabled",
+			wantErr: "discovery.services, discovery.instrument, discovery.survey, or discovery.instrument_all_local is required when application features are enabled",
 		},
 		{
 			name: "'all' feature requires discovery",
 			args: Arguments{
 				Metrics: Metrics{Features: []string{"all"}},
 			},
-			wantErr: "discovery.services, discovery.instrument, or discovery.survey is required when application features are enabled",
+			wantErr: "discovery.services, discovery.instrument, discovery.survey, or discovery.instrument_all_local is required when application features are enabled",
 		},
 		{
 			name: "cmd_args-only instrument with application feature",
@@ -779,6 +779,108 @@ func TestArguments_Validate_Beyla338Options(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.args.Validate()
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestArguments_Validate_Beyla341Options(t *testing.T) {
+	appFeatures := Metrics{Features: []string{"application"}}
+	tests := []struct {
+		name    string
+		args    Arguments
+		wantErr string
+	}{
+		{"cloud resolvers", Arguments{NameResolver: NameResolver{Sources: []string{"azure", "gce", "route53"}}}, ""},
+		{"connection info feature", Arguments{
+			Metrics:   Metrics{Features: []string{"application_service_graph_connection_info"}},
+			Discovery: Discovery{Instrument: Services{{OpenPorts: "80"}}},
+		}, ""},
+		{"connection info feature requires discovery", Arguments{
+			Metrics: Metrics{Features: []string{"application_service_graph_connection_info"}},
+		}, "is required when application features are enabled"},
+		{"negative cloud refresh interval", Arguments{CloudMetadata: CloudMetadata{RefreshInterval: -time.Second}}, "cloud_metadata.refresh_interval"},
+		{"negative Route53 refresh interval", Arguments{CloudMetadata: CloudMetadata{Route53: Route53Metadata{RefreshInterval: -time.Second}}}, "cloud_metadata.route53.refresh_interval"},
+		{"blank Route53 zone", Arguments{CloudMetadata: CloudMetadata{Route53: Route53Metadata{HostedZoneIDs: []string{"Z1", "/hostedzone/ "}}}}, "cloud_metadata.route53.hosted_zone_ids[1]"},
+		{"deprecated ECS interval alone", Arguments{NameResolver: NameResolver{ECS: ECSNameResolver{RefreshInterval: time.Minute}}}, ""},
+		{"deprecated ECS interval with cloud interval", Arguments{
+			NameResolver:  NameResolver{ECS: ECSNameResolver{RefreshInterval: time.Minute}},
+			CloudMetadata: CloudMetadata{RefreshInterval: time.Minute},
+		}, "set only cloud_metadata.refresh_interval"},
+		{"instrument_all_local satisfies application features", Arguments{
+			Metrics:   appFeatures,
+			Discovery: Discovery{InstrumentAllLocal: true},
+		}, ""},
+		{"instrument_all_local with instrument", Arguments{
+			Discovery: Discovery{InstrumentAllLocal: true, Instrument: Services{{OpenPorts: "80"}}},
+		}, "discovery.instrument_all_local can't be combined"},
+		{"instrument_all_local with services", Arguments{
+			Discovery: Discovery{InstrumentAllLocal: true, Services: Services{{OpenPorts: "80"}}},
+		}, "discovery.instrument_all_local can't be combined"},
+		{"instrument_all_local with survey", Arguments{
+			Metrics:   appFeatures,
+			Discovery: Discovery{InstrumentAllLocal: true, Survey: SurveyServices{{Service: Service{Path: "*"}}}},
+		}, ""},
+		{"survey socket_apps alone", Arguments{
+			Metrics:   appFeatures,
+			Discovery: Discovery{Survey: SurveyServices{{SocketApps: SocketApps{Enabled: true, NonRoot: true}}}},
+		}, ""},
+		{"survey non_root requires enabled", Arguments{
+			Metrics:   appFeatures,
+			Discovery: Discovery{Survey: SurveyServices{{Service: Service{Path: "*"}, SocketApps: SocketApps{NonRoot: true}}}},
+		}, "socket_apps.non_root requires socket_apps.enabled"},
+		{"survey entry without criteria", Arguments{
+			Metrics:   appFeatures,
+			Discovery: Discovery{Survey: SurveyServices{{Service: Service{Name: "svc"}}}},
+		}, "discovery.survey[0] must define at least one of"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.args.Validate()
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestPeerMetadata_Validate(t *testing.T) {
+	tls := PeerMetadataTLS{Enabled: true, CertFile: "tls.crt", KeyFile: "tls.key"}
+	tests := []struct {
+		name    string
+		args    PeerMetadata
+		wantErr string
+	}{
+		{"disabled settings aren't checked", PeerMetadata{Mode: "central", Port: -1}, ""},
+		{"defaults", PeerMetadata{Enabled: true}, ""},
+		{"peer mode", PeerMetadata{Enabled: true, Mode: "peer"}, ""},
+		{"central mode", PeerMetadata{Enabled: true, Mode: "central"}, "doesn't implement the \"central\" mode"},
+		{"unknown mode", PeerMetadata{Enabled: true, Mode: "mesh"}, "peer_metadata.mode: invalid value"},
+		{"port too large", PeerMetadata{Enabled: true, Port: 65536}, "peer_metadata.port"},
+		{"negative port", PeerMetadata{Enabled: true, Port: -1}, "peer_metadata.port"},
+		{"IPv6 listen address", PeerMetadata{Enabled: true, ListenAddress: "::1"}, ""},
+		{"host name listen address", PeerMetadata{Enabled: true, ListenAddress: "localhost"}, "peer_metadata.listen_address"},
+		{"bad CIDR", PeerMetadata{Enabled: true, PeerCIDRs: []string{"10.0.0.0/8", "10.0.0.1"}}, "peer_metadata.peer_cidrs[1]"},
+		{"negative refresh interval", PeerMetadata{Enabled: true, RefreshInterval: -time.Second}, "peer_metadata.refresh_interval"},
+		{"sub-millisecond request timeout", PeerMetadata{Enabled: true, RequestTimeout: time.Microsecond}, "peer_metadata.request_timeout"},
+		{"negative max peers", PeerMetadata{Enabled: true, MaxPeers: -1}, "peer_metadata.max_peers"},
+		{"response above default cache", PeerMetadata{Enabled: true, MaxResponseBytes: 128 << 20}, "peer_metadata.max_cache_bytes"},
+		{"cache below default response", PeerMetadata{Enabled: true, MaxCacheBytes: 1024}, "peer_metadata.max_cache_bytes"},
+		{"raised limits", PeerMetadata{Enabled: true, MaxResponseBytes: 128 << 20, MaxCacheBytes: 256 << 20}, ""},
+		{"token without TLS", PeerMetadata{Enabled: true, Token: "test-token"}, "peer_metadata.token requires peer_metadata.tls.enabled"},
+		{"token with TLS", PeerMetadata{Enabled: true, Token: "test-token", TLS: tls}, ""},
+		{"token with newline", PeerMetadata{Enabled: true, Token: "test\ntoken", TLS: tls}, "peer_metadata.token must not contain newlines"},
+		{"TLS without key", PeerMetadata{Enabled: true, TLS: PeerMetadataTLS{Enabled: true, CertFile: "tls.crt"}}, "peer_metadata.tls requires cert_file and key_file"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := (&Arguments{PeerMetadata: tt.args}).Validate()
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
 			} else {

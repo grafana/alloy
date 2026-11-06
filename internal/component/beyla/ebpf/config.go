@@ -3,7 +3,9 @@
 package beyla
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"os"
 
 	"golang.org/x/sys/unix"
@@ -26,7 +28,12 @@ func (c *Component) buildConfig(args Arguments) ([]byte, error) {
 		return nil, fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	c.opts.Logger.Debug("generated Beyla YAML config", "yaml", string(configData))
+	// The config carries secrets, such as the peer metadata token, so log a redacted copy.
+	if c.opts.Logger.Enabled(context.Background(), slog.LevelDebug) {
+		if redacted, err := yaml.Marshal(config.Redacted(cfg)); err == nil {
+			c.opts.Logger.Debug("generated Beyla YAML config", "yaml", string(redacted))
+		}
+	}
 
 	return configData, nil
 }

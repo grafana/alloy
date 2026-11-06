@@ -81,7 +81,7 @@ type testConsumer struct{ otelcol.Consumer }
 // funcConsumer is not comparable, so it is never considered to be the same consumer.
 type funcConsumer struct {
 	otelcol.Consumer
-	consume func()
+	_ func()
 }
 
 func TestSameOutput(t *testing.T) {

@@ -30,9 +30,9 @@ func buildYAML(t *testing.T, args Arguments, rt Runtime) map[string]any {
 func TestYAMLGeneration(t *testing.T) {
 	args := Arguments{
 		Discovery: Discovery{
-			Survey: Services{
+			Survey: SurveyServices{
 				{
-					Path: ".*testserver.*",
+					Service: Service{Path: ".*testserver.*"},
 				},
 			},
 		},
@@ -274,7 +274,6 @@ func TestYAMLGeneration_Beyla338Options(t *testing.T) {
 			sources = ["k8s", "rdns", "ecs"]
 			cache_len = 2048
 			cache_expiry = "10m"
-			ecs { refresh_interval = "45s" }
 		}
 		metrics {
 			features = ["application_red", "application_sizes", "application_runtime", "stats_tcp_successful_connections"]
@@ -299,7 +298,6 @@ func TestYAMLGeneration_Beyla338Options(t *testing.T) {
 		"sources":      []any{"k8s", "rdns", "ecs"},
 		"cache_len":    2048,
 		"cache_expiry": "10m0s",
-		"ecs":          map[string]any{"refresh_interval": "45s"},
 	}, cfg["name_resolver"])
 	prom := cfg["prometheus_export"].(map[string]any)
 	require.Equal(t, []any{"application_red", "application_sizes", "application_runtime", "stats_tcp_successful_connections"}, prom["features"])
@@ -309,13 +307,120 @@ func TestYAMLGeneration_Beyla338Options(t *testing.T) {
 	require.Equal(t, []any{"ruby"}, cfg["injector"].(map[string]any)["enabled_sdks"])
 }
 
+func TestYAMLGeneration_Beyla341Options(t *testing.T) {
+	const input = `
+		attributes {
+			kubernetes { enable = "false" }
+			sanitize_sql_query_text = true
+		}
+		discovery {
+			instrument_all_local = true
+			survey {
+				exe_path = "/opt/batch/*"
+			}
+			survey {
+				socket_apps {
+					enabled  = true
+					non_root = true
+				}
+			}
+		}
+		ebpf {
+			payload_extraction {
+				http {
+					cohere { enabled = true }
+				}
+			}
+		}
+		cloud_metadata {
+			refresh_interval = "1m"
+			route53 {
+				hosted_zone_ids  = ["Z0123456789EXAMPLE"]
+				refresh_interval = "10m"
+			}
+		}
+		name_resolver {
+			sources = ["k8s", "rdns", "route53", "gce", "azure"]
+			gce {
+				project_id = "production-project"
+				zone       = "europe-west3-a"
+				endpoint   = "http://localhost:8080"
+			}
+			azure {
+				subscription_id = "00000000-0000-0000-0000-000000000000"
+				resource_group  = "production"
+			}
+		}
+		metrics {
+			features = ["application", "application_service_graph_connection_info"]
+		}
+	`
+	var args Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(input), &args))
+	require.NoError(t, args.Validate())
+	cfg := buildYAML(t, args, Runtime{Port: 12345})
+
+	require.Equal(t, true, cfg["attributes"].(map[string]any)["sanitize_sql_query_text"])
+	discovery := cfg["discovery"].(map[string]any)
+	require.Equal(t, true, discovery["instrument_all_local"])
+	require.Equal(t, []any{
+		map[string]any{"exe_path": "/opt/batch/*"},
+		map[string]any{"socket_apps": map[string]any{"enabled": true, "non_root": true}},
+	}, discovery["survey"])
+	genai := cfg["ebpf"].(map[string]any)["payload_extraction"].(map[string]any)["http"].(map[string]any)["genai"]
+	require.Equal(t, map[string]any{"cohere": map[string]any{"enabled": true}}, genai)
+	require.Equal(t, map[string]any{
+		"refresh_interval": "1m0s",
+		"route53": map[string]any{
+			"hosted_zone_ids":  []any{"Z0123456789EXAMPLE"},
+			"refresh_interval": "10m0s",
+		},
+	}, cfg["cloud_metadata"])
+	require.Equal(t, map[string]any{
+		"sources": []any{"k8s", "rdns", "route53", "gce", "azure"},
+		"gce": map[string]any{
+			"project_id": "production-project",
+			"zone":       "europe-west3-a",
+			"endpoint":   "http://localhost:8080",
+		},
+		"azure": map[string]any{
+			"subscription_id": "00000000-0000-0000-0000-000000000000",
+			"resource_group":  "production",
+		},
+	}, cfg["name_resolver"])
+	require.Equal(t, []any{"application", "application_service_graph_connection_info"}, cfg["prometheus_export"].(map[string]any)["features"])
+}
+
+// Beyla v3.41.0 moved the ECS inventory refresh interval from name_resolver.ecs to
+// cloud_metadata, where it ignores unknown keys. The deprecated Alloy setting must
+// land where Beyla reads it.
+func TestYAMLGeneration_DeprecatedECSRefreshInterval(t *testing.T) {
+	const input = `
+		cloud_metadata { region = "ca-central-1" }
+		name_resolver {
+			sources = ["ecs"]
+			ecs { refresh_interval = "45s" }
+		}
+	`
+	var args Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(input), &args))
+	require.NoError(t, args.Validate())
+	cfg := buildYAML(t, args, Runtime{Port: 12345})
+	require.Equal(t, map[string]any{"region": "ca-central-1", "refresh_interval": "45s"}, cfg["cloud_metadata"])
+	require.Equal(t, map[string]any{"sources": []any{"ecs"}}, cfg["name_resolver"])
+}
+
 func TestYAMLGeneration_Beyla338Defaults(t *testing.T) {
 	// An empty block must not overwrite Beyla's own defaults with zero values.
 	const input = `
 		ebpf { populate_trace_context = false }
 		dotnet_runtime_metrics {}
-		cloud_metadata {}
-		name_resolver { ecs {} }
+		cloud_metadata { route53 {} }
+		name_resolver {
+			ecs {}
+			gce {}
+			azure {}
+		}
 		metrics { buckets {} }
 	`
 	var args Arguments
@@ -356,4 +461,80 @@ func TestGoHTTPClientBufferTimeout(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestYAMLGeneration_PeerMetadata(t *testing.T) {
+	const input = `
+		peer_metadata {
+			enabled            = true
+			mode               = "peer"
+			listen_address     = "10.0.0.5"
+			port               = 9998
+			peer_cidrs         = ["10.0.0.0/16"]
+			refresh_interval   = "20s"
+			caller_ttl         = "2m"
+			cache_ttl          = "3m"
+			request_timeout    = "1s"
+			max_peers          = 64
+			max_concurrent     = 4
+			max_caller_entries = 1000
+			max_response_bytes = 2097152
+			max_cache_bytes    = 134217728
+			token              = "test-token"
+			tls {
+				enabled     = true
+				cert_file   = "/etc/beyla/tls.crt"
+				key_file    = "/etc/beyla/tls.key"
+				ca_file     = "/etc/beyla/ca.crt"
+				server_name = "beyla.internal"
+			}
+		}
+	`
+	var args Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(input), &args))
+	require.NoError(t, args.Validate())
+	cfg := buildYAML(t, args, Runtime{Port: 12345})
+	require.Equal(t, map[string]any{
+		"enabled":            true,
+		"mode":               "peer",
+		"listen_address":     "10.0.0.5",
+		"port":               9998,
+		"peer_cidrs":         []any{"10.0.0.0/16"},
+		"refresh_interval":   "20s",
+		"caller_ttl":         "2m0s",
+		"cache_ttl":          "3m0s",
+		"request_timeout":    "1s",
+		"max_peers":          64,
+		"max_concurrent":     4,
+		"max_caller_entries": 1000,
+		"max_response_bytes": 2097152,
+		"max_cache_bytes":    134217728,
+		"token":              "test-token",
+		"tls": map[string]any{
+			"enabled":     true,
+			"cert_file":   "/etc/beyla/tls.crt",
+			"key_file":    "/etc/beyla/tls.key",
+			"ca_file":     "/etc/beyla/ca.crt",
+			"server_name": "beyla.internal",
+		},
+	}, cfg["peer_metadata"])
+}
+
+func TestRedacted(t *testing.T) {
+	args := Arguments{PeerMetadata: PeerMetadata{Enabled: true, Token: "test-token"}}
+	cfg := Build(args, Runtime{Port: 12345}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	redacted := Redacted(cfg)
+	require.Equal(t, "(secret)", redacted["peer_metadata"].(map[string]any)["token"])
+	require.Equal(t, true, redacted["peer_metadata"].(map[string]any)["enabled"])
+	data, err := yaml.Marshal(redacted)
+	require.NoError(t, err)
+	require.NotContains(t, string(data), "test-token")
+
+	// The config passed to Beyla keeps the token.
+	require.Equal(t, "test-token", cfg["peer_metadata"].(map[string]any)["token"])
+
+	// A config without secrets is returned as is.
+	plain := Build(Arguments{}, Runtime{Port: 12345}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	require.Equal(t, plain, Redacted(plain))
 }

@@ -36,6 +36,9 @@ func (d Discovery) Convert() map[string]any {
 	if len(d.Instrument) > 0 {
 		m["instrument"] = d.Instrument.Convert()
 	}
+	if d.InstrumentAllLocal {
+		m["instrument_all_local"] = true
+	}
 	if v := d.MinProcessAge; v != 0 {
 		m["min_process_age"] = v.String()
 	}
@@ -335,6 +338,15 @@ func (e EBPF) Convert() map[string]any {
 				}
 				{
 					m4 := make(map[string]any)
+					if e.PayloadExtraction.HTTP.Cohere.Enabled {
+						m4["enabled"] = true
+					}
+					if len(m4) > 0 {
+						m3["cohere"] = m4
+					}
+				}
+				{
+					m4 := make(map[string]any)
 					if e.PayloadExtraction.HTTP.Embedding.Enabled {
 						m4["enabled"] = true
 					}
@@ -591,10 +603,26 @@ func (c CloudMetadata) Convert() map[string]any {
 	if v := c.Region; v != "" {
 		m["region"] = v
 	}
+	if v := c.RefreshInterval; v != 0 {
+		m["refresh_interval"] = v.String()
+	}
+	{
+		m1 := make(map[string]any)
+		if v := c.Route53.HostedZoneIDs; len(v) > 0 {
+			m1["hosted_zone_ids"] = v
+		}
+		if v := c.Route53.RefreshInterval; v != 0 {
+			m1["refresh_interval"] = v.String()
+		}
+		if len(m1) > 0 {
+			m["route53"] = m1
+		}
+	}
 	return m
 }
 
-// Convert builds the name_resolver configuration.
+// Convert builds the name_resolver configuration. The deprecated ecs block isn't
+// emitted here: Arguments.cloudMetadata maps it onto cloud_metadata.
 func (n NameResolver) Convert() map[string]any {
 	m := make(map[string]any)
 	if v := n.Sources; len(v) > 0 {
@@ -606,8 +634,105 @@ func (n NameResolver) Convert() map[string]any {
 	if v := n.CacheExpiry; v != 0 {
 		m["cache_expiry"] = v.String()
 	}
-	if v := n.ECS.RefreshInterval; v != 0 {
-		m["ecs"] = map[string]any{"refresh_interval": v.String()}
+	{
+		m1 := make(map[string]any)
+		if v := n.GCE.Endpoint; v != "" {
+			m1["endpoint"] = v
+		}
+		if v := n.GCE.ProjectID; v != "" {
+			m1["project_id"] = v
+		}
+		if v := n.GCE.Zone; v != "" {
+			m1["zone"] = v
+		}
+		if len(m1) > 0 {
+			m["gce"] = m1
+		}
+	}
+	{
+		m1 := make(map[string]any)
+		if v := n.Azure.ResourceGroup; v != "" {
+			m1["resource_group"] = v
+		}
+		if v := n.Azure.SubscriptionID; v != "" {
+			m1["subscription_id"] = v
+		}
+		if len(m1) > 0 {
+			m["azure"] = m1
+		}
+	}
+	return m
+}
+
+// Convert builds the peer_metadata configuration. The token is written in clear text,
+// so log only the Redacted config.
+func (p PeerMetadata) Convert() map[string]any {
+	m := make(map[string]any)
+	if p.Enabled {
+		m["enabled"] = true
+	}
+	if v := p.Mode; v != "" {
+		m["mode"] = v
+	}
+	if v := p.ListenAddress; v != "" {
+		m["listen_address"] = v
+	}
+	if v := p.Port; v != 0 {
+		m["port"] = v
+	}
+	if v := p.PeerCIDRs; len(v) > 0 {
+		m["peer_cidrs"] = v
+	}
+	if v := p.RefreshInterval; v != 0 {
+		m["refresh_interval"] = v.String()
+	}
+	if v := p.CallerTTL; v != 0 {
+		m["caller_ttl"] = v.String()
+	}
+	if v := p.CacheTTL; v != 0 {
+		m["cache_ttl"] = v.String()
+	}
+	if v := p.RequestTimeout; v != 0 {
+		m["request_timeout"] = v.String()
+	}
+	if v := p.MaxPeers; v != 0 {
+		m["max_peers"] = v
+	}
+	if v := p.MaxConcurrent; v != 0 {
+		m["max_concurrent"] = v
+	}
+	if v := p.MaxCallerEntries; v != 0 {
+		m["max_caller_entries"] = v
+	}
+	if v := p.MaxResponseBytes; v != 0 {
+		m["max_response_bytes"] = v
+	}
+	if v := p.MaxCacheBytes; v != 0 {
+		m["max_cache_bytes"] = v
+	}
+	if v := p.Token; v != "" {
+		m["token"] = string(v)
+	}
+	{
+		m1 := make(map[string]any)
+		if p.TLS.Enabled {
+			m1["enabled"] = true
+		}
+		if v := p.TLS.CertFile; v != "" {
+			m1["cert_file"] = v
+		}
+		if v := p.TLS.KeyFile; v != "" {
+			m1["key_file"] = v
+		}
+		if v := p.TLS.CAFile; v != "" {
+			m1["ca_file"] = v
+		}
+		if v := p.TLS.ServerName; v != "" {
+			m1["server_name"] = v
+		}
+		if len(m1) > 0 {
+			m["tls"] = m1
+		}
 	}
 	return m
 }
@@ -886,68 +1011,28 @@ func (s Selections) Convert() map[string]any {
 func (s Services) Convert() []map[string]any {
 	result := make([]map[string]any, 0, len(s))
 	for _, item := range s {
-		m := make(map[string]any)
-		if v := item.CmdArgs; v != "" {
-			m["cmd_args"] = v
+		if m := item.Convert(); len(m) > 0 {
+			result = append(result, m)
 		}
-		if item.ContainersOnly {
-			m["containers_only"] = true
-		}
-		if v := item.Path; v != "" {
-			m["exe_path"] = v
-		}
-		if v := item.ExportModes; len(v) > 0 {
-			m["exports"] = v
-		}
-		if v := item.Kubernetes.DaemonSetName; v != "" {
-			m["k8s_daemonset_name"] = v
-		}
-		if v := item.Kubernetes.DeploymentName; v != "" {
-			m["k8s_deployment_name"] = v
-		}
-		if v := item.Kubernetes.Namespace; v != "" {
-			m["k8s_namespace"] = v
-		}
-		if v := item.Kubernetes.OwnerName; v != "" {
-			m["k8s_owner_name"] = v
-		}
-		if v := item.Kubernetes.PodAnnotations; len(v) > 0 {
-			m["k8s_pod_annotations"] = v
-		}
-		if v := item.Kubernetes.PodLabels; len(v) > 0 {
-			m["k8s_pod_labels"] = v
-		}
-		if v := item.Kubernetes.PodName; v != "" {
-			m["k8s_pod_name"] = v
-		}
-		if v := item.Kubernetes.ReplicaSetName; v != "" {
-			m["k8s_replicaset_name"] = v
-		}
-		if v := item.Kubernetes.StatefulSetName; v != "" {
-			m["k8s_statefulset_name"] = v
-		}
-		if v := item.Languages; v != "" {
-			m["languages"] = v
-		}
-		if v := item.Name; v != "" {
-			m["name"] = v
-		}
-		if v := item.Namespace; v != "" {
-			m["namespace"] = v
-		}
-		if v := item.OpenPorts; v != "" {
-			m["open_ports"] = v
-		}
+	}
+	return result
+}
+
+// Convert builds the survey list YAML: the shared selector criteria plus socket_apps.
+func (s SurveyServices) Convert() []map[string]any {
+	result := make([]map[string]any, 0, len(s))
+	for _, item := range s {
+		m := item.Service.Convert()
 		{
 			m1 := make(map[string]any)
-			if v := item.Sampler.Arg; v != "" {
-				m1["arg"] = v
+			if item.SocketApps.Enabled {
+				m1["enabled"] = true
 			}
-			if v := item.Sampler.Name; v != "" {
-				m1["name"] = v
+			if item.SocketApps.NonRoot {
+				m1["non_root"] = true
 			}
 			if len(m1) > 0 {
-				m["sampler"] = m1
+				m["socket_apps"] = m1
 			}
 		}
 		if len(m) > 0 {
@@ -955,4 +1040,73 @@ func (s Services) Convert() []map[string]any {
 		}
 	}
 	return result
+}
+
+// Convert builds the YAML for one selector entry.
+func (item Service) Convert() map[string]any {
+	m := make(map[string]any)
+	if v := item.CmdArgs; v != "" {
+		m["cmd_args"] = v
+	}
+	if item.ContainersOnly {
+		m["containers_only"] = true
+	}
+	if v := item.Path; v != "" {
+		m["exe_path"] = v
+	}
+	if v := item.ExportModes; len(v) > 0 {
+		m["exports"] = v
+	}
+	if v := item.Kubernetes.DaemonSetName; v != "" {
+		m["k8s_daemonset_name"] = v
+	}
+	if v := item.Kubernetes.DeploymentName; v != "" {
+		m["k8s_deployment_name"] = v
+	}
+	if v := item.Kubernetes.Namespace; v != "" {
+		m["k8s_namespace"] = v
+	}
+	if v := item.Kubernetes.OwnerName; v != "" {
+		m["k8s_owner_name"] = v
+	}
+	if v := item.Kubernetes.PodAnnotations; len(v) > 0 {
+		m["k8s_pod_annotations"] = v
+	}
+	if v := item.Kubernetes.PodLabels; len(v) > 0 {
+		m["k8s_pod_labels"] = v
+	}
+	if v := item.Kubernetes.PodName; v != "" {
+		m["k8s_pod_name"] = v
+	}
+	if v := item.Kubernetes.ReplicaSetName; v != "" {
+		m["k8s_replicaset_name"] = v
+	}
+	if v := item.Kubernetes.StatefulSetName; v != "" {
+		m["k8s_statefulset_name"] = v
+	}
+	if v := item.Languages; v != "" {
+		m["languages"] = v
+	}
+	if v := item.Name; v != "" {
+		m["name"] = v
+	}
+	if v := item.Namespace; v != "" {
+		m["namespace"] = v
+	}
+	if v := item.OpenPorts; v != "" {
+		m["open_ports"] = v
+	}
+	{
+		m1 := make(map[string]any)
+		if v := item.Sampler.Arg; v != "" {
+			m1["arg"] = v
+		}
+		if v := item.Sampler.Name; v != "" {
+			m1["name"] = v
+		}
+		if len(m1) > 0 {
+			m["sampler"] = m1
+		}
+	}
+	return m
 }

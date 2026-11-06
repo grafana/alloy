@@ -195,6 +195,10 @@ func (c *Component) logDeprecationWarnings() {
 		c.opts.Logger.Warn("The 'debug' field is deprecated. Use 'log_level = \"debug\"' instead.")
 	}
 
+	if c.args.NameResolver.ECS.RefreshInterval != 0 { //nolint:staticcheck // intentionally reads the deprecated field to warn
+		c.opts.Logger.Warn("name_resolver.ecs.refresh_interval is deprecated, use cloud_metadata.refresh_interval instead")
+	}
+
 	if len(c.args.Discovery.Services) > 0 {
 		c.opts.Logger.Warn("discovery.services is deprecated, use discovery.instrument instead")
 	}

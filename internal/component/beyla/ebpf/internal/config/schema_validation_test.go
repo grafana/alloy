@@ -72,9 +72,13 @@ func TestSupportedSectionsCoverSchema(t *testing.T) {
 		{"EBPFTracer", []string{"ebpf"}},
 		{"Buckets", []string{"prometheus_export", "buckets"}},
 		{"CloudMetadataConfig", []string{"cloud_metadata"}},
+		{"Route53MetadataConfig", []string{"cloud_metadata", "route53"}},
 		{"DotnetRuntimeMetricsConfig", []string{"dotnet_runtime_metrics"}},
 		{"NameResolverConfig", []string{"name_resolver"}},
-		{"ECSNameResolverConfig", []string{"name_resolver", "ecs"}},
+		{"GCENameResolverConfig", []string{"name_resolver", "gce"}},
+		{"AzureNameResolverConfig", []string{"name_resolver", "azure"}},
+		{"PeerMetadataConfig", []string{"peer_metadata"}},
+		{"PeerMetadataTLSConfig", []string{"peer_metadata", "tls"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.definition, func(t *testing.T) {
@@ -83,7 +87,9 @@ func TestSupportedSectionsCoverSchema(t *testing.T) {
 				require.Contains(t, emitted, key)
 				emitted = emitted[key].(map[string]any)
 			}
-			properties := defs[tt.definition].(map[string]any)["properties"].(map[string]any)
+			definition, ok := defs[tt.definition].(map[string]any)
+			require.True(t, ok, "Beyla schema no longer defines %s; update this test and the Alloy translation", tt.definition)
+			properties := definition["properties"].(map[string]any)
 			for key := range properties {
 				require.Contains(t, emitted, key, "Beyla option missing from Alloy: %s.%s", tt.definition, key)
 			}

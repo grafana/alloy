@@ -27,6 +27,7 @@ attributes:
     rename_unresolved_hosts: x
     rename_unresolved_hosts_incoming: x
     rename_unresolved_hosts_outgoing: x
+    sanitize_sql_query_text: true
     select:
         x:
             exclude:
@@ -35,7 +36,12 @@ attributes:
                 - x
 cloud_metadata:
     cluster_name: x
+    refresh_interval: 1s
     region: x
+    route53:
+        hosted_zone_ids:
+            - x
+        refresh_interval: 1s
 discovery:
     bpf_pid_filter_off: true
     default_exclude_instrument:
@@ -165,6 +171,7 @@ discovery:
           sampler:
             arg: x
             name: x
+    instrument_all_local: true
     min_process_age: 1s
     poll_interval: 1s
     route_harvester_advanced:
@@ -219,6 +226,9 @@ discovery:
           sampler:
             arg: x
             name: x
+          socket_apps:
+            enabled: true
+            non_root: true
 dotnet_runtime_metrics:
     sampling_interval: 1s
     timeout: 1s
@@ -315,6 +325,8 @@ ebpf:
                 anthropic:
                     enabled: true
                 bedrock:
+                    enabled: true
+                cohere:
                     enabled: true
                 embedding:
                     enabled: true
@@ -456,10 +468,15 @@ jvm_runtime_metrics:
     sampling_interval: 1s
 log_level: x
 name_resolver:
+    azure:
+        resource_group: x
+        subscription_id: x
     cache_expiry: 1s
     cache_len: 1
-    ecs:
-        refresh_interval: 1s
+    gce:
+        endpoint: x
+        project_id: x
+        zone: x
     sources:
         - x
 network:
@@ -513,6 +530,29 @@ otel_traces_export:
     sampler:
         arg: x
         name: x
+peer_metadata:
+    cache_ttl: 1s
+    caller_ttl: 1s
+    enabled: true
+    listen_address: x
+    max_cache_bytes: 1
+    max_caller_entries: 1
+    max_concurrent: 1
+    max_peers: 1
+    max_response_bytes: 1
+    mode: x
+    peer_cidrs:
+        - x
+    port: 1
+    refresh_interval: 1s
+    request_timeout: 1s
+    tls:
+        ca_file: x
+        cert_file: x
+        enabled: true
+        key_file: x
+        server_name: x
+    token: x
 prometheus_export:
     allow_service_graph_self_references: true
     buckets:
