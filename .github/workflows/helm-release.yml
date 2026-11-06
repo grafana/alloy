@@ -68,6 +68,7 @@ jobs:
     if: needs.setup.outputs.changed == 'true'
     permissions:
       id-token: write # Needed to generate app token
+      packages: write # Needed to publish the chart to GHCR
     steps:
       - uses: grafana/shared-workflows/actions/create-github-app-token@46f48da11e78ebdba7a8747ae456b11062fac83e # create-github-app-token/v0.3.1
         id: app-token
@@ -115,6 +116,19 @@ jobs:
           ls -l "${CR_PACKAGE_PATH}"
         env:
           CHART_PATH: ${{ needs.setup.outputs.chartpath }}
+
+      - name: Login to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push chart to GHCR
+        env:
+          PACKAGENAME: ${{ needs.setup.outputs.packagename }}
+        run: |
+          helm push "${CR_PACKAGE_PATH}/${PACKAGENAME}.tgz" "oci://ghcr.io/${GITHUB_REPOSITORY_OWNER}/helm-charts"
 
       # Note that this creates a release in grafana/helm-charts with a new tag.
       # The tag name in grafana/helm-charts is <package>-<version>, while the
