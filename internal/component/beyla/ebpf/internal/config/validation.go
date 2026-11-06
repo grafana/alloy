@@ -2,9 +2,11 @@ package config
 
 import (
 	"fmt"
+	"net/netip"
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Samplers that take a ratio arg — a semantic rule the schema enum can't express.
@@ -61,7 +63,7 @@ func (args Metrics) hasAppFeature() bool {
 	for _, feature := range args.Features {
 		switch feature {
 		case "application", "application_red", "application_sizes", "application_host", "application_span", "application_service_graph",
-			"application_process", "application_span_otel", "application_span_sizes", "*", "all":
+			"application_service_graph_connection_info", "application_process", "application_span_otel", "application_span_sizes", "*", "all":
 			return true
 		}
 	}
@@ -111,6 +113,110 @@ func (args NameResolver) Validate() error {
 	return nil
 }
 
+// Validate validates the cloud metadata settings. Zero values are omitted so Beyla
+// uses its defaults.
+func (args CloudMetadata) Validate() error {
+	if args.RefreshInterval < 0 {
+		return fmt.Errorf("cloud_metadata.refresh_interval must be greater than 0 when set")
+	}
+	if args.Route53.RefreshInterval < 0 {
+		return fmt.Errorf("cloud_metadata.route53.refresh_interval must be greater than 0 when set")
+	}
+	for i, id := range args.Route53.HostedZoneIDs {
+		if strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(id), "/hostedzone/")) == "" {
+			return fmt.Errorf("cloud_metadata.route53.hosted_zone_ids[%d] must not be blank", i)
+		}
+	}
+	return nil
+}
+
+// Beyla's peer metadata size defaults, used to compare limits when only one is set.
+const (
+	peerMetadataDefaultMaxResponseBytes = 1 << 20
+	peerMetadataDefaultMaxCacheBytes    = 64 << 20
+)
+
+// Validate checks the peer metadata settings with the rules Beyla applies at startup,
+// so a mistake fails here instead of crash-looping Beyla. Like Beyla, it only checks
+// enabled settings. Zero values are omitted so Beyla uses its defaults.
+func (args PeerMetadata) Validate() error {
+	if !args.Enabled {
+		return nil
+	}
+
+	switch args.Mode {
+	case "", "peer":
+	case "central":
+		return fmt.Errorf("peer_metadata.mode: Beyla doesn't implement the \"central\" mode yet")
+	default:
+		return fmt.Errorf("peer_metadata.mode: invalid value %q. Valid values are: peer", args.Mode)
+	}
+
+	if args.Port < 0 || args.Port > 65535 {
+		return fmt.Errorf("peer_metadata.port must be between 1 and 65535 when set")
+	}
+	if args.ListenAddress != "" {
+		if _, err := netip.ParseAddr(args.ListenAddress); err != nil {
+			return fmt.Errorf("peer_metadata.listen_address must be an IP address: %w", err)
+		}
+	}
+	for i, cidr := range args.PeerCIDRs {
+		if _, err := netip.ParsePrefix(cidr); err != nil {
+			return fmt.Errorf("peer_metadata.peer_cidrs[%d]: %w", i, err)
+		}
+	}
+
+	for _, d := range []struct {
+		name  string
+		value time.Duration
+	}{
+		{"refresh_interval", args.RefreshInterval},
+		{"caller_ttl", args.CallerTTL},
+		{"cache_ttl", args.CacheTTL},
+		{"request_timeout", args.RequestTimeout},
+	} {
+		if d.value < 0 || (d.value > 0 && d.value < time.Millisecond) {
+			return fmt.Errorf("peer_metadata.%s must be at least 1ms when set", d.name)
+		}
+	}
+	for _, n := range []struct {
+		name  string
+		value int
+	}{
+		{"max_peers", args.MaxPeers},
+		{"max_concurrent", args.MaxConcurrent},
+		{"max_caller_entries", args.MaxCallerEntries},
+		{"max_response_bytes", args.MaxResponseBytes},
+		{"max_cache_bytes", args.MaxCacheBytes},
+	} {
+		if n.value < 0 {
+			return fmt.Errorf("peer_metadata.%s must be greater than 0 when set", n.name)
+		}
+	}
+
+	maxResponseBytes, maxCacheBytes := args.MaxResponseBytes, args.MaxCacheBytes
+	if maxResponseBytes == 0 {
+		maxResponseBytes = peerMetadataDefaultMaxResponseBytes
+	}
+	if maxCacheBytes == 0 {
+		maxCacheBytes = peerMetadataDefaultMaxCacheBytes
+	}
+	if maxCacheBytes < maxResponseBytes {
+		return fmt.Errorf("peer_metadata.max_cache_bytes (%d) must be at least max_response_bytes (%d)", maxCacheBytes, maxResponseBytes)
+	}
+
+	if strings.ContainsAny(string(args.Token), "\r\n") {
+		return fmt.Errorf("peer_metadata.token must not contain newlines")
+	}
+	if args.Token != "" && !args.TLS.Enabled {
+		return fmt.Errorf("peer_metadata.token requires peer_metadata.tls.enabled, so the token isn't sent in clear text")
+	}
+	if args.TLS.Enabled && (args.TLS.CertFile == "" || args.TLS.KeyFile == "") {
+		return fmt.Errorf("peer_metadata.tls requires cert_file and key_file")
+	}
+	return nil
+}
+
 // Validate validates the .NET runtime collection settings.
 func (args DotnetRuntimeMetrics) Validate() error {
 	if args.SamplingInterval < 0 {
@@ -125,34 +231,36 @@ func (args DotnetRuntimeMetrics) Validate() error {
 // Validate validates the Services configuration
 func (args Services) Validate() error {
 	for i, svc := range args {
-		// Check if any Kubernetes fields are defined
-		hasKubernetes := svc.Kubernetes.Namespace != "" ||
-			svc.Kubernetes.PodName != "" ||
-			svc.Kubernetes.DeploymentName != "" ||
-			svc.Kubernetes.ReplicaSetName != "" ||
-			svc.Kubernetes.StatefulSetName != "" ||
-			svc.Kubernetes.DaemonSetName != "" ||
-			svc.Kubernetes.OwnerName != "" ||
-			len(svc.Kubernetes.PodLabels) > 0
-
-		if svc.OpenPorts == "" && svc.Path == "" && svc.CmdArgs == "" && !hasKubernetes {
+		if !svc.hasSelector() {
 			return fmt.Errorf("discovery.services[%d] must define at least one of: open_ports, exe_path, cmd_args, or kubernetes configuration", i)
 		}
 	}
 	return nil
 }
 
-// Validate permits socket-only survey selectors and validates common criteria.
+// hasSelector reports whether svc sets any process selection criteria.
+func (svc Service) hasSelector() bool {
+	hasKubernetes := svc.Kubernetes.Namespace != "" ||
+		svc.Kubernetes.PodName != "" ||
+		svc.Kubernetes.DeploymentName != "" ||
+		svc.Kubernetes.ReplicaSetName != "" ||
+		svc.Kubernetes.StatefulSetName != "" ||
+		svc.Kubernetes.DaemonSetName != "" ||
+		svc.Kubernetes.OwnerName != "" ||
+		len(svc.Kubernetes.PodLabels) > 0
+
+	return svc.OpenPorts != "" || svc.Path != "" || svc.CmdArgs != "" || hasKubernetes
+}
+
+// Validate validates the survey selectors. Unlike Services, socket_apps alone is
+// valid selection criteria: it selects any process that uses sockets.
 func (args SurveyServices) Validate() error {
 	for i, svc := range args {
-		if svc.SocketApps.Enabled {
-			continue
+		if svc.SocketApps.NonRoot && !svc.SocketApps.Enabled {
+			return fmt.Errorf("discovery.survey[%d]: socket_apps.non_root requires socket_apps.enabled to be true", i)
 		}
-		if svc.SocketApps.NonRoot {
-			return fmt.Errorf("discovery.survey[%d].socket_apps.non_root requires enabled = true", i)
-		}
-		if err := (Services{svc.Service}).Validate(); err != nil {
-			return err
+		if !svc.Service.hasSelector() && !svc.SocketApps.Enabled {
+			return fmt.Errorf("discovery.survey[%d] must define at least one of: open_ports, exe_path, cmd_args, kubernetes configuration, or socket_apps", i)
 		}
 	}
 	return nil
@@ -161,18 +269,6 @@ func (args SurveyServices) Validate() error {
 // Validate validates the Arguments configuration
 func (args *Arguments) Validate() error {
 	hasAppFeature := args.Metrics.hasAppFeature()
-	if args.Discovery.InstrumentAllLocal && (len(args.Discovery.Instrument) > 0 || len(args.Discovery.Services) > 0 || args.Port != "" || args.ExecutableName != "") {
-		return fmt.Errorf("discovery.instrument_all_local is mutually exclusive with other instrumentation selectors")
-	}
-	if args.CloudMetadata.RefreshInterval < 0 {
-		return fmt.Errorf("cloud_metadata.refresh_interval must be greater than 0 when set")
-	}
-	if args.CloudMetadata.Route53.RefreshInterval < 0 {
-		return fmt.Errorf("cloud_metadata.route53.refresh_interval must be greater than 0 when set")
-	}
-	if err := args.Discovery.Survey.Validate(); err != nil {
-		return fmt.Errorf("invalid survey configuration: %s", err)
-	}
 
 	if args.TracePrinter == "" {
 		args.TracePrinter = "disabled"
@@ -189,6 +285,23 @@ func (args *Arguments) Validate() error {
 	}
 	if err := args.NameResolver.Validate(); err != nil {
 		return err
+	}
+	if err := args.CloudMetadata.Validate(); err != nil {
+		return err
+	}
+	if err := args.PeerMetadata.Validate(); err != nil {
+		return err
+	}
+	if args.NameResolver.ECS.RefreshInterval != 0 && args.CloudMetadata.RefreshInterval != 0 {
+		return fmt.Errorf("name_resolver.ecs.refresh_interval is deprecated and can't be combined with cloud_metadata.refresh_interval; set only cloud_metadata.refresh_interval")
+	}
+	if args.Discovery.InstrumentAllLocal && (len(args.Discovery.Instrument) > 0 || len(args.Discovery.Services) > 0 ||
+		args.Port != "" || args.ExecutableName != "") {
+
+		return fmt.Errorf("discovery.instrument_all_local can't be combined with discovery.instrument, discovery.services, open_port, or executable_name")
+	}
+	if err := args.Discovery.Survey.Validate(); err != nil {
+		return fmt.Errorf("invalid survey configuration: %s", err.Error())
 	}
 	if err := args.DotnetRuntimeMetrics.Validate(); err != nil {
 		return err
@@ -212,9 +325,10 @@ func (args *Arguments) Validate() error {
 
 	if hasAppFeature {
 		// Check if any discovery method is configured (new or legacy)
-		hasAnyDiscovery := args.Discovery.InstrumentAllLocal || len(args.Discovery.Services) > 0 ||
+		hasAnyDiscovery := len(args.Discovery.Services) > 0 ||
 			len(args.Discovery.Survey) > 0 ||
-			len(args.Discovery.Instrument) > 0
+			len(args.Discovery.Instrument) > 0 ||
+			args.Discovery.InstrumentAllLocal
 
 		if !hasAnyDiscovery {
 			return fmt.Errorf("discovery.services, discovery.instrument, discovery.survey, or discovery.instrument_all_local is required when application features are enabled")

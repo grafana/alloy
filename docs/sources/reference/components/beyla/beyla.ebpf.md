@@ -178,7 +178,7 @@ You can use the following blocks with `beyla.ebpf`:
 | `attributes` > [`instance_id`][instance_id]                            | Configures instance ID settings.                                                                   | no       |
 | `attributes` > [`select`][select]                                      | Configures which attributes to include or exclude for specific sections.                           | no       |
 | [`cloud_metadata`][cloud_metadata]                                     | Configures overrides for detected cloud metadata.                                                 | no       |
-| `cloud_metadata` > [`route53`][route53 metadata] | Configures Route 53 DNS record discovery. | no |
+| `cloud_metadata` > [`route53`][route53]                                | Configures Amazon Route 53 record discovery for service name resolution.                          | no       |
 | [`discovery`][discovery]                                               | Configures the discovery for processes to instrument matching given criteria.                      | no       |
 | `discovery` > [`instrument`][services]                                 | Configures the services to discover and instrument for the component.                              | no       |
 | `discovery` > `instrument` > [`kubernetes`][kubernetes services]       | Configures the Kubernetes services to discover and instrument for the component.                   | no       |
@@ -189,13 +189,14 @@ You can use the following blocks with `beyla.ebpf`:
 | `discovery` > `default_exclude_instrument` > [`kubernetes`][kubernetes services] | Configures the default Kubernetes services to exclude from instrumentation for the component.     | no       |
 | `discovery` > [`survey`][services]                                     | Configures the surveying mechanism for the component.                                              | no       |
 | `discovery` > `survey` > [`kubernetes`][kubernetes services]           | Configures the Kubernetes surveying mechanism for the component.                                   | no       |
-| `discovery` > `survey` > [`socket_apps`][socket apps] | Filters surveyed services by socket activity. | no |
+| `discovery` > `survey` > [`socket_apps`][socket_apps]                  | Restricts surveying to processes that use sockets.                                                 | no       |
 | [`ebpf`][ebpf]                                                         | Configures eBPF-specific settings.                                                                 | no       |
 | `ebpf` > [`payload_extraction`][payload extraction]                    | Configures HTTP payload extraction for protocol-aware parsing.                                     | no       |
 | `ebpf` > `payload_extraction` > `http` > [`openai`][openai payload extraction] | Configures OpenAI payload extraction.                                                      | no       |
 | `ebpf` > `payload_extraction` > `http` > [`anthropic`][anthropic payload extraction] | Configures Anthropic payload extraction.                                             | no       |
 | `ebpf` > `payload_extraction` > `http` > [`gemini`][gemini payload extraction] | Configures Gemini payload extraction.                                                      | no       |
 | `ebpf` > `payload_extraction` > `http` > [`bedrock`][bedrock payload extraction] | Configures AWS Bedrock payload extraction.                                               | no       |
+| `ebpf` > `payload_extraction` > `http` > [`cohere`][cohere payload extraction] | Configures Cohere payload extraction.                                                      | no       |
 | `ebpf` > `payload_extraction` > `http` > [`embedding`][embedding payload extraction] | Configures embedding payload extraction.                                             | no       |
 | `ebpf` > `payload_extraction` > `http` > [`mcp`][mcp payload extraction] | Configures Model Context Protocol payload extraction.                                                          | no       |
 | `ebpf` > `payload_extraction` > `http` > [`qwen`][qwen payload extraction] | Configures `Qwen` payload extraction.                                                              | no       |
@@ -209,9 +210,11 @@ You can use the following blocks with `beyla.ebpf`:
 | `metrics` > [`buckets`][buckets]                                      | Configures histogram bucket boundaries.                                                           | no       |
 | `metrics` > [`network`][network metrics]                               | Configures network metrics options for Beyla.                                                      | no       |
 | [`name_resolver`][name_resolver]                                     | Configures service name resolution.                                                               | no       |
-| `name_resolver` > [`gce`][gce resolver] | Configures Google Compute Engine service name resolution. | no |
-| `name_resolver` > [`azure`][azure resolver] | Configures Azure Virtual Machine Scale Set service name resolution. | no |
-| `name_resolver` > [`ecs`][ecs name resolution]                        | Configures Amazon ECS task inventory refreshes for service name resolution.                         | no       |
+| `name_resolver` > [`azure`][azure name resolution]                    | Configures the Azure scope for service name resolution.                                           | no       |
+| `name_resolver` > [`ecs`][ecs name resolution]                        | Deprecated. Configures Amazon ECS task inventory refreshes for service name resolution.            | no       |
+| `name_resolver` > [`gce`][gce name resolution]                        | Configures the Google Compute Engine scope for service name resolution.                           | no       |
+| [`peer_metadata`][peer_metadata]                                      | Configures the exchange of service metadata between Beyla instances.                              | no       |
+| `peer_metadata` > [`tls`][peer_metadata tls]                          | Configures TLS for the peer metadata exchange.                                                    | no       |
 | [`traces`][traces]                                                     | Configures trace collection and sampling options for all services instrumented by the component.   | no       |
 | `traces` > [`sampler`][sampler]                                        | Configures global trace sampling settings                                                          | no       |
 | [`routes`][routes]                                                     | Configures the routes to match HTTP paths into user-provided HTTP routes.                          | no       |
@@ -243,6 +246,7 @@ You can use the following blocks with `beyla.ebpf`:
 [anthropic payload extraction]: #anthropic
 [gemini payload extraction]: #gemini
 [bedrock payload extraction]: #bedrock
+[cohere payload extraction]: #cohere
 [embedding payload extraction]: #embedding
 [mcp payload extraction]: #mcp
 [qwen payload extraction]: #qwen
@@ -261,13 +265,15 @@ You can use the following blocks with `beyla.ebpf`:
 [stats]: #stats
 [jvm_runtime_metrics]: #jvm_runtime_metrics
 [dotnet_runtime_metrics]: #dotnet_runtime_metrics
-[route53 metadata]: #route53
-[socket apps]: #socket_apps
-[gce resolver]: #gce
-[azure resolver]: #azure
 [cloud_metadata]: #cloud_metadata
+[route53]: #route53
+[socket_apps]: #socket_apps
 [name_resolver]: #name_resolver
+[azure name resolution]: #azure
 [ecs name resolution]: #ecs
+[gce name resolution]: #gce
+[peer_metadata]: #peer_metadata
+[peer_metadata tls]: #tls
 [buckets]: #buckets
 
 {{< /docs/alloy-config >}}
@@ -291,6 +297,13 @@ Configure the `traces` argument to send traces data to other components.
 ### `attributes`
 
 The `attributes` block configures how some attributes for metrics and traces are decorated.
+
+| Name                      | Type   | Description                                          | Default | Required |
+|---------------------------|--------|------------------------------------------------------|---------|----------|
+| `sanitize_sql_query_text` | `bool` | Replace literal values in SQL query text with placeholders. | `false` | no       |
+
+When you set `sanitize_sql_query_text` to `true`, Beyla replaces the literal values, such as strings and numbers, in the `db.query.text` attribute of SQL spans with placeholders.
+Use it to keep sensitive values in SQL statements out of your traces.
 
 It contains the following blocks:
 
@@ -399,21 +412,20 @@ The `discovery` block configures the discovery for processes to instrument match
 |--------------------------------------|--------|--------------------------------------------------------------------|---------|----------|
 | `disabled_route_harvesters`          | `list(string)` | Languages to exclude from automatic HTTP route harvesting. | `[]` | no |
 | `exclude_otel_instrumented_services` | `bool` | Exclude services that are already instrumented with OpenTelemetry. | `true`  | no       |
-| `instrument_all_local` | `bool` | Discover and instrument local applications based on socket activity. Experimental. | `false` | no |
+| `instrument_all_local`               | `bool` | Instrument every local process that uses sockets.                  | `false` | no       |
 | `skip_go_specific_tracers`           | `bool` | Skip Go-specific tracers during discovery.                         | `false` | no       |
 
 `disabled_route_harvesters` accepts `dotnet`, `go`, `java`, `nodejs`, `php`, `python`, and `ruby`.
 Use it to disable automatic HTTP route harvesting for specific languages while retaining their instrumentation.
 
-Set `instrument_all_local = true` to discover applications without individual instrumentation selectors.
-Non-root processes qualify when Beyla observes socket activity.
-Root processes require a listener on a port below 1024.
-Beyla also detects sockets already open at startup, and a process stays eligible until it exits.
-This experimental mode applies discovery exclusions and survey's default system-process exclusions.
-It is mutually exclusive with `instrument`, legacy `services`, `open_port`, and `executable_name` selectors.
-Configure `survey` separately to emit `survey_info` metrics.
+`instrument_all_local` instruments local processes without individual service selectors.
+A process qualifies once Beyla observes it using sockets, including sockets that are already open when Beyla starts.
+A process that runs as root qualifies only if it listens on a port below 1024.
+Beyla excludes the same system processes as in survey mode, and it still applies `exclude_instrument` and `default_exclude_instrument`.
+You can't combine `instrument_all_local` with `instrument`, `services`, `open_port`, or `executable_name`.
+Survey reporting stays independent, so configure `survey` to emit `survey_info` as well.
 
-The `discovery` block contains the following blocks:
+It contains the following blocks:
 
 #### `instrument`
 
@@ -463,21 +475,43 @@ The `survey` block configures services for discovery without instrumentation usi
 The component emits a `survey_info` metric for each discovered service without instrumenting it.
 This can be helpful for informing external applications of the services available for instrumentation.
 
-The `survey` block uses the same configuration options as the `instrument` block and accepts a `socket_apps` block.
+The `survey` block uses the same configuration options as the `instrument` block.
+It also accepts a `socket_apps` block.
 
 ##### `socket_apps`
 
-The `socket_apps` block filters survey candidates by socket activity.
+The `socket_apps` block holds back the matching survey candidates until Beyla observes them using sockets.
 
-| Name | Type | Description | Default | Required |
-|------|------|-------------|---------|----------|
-| `enabled` | `bool` | Require observed socket activity for this survey entry. | `false` | no |
-| `non_root` | `bool` | Require root-owned processes to listen on a port below 1024. Requires `enabled = true`. | `false` | no |
+| Name       | Type   | Description                                                                | Default | Required |
+|------------|--------|----------------------------------------------------------------------------|---------|----------|
+| `enabled`  | `bool` | Only survey matching processes after they use sockets.                     | `false` | no       |
+| `non_root` | `bool` | Exclude processes that run as root, unless they listen on a port below 1024. | `false` | no       |
 
-Beyla observes connection and listen attempts, including Unix sockets, and sockets already open at startup.
-A process stays eligible until it exits, even if its sockets close.
-These settings affect only their survey entry. Another matching entry can admit the same process without socket activity.
-You can use `socket_apps { enabled = true }` as the only criterion in a survey entry.
+A process qualifies when it connects or listens on a socket.
+After Beyla admits a process, it stays admitted until it exits.
+
+`non_root` requires `enabled = true` in the same block.
+Use it to skip system daemons such as SSH or cron, while still surveying system services that serve privileged ports.
+
+Criteria within one `survey` block must all match, and a process qualifies if it matches any `survey` block.
+A `survey` block can set `socket_apps` without other criteria to survey every process that uses sockets.
+
+In the following example, processes under `/opt/batch/` qualify without socket activity, and all other processes must use sockets and not run as root:
+
+```alloy
+discovery {
+  survey {
+    exe_path = "*"
+    socket_apps {
+      enabled  = true
+      non_root = true
+    }
+  }
+  survey {
+    exe_path = "/opt/batch/*"
+  }
+}
+```
 
 #### `kubernetes` services
 
@@ -721,6 +755,14 @@ When enabled, Beyla parses supported Gemini HTTP payloads and can enrich traces 
 
 When enabled, Beyla parses supported AWS Bedrock HTTP payloads and can enrich traces with GenAI-related attributes.
 
+###### `cohere`
+
+| Name      | Type   | Description                               | Default | Required |
+|-----------|--------|-------------------------------------------|---------|----------|
+| `enabled` | `bool` | Enable Cohere payload extraction parsing. | `false` | no       |
+
+When enabled, Beyla parses Cohere native chat API HTTP payloads and can enrich traces with GenAI-related attributes.
+
 ###### `embedding`
 
 | Name      | Type   | Description                                  | Default | Required |
@@ -849,6 +891,7 @@ The accepted values are `always_on`, `always_off`, and `trace_based`.
 * `application_sizes` exports HTTP request and response body-size histograms. Include `application` or `application_red` in the same feature list.
 * `application_process` exports metrics about the processes that run the instrumented application.
 * `application_service_graph` exports application-level service graph metrics.
+* `application_service_graph_connection_info` exports the `traces_service_graph_connection_info` gauge, which is `1` for each observed connection from a client service to a destination. `*`, `all`, `application`, and `application_service_graph` don't include it.
 * `application_span` exports application-level metrics in traces span metrics format.
 * `application_span_otel` exports OpenTelemetry-compatible span metrics.
 * `application_span_sizes` exports span size metrics for trace analysis.
@@ -1112,25 +1155,28 @@ The `cloud_metadata` block configures cloud inventory refreshes and overrides au
 | Name | Type | Description | Default | Required |
 |------|------|-------------|---------|----------|
 | `cluster_name` | `string` | Overrides the detected cloud cluster name. | `""` | no |
+| `refresh_interval` | `duration` | How often Beyla refreshes the cloud inventory used for service name resolution. | `"30s"` | no |
 | `region` | `string` | Overrides the detected cloud region. | `""` | no |
-| `refresh_interval` | `duration` | How often Beyla refreshes cloud inventories for service name resolution. | `"30s"` | no |
 
-Empty cluster and region values use automatically detected metadata.
-An unset or zero refresh interval uses the default defined in Beyla.
+Empty values use automatically detected metadata.
+An unset or zero `refresh_interval` uses the default defined in Beyla.
+
+`refresh_interval` applies to the `ecs`, `gce`, and `azure` name resolver sources.
+It replaces the deprecated `name_resolver` > `ecs` > `refresh_interval` argument.
+You can't set both.
 
 #### `route53`
 
-The `route53` block configures Amazon Route 53 DNS record discovery.
-Include `route53` in `name_resolver.sources` to enable it.
+The `route53` block configures how Beyla discovers Amazon Route 53 records for the `route53` name resolver source.
 
 | Name | Type | Description | Default | Required |
 |------|------|-------------|---------|----------|
-| `hosted_zone_ids` | `list(string)` | Hosted zones to query. Required when the `route53` source is enabled. | `[]` | no |
-| `refresh_interval` | `duration` | How often Beyla refreshes Route 53 records. | `"5m"` | no |
+| `hosted_zone_ids` | `list(string)` | Restricts discovery to these hosted zones. | `[]` | no |
+| `refresh_interval` | `duration` | How often Beyla polls Route 53, independently of the other cloud sources. | `"5m"` | no |
 
-The resolver requires `route53:ListResourceRecordSets` permission on the configured zones.
-It resolves A and AAAA records and excludes aliases, `CNAME` records, and wildcard records.
-Its refresh interval is independent of `cloud_metadata.refresh_interval`.
+When `hosted_zone_ids` is empty, Beyla discovers the public zones of the account and the private zones associated with the detected VPC.
+Beyla reads the A and AAAA records from those zones, and skips alias records, CNAME records, and wildcard names.
+An unset or zero `refresh_interval` uses the default defined in Beyla.
 
 ### `name_resolver`
 
@@ -1145,73 +1191,148 @@ The `name_resolver` block configures how Beyla resolves service names.
 `sources` accepts `azure`, `dns`, `ecs`, `gce`, `k8s`, `kube`, `kubernetes`, `rdns`, and `route53`.
 The values `k8s`, `kube`, and `kubernetes` select the same Kubernetes resolver.
 An empty list uses the default sources defined in Beyla.
+Setting `sources` replaces the default sources, so include `k8s` and `rdns` to keep them.
 Unset or zero cache values use the defaults defined in Beyla.
 
-Include `ecs` in `sources` to enable Amazon ECS service name resolution.
-This requires `ecs:ListTasks` and `ecs:DescribeTasks` permissions.
-The `cloud_metadata` block lets you override automatic cluster and region detection and configure inventory refreshes.
+The cloud sources work only when Beyla detects the matching cloud environment:
 
-Include `gce` to resolve services in Google Compute Engine zonal managed instance groups.
-This requires `compute.instanceGroupManagers.list`, `compute.instanceGroupManagers.get`, and `compute.instances.get` permissions in the configured project.
-The [Compute Viewer role][] provides these permissions.
+* `ecs` resolves Amazon ECS task IP addresses. It requires the `ecs:ListTasks` and `ecs:DescribeTasks` permissions.
+* `route53` resolves IP addresses from Amazon Route 53 A and AAAA records. It requires detected EC2 metadata and the `route53:ListResourceRecordSets` permission. Configure it in the [`route53`](#route53) block.
+* `gce` resolves Google Compute Engine VM addresses to managed instance group names. It requires the `compute.instanceGroupManagers.list`, `compute.instanceGroupManagers.get`, and `compute.instances.get` permissions, for example through the [Compute Viewer role][].
+* `azure` resolves Azure VM addresses to scale set names. It requires read access to the VM, scale set, and network interface inventories, for example through the [Azure Reader role][]. Beyla doesn't use this source when it detects Kubernetes.
 
-Include `azure` to resolve services in Azure Uniform and Flexible Virtual Machine Scale Sets on Azure VMs outside Kubernetes.
-This requires read access to scale sets, their virtual machines and instance views, and network interfaces in the configured resource group.
-The [Azure Reader role][] provides this access.
+When both `ecs` and `route53` resolve the same IP address, Beyla uses the ECS name.
+The `cloud_metadata` block lets you override automatic cluster and region detection, and sets how often Beyla refreshes the cloud inventory.
 
-Include `route53` on Amazon EC2 to resolve addresses using records in the configured Route 53 hosted zones.
-
-For example, this block adds ECS resolution while retaining the default sources:
+For example, this configuration adds ECS resolution while retaining the default sources:
 
 ```alloy
-name_resolver {
-  sources = ["k8s", "rdns", "ecs"]
-}
-
 cloud_metadata {
   refresh_interval = "30s"
 }
+
+name_resolver {
+  sources = ["k8s", "rdns", "ecs"]
+}
 ```
-
-#### `ecs`
-
-The `ecs` block provides the deprecated ECS refresh interval setting.
-Include `ecs` in `name_resolver.sources` to enable it.
-
-| Name | Type | Description | Default | Required |
-|------|------|-------------|---------|----------|
-| `refresh_interval` | `duration` | Deprecated. Use `cloud_metadata.refresh_interval` to configure cloud inventory refreshes. | `"30s"` | no |
-
-Alloy translates this setting to `cloud_metadata.refresh_interval`.
-An explicit nonzero `cloud_metadata.refresh_interval` takes precedence.
-The translated interval applies to cloud inventories that share this setting.
-
-#### `gce`
-
-The `gce` block configures the scope for Google Compute Engine service name resolution.
-Include `gce` in `name_resolver.sources` to enable it.
-
-| Name | Type | Description | Default | Required |
-|------|------|-------------|---------|----------|
-| `project_id` | `string` | Google Cloud project containing the managed instance groups. | `""` | no |
-| `zone` | `string` | Zone containing the managed instance groups. | `""` | no |
-| `endpoint` | `string` | Compute API base URL for an emulator or API proxy. | `""` | no |
-
-Empty project and zone values use the identity detected from GCE metadata.
-An empty endpoint uses the Google Compute API endpoint.
 
 #### `azure`
 
-The `azure` block configures the scope for Azure Virtual Machine Scale Set service name resolution.
-Include `azure` in `name_resolver.sources` to enable it.
+The `azure` block sets the Azure scope that the `azure` source queries.
 
 | Name | Type | Description | Default | Required |
 |------|------|-------------|---------|----------|
-| `subscription_id` | `string` | Subscription containing the scale sets. | `""` | no |
-| `resource_group` | `string` | Resource group containing the scale sets. | `""` | no |
+| `resource_group` | `string` | Resource group that contains the scale sets. | `""` | no |
+| `subscription_id` | `string` | Azure subscription to query. | `""` | no |
 
 Empty values use the subscription and resource group detected from Azure metadata.
-Beyla uses the default Azure SDK credential chain for API access.
+Beyla authenticates with the default Azure credential chain.
+
+#### `ecs`
+
+{{< admonition type="caution" >}}
+The `ecs` block is deprecated.
+Set `refresh_interval` in the [`cloud_metadata`](#cloud_metadata) block instead.
+{{< /admonition >}}
+
+The `ecs` block configures ECS service name resolution.
+
+| Name | Type | Description | Default | Required |
+|------|------|-------------|---------|----------|
+| `refresh_interval` | `duration` | Deprecated. How often Beyla refreshes the ECS task inventory. | `"30s"` | no |
+
+{{< param "PRODUCT_NAME" >}} passes `refresh_interval` to Beyla as `cloud_metadata` > `refresh_interval`, which also applies to the `gce` and `azure` sources.
+
+#### `gce`
+
+The `gce` block sets the Google Compute Engine scope that the `gce` source queries.
+
+| Name | Type | Description | Default | Required |
+|------|------|-------------|---------|----------|
+| `endpoint` | `string` | Overrides the Compute Engine API base URL, for example to use a proxy or an emulator. | `""` | no |
+| `project_id` | `string` | Compute Engine project to query. | `""` | no |
+| `zone` | `string` | Zone that contains the managed instance groups. | `""` | no |
+
+Empty `project_id` and `zone` values use the project and zone detected from GCE metadata.
+An empty `endpoint` uses the Google Compute Engine API.
+Beyla authenticates with application default credentials.
+
+### `peer_metadata`
+
+The `peer_metadata` block configures Beyla instances to exchange metadata about the services they instrument.
+Each Beyla serves the list of its instrumented services and the ports they listen on.
+When a span shows a connection to or from another host, Beyla fetches that host's list from the Beyla running there.
+Beyla uses it to name the service at the other end of the connection in traces and service graph metrics.
+
+| Name | Type | Description | Default | Required |
+|------|------|-------------|---------|----------|
+| `cache_ttl` | `duration` | How long Beyla keeps the metadata fetched from a peer. | `"1m"` | no |
+| `caller_ttl` | `duration` | How long Beyla remembers a client that called one of its services. | `"1m"` | no |
+| `enabled` | `bool` | Enable the peer metadata exchange. | `false` | no |
+| `listen_address` | `string` | IP address to serve the metadata on. | `""` | no |
+| `max_cache_bytes` | `int` | Maximum size of the metadata cached from all peers, in bytes. | `67108864` | no |
+| `max_caller_entries` | `int` | Maximum number of clients that Beyla remembers. | `16384` | no |
+| `max_concurrent` | `int` | Maximum number of peers that Beyla fetches metadata from at the same time. | `8` | no |
+| `max_peers` | `int` | Maximum number of peers that Beyla tracks. | `1024` | no |
+| `max_response_bytes` | `int` | Maximum size of the metadata that Beyla accepts from one peer, in bytes. | `1048576` | no |
+| `mode` | `string` | How Beyla exchanges metadata. | `"peer"` | no |
+| `peer_cidrs` | `list(string)` | Networks that peers can connect from and that Beyla fetches metadata from. | `[]` | no |
+| `port` | `int` | TCP port to serve the metadata on, and to fetch it from on peers. | `8998` | no |
+| `refresh_interval` | `duration` | How often Beyla fetches metadata from its peers. | `"10s"` | no |
+| `request_timeout` | `duration` | Timeout for fetching metadata from a peer. | `"2s"` | no |
+| `token` | `secret` | Bearer token that peers must present. | `""` | no |
+
+Unset or zero values use the defaults defined in Beyla.
+Every Beyla in the exchange must use the same `port`, `token`, and TLS settings.
+
+When you set `enabled` to `true`, Beyla opens a TCP listener on `port`.
+An empty `listen_address` listens on all interfaces.
+
+`mode` only accepts `peer`, which exchanges metadata directly between Beyla instances.
+
+`peer_cidrs` accepts networks in CIDR notation, for example `10.0.0.0/16`.
+Beyla rejects requests from addresses outside these networks, and only fetches metadata from addresses inside them.
+When `peer_cidrs` is empty, Beyla uses the private networks, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, and `fc00::/7`, that contain an address of a local network interface.
+
+`max_cache_bytes` must be at least `max_response_bytes`.
+
+`token` requires TLS, so the token isn't sent in clear text.
+{{< param "PRODUCT_NAME" >}} doesn't include the token in its logs.
+
+The following example exchanges metadata over TLS within one network, and requires a token:
+
+```alloy
+peer_metadata {
+  enabled    = true
+  peer_cidrs = ["10.0.0.0/16"]
+  token      = sys.env("<BEYLA_PEER_TOKEN>")
+
+  tls {
+    enabled   = true
+    cert_file = "/etc/beyla/tls.crt"
+    key_file  = "/etc/beyla/tls.key"
+    ca_file   = "/etc/beyla/ca.crt"
+  }
+}
+```
+
+Replace _`<BEYLA_PEER_TOKEN>`_ with the name of the environment variable that holds the token.
+
+#### `tls`
+
+The `tls` block configures TLS for both the metadata that Beyla serves and the metadata it fetches from peers.
+
+| Name | Type | Description | Default | Required |
+|------|------|-------------|---------|----------|
+| `ca_file` | `string` | Path to the CA certificates that verify the peer certificates. | `""` | no |
+| `cert_file` | `string` | Path to the certificate that Beyla serves. | `""` | no |
+| `enabled` | `bool` | Enable TLS. | `false` | no |
+| `key_file` | `string` | Path to the private key of `cert_file`. | `""` | no |
+| `server_name` | `string` | Name that peer certificates must be valid for. | `""` | no |
+
+When you set `enabled` to `true`, you must also set `cert_file` and `key_file`.
+An empty `ca_file` verifies peer certificates with the system certificate pool.
+An empty `server_name` verifies peer certificates against the IP address of the peer.
 
 ## Exported fields
 
@@ -1237,6 +1358,16 @@ The exported targets use the configured [in-memory traffic][] address specified 
 
 `beyla.ebpf` runs Beyla as a separate child process.
 This isolates failures in Beyla from {{< param "PRODUCT_NAME" >}} but changes how {{< param "PRODUCT_NAME" >}} exposes resource usage and profile data.
+
+### Configuration updates
+
+When you change the `beyla.ebpf` arguments, {{< param "PRODUCT_NAME" >}} restarts the Beyla child process to apply them.
+When only the services selected in the `discovery` block change, {{< param "PRODUCT_NAME" >}} applies the change to the running Beyla process instead.
+Beyla then instruments the newly selected services, stops instrumenting the services that are no longer selected, and keeps instrumenting the rest.
+
+{{< param "PRODUCT_NAME" >}} still restarts Beyla when a change in the `discovery` block alters how Beyla reports an already selected service, for example its name, namespace, sampler, routes, exports, or metric features.
+Changes to `survey`, and changes outside the `discovery` block, also restart Beyla.
+When `instrument_all_local` is set, every change restarts Beyla.
 
 ### Resource metrics
 

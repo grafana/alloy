@@ -3,6 +3,7 @@
 package beyla
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"sync"
@@ -45,6 +46,8 @@ type Component struct {
 	otlpQueue        chan otlpItem
 	otlpWorkerCancel context.CancelFunc
 	otlpWorkersWG    sync.WaitGroup
+	configControl    *configControl
+	configData       []byte // the config that the subprocess runs
 
 	subprocess *subprocess.Handle
 	health     *health.Reporter
@@ -80,7 +83,7 @@ func (c *Component) Run(ctx context.Context) error {
 	defer c.restartTimer.Stop()
 
 	for {
-		if c.applyPendingArgsUpdate() {
+		if c.applyPendingArgsUpdate(ctx) {
 			continue
 		}
 
@@ -90,7 +93,7 @@ func (c *Component) Run(ctx context.Context) error {
 			return nil
 
 		case newArgs := <-c.argsUpdate:
-			c.handleArgsUpdate(newArgs)
+			c.handleArgsUpdate(ctx, newArgs)
 
 		case err := <-c.subprocessExit:
 			c.handleSubprocessExit(err)
@@ -115,23 +118,57 @@ func (c *Component) CurrentHealth() component.Health {
 	return c.health.Current()
 }
 
-func (c *Component) applyPendingArgsUpdate() bool {
+func (c *Component) applyPendingArgsUpdate(ctx context.Context) bool {
 	select {
 	case newArgs := <-c.argsUpdate:
-		c.handleArgsUpdate(newArgs)
+		c.handleArgsUpdate(ctx, newArgs)
 		return true
 	default:
 		return false
 	}
 }
 
-func (c *Component) handleArgsUpdate(newArgs Arguments) {
-	c.args = getLatestArgsFromChannel(c.argsUpdate, newArgs)
+func (c *Component) handleArgsUpdate(ctx context.Context, newArgs Arguments) {
+	newArgs = getLatestArgsFromChannel(c.argsUpdate, newArgs)
+
+	refreshed := c.refreshSubprocessConfig(ctx, newArgs)
+	c.args = newArgs
+
+	if refreshed {
+		return
+	}
 
 	c.stopSubprocess()
 
 	c.subprocess.ResetRestartTracking()
 	c.restartTimer.Reset(0)
+}
+
+func (c *Component) refreshSubprocessConfig(ctx context.Context, newArgs Arguments) bool {
+	if c.configControl == nil || !sameExporters(c.args.Output, newArgs.Output) {
+		return false
+	}
+
+	configData, err := c.buildConfig(newArgs)
+
+	if err != nil {
+		c.opts.Logger.Error("failed to build config", "err", err)
+		return false
+	}
+
+	if bytes.Equal(configData, c.configData) {
+		return true
+	}
+
+	if err := c.configControl.refresh(ctx, configData); err != nil {
+		c.opts.Logger.Info("restarting Beyla subprocess to apply the configuration change", "reason", err)
+		return false
+	}
+
+	c.configData = configData
+	c.opts.Logger.Info("applied the configuration change to the running Beyla subprocess")
+
+	return true
 }
 
 func getLatestArgsFromChannel[A any](ch chan A, current A) A {
@@ -156,6 +193,10 @@ func (c *Component) logDeprecationWarnings() {
 
 	if c.args.Debug {
 		c.opts.Logger.Warn("The 'debug' field is deprecated. Use 'log_level = \"debug\"' instead.")
+	}
+
+	if c.args.NameResolver.ECS.RefreshInterval != 0 { //nolint:staticcheck // intentionally reads the deprecated field to warn
+		c.opts.Logger.Warn("name_resolver.ecs.refresh_interval is deprecated, use cloud_metadata.refresh_interval instead")
 	}
 
 	if len(c.args.Discovery.Services) > 0 {

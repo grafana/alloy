@@ -84,6 +84,11 @@
           "type": "string",
           "x-env-var": "BEYLA_RENAME_UNRESOLVED_HOSTS_OUTGOING"
         },
+        "sanitize_sql_query_text": {
+          "type": "boolean",
+          "description": "SanitizeSQLQueryText redacts SQL statement text.",
+          "x-env-var": "BEYLA_SANITIZE_SQL_QUERY_TEXT"
+        },
         "select": {
           "$ref": "#/$defs/Selection"
         },
@@ -734,6 +739,16 @@
       },
       "type": "object"
     },
+    "ExceptionsConfig": {
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "x-env-var": "BEYLA_EXCEPTIONS_ENABLED"
+        }
+      },
+      "type": "object",
+      "description": "ExceptionsConfig is the v1 configuration for runtime exception capture. OBI accepts services.ExceptionsConfig only from config v2. The exported fields match that struct so FromOBI and AsOBI copy them by name."
+    },
     "ExponentialHistogramConfig": {
       "properties": {
         "max_scale": {
@@ -773,6 +788,7 @@
               "application_red",
               "application_runtime",
               "application_service_graph",
+              "application_service_graph_connection_info",
               "application_sizes",
               "application_span_otel",
               "ebpf",
@@ -836,6 +852,16 @@
         },
         "bedrock": {
           "$ref": "#/$defs/BedrockConfig"
+        },
+        "cohere": {
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable Cohere native chat API payload extraction and parsing",
+              "default": false
+            }
+          },
+          "type": "object"
         },
         "embedding": {
           "$ref": "#/$defs/EmbeddingProviderConfig"
@@ -1548,6 +1574,49 @@
       },
       "type": "object"
     },
+    "LogsConfig": {
+      "properties": {
+        "batch_max_size": {
+          "type": "integer",
+          "x-env-var": "BEYLA_OTLP_LOGS_BATCH_MAX_SIZE"
+        },
+        "batch_timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "BEYLA_OTLP_LOGS_BATCH_TIMEOUT"
+        },
+        "compression": {
+          "type": "string",
+          "x-env-var": "BEYLA_OTLP_LOGS_COMPRESSION"
+        },
+        "endpoint": {
+          "type": "string",
+          "x-env-var": "BEYLA_OTLP_LOGS_ENDPOINT"
+        },
+        "protocol": {
+          "type": "string",
+          "enum": [
+            "",
+            "debug",
+            "grpc",
+            "http/json",
+            "http/protobuf"
+          ],
+          "x-env-var": "BEYLA_OTLP_LOGS_PROTOCOL"
+        },
+        "queue_size": {
+          "type": "integer",
+          "x-env-var": "BEYLA_OTLP_LOGS_QUEUE_SIZE"
+        }
+      },
+      "type": "object",
+      "description": "LogsConfig is the v1 configuration for exception log export. OBI fills otelcfg.LogsConfig from a config v2 logger_provider and gives the struct no YAML or environment tags. The exported fields match that struct, including the runtime hooks, so FromOBI and AsOBI copy them by name."
+    },
     "MCPConfig": {
       "properties": {
         "enabled": {
@@ -2036,6 +2105,128 @@
         }
       },
       "type": "object"
+    },
+    "PeerMetadataConfig": {
+      "properties": {
+        "cache_ttl": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "BEYLA_PEER_METADATA_CACHE_TTL"
+        },
+        "caller_ttl": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "BEYLA_PEER_METADATA_CALLER_TTL"
+        },
+        "enabled": {
+          "type": "boolean",
+          "x-env-var": "BEYLA_PEER_METADATA_ENABLED"
+        },
+        "listen_address": {
+          "type": "string",
+          "x-env-var": "BEYLA_PEER_METADATA_LISTEN_ADDRESS"
+        },
+        "max_cache_bytes": {
+          "type": "integer",
+          "x-env-var": "BEYLA_PEER_METADATA_MAX_CACHE_BYTES"
+        },
+        "max_caller_entries": {
+          "type": "integer",
+          "x-env-var": "BEYLA_PEER_METADATA_MAX_CALLER_ENTRIES"
+        },
+        "max_concurrent": {
+          "type": "integer",
+          "x-env-var": "BEYLA_PEER_METADATA_MAX_CONCURRENT"
+        },
+        "max_peers": {
+          "type": "integer",
+          "x-env-var": "BEYLA_PEER_METADATA_MAX_PEERS"
+        },
+        "max_response_bytes": {
+          "type": "integer",
+          "x-env-var": "BEYLA_PEER_METADATA_MAX_RESPONSE_BYTES"
+        },
+        "mode": {
+          "type": "string",
+          "x-env-var": "BEYLA_PEER_METADATA_MODE"
+        },
+        "peer_cidrs": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "x-env-var": "BEYLA_PEER_METADATA_PEER_CIDRS"
+        },
+        "port": {
+          "type": "integer",
+          "x-env-var": "BEYLA_PEER_METADATA_PORT"
+        },
+        "refresh_interval": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "BEYLA_PEER_METADATA_REFRESH_INTERVAL"
+        },
+        "request_timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "BEYLA_PEER_METADATA_REQUEST_TIMEOUT"
+        },
+        "tls": {
+          "$ref": "#/$defs/PeerMetadataTLSConfig"
+        },
+        "token": {
+          "type": "string",
+          "x-env-var": "BEYLA_PEER_METADATA_TOKEN"
+        }
+      },
+      "type": "object",
+      "description": "PeerMetadataConfig is the v1 configuration for peer metadata exchange. OBI accepts these settings only from config v2 and tags peer.MetadataConfig out of its v1 loader. The exported fields match that struct so FromOBI and AsOBI copy them by name."
+    },
+    "PeerMetadataTLSConfig": {
+      "properties": {
+        "ca_file": {
+          "type": "string",
+          "x-env-var": "BEYLA_PEER_METADATA_TLS_CA_FILE"
+        },
+        "cert_file": {
+          "type": "string",
+          "x-env-var": "BEYLA_PEER_METADATA_TLS_CERT_FILE"
+        },
+        "enabled": {
+          "type": "boolean",
+          "x-env-var": "BEYLA_PEER_METADATA_TLS_ENABLED"
+        },
+        "key_file": {
+          "type": "string",
+          "x-env-var": "BEYLA_PEER_METADATA_TLS_KEY_FILE"
+        },
+        "server_name": {
+          "type": "string",
+          "x-env-var": "BEYLA_PEER_METADATA_TLS_SERVER_NAME"
+        }
+      },
+      "type": "object",
+      "description": "PeerMetadataTLSConfig is the v1 TLS configuration for peer metadata exchange."
     },
     "PrometheusConfig": {
       "properties": {
@@ -2955,6 +3146,9 @@
       "description": "Check for required system capabilities and bail if they are not present. If set to 'false', Beyla will still print a list of missing capabilities, but the execution will continue",
       "x-env-var": "BEYLA_ENFORCE_SYS_CAPS"
     },
+    "exceptions": {
+      "$ref": "#/$defs/ExceptionsConfig"
+    },
     "executable_name": {
       "$ref": "#/$defs/RegexpAttr",
       "description": "Exec allows selecting the instrumented executable whose complete path contains the Exec value.  Use BEYLA_AUTO_TARGET_EXE",
@@ -3023,11 +3217,17 @@
       "description": "Port allows selecting the instrumented executable that owns the Port value. If this value is set (and different to zero), the value of the Exec property won't take effect. It's important to emphasize that if your process opens multiple HTTP/GRPC ports, the auto-instrumenter will instrument all the service calls in all the ports, not only the port specified here.",
       "x-env-var": "BEYLA_OPEN_PORT"
     },
+    "otel_logs_export": {
+      "$ref": "#/$defs/LogsConfig"
+    },
     "otel_metrics_export": {
       "$ref": "#/$defs/MetricsConfig"
     },
     "otel_traces_export": {
       "$ref": "#/$defs/TracesConfig"
+    },
+    "peer_metadata": {
+      "$ref": "#/$defs/PeerMetadataConfig"
     },
     "processes": {
       "$ref": "#/$defs/CollectConfig",

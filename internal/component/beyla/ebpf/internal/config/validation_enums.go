@@ -41,6 +41,7 @@ var metricFeatureValues = []string{
 	"application_red",
 	"application_runtime",
 	"application_service_graph",
+	"application_service_graph_connection_info",
 	"application_sizes",
 	"application_span",
 	"application_span_otel",

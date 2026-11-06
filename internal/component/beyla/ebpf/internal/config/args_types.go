@@ -1,6 +1,10 @@
 package config
 
-import "time"
+import (
+	"time"
+
+	"github.com/grafana/alloy/syntax/alloytypes"
+)
 
 type RouteHarvestingConfig struct {
 	JavaHarvestDelay time.Duration `alloy:"java_harvest_delay,attr,optional"`
@@ -17,8 +21,8 @@ type Discovery struct {
 	ExcludeOtelInstrumentedServicesSpanMetrics bool                  `alloy:"exclude_otel_instrumented_services_span_metrics,attr,optional"`
 	ExcludeServices                            Services              `alloy:"exclude_services,block,optional"`
 	ExcludedLinuxSystemPaths                   []string              `alloy:"excluded_linux_system_paths,attr,optional"`
-	InstrumentAllLocal                         bool                  `alloy:"instrument_all_local,attr,optional"`
 	Instrument                                 Services              `alloy:"instrument,block,optional"`
+	InstrumentAllLocal                         bool                  `alloy:"instrument_all_local,attr,optional"`
 	MinProcessAge                              time.Duration         `alloy:"min_process_age,attr,optional"`
 	PollInterval                               time.Duration         `alloy:"poll_interval,attr,optional"`
 	RouteHarvesterAdvanced                     RouteHarvestingConfig `alloy:"route_harvester_advanced,block,optional"`
@@ -26,6 +30,21 @@ type Discovery struct {
 	Services                                   Services              `alloy:"services,block,optional"`
 	SkipGoSpecificTracers                      bool                  `alloy:"skip_go_specific_tracers,attr,optional"`
 	Survey                                     SurveyServices        `alloy:"survey,block,optional"`
+}
+
+// SurveyServices are the discovery.survey selectors. They take the same criteria as
+// Services, plus socket_apps.
+type SurveyServices []SurveyService
+
+type SurveyService struct {
+	Service    Service    `alloy:",squash"`
+	SocketApps SocketApps `alloy:"socket_apps,block,optional"`
+}
+
+// SocketApps holds a survey candidate back until Beyla observes it using sockets.
+type SocketApps struct {
+	Enabled bool `alloy:"enabled,attr,optional"`
+	NonRoot bool `alloy:"non_root,attr,optional"`
 }
 
 type EBPFBufferSizes struct {
@@ -100,6 +119,10 @@ type BedrockConfig struct {
 	Enabled bool `alloy:"enabled,attr,optional"`
 }
 
+type CohereConfig struct {
+	Enabled bool `alloy:"enabled,attr,optional"`
+}
+
 type EmbeddingProviderConfig struct {
 	Enabled bool `alloy:"enabled,attr,optional"`
 }
@@ -141,6 +164,7 @@ type HTTPPayloadExtraction struct {
 	Anthropic     AnthropicPayloadExtraction `alloy:"anthropic,block,optional"`
 	Gemini        GeminiConfig               `alloy:"gemini,block,optional"`
 	Bedrock       BedrockConfig              `alloy:"bedrock,block,optional"`
+	Cohere        CohereConfig               `alloy:"cohere,block,optional"`
 	Embedding     EmbeddingProviderConfig    `alloy:"embedding,block,optional"`
 	Mcp           MCPConfig                  `alloy:"mcp,block,optional"`
 	Qwen          QwenConfig                 `alloy:"qwen,block,optional"`
@@ -262,19 +286,67 @@ type CloudMetadata struct {
 	Route53         Route53Metadata `alloy:"route53,block,optional"`
 }
 
+type Route53Metadata struct {
+	HostedZoneIDs   []string      `alloy:"hosted_zone_ids,attr,optional"`
+	RefreshInterval time.Duration `alloy:"refresh_interval,attr,optional"`
+}
+
 type NameResolver struct {
 	Sources     []string      `alloy:"sources,attr,optional"`
 	CacheLen    int           `alloy:"cache_len,attr,optional"`
 	CacheExpiry time.Duration `alloy:"cache_expiry,attr,optional"`
-
-	// Deprecated: Use cloud_metadata.refresh_interval instead.
+	// Deprecated: Use cloud_metadata.refresh_interval instead. Beyla v3.41.0 moved the
+	// ECS inventory refresh interval there, where it also applies to the gce and azure sources.
 	ECS   ECSNameResolver   `alloy:"ecs,block,optional"`
 	GCE   GCENameResolver   `alloy:"gce,block,optional"`
 	Azure AzureNameResolver `alloy:"azure,block,optional"`
 }
 
 type ECSNameResolver struct {
+	// Deprecated: Use cloud_metadata.refresh_interval instead.
 	RefreshInterval time.Duration `alloy:"refresh_interval,attr,optional"`
+}
+
+// GCENameResolver scopes the gce source. Empty values use the detected GCE metadata.
+type GCENameResolver struct {
+	Endpoint  string `alloy:"endpoint,attr,optional"`
+	ProjectID string `alloy:"project_id,attr,optional"`
+	Zone      string `alloy:"zone,attr,optional"`
+}
+
+// PeerMetadata configures Beyla's peer metadata exchange: each Beyla serves its local
+// service inventory over HTTP and fetches the inventory of the peers it sees in spans.
+type PeerMetadata struct {
+	Enabled          bool              `alloy:"enabled,attr,optional"`
+	Mode             string            `alloy:"mode,attr,optional"`
+	ListenAddress    string            `alloy:"listen_address,attr,optional"`
+	Port             int               `alloy:"port,attr,optional"`
+	PeerCIDRs        []string          `alloy:"peer_cidrs,attr,optional"`
+	RefreshInterval  time.Duration     `alloy:"refresh_interval,attr,optional"`
+	CallerTTL        time.Duration     `alloy:"caller_ttl,attr,optional"`
+	CacheTTL         time.Duration     `alloy:"cache_ttl,attr,optional"`
+	RequestTimeout   time.Duration     `alloy:"request_timeout,attr,optional"`
+	MaxPeers         int               `alloy:"max_peers,attr,optional"`
+	MaxConcurrent    int               `alloy:"max_concurrent,attr,optional"`
+	MaxCallerEntries int               `alloy:"max_caller_entries,attr,optional"`
+	MaxResponseBytes int               `alloy:"max_response_bytes,attr,optional"`
+	MaxCacheBytes    int               `alloy:"max_cache_bytes,attr,optional"`
+	Token            alloytypes.Secret `alloy:"token,attr,optional"`
+	TLS              PeerMetadataTLS   `alloy:"tls,block,optional"`
+}
+
+type PeerMetadataTLS struct {
+	Enabled    bool   `alloy:"enabled,attr,optional"`
+	CertFile   string `alloy:"cert_file,attr,optional"`
+	KeyFile    string `alloy:"key_file,attr,optional"`
+	CAFile     string `alloy:"ca_file,attr,optional"`
+	ServerName string `alloy:"server_name,attr,optional"`
+}
+
+// AzureNameResolver scopes the azure source. Empty values use the detected Azure metadata.
+type AzureNameResolver struct {
+	ResourceGroup  string `alloy:"resource_group,attr,optional"`
+	SubscriptionID string `alloy:"subscription_id,attr,optional"`
 }
 
 type Nodejs struct {
@@ -320,33 +392,4 @@ type Stats struct {
 	GeoIp        GeoIP      `alloy:"geo_ip,block,optional"`
 	Print        bool       `alloy:"print_stats,attr,optional"`
 	ReverseDns   ReverseDNS `alloy:"reverse_dns,block,optional"`
-}
-
-// SurveyService adds socket eligibility to the common service selectors.
-type SurveyService struct {
-	Service    Service           `alloy:",squash"`
-	SocketApps SocketAppSelector `alloy:"socket_apps,block,optional"`
-}
-
-type SurveyServices []SurveyService
-
-type SocketAppSelector struct {
-	Enabled bool `alloy:"enabled,attr,optional"`
-	NonRoot bool `alloy:"non_root,attr,optional"`
-}
-
-type GCENameResolver struct {
-	ProjectID string `alloy:"project_id,attr,optional"`
-	Zone      string `alloy:"zone,attr,optional"`
-	Endpoint  string `alloy:"endpoint,attr,optional"`
-}
-
-type AzureNameResolver struct {
-	SubscriptionID string `alloy:"subscription_id,attr,optional"`
-	ResourceGroup  string `alloy:"resource_group,attr,optional"`
-}
-
-type Route53Metadata struct {
-	HostedZoneIDs   []string      `alloy:"hosted_zone_ids,attr,optional"`
-	RefreshInterval time.Duration `alloy:"refresh_interval,attr,optional"`
 }
