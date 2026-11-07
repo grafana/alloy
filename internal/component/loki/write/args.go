@@ -74,19 +74,24 @@ func (wa *WalArguments) SetToDefault() {
 
 // EndpointArguments describes an individual location to send logs to.
 type EndpointArguments struct {
-	Name              string                   `alloy:"name,attr,optional"`
-	URL               string                   `alloy:"url,attr"`
-	BatchWait         time.Duration            `alloy:"batch_wait,attr,optional"`
-	BatchSize         units.Base2Bytes         `alloy:"batch_size,attr,optional"`
-	RemoteTimeout     time.Duration            `alloy:"remote_timeout,attr,optional"`
-	Headers           map[string]string        `alloy:"headers,attr,optional"`
-	MinBackoff        time.Duration            `alloy:"min_backoff_period,attr,optional"`  // start backoff at this level
-	MaxBackoff        time.Duration            `alloy:"max_backoff_period,attr,optional"`  // increase exponentially to this level
-	MaxBackoffRetries int                      `alloy:"max_backoff_retries,attr,optional"` // give up after this many; zero means infinite retries
-	TenantID          string                   `alloy:"tenant_id,attr,optional"`
-	RetryOnHTTP429    bool                     `alloy:"retry_on_http_429,attr,optional"`
-	HTTPClientConfig  *config.HTTPClientConfig `alloy:",squash"`
-	QueueConfig       QueueConfigArguments     `alloy:"queue_config,block,optional"`
+	Name              string            `alloy:"name,attr,optional"`
+	URL               string            `alloy:"url,attr"`
+	BatchWait         time.Duration     `alloy:"batch_wait,attr,optional"`
+	BatchSize         units.Base2Bytes  `alloy:"batch_size,attr,optional"`
+	RemoteTimeout     time.Duration     `alloy:"remote_timeout,attr,optional"`
+	Headers           map[string]string `alloy:"headers,attr,optional"`
+	MinBackoff        time.Duration     `alloy:"min_backoff_period,attr,optional"`  // start backoff at this level
+	MaxBackoff        time.Duration     `alloy:"max_backoff_period,attr,optional"`  // increase exponentially to this level
+	MaxBackoffRetries int               `alloy:"max_backoff_retries,attr,optional"` // give up after this many; zero means infinite retries
+	TenantID          string            `alloy:"tenant_id,attr,optional"`
+	RetryOnHTTP429    bool              `alloy:"retry_on_http_429,attr,optional"`
+	// UnixSocketPath, when set, sends batches over the unix-domain socket at
+	// this path instead of opening a TCP connection. The endpoint URL is
+	// still used for the request path and Host header; the socket listener
+	// must serve plaintext HTTP.
+	UnixSocketPath   string                   `alloy:"unix_socket_path,attr,optional"`
+	HTTPClientConfig *config.HTTPClientConfig `alloy:",squash"`
+	QueueConfig      QueueConfigArguments     `alloy:"queue_config,block,optional"`
 }
 
 // GetDefaultEndpointArguments defines the default settings for sending logs to a
@@ -154,12 +159,13 @@ func (args Arguments) convertEndpointConfigs() []client.Config {
 	for _, cfg := range args.Endpoints {
 		url, _ := url.Parse(cfg.URL)
 		cc := client.Config{
-			Name:      cfg.Name,
-			URL:       flagext.URLValue{URL: url},
-			Headers:   maps.Clone(cfg.Headers),
-			BatchWait: cfg.BatchWait,
-			BatchSize: int(cfg.BatchSize),
-			Client:    *cfg.HTTPClientConfig.Convert(),
+			Name:           cfg.Name,
+			URL:            flagext.URLValue{URL: url},
+			UnixSocketPath: cfg.UnixSocketPath,
+			Headers:        maps.Clone(cfg.Headers),
+			BatchWait:      cfg.BatchWait,
+			BatchSize:      int(cfg.BatchSize),
+			Client:         *cfg.HTTPClientConfig.Convert(),
 			BackoffConfig: backoff.Config{
 				MinBackoff: cfg.MinBackoff,
 				MaxBackoff: cfg.MaxBackoff,
