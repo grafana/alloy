@@ -2,8 +2,10 @@ package write
 
 import (
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 
 	alloyconfig "github.com/grafana/alloy/internal/component/common/config"
@@ -77,4 +79,43 @@ func TestTransport(t *testing.T) {
 		_, _ = io.Copy(io.Discard, resp.Body)
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 	})
+}
+
+func TestUnixSocketTransport(t *testing.T) {
+	sockPath := filepath.Join(t.TempDir(), "pyro-test.sock")
+
+	srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/ingest", r.URL.Path)
+		w.WriteHeader(http.StatusOK)
+	})}
+	lis, err := net.Listen("unix", sockPath)
+	require.NoError(t, err)
+	defer lis.Close()
+	go func() { _ = srv.Serve(lis) }()
+	defer srv.Close()
+
+	opts := GetDefaultEndpointOptions()
+	opts.URL = "http://127.0.0.1:4040/ingest"
+	opts.UnixSocketPath = sockPath
+	args := DefaultArguments()
+	args.Endpoints = []*EndpointOptions{&opts}
+	var receiver *fanOutClient
+	_, err = New(
+		pyrotestlogger.TestLogger(t),
+		noop.Tracer{},
+		prometheus.NewRegistry(),
+		func(exports Exports) {
+			receiver = exports.Receiver.(*fanOutClient)
+		},
+		"test-agent", "",
+		args,
+	)
+	require.NoError(t, err)
+
+	// The URL host is never dialed; the transport must reach the stub over unix.
+	resp, err := receiver.endpoints[0].ingestClient.Get("http://127.0.0.1:4040/ingest")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 }
