@@ -91,6 +91,7 @@ The following arguments are supported:
 | `remote_timeout`         | `duration`          | Timeout for requests made to the URL.                                                            | `"10s"`   | no       |
 | `retry_on_http_429`      | `bool`              | Retry when an HTTP 429 status code is received.                                                  | `true`    | no       |
 | `tenant_id`              | `string`            | The tenant ID used by default to push logs.                                                      |           | no       |
+| `unix_socket_path`       | `string`            | Path of a unix-domain socket to send batches over instead of TCP. The endpoint `url` is still used for the request path and Host header; the socket listener must serve plaintext HTTP. | | no |
 
  At most, one of the following can be provided:
 

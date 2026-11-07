@@ -3,8 +3,12 @@ package client
 import (
 	"context"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"net/url"
+	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -144,6 +148,66 @@ func TestFanoutConsumer_MultipleConfigs(t *testing.T) {
 		seenEntries += 1
 	}
 	require.Equal(t, seenEntries, expectedTotalLines)
+}
+
+func TestFanoutConsumer_UnixSocket(t *testing.T) {
+	sockPath := filepath.Join(t.TempDir(), "loki.sock")
+
+	var received atomic.Int64
+	srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err == nil && len(body) > 0 {
+			received.Add(1)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})}
+	lis, err := net.Listen("unix", sockPath)
+	require.NoError(t, err)
+	defer lis.Close()
+	go func() { _ = srv.Serve(lis) }()
+	defer srv.Close()
+
+	// The request URL keeps a TCP host:port for path and Host header; only
+	// the transport dials the socket.
+	pushURL, err := url.Parse("http://127.0.0.1:3100/loki/api/v1/push")
+	require.NoError(t, err)
+	endpointConfig := Config{
+		Name:           "test-client-unix",
+		URL:            flagext.URLValue{URL: pushURL},
+		UnixSocketPath: sockPath,
+		Timeout:        time.Second * 2,
+		BatchSize:      1,
+		BackoffConfig: backoff.Config{
+			MaxRetries: 0,
+		},
+		QueueConfig: QueueConfig{
+			Capacity:        10,
+			DrainTimeout:    time.Second * 10,
+			BlockOnOverflow: true,
+		},
+	}
+
+	consumer, err := NewFanoutConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), endpointConfig)
+	require.NoError(t, err)
+	consumer.Start()
+	defer consumer.Stop()
+
+	for i := range 10 {
+		require.NoError(t, consumer.ConsumeEntry(
+			t.Context(),
+			loki.Entry{
+				Labels: model.LabelSet{"test": "unix"},
+				Entry: push.Entry{
+					Timestamp: time.Now(),
+					Line:      fmt.Sprintf("unix-line%d", i),
+				},
+			},
+		))
+	}
+
+	require.Eventually(t, func() bool {
+		return received.Load() >= 1
+	}, 10*time.Second, 200*time.Millisecond, "timed out waiting for batches over the unix socket")
 }
 
 func TestFanoutConsumer_InvalidConfig(t *testing.T) {
