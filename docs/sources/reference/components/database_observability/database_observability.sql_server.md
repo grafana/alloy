@@ -36,9 +36,12 @@ You can use the following arguments with `database_observability.sql_server`:
 | `disable_collectors`| `list(string)`       | A list of collectors to disable from the default set.                    |         | no       |
 | `enable_collectors` | `list(string)`       | A list of collectors to enable on top of the default set.                |         | no       |
 | `exclude_current_user` | `bool`            | Exclude tagged Alloy queries and query samples from sessions matching the Alloy application name or opened with the login that Alloy uses. | `true` | no       |
-| `exclude_schemas`   | `list(string)`       | A list of schemas to exclude from monitoring, on top of the always-excluded system schemas `sys` and `information_schema`. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
-| `exclude_databases` | `list(string)`       | A list of databases to exclude from monitoring, on top of the always-excluded system databases `master`, `model`, `msdb`, and `tempdb`. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
-| `exclude_users`     | `list(string)`       | A list of original SQL Server login names to exclude from query samples. | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
+| `exclude_schemas`   | `list(string)`       | A list of schemas to exclude from monitoring on top of the default exclusions. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
+| `include_schemas`   | `list(string)`       | A list of schemas to monitor. When empty, all non-excluded schemas are monitored. Items in `include_schemas` override the default exclusions, but cannot overlap with `exclude_schemas` or system schemas (`sys`, `information_schema`). | `[]` | no       |
+| `exclude_databases` | `list(string)`       | A list of databases to exclude from monitoring on top of the default exclusions. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
+| `include_databases` | `list(string)`       | A list of databases to monitor. When empty, all non-excluded databases are monitored. Items in `include_databases` override the default exclusions, but cannot overlap with `exclude_databases` or system databases (`master`, `model`, `msdb`, `tempdb`). | `[]` | no       |
+| `exclude_users`     | `list(string)`       | A list of original SQL Server login names to exclude from query samples on top of the default exclusions. | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
+| `include_users`     | `list(string)`       | A list of original SQL Server login names to monitor in query samples. When empty, all non-excluded logins are monitored. Items in `include_users` override the default exclusions, but cannot overlap with `exclude_users`. `exclude_current_user` still takes precedence. | `[]` | no       |
 | `query_timeout`     | `duration`           | Timeout for each SQL statement.                                          | `"10s"` | no       |
 
 When `data_source_name` doesn't specify an application name (`app name`), Alloy sets it to `grafana:alloy:database_observability` on its SQL Server connections.
@@ -254,9 +257,9 @@ This keeps log volume low and ensures a fresh entry at least every 30 minutes.
 |--------------------|------------|---------------------------------------|---------|----------|
 | `collect_interval` | `duration` | How frequently to run health checks. | `"1h"`  | no       |
 
-The `health_check` collector periodically verifies that the login has the required grants (`VIEW DEFINITION`, plus `VIEW DATABASE STATE` or its SQL Server 2022+ equivalent `VIEW DATABASE PERFORMANCE STATE`) and that [Query Store][query_store] is enabled and populated, on every database the login can access on the instance. Each check emits a log entry with `op="health_status"` and a `check` field identifying it: `AlloyVersion`, `RequiredGrantsPresent`, `QueryStoreEnabled`, or `QueryStoreHasRows`.
+The `health_check` collector periodically verifies that the login has the required grants (`VIEW DEFINITION`, plus `VIEW DATABASE STATE` or its SQL Server 2022+ equivalent `VIEW DATABASE PERFORMANCE STATE`, and on editions other than Azure SQL Database `VIEW SERVER STATE` or `VIEW SERVER PERFORMANCE STATE`) and that [Query Store][query_store] is enabled and populated, on every database the login can access on the instance. Each check emits a log entry with `op="health_status"` and a `check` field identifying it: `AlloyVersion`, `RequiredGrantsPresent`, `QueryStoreEnabled`, or `QueryStoreHasRows`.
 
-`RequiredGrantsPresent` and `QueryStoreEnabled` pass only when true on every database the login can access; when they fail, the log entry's value lists the non-compliant databases. `QueryStoreHasRows` passes as soon as any accessible database has Query Store data, since it's expected for a low-traffic database to have none.
+`RequiredGrantsPresent` and `QueryStoreEnabled` pass only when at least one accessible user database exists and the check holds on every database the login can access (plus the server-level grant on non-Azure SQL Database editions); when they fail, the log entry's value describes the missing server grant, non-compliant databases, or `no accessible databases`. `QueryStoreHasRows` passes as soon as any accessible database has Query Store data, since it's expected for a low-traffic database to have none.
 
 ### `query_details`
 
@@ -294,6 +297,8 @@ The login requires `VIEW DATABASE STATE` on the connected database. On SQL Serve
 | `max_samples_per_collect` | `int`      | Maximum total number of completed query samples emitted across all tracked queries in a single collection cycle. Set to `0` for no per-collection limit. | `50`    | no       |
 
 The `query_samples` collector only collects requests whose query hash is tracked by the `query_metrics` collector.
+The collector checks [Query Store][query_store] state on the connected database before polling live requests.
+When the connected database is a system database such as `master`, or Query Store is disabled or read-only, the collector skips collection.
 
 When requests finish between polls, the collector filters out any request whose final elapsed time is shorter than `sample_min_duration`.
 Remaining completed requests are ranked by elapsed duration and then CPU time, and capped by `max_samples_per_query` and `max_samples_per_collect`.
@@ -303,7 +308,7 @@ For emitted samples, only wait event occurrences with a final duration of at lea
 The collector polls live requests and can miss queries shorter than `collect_interval`, wait events that start and finish between collections, and a query's first execution before Query Store admits its hash.
 For completed requests, the emitted resource counters contain the values from the final observation and can omit work performed after that observation.
 
-The login requires `VIEW SERVER STATE` on SQL Server 2019 and earlier. On SQL Server 2022 and later, `VIEW SERVER PERFORMANCE STATE` is also sufficient. Azure SQL Database can restrict the dynamic management views to the current session. In that case, the collector can't observe other sessions.
+The login requires `VIEW DATABASE STATE` (or `VIEW DATABASE PERFORMANCE STATE` on SQL Server 2022 and later) on the connected database, plus `VIEW SERVER STATE` on SQL Server 2019 (or `VIEW SERVER PERFORMANCE STATE` on SQL Server 2022 and later and Azure SQL Managed Instance). On Azure SQL Database, `VIEW DATABASE STATE` on the connected database is sufficient.
 
 ### `schema_details`
 
@@ -311,7 +316,7 @@ The login requires `VIEW SERVER STATE` on SQL Server 2019 and earlier. On SQL Se
 |--------------------|------------|------------------------------------------------------|---------|----------|
 | `collect_interval` | `duration` | How frequently to collect information from database. | `"1m"`  | no       |
 
-The collector scans every database that the login can access on the instance and collects schema details from each. Only databases where the login has `CONNECT` access to catalog views are collected.
+The collector scans every database that the login can access on the instance and collects schema details from each. Only databases where the login has `CONNECT` and `VIEW DEFINITION` permissions are collected.
 
 ### `server_configuration`
 
@@ -469,7 +474,7 @@ It uses `master.sys.server_resource_stats` for direct CPU, vCore, storage, and I
 The I/O metrics are average rates calculated from the totals and actual duration of the latest source interval.
 This view is refreshed independently of the Prometheus scrape interval.
 
-The login requires `VIEW SERVER STATE` on SQL Server 2019 and earlier.
+The login requires `VIEW SERVER STATE` on SQL Server 2019.
 On SQL Server 2022 and later, `VIEW SERVER PERFORMANCE STATE` is also sufficient.
 Azure SQL Managed Instance requires `VIEW SERVER PERFORMANCE STATE` for process, job-object, and complete session metrics.
 Without that permission, `user_sessions` can include only the monitoring login's own session.

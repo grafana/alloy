@@ -29,10 +29,5 @@ pyroscope.ebpf "default" {
 	demangle     = "full"
 	go_enabled   = false
 	reporter_unsymbolized_stubs = false
-
-	debug_info {
-		upload                  = true
-		on_target_symbolization = false
-	}
 }
 

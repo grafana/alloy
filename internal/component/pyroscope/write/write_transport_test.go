@@ -22,22 +22,25 @@ func TestTransport(t *testing.T) {
 		})
 	}
 
-	newTestComponent := func(url string, httpCfg *alloyconfig.HTTPClientConfig) *Component {
+	newTestReceiver := func(url string, httpCfg *alloyconfig.HTTPClientConfig) *fanOutClient {
 		opts := GetDefaultEndpointOptions()
 		opts.URL = url
 		opts.HTTPClientConfig = httpCfg
 		args := DefaultArguments()
 		args.Endpoints = []*EndpointOptions{&opts}
-		c, err := New(
+		var receiver *fanOutClient
+		_, err := New(
 			pyrotestlogger.TestLogger(t),
 			noop.Tracer{},
 			prometheus.NewRegistry(),
-			func(Exports) {},
-			"test-agent", "", t.TempDir(),
+			func(exports Exports) {
+				receiver = exports.Receiver.(*fanOutClient)
+			},
+			"test-agent", "",
 			args,
 		)
 		require.NoError(t, err)
-		return c
+		return receiver
 	}
 
 	t.Run("http1", func(t *testing.T) {
@@ -47,8 +50,8 @@ func TestTransport(t *testing.T) {
 
 		cfg := alloyconfig.CloneDefaultHTTPClientConfig()
 		cfg.EnableHTTP2 = false
-		c := newTestComponent(srv.URL, cfg)
-		client := c.receiver.endpoints[0].ingestClient
+		receiver := newTestReceiver(srv.URL, cfg)
+		client := receiver.endpoints[0].ingestClient
 
 		resp, err := client.Get(srv.URL)
 		require.NoError(t, err)
@@ -65,8 +68,8 @@ func TestTransport(t *testing.T) {
 		cfg := alloyconfig.CloneDefaultHTTPClientConfig()
 		cfg.EnableHTTP2 = false
 		cfg.TLSConfig.InsecureSkipVerify = true
-		c := newTestComponent(srv.URL, cfg)
-		client := c.receiver.endpoints[0].ingestClient
+		receiver := newTestReceiver(srv.URL, cfg)
+		client := receiver.endpoints[0].ingestClient
 
 		resp, err := client.Get(srv.URL)
 		require.NoError(t, err)

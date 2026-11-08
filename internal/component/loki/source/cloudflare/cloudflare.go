@@ -112,10 +112,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 	positionsFile, err := positions.New(o.Logger, positions.Config{
-		SyncPeriod:        10 * time.Second,
-		PositionsFile:     filepath.Join(o.DataPath, "positions.yml"),
-		IgnoreInvalidYaml: false,
-		ReadOnly:          false,
+		Path: filepath.Join(o.DataPath, "positions.yml"),
 	})
 	if err != nil {
 		return nil, err

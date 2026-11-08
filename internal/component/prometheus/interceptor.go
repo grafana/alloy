@@ -17,11 +17,12 @@ import (
 // getting data. Interceptor should not be modified once created. All callback
 // fields are optional.
 type Interceptor struct {
-	onAppend             func(ref storage.SeriesRef, l labels.Labels, t int64, v float64, next storage.Appender) (storage.SeriesRef, error)
-	onAppendExemplar     func(ref storage.SeriesRef, l labels.Labels, e exemplar.Exemplar, next storage.Appender) (storage.SeriesRef, error)
-	onUpdateMetadata     func(ref storage.SeriesRef, l labels.Labels, m metadata.Metadata, next storage.Appender) (storage.SeriesRef, error)
-	onAppendHistogram    func(ref storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error)
-	onAppendSTZeroSample func(ref storage.SeriesRef, l labels.Labels, t, st int64, next storage.Appender) (storage.SeriesRef, error)
+	onAppend                      func(ref storage.SeriesRef, l labels.Labels, t int64, v float64, next storage.Appender) (storage.SeriesRef, error)
+	onAppendExemplar              func(ref storage.SeriesRef, l labels.Labels, e exemplar.Exemplar, next storage.Appender) (storage.SeriesRef, error)
+	onUpdateMetadata              func(ref storage.SeriesRef, l labels.Labels, m metadata.Metadata, next storage.Appender) (storage.SeriesRef, error)
+	onAppendHistogram             func(ref storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error)
+	onAppendSTZeroSample          func(ref storage.SeriesRef, l labels.Labels, t, st int64, next storage.Appender) (storage.SeriesRef, error)
+	onAppendHistogramSTZeroSample func(ref storage.SeriesRef, l labels.Labels, t, st int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error)
 
 	// onAppendV2 is the only hook used by AppenderV2.
 	onAppendV2 func(ref storage.SeriesRef, l labels.Labels, st, t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, opts storage.AppendV2Options, next storage.AppenderV2) (storage.SeriesRef, error)
@@ -92,6 +93,14 @@ func WithSTZeroSampleHook(f func(ref storage.SeriesRef, l labels.Labels, t, st i
 	}
 }
 
+// WithHistogramSTZeroSampleHook returns an InterceptorOption which hooks into
+// calls to AppendHistogramSTZeroSample.
+func WithHistogramSTZeroSampleHook(f func(ref storage.SeriesRef, l labels.Labels, t, st int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error)) InterceptorOption {
+	return func(i *Interceptor) {
+		i.onAppendHistogramSTZeroSample = f
+	}
+}
+
 // WithAppendV2Hook returns an InterceptorOption which hooks into calls to
 // AppenderV2's Append. It is only used by AppenderV2; the V1 hooks are only
 // used by Appender. next is nil if the Interceptor has no next appendable.
@@ -150,7 +159,8 @@ func (i *Interceptor) hasV1Hooks() bool {
 		i.onAppendExemplar != nil ||
 		i.onUpdateMetadata != nil ||
 		i.onAppendHistogram != nil ||
-		i.onAppendSTZeroSample != nil
+		i.onAppendSTZeroSample != nil ||
+		i.onAppendHistogramSTZeroSample != nil
 }
 
 func (i *Interceptor) String() string {
@@ -269,6 +279,9 @@ func (a *interceptappender) AppendHistogramSTZeroSample(
 	fh *histogram.FloatHistogram,
 ) (storage.SeriesRef, error) {
 
+	if a.interceptor.onAppendHistogramSTZeroSample != nil {
+		return a.interceptor.onAppendHistogramSTZeroSample(ref, l, t, st, h, fh, a.child)
+	}
 	if a.child == nil {
 		return 0, nil
 	}

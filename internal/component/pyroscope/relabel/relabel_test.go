@@ -10,8 +10,6 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
-	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/pyroscope/api/model/labelset"
 	"github.com/grafana/regexp"
@@ -457,14 +455,6 @@ func NewTestAppender() *TestAppender {
 // Appender implements pyroscope.Appendable
 func (t *TestAppender) Appender() pyroscope.Appender {
 	return t
-}
-
-func (t *TestAppender) Upload(j debuginfo.UploadJob) {
-
-}
-
-func (t *TestAppender) DebugInfoClients() []*debuginfoclient.Client {
-	return nil
 }
 
 // Append implements pyroscope.Appender

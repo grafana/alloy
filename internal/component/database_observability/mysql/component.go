@@ -66,6 +66,7 @@ type Arguments struct {
 	EnableCollectors              []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors             []string            `alloy:"disable_collectors,attr,optional"`
 	ExcludeSchemas                []string            `alloy:"exclude_schemas,attr,optional"`
+	IncludeSchemas                []string            `alloy:"include_schemas,attr,optional"`
 	AllowUpdatePerfSchemaSettings bool                `alloy:"allow_update_performance_schema_settings,attr,optional"`
 
 	Databases []DatabaseArguments `alloy:"database_instance,block,optional"`
@@ -253,6 +254,10 @@ func (a *Arguments) SetToDefault() {
 var databaseNameRegex = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 func (a *Arguments) Validate() error {
+	if err := database_observability.ValidateInclusions(a.IncludeSchemas, collector.AlwaysExcludedSchemas(), a.ExcludeSchemas, defaultExcludedSchemas(), "include_schemas", "exclude_schemas", false); err != nil {
+		return err
+	}
+
 	if len(a.Databases) == 0 {
 		_, err := mysql.ParseDSN(string(a.DataSourceName))
 		if err != nil {
@@ -509,10 +514,26 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.args = newArgs
 	c.warnOnStatementLimitMismatch()
+	c.warnOnExclusionsMismatch()
 	c.fanout.UpdateChildren(c.args.ForwardTo)
 
 	c.replaceInstances(instances)
 	return nil
+}
+
+func (c *Component) eventsStatementsExporterArgs() (exporter_mysql.Arguments, bool) {
+	if len(c.args.Targets) > 0 {
+		return exporter_mysql.Arguments{}, false
+	}
+
+	exporterArgs := resolveExporterArgs(c.args.PrometheusExporter, c.args.ExcludeSchemas, c.args.IncludeSchemas)
+	for _, scraper := range mysqld_exporter.GetScrapers(exporterArgs.Convert()) {
+		if scraper.Name() == eventsStatementsCollector {
+			return exporterArgs, true
+		}
+	}
+
+	return exporter_mysql.Arguments{}, false
 }
 
 func (c *Component) warnOnStatementLimitMismatch() {
@@ -521,20 +542,8 @@ func (c *Component) warnOnStatementLimitMismatch() {
 		return
 	}
 
-	usesEmbeddedMySQLExporter := len(c.args.Targets) == 0
-	if !usesEmbeddedMySQLExporter {
-		return
-	}
-
-	exporterArgs := resolveExporterArgs(c.args.PrometheusExporter, c.args.ExcludeSchemas)
-	var eventsStatementsEnabled bool
-	for _, scraper := range mysqld_exporter.GetScrapers(exporterArgs.Convert()) {
-		if scraper.Name() == eventsStatementsCollector {
-			eventsStatementsEnabled = true
-		}
-	}
-
-	if !eventsStatementsEnabled {
+	exporterArgs, ok := c.eventsStatementsExporterArgs()
+	if !ok {
 		return
 	}
 
@@ -545,6 +554,25 @@ func (c *Component) warnOnStatementLimitMismatch() {
 			"query_details and prometheus_exporter perf_schema.eventsstatements limits differ",
 			"query_details_limit", queryDetailsLimit,
 			"eventsstatements_limit", eventsStatementsLimit,
+		)
+	}
+}
+
+func (c *Component) warnOnExclusionsMismatch() {
+	exporterArgs, ok := c.eventsStatementsExporterArgs()
+	if !ok {
+		return
+	}
+
+	topLevelSchemas := database_observability.MergeExclusions(
+		collector.AlwaysExcludedSchemas(),
+		database_observability.EffectiveExclusions(defaultExcludedSchemas(), c.args.ExcludeSchemas, c.args.IncludeSchemas, false),
+	)
+	if !database_observability.SameExclusions(topLevelSchemas, exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas) {
+		c.opts.Logger.Warn(
+			"exclude_schemas and prometheus_exporter perf_schema.eventsstatements exclude_schemas differ; prefer setting top-level exclude_schemas only",
+			"exclude_schemas", topLevelSchemas,
+			"eventsstatements_exclude_schemas", exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas,
 		)
 	}
 }
@@ -830,7 +858,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	}
 
 	if len(inst.cfg.targets) == 0 {
-		exporterArgs := resolveExporterArgs(c.args.PrometheusExporter, c.args.ExcludeSchemas)
+		exporterArgs := resolveExporterArgs(c.args.PrometheusExporter, c.args.ExcludeSchemas, c.args.IncludeSchemas)
 		exporterCfg := exporterArgs.Convert()
 		scrapers := mysqld_exporter.GetScrapers(exporterCfg)
 		exporter := mysqld_collector.New(context.Background(), string(inst.cfg.dsn), scrapers, c.opts.Logger,
@@ -874,7 +902,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	return nil
 }
 
-func resolveExporterArgs(userBlock *PrometheusExporterArguments, excludeSchemas []string) exporter_mysql.Arguments {
+func resolveExporterArgs(userBlock *PrometheusExporterArguments, excludeSchemas, includeSchemas []string) exporter_mysql.Arguments {
 	exporterArgs := exporter_mysql.DefaultArguments
 	exporterArgs.PerfSchemaEventsStatements.Limit = 100
 	exporterArgs.PerfSchemaEventsStatements.TextLimit = 0
@@ -887,9 +915,13 @@ func resolveExporterArgs(userBlock *PrometheusExporterArguments, excludeSchemas 
 	if exporterArgs.PerfSchemaEventsStatements.Limit == 0 {
 		exporterArgs.PerfSchemaEventsStatements.Limit = 100
 	}
-	exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas = database_observability.ResolveExclusions(
+	alwaysExcludedSchemas := database_observability.MergeExclusions(
 		collector.AlwaysExcludedSchemas(),
-		excludeSchemas,
+		database_observability.EffectiveDefaultExclusions(defaultExcludedSchemas(), includeSchemas, false),
+	)
+	exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas = database_observability.ResolveExclusions(
+		alwaysExcludedSchemas,
+		database_observability.UserConfiguredExclusions(excludeSchemas, defaultExcludedSchemas()),
 		exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas,
 	)
 	return exporterArgs
@@ -916,8 +948,6 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 		collector.QuerySamplesCollector:   true,
 		collector.ExplainPlansCollector:   true,
 		collector.LocksCollector:          false,
-		collector.TableStatsCollector:     false,
-		collector.IndexStatsCollector:     false,
 	}
 
 	for _, disabled := range a.DisableCollectors {
@@ -946,6 +976,9 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 	}
 	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), inst.instanceKey, serverID, inst.cfg.rules)
 
+	excludeSchemas := database_observability.EffectiveExclusions(defaultExcludedSchemas(), c.args.ExcludeSchemas, c.args.IncludeSchemas, false)
+	includeSchemas := database_observability.MergeExclusions(c.args.IncludeSchemas)
+
 	collectors := enableOrDisableCollectors(c.args)
 
 	var tableRegistry *collector.TableRegistry
@@ -964,7 +997,8 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
 			DB:              inst.dbConnection,
 			CollectInterval: c.args.SchemaDetailsArguments.CollectInterval,
-			ExcludeSchemas:  c.args.ExcludeSchemas,
+			ExcludeSchemas:  excludeSchemas,
+			IncludeSchemas:  includeSchemas,
 			EntryHandler:    entryHandler,
 			Logger:          c.opts.Logger,
 		})
@@ -984,7 +1018,8 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 			DB:              inst.dbConnection,
 			CollectInterval: c.args.QueryDetailsArguments.CollectInterval,
 			StatementsLimit: c.args.QueryDetailsArguments.StatementsLimit,
-			ExcludeSchemas:  c.args.ExcludeSchemas,
+			ExcludeSchemas:  excludeSchemas,
+			IncludeSchemas:  includeSchemas,
 			EntryHandler:    entryHandler,
 			TableRegistry:   tableRegistry,
 			Logger:          c.opts.Logger,
@@ -1011,7 +1046,8 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 			DB:                            inst.dbConnection,
 			EngineVersion:                 parsedEngineVersion,
 			CollectInterval:               c.args.QuerySamplesArguments.CollectInterval,
-			ExcludeSchemas:                c.args.ExcludeSchemas,
+			ExcludeSchemas:                excludeSchemas,
+			IncludeSchemas:                includeSchemas,
 			EntryHandler:                  entryHandler,
 			Registry:                      inst.registry,
 			Logger:                        c.opts.Logger,
@@ -1093,7 +1129,8 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 			DB:              inst.dbConnection,
 			ScrapeInterval:  c.args.ExplainPlansArguments.CollectInterval,
 			PerScrapeRatio:  c.args.ExplainPlansArguments.PerCollectRatio,
-			ExcludeSchemas:  c.args.ExcludeSchemas,
+			ExcludeSchemas:  excludeSchemas,
+			IncludeSchemas:  includeSchemas,
 			InitialLookback: time.Now().Add(-c.args.ExplainPlansArguments.InitialLookback),
 			Logger:          c.opts.Logger,
 			EntryHandler:    entryHandler,
@@ -1105,40 +1142,6 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 				logStartError(collector.ExplainPlansCollector, "start", err)
 			}
 			inst.collectors = append(inst.collectors, epCollector)
-		}
-	}
-
-	if collectors[collector.TableStatsCollector] {
-		tsCollector, err := collector.NewTableStats(collector.TableStatsArguments{
-			DB:             inst.dbConnection,
-			ExcludeSchemas: c.args.ExcludeSchemas,
-			Registry:       inst.registry,
-			Logger:         c.opts.Logger,
-		})
-		if err != nil {
-			logStartError(collector.TableStatsCollector, "create", err)
-		} else {
-			if err := tsCollector.Start(context.Background()); err != nil {
-				logStartError(collector.TableStatsCollector, "start", err)
-			}
-			inst.collectors = append(inst.collectors, tsCollector)
-		}
-	}
-
-	if collectors[collector.IndexStatsCollector] {
-		isCollector, err := collector.NewIndexStats(collector.IndexStatsArguments{
-			DB:             inst.dbConnection,
-			ExcludeSchemas: c.args.ExcludeSchemas,
-			Registry:       inst.registry,
-			Logger:         c.opts.Logger,
-		})
-		if err != nil {
-			logStartError(collector.IndexStatsCollector, "create", err)
-		} else {
-			if err := isCollector.Start(context.Background()); err != nil {
-				logStartError(collector.IndexStatsCollector, "start", err)
-			}
-			inst.collectors = append(inst.collectors, isCollector)
 		}
 	}
 
@@ -1163,7 +1166,8 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 	hcCollector, err := collector.NewHealthCheck(collector.HealthCheckArguments{
 		DB:              inst.dbConnection,
 		CollectInterval: c.args.HealthCheckArguments.CollectInterval,
-		ExcludeSchemas:  c.args.ExcludeSchemas,
+		ExcludeSchemas:  excludeSchemas,
+		IncludeSchemas:  includeSchemas,
 		EntryHandler:    entryHandler,
 		Logger:          c.opts.Logger,
 	})

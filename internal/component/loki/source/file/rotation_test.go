@@ -1,14 +1,12 @@
 package file
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"runtime"
-	"sync"
 	"testing"
 	"time"
 
@@ -16,8 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/lokitest"
 	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/alloy/internal/runtime/componenttest"
 )
 
 const (
@@ -112,37 +110,28 @@ func TestFileRotation(t *testing.T) {
 
 	for _, s := range strategies {
 		t.Run(s.name, func(t *testing.T) {
-			runRotationTest(t, s.rotate, s.maxLost)
+			lokitest.Test(t, func(t *testing.T, env lokitest.Env) {
+				runRotationTest(t, env, s.rotate, s.maxLost)
+			})
 		})
 	}
 }
 
-func runRotationTest(t *testing.T, rotate rotateFunc, maxLost int) {
+func runRotationTest(t *testing.T, env lokitest.Env, rotate rotateFunc, maxLost int) {
 	dir := t.TempDir()
-	ctx, cancel := context.WithCancel(componenttest.TestContext(t))
-	defer cancel()
 
-	ctrl, err := componenttest.NewControllerFromID(nil, "loki.source.file")
-	require.NoError(t, err)
+	received := &rotationCollector{recv: env.NewReceiver(t)}
 
-	receiver := loki.NewLogsReceiver()
-	received := newRotationCollector()
-	go received.collect(ctx, receiver)
-
-	runErr := make(chan error, 1)
-	go func() {
-		runErr <- ctrl.Run(ctx, Arguments{
-			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
-				"__path__": filepath.Join(dir, "*.log"),
-			})},
-			ForwardTo: []loki.LogsReceiver{receiver},
-			// The new file strategy relies on matching new files, so sync
-			// often to keep the test fast.
-			FileMatch: FileMatch{Enabled: true, SyncPeriod: 100 * time.Millisecond},
-			FileWatch: FileWatch{MinPollFrequency: 10 * time.Millisecond, MaxPollFrequency: 50 * time.Millisecond},
-		})
-	}()
-	require.NoError(t, ctrl.WaitRunning(time.Minute))
+	_, stop := env.Run(t, "loki.source.file", Arguments{
+		Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
+			"__path__": filepath.Join(dir, "*.log"),
+		})},
+		ForwardTo: []loki.LogsReceiver{received.recv},
+		// The new file strategy relies on matching new files, so sync
+		// often to keep the test fast.
+		FileMatch: FileMatch{Enabled: true, SyncPeriod: 100 * time.Millisecond},
+		FileWatch: FileWatch{MinPollFrequency: 10 * time.Millisecond, MaxPollFrequency: 50 * time.Millisecond},
+	})
 
 	// Each writer runs as a parallel subtest, so it can fail the test from its
 	// own goroutine. The group returns once all of them have finished.
@@ -198,8 +187,7 @@ func runRotationTest(t *testing.T, rotate rotateFunc, maxLost int) {
 		assert.True(t, ok, "line %q was not written by any writer", line)
 	}
 
-	cancel()
-	require.NoError(t, <-runErr)
+	stop()
 }
 
 // rotationWriter writes numbered lines to a file and rotates it every
@@ -254,51 +242,29 @@ func (w *rotationWriter) waitForWritten(t *testing.T) {
 	}, 10*time.Second, 10*time.Millisecond)
 }
 
-// rotationCollector records every received line with the filename label of
-// each copy of it.
+// rotationCollector reads the lines a receiver has received, with the filename
+// label of each copy of them.
 type rotationCollector struct {
-	mut   sync.Mutex
-	lines map[string][]string
-	count int
-}
-
-func newRotationCollector() *rotationCollector {
-	return &rotationCollector{lines: make(map[string][]string)}
-}
-
-func (c *rotationCollector) collect(ctx context.Context, receiver loki.LogsReceiver) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case e := <-receiver.Chan():
-			c.mut.Lock()
-			c.lines[e.Line] = append(c.lines[e.Line], string(e.Labels["filename"]))
-			c.count++
-			c.mut.Unlock()
-		}
-	}
+	recv *lokitest.Receiver
 }
 
 func (c *rotationCollector) has(line string) bool {
-	c.mut.Lock()
-	defer c.mut.Unlock()
-	_, ok := c.lines[line]
-	return ok
+	for _, e := range c.recv.Entries() {
+		if e.Line == line {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *rotationCollector) total() int {
-	c.mut.Lock()
-	defer c.mut.Unlock()
-	return c.count
+	return len(c.recv.Entries())
 }
 
 func (c *rotationCollector) snapshot() map[string][]string {
-	c.mut.Lock()
-	defer c.mut.Unlock()
-	out := make(map[string][]string, len(c.lines))
-	for line, paths := range c.lines {
-		out[line] = append([]string(nil), paths...)
+	out := make(map[string][]string)
+	for _, e := range c.recv.Entries() {
+		out[e.Line] = append(out[e.Line], string(e.Labels["filename"]))
 	}
 	return out
 }
