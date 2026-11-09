@@ -58,3 +58,10 @@ func (r *Regexp) UnmarshalText(text []byte) error {
 func (r *Regexp) IsEmpty() bool {
 	return r == nil || r.Regexp == nil || r.Regexp.String() == ""
 }
+
+// QuoteMeta returns a string that escapes all regular expression metacharacters
+// inside the argument text; the returned string is a regular expression matching
+// the literal text.
+func QuoteMeta(s string) string {
+	return regexp.QuoteMeta(s)
+}

@@ -316,15 +316,25 @@ func convertDrop(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 		}
 	}
 
-	return stages.StageConfig{DropConfig: &stages.DropConfig{
-		DropReason: defaultEmpty(pDrop.DropReason),
-		Source:     source,
-		Value:      defaultEmpty(pDrop.Value),
-		Expression: defaultEmpty(pDrop.Expression),
-		OlderThan:  olderThan,
-		LongerThan: longerThan,
-		Separator:  defaultEmpty(pDrop.Separator),
-	}}, true
+	fDrop := &stages.DropConfig{}
+	fDrop.SetToDefault()
+	fDrop.Source = source
+	fDrop.Value = defaultEmpty(pDrop.Value)
+	fDrop.OlderThan = olderThan
+	fDrop.LongerThan = longerThan
+	if r := defaultEmpty(pDrop.DropReason); r != "" {
+		fDrop.DropReason = r
+	}
+	if s := defaultEmpty(pDrop.Separator); s != "" {
+		fDrop.Separator = s
+	}
+	if e := defaultEmpty(pDrop.Expression); e != "" {
+		if err := fDrop.Expression.UnmarshalText([]byte(e)); err != nil {
+			addInvalidStageError(diags, cfg, err)
+			return stages.StageConfig{}, false
+		}
+	}
+	return stages.StageConfig{DropConfig: fDrop}, true
 }
 
 func convertTenant(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {

@@ -1,13 +1,15 @@
 package stages
 
 import (
-	"errors"
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/alecthomas/units"
 	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/common/regexp"
+	"github.com/grafana/alloy/syntax"
 )
 
 func TestDropStage(t *testing.T) {
@@ -87,7 +89,7 @@ func TestDropStage(t *testing.T) {
 		},
 		{
 			name: "source and value with multiple sources",
-			cfg:  DropConfig{Source: "key1,key2", Value: `val1;val200.*`},
+			cfg:  DropConfig{Source: "key1,key2", Separator: defaultSeparator, Value: `val1;val200.*`},
 			entries: []Entry{
 				newEntry(map[string]any{"key1": "val1", "key2": "val200.*"}, model.LabelSet{}, "", now),
 			},
@@ -103,7 +105,7 @@ func TestDropStage(t *testing.T) {
 		},
 		{
 			name: "source and expression with int and string extracted types",
-			cfg:  DropConfig{Source: "key", Expression: "50"},
+			cfg:  DropConfig{Source: "key", Expression: *regexp.MustCompile("50")},
 			entries: []Entry{
 				newEntry(map[string]any{"key": 50}, model.LabelSet{}, "", now),
 				newEntry(map[string]any{"key": "50"}, model.LabelSet{}, "", now),
@@ -112,7 +114,7 @@ func TestDropStage(t *testing.T) {
 		},
 		{
 			name: "source and expression with multiple sources",
-			cfg:  DropConfig{Source: "key1,key2", Expression: `val\d{1};val\d{3}$`},
+			cfg:  DropConfig{Source: "key1,key2", Separator: defaultSeparator, Expression: *regexp.MustCompile(`val\d{1};val\d{3}$`)},
 			entries: []Entry{
 				newEntry(map[string]any{"key1": "val1", "key2": "val200"}, model.LabelSet{}, "", now),
 			},
@@ -120,7 +122,7 @@ func TestDropStage(t *testing.T) {
 		},
 		{
 			name: "source and expression with multiple sources and custom separator",
-			cfg:  DropConfig{Source: "key1,key2", Separator: "#", Expression: `val\d{1}#val\d{3}$`},
+			cfg:  DropConfig{Source: "key1,key2", Separator: "#", Expression: *regexp.MustCompile(`val\d{1}#val\d{3}$`)},
 			entries: []Entry{
 				newEntry(map[string]any{"key1": "val1", "key2": "val200"}, model.LabelSet{}, "", now),
 			},
@@ -128,7 +130,7 @@ func TestDropStage(t *testing.T) {
 		},
 		{
 			name: "source and expression not matching",
-			cfg:  DropConfig{Source: "key", Expression: ".*val.*"},
+			cfg:  DropConfig{Source: "key", Expression: *regexp.MustCompile(".*val.*")},
 			entries: []Entry{
 				newEntry(map[string]any{"key": "pal1"}, model.LabelSet{}, "", now),
 				newEntry(map[string]any{"pokey": "pal1"}, model.LabelSet{}, "", now),
@@ -140,7 +142,7 @@ func TestDropStage(t *testing.T) {
 		},
 		{
 			name: "source and expression not matching with multiple sources",
-			cfg:  DropConfig{Source: "key1,key2", Expression: `match\d+;match\d+`},
+			cfg:  DropConfig{Source: "key1,key2", Separator: defaultSeparator, Expression: *regexp.MustCompile(`match\d+;match\d+`)},
 			entries: []Entry{
 				newEntry(map[string]any{"key1": "match1", "key2": "notmatch2"}, model.LabelSet{}, "", now),
 			},
@@ -150,7 +152,7 @@ func TestDropStage(t *testing.T) {
 		},
 		{
 			name: "source and expression not matching with multiple sources and custom separator",
-			cfg:  DropConfig{Source: "key1,key2", Separator: "#", Expression: `match\d;match\d`},
+			cfg:  DropConfig{Source: "key1,key2", Separator: "#", Expression: *regexp.MustCompile(`match\d;match\d`)},
 			entries: []Entry{
 				newEntry(map[string]any{"key1": "match1", "key2": "match2"}, model.LabelSet{}, "", now),
 			},
@@ -160,7 +162,7 @@ func TestDropStage(t *testing.T) {
 		},
 		{
 			name: "expression only",
-			cfg:  DropConfig{Expression: ".*val.*"},
+			cfg:  DropConfig{Expression: *regexp.MustCompile(".*val.*")},
 			entries: []Entry{
 				newEntry(map[string]any{}, model.LabelSet{}, "this is a line which does not match the regex", now),
 				newEntry(map[string]any{}, model.LabelSet{}, "this is a line with the word value in it", now),
@@ -186,7 +188,7 @@ func TestDropStage(t *testing.T) {
 			name: "everything must match",
 			cfg: DropConfig{
 				Source:     "key",
-				Expression: ".*val.*",
+				Expression: *regexp.MustCompile(".*val.*"),
 				OlderThan:  oneHour,
 				LongerThan: tenBytes,
 			},
@@ -205,29 +207,90 @@ func TestDropStage(t *testing.T) {
 	}
 }
 
-func TestValidateDropConfig(t *testing.T) {
-	tests := []struct {
-		name    string
-		config  *DropConfig
-		wantErr error
-	}{
+func TestUnmarshalDropConfig(t *testing.T) {
+	type testCase struct {
+		name      string
+		cfg       string
+		expectErr bool
+	}
+
+	tests := []testCase{
 		{
-			name:    "ErrEmpty",
-			config:  &DropConfig{},
-			wantErr: errDropStageEmptyConfig,
+			name: "valid source",
+			cfg: `
+				source = "key"
+			`,
 		},
 		{
-			name: "Invalid Regex",
-			config: &DropConfig{
-				Expression: "(?P<ts[0-9]+).*",
-			},
-			wantErr: fmt.Errorf("%w: %w", errDropStageInvalidRegex, errors.New("error parsing regexp: invalid named capture: `(?P<ts[0-9]+).*`")),
+			name: "valid source and value",
+			cfg: `
+				source = "key"
+				value  = "val"
+			`,
+		},
+		{
+			name: "valid expression",
+			cfg: `
+				expression = "(?P<ts>[0-9]+).*"
+			`,
+		},
+		{
+			name: "valid older than",
+			cfg: `
+				older_than = "1h"
+			`,
+		},
+		{
+			name: "valid longer than",
+			cfg: `
+				longer_than = "10B"
+			`,
+		},
+		{
+			name:      "empty config",
+			cfg:       ``,
+			expectErr: true,
+		},
+		{
+			name: "empty expression",
+			cfg: `
+				expression = ""
+			`,
+			expectErr: true,
+		},
+		{
+			name: "invalid expression",
+			cfg: `
+				expression = "(?P<ts[0-9]+).*"
+			`,
+			expectErr: true,
+		},
+		{
+			name: "value and expression",
+			cfg: `
+				source     = "key"
+				value      = "val"
+				expression = ".*"
+			`,
+			expectErr: true,
+		},
+		{
+			name: "value without source",
+			cfg: `
+				value = "val"
+			`,
+			expectErr: true,
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if _, err := validateDropConfig(tt.config); ((err != nil) && (err.Error() != tt.wantErr.Error())) || (err == nil && tt.wantErr != nil) {
-				t.Errorf("validateDropConfig() error = %v, wantErr = %v", err, tt.wantErr)
+			var cfg DropConfig
+			err := syntax.Unmarshal([]byte(tt.cfg), &cfg)
+			if tt.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}
