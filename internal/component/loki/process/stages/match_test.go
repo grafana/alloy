@@ -859,13 +859,14 @@ func TestValidateMatcherConfig(t *testing.T) {
 			`,
 		},
 		{
-			name: "selector with parser and label filter",
+			name: "selector with unsupported parser and label filter",
 			config: `
 				selector = "{foo=\"bar\"} | json | status >= 200"
 				stage.label_drop {
 					values = ["unused"]
 				}
 			`,
+			expectErr: true,
 		},
 	}
 	for _, tt := range tests {
