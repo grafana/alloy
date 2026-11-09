@@ -43,7 +43,7 @@ jobs:
           github_app: ${{ env.ALLOYBOT_APP_NAME }}
 
       - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           ref: ${{ inputs.source_ref }}
           fetch-depth: 1
@@ -51,7 +51,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version-file: go.mod
           cache: false
@@ -59,8 +59,8 @@ jobs:
       - name: Setup tools
         uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
         with:
-          version: v2026.5.18
-          sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
+          version: v2026.11.2
+          sha256: 62cad463c1413f05398ca339168a8f655120b6f0b0b8adce3bc6758bafaf0602
 
       - name: Update embedded Beyla release
         env:
@@ -86,7 +86,7 @@ jobs:
           git config user.email "${APP_ID}+${APP_LOGIN}@users.noreply.github.com"
 
       - name: Update config and documentation
-        uses: anthropics/claude-code-action@d5726de019ec4498aa667642bc3a80fca83aa102 # v1.0.148
+        uses: anthropics/claude-code-action@c0949c50a78c1ec8ce2647db36629b870e715d0c # v1.0.268
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}

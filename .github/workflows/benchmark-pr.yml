@@ -30,7 +30,7 @@ jobs:
       pull-requests: write
     steps:
     - name: Checkout code
-      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       with:
         ref: ${{ github.event.pull_request.head.sha }}
         fetch-depth: 0 # to find the merge base
@@ -40,8 +40,8 @@ jobs:
     - name: Setup tools
       uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
       with:
-        version: v2026.5.18
-        sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
+        version: v2026.11.2
+        sha256: 62cad463c1413f05398ca339168a8f655120b6f0b0b8adce3bc6758bafaf0602
         install_args: go
 
     - name: Comment that benchmarks are running
@@ -67,7 +67,7 @@ jobs:
 
     - name: Upload results
       if: ${{ !cancelled() }}
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: benchmark-results
         path: ${{ runner.temp }}/benchmark/
