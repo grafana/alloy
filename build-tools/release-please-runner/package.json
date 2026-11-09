@@ -5,13 +5,13 @@
   "type": "module",
   "main": "index.js",
   "engines": {
-    "node": ">=24.16.0",
-    "npm": ">=11.13.0"
+    "node": ">=24.22.2",
+    "npm": ">=11.21.2"
   },
   "scripts": {
     "release-please": "node index.js"
   },
   "dependencies": {
-    "release-please": "^17.11.1"
+    "release-please": "^17.11.2"
   }
 }
