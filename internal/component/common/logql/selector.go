@@ -16,7 +16,7 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 )
 
-// Selector is a LogQL log selector made of labels matchers and line
+// Selector is a LogQL selector made of labels matchers and line
 // filters, parsed and validated at decode time. It is safe for concurrent use.
 type Selector struct {
 	raw      string
@@ -35,13 +35,16 @@ func (s *Selector) UnmarshalText(text []byte) error {
 		return errors.New("selector cannot be empty")
 	}
 
-	// validate is false to keep accepting selectors without an equality matcher.
+	// validate is false to keep accepting selectors where every matcher can match
+	// an empty value, e.g. {app!="foo"}.
 	expr, err := syntax.ParseLogSelector(string(text), false)
 	if err != nil {
 		return err
 	}
 
-	if len(expr.Matchers()) == 0 {
+	matchers := expr.Matchers()
+
+	if len(matchers) == 0 {
 		return errors.New("selector must contain at least one matcher")
 	}
 
@@ -50,7 +53,7 @@ func (s *Selector) UnmarshalText(text []byte) error {
 		return err
 	}
 
-	*s = Selector{raw: string(text), matchers: expr.Matchers(), filter: filter}
+	*s = Selector{raw: string(text), matchers: matchers, filter: filter}
 	return nil
 }
 
