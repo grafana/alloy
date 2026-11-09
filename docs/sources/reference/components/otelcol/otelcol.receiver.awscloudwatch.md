@@ -25,13 +25,13 @@ You can specify multiple `otelcol.receiver.awscloudwatch` components by giving t
 
 {{< admonition type="caution" >}}
 `otelcol.receiver.awscloudwatch` doesn't support clustering.
-Every {{< param "PRODUCT_NAME" >}} instance that runs this component polls the same log groups.
-If you deploy {{< param "PRODUCT_NAME" >}} as a DaemonSet or with more than one replica, each instance collects every log event, which duplicates logs and multiplies CloudWatch Logs API calls.
+Every {{< param "PRODUCT_NAME" >}} instance that runs this component with the same configuration polls the same log groups.
+If you run more than one instance, for example as a Kubernetes DaemonSet or with multiple replicas, each instance collects every log event, which duplicates logs and multiplies CloudWatch Logs API calls.
 
-Run this component on a single {{< param "PRODUCT_NAME" >}} instance, and set the `storage` argument so the instance resumes from its last position after a restart.
-For more information, refer to [using clustering][].
+Run this component on a single {{< param "PRODUCT_NAME" >}} instance.
+For more information, refer to [Clustering][].
 
-[using clustering]: ../../../../get-started/clustering/
+[Clustering]: ../../../../get-started/clustering/
 {{< /admonition >}}
 
 ## Usage
@@ -58,6 +58,11 @@ You can use the following arguments with `otelcol.receiver.awscloudwatch`:
 | `storage`       | `capsule(otelcol.Handler)` | Handler from an `otelcol.storage` component to use for persisting state. |         | no       |
 
 If `imds_endpoint` isn't specified, and the environment variable `AWS_EC2_METADATA_SERVICE_ENDPOINT` has a value, it will be used as the IMDS endpoint.
+
+If you set `storage`, the component saves the end time of each poll for every log group and resumes from that point after a restart.
+The saved state is only as durable as the storage directory.
+With `otelcol.storage.file`, the directory must persist across restarts.
+Without `storage`, the component starts again from `start_from` or `initial_lookback` after a restart, which can collect logs again.
 
 ## Blocks
 
