@@ -70,7 +70,6 @@ If you don't set `username`, the component uses any credentials in `endpoint` an
 When `database` is `"default"`, the component uses the database in the `endpoint` path, if the path includes one.
 
 The `compress` argument accepts `none`, `zstd`, `lz4`, `lz4hc`, `gzip`, `deflate`, `br`, and `true`, which is an alias for `lz4`.
-When `compress` is empty, the component uses `lz4`.
 
 The `gzip`, `deflate`, and `br` values only apply to the `http://` and `https://` schemes.
 The `lz4hc` value only applies to the `tcp://` and `clickhouse://` schemes.
@@ -248,8 +247,11 @@ The following fields are exported and can be referenced by other components:
 
 `otelcol.exporter.clickhouse` is reported as unhealthy if given an invalid configuration or if it fails to start.
 
-When `create_schema` is `true`, the component connects to ClickHouse at startup to run the DDL statements, so it's reported as unhealthy if it can't reach the server.
-When `create_schema` is `false`, the component doesn't connect to ClickHouse at startup, so it isn't reported as unhealthy if the server is unreachable.
+When `create_schema` is `true`, the component runs DDL statements against ClickHouse at startup.
+If the component can't reach the server, it fails to start and is reported as unhealthy.
+
+When `create_schema` is `false`, the component doesn't run DDL statements, so it isn't reported as unhealthy if the server is unreachable.
+Instead, the component logs errors and retries failed requests based on the `retry_on_failure` block.
 
 ## Debug information
 
