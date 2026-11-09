@@ -206,8 +206,17 @@ func (a *PrometheusExporterArguments) Validate() error {
 	return args.Validate()
 }
 
-// defaultEnabledCollectors is a replacement allowlist, not additive, so this is the only collector enabled by default here.
-var defaultEnabledCollectors = []string{"stat_statements"}
+// defaultEnabledCollectors is a replacement allowlist, not additive, so it lists all collectors enabled by default here.
+var defaultEnabledCollectors = []string{
+	"database",
+	"database_wraparound",
+	"postmaster",
+	"replication",
+	"stat_bgwriter",
+	"stat_checkpointer",
+	"stat_statements",
+	"wal",
+}
 
 // resolveExporterArgs injects defaultEnabledCollectors after decoding, since SetToDefault runs before the user's block is decoded onto it.
 func resolveExporterArgs(userBlock *PrometheusExporterArguments) exporter_postgres.Arguments {
