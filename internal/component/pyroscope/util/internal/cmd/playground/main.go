@@ -59,7 +59,6 @@ func newEbpf(forward pyroscope.Appendable, probeLinks []string) *ebpf.Component 
 	args.Comm = "both"
 	args.KernelFrames = true
 	args.ProbeLinks = probeLinks
-	// args.DebugInfoOptions.UploadEnabled = true
 	e, err := ebpf.New(
 		l.With("component", "ebpf"),
 		reg,

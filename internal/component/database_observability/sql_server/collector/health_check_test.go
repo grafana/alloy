@@ -14,6 +14,14 @@ import (
 	"github.com/grafana/alloy/internal/util"
 )
 
+func expectServerPermissions(mock sqlmock.Sqlmock, permissions ...string) {
+	rows := sqlmock.NewRows([]string{"permission_name"})
+	for _, p := range permissions {
+		rows.AddRow(p)
+	}
+	mock.ExpectQuery(selectMyServerPermissionsQuery).WithoutArgs().RowsWillBeClosed().WillReturnRows(rows)
+}
+
 func expectPermissions(mock sqlmock.Sqlmock, permissions ...string) {
 	rows := sqlmock.NewRows([]string{"permission_name"})
 	for _, p := range permissions {
@@ -65,6 +73,7 @@ func TestHealthCheck(t *testing.T) {
 		c := newCollector(t, db)
 
 		expectListDatabases(mock, "some_db")
+		expectServerPermissions(mock, "VIEW SERVER STATE")
 		expectUseDatabase(mock, "some_db")
 		expectPermissions(mock, "VIEW DEFINITION", "VIEW DATABASE STATE")
 		expectQueryStoreState(mock, "some_db", "READ_WRITE")
@@ -75,8 +84,11 @@ func TestHealthCheck(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 
 		byName := resultsByName(results)
+		require.NoError(t, byName["RequiredGrantsPresent"].err)
 		require.True(t, byName["RequiredGrantsPresent"].result)
+		require.NoError(t, byName["QueryStoreEnabled"].err)
 		require.True(t, byName["QueryStoreEnabled"].result)
+		require.NoError(t, byName["QueryStoreHasRows"].err)
 		require.True(t, byName["QueryStoreHasRows"].result)
 	})
 
@@ -90,6 +102,7 @@ func TestHealthCheck(t *testing.T) {
 		c := newCollector(t, db)
 
 		expectListDatabases(mock, "some_db")
+		expectServerPermissions(mock, "VIEW SERVER STATE")
 		expectUseDatabase(mock, "some_db")
 		expectPermissions(mock, "VIEW DEFINITION") // missing VIEW DATABASE STATE
 		expectQueryStoreState(mock, "some_db", "READ_WRITE")
@@ -101,8 +114,119 @@ func TestHealthCheck(t *testing.T) {
 
 		byName := resultsByName(results)
 		require.False(t, byName["RequiredGrantsPresent"].result)
-		require.Contains(t, byName["RequiredGrantsPresent"].value, "some_db")
+		require.Equal(t, "missing grants on: some_db", byName["RequiredGrantsPresent"].value)
 		require.True(t, byName["QueryStoreEnabled"].result)
+	})
+
+	t.Run("missing server grant", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		c := newCollector(t, db)
+
+		expectListDatabases(mock, "some_db")
+		expectServerPermissions(mock, "CONNECT SQL") // missing VIEW SERVER [PERFORMANCE] STATE
+		expectUseDatabase(mock, "some_db")
+		expectPermissions(mock, "VIEW DEFINITION", "VIEW DATABASE STATE")
+		expectQueryStoreState(mock, "some_db", "READ_WRITE")
+		expectQueryStoreHasRows(mock, true)
+
+		results, err := c.runPerDatabaseChecks(t.Context())
+		require.NoError(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		byName := resultsByName(results)
+		require.NoError(t, byName["RequiredGrantsPresent"].err)
+		require.False(t, byName["RequiredGrantsPresent"].result)
+		require.Equal(t, missingServerGrantValue, byName["RequiredGrantsPresent"].value)
+		require.True(t, byName["QueryStoreEnabled"].result)
+	})
+
+	t.Run("missing both server grant and database grant", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		c := newCollector(t, db)
+
+		expectListDatabases(mock, "some_db")
+		expectServerPermissions(mock)
+		expectUseDatabase(mock, "some_db")
+		expectPermissions(mock, "VIEW DEFINITION")
+		expectQueryStoreState(mock, "some_db", "READ_WRITE")
+		expectQueryStoreHasRows(mock, true)
+
+		results, err := c.runPerDatabaseChecks(t.Context())
+		require.NoError(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		byName := resultsByName(results)
+		require.NoError(t, byName["RequiredGrantsPresent"].err)
+		require.False(t, byName["RequiredGrantsPresent"].result)
+		require.Equal(t, missingServerGrantValue+"; missing grants on: some_db", byName["RequiredGrantsPresent"].value)
+	})
+
+	t.Run("VIEW SERVER PERFORMANCE STATE satisfies the server grant requirement", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		c := newCollector(t, db)
+
+		expectListDatabases(mock, "some_db")
+		expectServerPermissions(mock, "VIEW SERVER PERFORMANCE STATE")
+		expectUseDatabase(mock, "some_db")
+		expectPermissions(mock, "VIEW DEFINITION", "VIEW DATABASE PERFORMANCE STATE")
+		expectQueryStoreState(mock, "some_db", "READ_WRITE")
+		expectQueryStoreHasRows(mock, true)
+
+		results, err := c.runPerDatabaseChecks(t.Context())
+		require.NoError(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		byName := resultsByName(results)
+		require.NoError(t, byName["RequiredGrantsPresent"].err)
+		require.True(t, byName["RequiredGrantsPresent"].result)
+	})
+
+	t.Run("Azure SQL Database skips server-level grant check", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+		t.Cleanup(lokiClient.Stop)
+		c, err := NewHealthCheck(HealthCheckArguments{
+			DB:              db,
+			CollectInterval: time.Millisecond,
+			EngineEdition:   azureSQLDatabaseEngineEdition,
+			EntryHandler:    lokiClient,
+			Logger:          util.TestAlloyLogger(t).Slog(),
+		})
+		require.NoError(t, err)
+
+		expectListDatabases(mock, "some_db")
+		expectUseDatabase(mock, "some_db")
+		expectPermissions(mock, "VIEW DEFINITION", "VIEW DATABASE STATE")
+		expectQueryStoreState(mock, "some_db", "READ_WRITE")
+		expectQueryStoreHasRows(mock, true)
+
+		results, err := c.runPerDatabaseChecks(t.Context())
+		require.NoError(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		byName := resultsByName(results)
+		require.NoError(t, byName["RequiredGrantsPresent"].err)
+		require.True(t, byName["RequiredGrantsPresent"].result)
 	})
 
 	t.Run("query store disabled on one database", func(t *testing.T) {
@@ -115,6 +239,7 @@ func TestHealthCheck(t *testing.T) {
 		c := newCollector(t, db)
 
 		expectListDatabases(mock, "db_a", "db_b")
+		expectServerPermissions(mock, "VIEW SERVER STATE")
 		expectUseDatabase(mock, "db_a")
 		expectPermissions(mock, "VIEW DEFINITION", "VIEW DATABASE STATE")
 		expectQueryStoreState(mock, "db_a", "OFF")
@@ -147,6 +272,7 @@ func TestHealthCheck(t *testing.T) {
 		c := newCollector(t, db)
 
 		expectListDatabases(mock, "some_db")
+		expectServerPermissions(mock, "VIEW SERVER STATE")
 		expectUseDatabase(mock, "some_db")
 		expectPermissions(mock, "VIEW DEFINITION", "VIEW DATABASE PERFORMANCE STATE")
 		expectQueryStoreState(mock, "some_db", "READ_WRITE")
@@ -170,6 +296,7 @@ func TestHealthCheck(t *testing.T) {
 		c := newCollector(t, db)
 
 		expectListDatabases(mock, "db_a", "db_b")
+		expectServerPermissions(mock, "VIEW SERVER STATE")
 		expectUseDatabase(mock, "db_a")
 		mock.ExpectQuery(selectMyPermissionsQuery).WithoutArgs().WillReturnError(fmt.Errorf("query timeout"))
 		mock.ExpectQuery(selectQueryStoreState).WithoutArgs().WillReturnError(fmt.Errorf("query timeout"))
@@ -187,9 +314,11 @@ func TestHealthCheck(t *testing.T) {
 		// db_a's checks errored out, but db_b is fully compliant, so the
 		// aggregate checks pass rather than falsely reporting db_a as
 		// non-compliant with grants or Query Store.
+		require.NoError(t, byName["RequiredGrantsPresent"].err)
 		require.True(t, byName["RequiredGrantsPresent"].result)
 		require.NotContains(t, byName["RequiredGrantsPresent"].value, "missing grants")
 		require.Contains(t, byName["RequiredGrantsPresent"].value, "could not check: db_a")
+		require.NoError(t, byName["QueryStoreEnabled"].err)
 		require.True(t, byName["QueryStoreEnabled"].result)
 		require.NotContains(t, byName["QueryStoreEnabled"].value, "not enabled")
 		require.Contains(t, byName["QueryStoreEnabled"].value, "could not check: db_a")
@@ -205,6 +334,7 @@ func TestHealthCheck(t *testing.T) {
 		c := newCollector(t, db)
 
 		expectListDatabases(mock, "db_a", "db_b")
+		expectServerPermissions(mock, "VIEW SERVER STATE")
 		mock.ExpectExec("USE " + QueryMarker + " [db_a]").WillReturnError(fmt.Errorf("database is currently restoring"))
 		expectUseDatabase(mock, "db_b")
 		expectPermissions(mock, "VIEW DEFINITION", "VIEW DATABASE STATE")
@@ -219,14 +349,68 @@ func TestHealthCheck(t *testing.T) {
 		// db_a couldn't be checked at all, but db_b is fully compliant, so the
 		// aggregate checks pass rather than falsely reporting db_a as
 		// non-compliant with grants or Query Store.
+		require.NoError(t, byName["RequiredGrantsPresent"].err)
 		require.True(t, byName["RequiredGrantsPresent"].result)
 		require.NotContains(t, byName["RequiredGrantsPresent"].value, "missing grants")
 		require.Contains(t, byName["RequiredGrantsPresent"].value, "could not check: db_a")
+		require.NoError(t, byName["QueryStoreEnabled"].err)
 		require.True(t, byName["QueryStoreEnabled"].result)
 		require.NotContains(t, byName["QueryStoreEnabled"].value, "not enabled")
 		require.Contains(t, byName["QueryStoreEnabled"].value, "could not check: db_a")
+		require.NoError(t, byName["QueryStoreHasRows"].err)
 		require.True(t, byName["QueryStoreHasRows"].result)
 		require.Contains(t, byName["QueryStoreHasRows"].value, "could not check: db_a")
+	})
+
+	t.Run("all databases failing USE sets err so checks are not emitted as false positives", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		c := newCollector(t, db)
+
+		expectListDatabases(mock, "db_a")
+		expectServerPermissions(mock, "VIEW SERVER STATE")
+		mock.ExpectExec("USE " + QueryMarker + " [db_a]").WillReturnError(fmt.Errorf("database is currently restoring"))
+
+		results, err := c.runPerDatabaseChecks(t.Context())
+		require.NoError(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		byName := resultsByName(results)
+		require.ErrorContains(t, byName["RequiredGrantsPresent"].err, "could not check permissions on any database")
+		require.ErrorContains(t, byName["QueryStoreEnabled"].err, "could not check Query Store state on any database")
+		require.ErrorContains(t, byName["QueryStoreHasRows"].err, "could not check Query Store rows on any database")
+	})
+
+	t.Run("server permission query error omits RequiredGrantsPresent when database grants pass", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		c := newCollector(t, db)
+
+		expectListDatabases(mock, "some_db")
+		mock.ExpectQuery(selectMyServerPermissionsQuery).WithoutArgs().WillReturnError(fmt.Errorf("query timeout"))
+		expectUseDatabase(mock, "some_db")
+		expectPermissions(mock, "VIEW DEFINITION", "VIEW DATABASE STATE")
+		expectQueryStoreState(mock, "some_db", "READ_WRITE")
+		expectQueryStoreHasRows(mock, true)
+
+		results, err := c.runPerDatabaseChecks(t.Context())
+		require.NoError(t, err)
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		byName := resultsByName(results)
+		require.ErrorContains(t, byName["RequiredGrantsPresent"].err, "failed to check server permissions")
+		require.NoError(t, byName["QueryStoreEnabled"].err)
+		require.True(t, byName["QueryStoreEnabled"].result)
+		require.NoError(t, byName["QueryStoreHasRows"].err)
+		require.True(t, byName["QueryStoreHasRows"].result)
 	})
 
 	t.Run("no rows anywhere", func(t *testing.T) {
@@ -239,6 +423,7 @@ func TestHealthCheck(t *testing.T) {
 		c := newCollector(t, db)
 
 		expectListDatabases(mock, "some_db")
+		expectServerPermissions(mock, "VIEW SERVER STATE")
 		expectUseDatabase(mock, "some_db")
 		expectPermissions(mock, "VIEW DEFINITION", "VIEW DATABASE STATE")
 		expectQueryStoreState(mock, "some_db", "READ_WRITE")
@@ -249,10 +434,11 @@ func TestHealthCheck(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 
 		byName := resultsByName(results)
+		require.NoError(t, byName["QueryStoreHasRows"].err)
 		require.False(t, byName["QueryStoreHasRows"].result)
 	})
 
-	t.Run("no accessible databases", func(t *testing.T) {
+	t.Run("no accessible databases fails all per-database checks", func(t *testing.T) {
 		t.Parallel()
 
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
@@ -268,9 +454,12 @@ func TestHealthCheck(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 
 		byName := resultsByName(results)
+		require.False(t, byName["RequiredGrantsPresent"].result)
 		require.Equal(t, "no accessible databases", byName["RequiredGrantsPresent"].value)
+		require.False(t, byName["QueryStoreEnabled"].result)
 		require.Equal(t, "no accessible databases", byName["QueryStoreEnabled"].value)
 		require.False(t, byName["QueryStoreHasRows"].result)
+		require.Equal(t, "no accessible databases", byName["QueryStoreHasRows"].value)
 	})
 
 	t.Run("Start/Stop lifecycle emits AlloyVersion and per-database checks", func(t *testing.T) {
@@ -281,6 +470,7 @@ func TestHealthCheck(t *testing.T) {
 		defer db.Close()
 
 		expectListDatabases(mock, "some_db")
+		expectServerPermissions(mock, "VIEW SERVER STATE")
 		expectUseDatabase(mock, "some_db")
 		expectPermissions(mock, "VIEW DEFINITION", "VIEW DATABASE STATE")
 		expectQueryStoreState(mock, "some_db", "READ_WRITE")

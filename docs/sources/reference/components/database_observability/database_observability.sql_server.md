@@ -36,9 +36,12 @@ You can use the following arguments with `database_observability.sql_server`:
 | `disable_collectors`| `list(string)`       | A list of collectors to disable from the default set.                    |         | no       |
 | `enable_collectors` | `list(string)`       | A list of collectors to enable on top of the default set.                |         | no       |
 | `exclude_current_user` | `bool`            | Exclude tagged Alloy queries and query samples from sessions matching the Alloy application name or opened with the login that Alloy uses. | `true` | no       |
-| `exclude_schemas`   | `list(string)`       | A list of schemas to exclude from monitoring, on top of the always-excluded system schemas `sys` and `information_schema`. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
-| `exclude_databases` | `list(string)`       | A list of databases to exclude from monitoring, on top of the always-excluded system databases `master`, `model`, `msdb`, and `tempdb`. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
-| `exclude_users`     | `list(string)`       | A list of original SQL Server login names to exclude from query samples. | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
+| `exclude_schemas`   | `list(string)`       | A list of schemas to exclude from monitoring on top of the default exclusions. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
+| `include_schemas`   | `list(string)`       | A list of schemas to monitor. When empty, all non-excluded schemas are monitored. Items in `include_schemas` override the default exclusions, but cannot overlap with `exclude_schemas` or system schemas (`sys`, `information_schema`). | `[]` | no       |
+| `exclude_databases` | `list(string)`       | A list of databases to exclude from monitoring on top of the default exclusions. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
+| `include_databases` | `list(string)`       | A list of databases to monitor. When empty, all non-excluded databases are monitored. Items in `include_databases` override the default exclusions, but cannot overlap with `exclude_databases` or system databases (`master`, `model`, `msdb`, `tempdb`). | `[]` | no       |
+| `exclude_users`     | `list(string)`       | A list of original SQL Server login names to exclude from query samples on top of the default exclusions. | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
+| `include_users`     | `list(string)`       | A list of original SQL Server login names to monitor in query samples. When empty, all non-excluded logins are monitored. Items in `include_users` override the default exclusions, but cannot overlap with `exclude_users`. `exclude_current_user` still takes precedence. | `[]` | no       |
 | `query_timeout`     | `duration`           | Timeout for each SQL statement.                                          | `"10s"` | no       |
 
 When `data_source_name` doesn't specify an application name (`app name`), Alloy sets it to `grafana:alloy:database_observability` on its SQL Server connections.
@@ -47,6 +50,7 @@ The `exclude_current_user` argument excludes SQL tagged by Alloy from query metr
 Query Store doesn't identify the login or application name that executed a query, so this exclusion can't remove arbitrary historical queries by login or previously captured Alloy queries without the marker.
 
 For live query samples, `exclude_current_user` also excludes sessions whose `sys.dm_exec_sessions.program_name` is `grafana:alloy:database_observability` or that were opened with the SQL Server login configured for Alloy.
+For `server_metrics`, `exclude_current_user` excludes sessions whose `sys.dm_exec_sessions.program_name` is `grafana:alloy:database_observability` from `database_observability_sql_server_user_sessions`.
 Setting it to `false` disables marker, application name, and automatic current-login exclusion.
 The `exclude_users` list still applies to query samples, and Alloy always excludes the request that collects the samples.
 Schema discovery, server configuration, and health-check results aren't filtered by this argument.
@@ -54,6 +58,7 @@ Schema discovery, server configuration, and health-check results aren't filtered
 The `query_timeout` applies separately to each SQL statement.
 The timeout includes waiting for an available connection and reading the statement results.
 A collection cycle can run multiple statements and can take longer than `query_timeout`.
+The `server_metrics` collector also runs multiple statements during a Prometheus scrape, so the total scrape duration can exceed `query_timeout`.
 
 The following collectors are configurable:
 
@@ -65,6 +70,7 @@ The following collectors are configurable:
 | `query_samples`   | Collect query samples and wait events for tracked queries.                    | yes                |
 | `schema_details`  | Collect schemas and tables from `information_schema`.                         | yes                |
 | `server_configuration` | Collect connection, resource-limit, and memory configuration metrics.     | yes                |
+| `server_metrics`  | Collect SQL Server CPU, memory, and user session metrics.                      | yes                |
 
 ## Blocks
 
@@ -251,9 +257,9 @@ This keeps log volume low and ensures a fresh entry at least every 30 minutes.
 |--------------------|------------|---------------------------------------|---------|----------|
 | `collect_interval` | `duration` | How frequently to run health checks. | `"1h"`  | no       |
 
-The `health_check` collector periodically verifies that the login has the required grants (`VIEW DEFINITION`, plus `VIEW DATABASE STATE` or its SQL Server 2022+ equivalent `VIEW DATABASE PERFORMANCE STATE`) and that [Query Store][query_store] is enabled and populated, on every database the login can access on the instance. Each check emits a log entry with `op="health_status"` and a `check` field identifying it: `AlloyVersion`, `RequiredGrantsPresent`, `QueryStoreEnabled`, or `QueryStoreHasRows`.
+The `health_check` collector periodically verifies that the login has the required grants (`VIEW DEFINITION`, plus `VIEW DATABASE STATE` or its SQL Server 2022+ equivalent `VIEW DATABASE PERFORMANCE STATE`, and on editions other than Azure SQL Database `VIEW SERVER STATE` or `VIEW SERVER PERFORMANCE STATE`) and that [Query Store][query_store] is enabled and populated, on every database the login can access on the instance. Each check emits a log entry with `op="health_status"` and a `check` field identifying it: `AlloyVersion`, `RequiredGrantsPresent`, `QueryStoreEnabled`, or `QueryStoreHasRows`.
 
-`RequiredGrantsPresent` and `QueryStoreEnabled` pass only when true on every database the login can access; when they fail, the log entry's value lists the non-compliant databases. `QueryStoreHasRows` passes as soon as any accessible database has Query Store data, since it's expected for a low-traffic database to have none.
+`RequiredGrantsPresent` and `QueryStoreEnabled` pass only when at least one accessible user database exists and the check holds on every database the login can access (plus the server-level grant on non-Azure SQL Database editions); when they fail, the log entry's value describes the missing server grant, non-compliant databases, or `no accessible databases`. `QueryStoreHasRows` passes as soon as any accessible database has Query Store data, since it's expected for a low-traffic database to have none.
 
 ### `query_details`
 
@@ -285,13 +291,24 @@ The login requires `VIEW DATABASE STATE` on the connected database. On SQL Serve
 |---------------------------|------------|---------------------------------------------------------------|---------|----------|
 | `collect_interval`        | `duration` | How frequently to collect query samples.                      | `"10s"` | no       |
 | `disable_query_redaction` | `bool`     | Collect unredacted SQL query text (might include parameters). | `false` | no       |
+| `sample_min_duration`     | `duration` | Minimum elapsed duration for a completed query sample to be emitted. Set to `"0s"` to disable filtering. | `"0s"`  | no       |
+| `wait_event_min_duration` | `duration` | Minimum duration for a wait event occurrence to be emitted. Set to `"0s"` to disable filtering. | `"1ms"` | no       |
+| `max_samples_per_query`   | `int`      | Maximum number of completed query samples emitted per `(database, query_hash)` in a single collection cycle. Set to `0` for no per-query limit. | `5`     | no       |
+| `max_samples_per_collect` | `int`      | Maximum total number of completed query samples emitted across all tracked queries in a single collection cycle. Set to `0` for no per-collection limit. | `50`    | no       |
 
 The `query_samples` collector only collects requests whose query hash is tracked by the `query_metrics` collector.
+The collector checks [Query Store][query_store] state on the connected database before polling live requests.
+When the connected database is a system database such as `master`, or Query Store is disabled or read-only, the collector skips collection.
+
+When requests finish between polls, the collector filters out any request whose final elapsed time is shorter than `sample_min_duration`.
+Remaining completed requests are ranked by elapsed duration and then CPU time, and capped by `max_samples_per_query` and `max_samples_per_collect`.
+When a request is dropped by `sample_min_duration`, `max_samples_per_query`, or `max_samples_per_collect`, neither the query sample nor its wait event occurrences are emitted.
+For emitted samples, only wait event occurrences with a final duration of at least `wait_event_min_duration` are logged.
 
 The collector polls live requests and can miss queries shorter than `collect_interval`, wait events that start and finish between collections, and a query's first execution before Query Store admits its hash.
 For completed requests, the emitted resource counters contain the values from the final observation and can omit work performed after that observation.
 
-The login requires `VIEW SERVER STATE` on SQL Server 2019 and earlier. On SQL Server 2022 and later, `VIEW SERVER PERFORMANCE STATE` is also sufficient. Azure SQL Database can restrict the dynamic management views to the current session. In that case, the collector can't observe other sessions.
+The login requires `VIEW DATABASE STATE` (or `VIEW DATABASE PERFORMANCE STATE` on SQL Server 2022 and later) on the connected database, plus `VIEW SERVER STATE` on SQL Server 2019 (or `VIEW SERVER PERFORMANCE STATE` on SQL Server 2022 and later and Azure SQL Managed Instance). On Azure SQL Database, `VIEW DATABASE STATE` on the connected database is sufficient.
 
 ### `schema_details`
 
@@ -299,7 +316,7 @@ The login requires `VIEW SERVER STATE` on SQL Server 2019 and earlier. On SQL Se
 |--------------------|------------|------------------------------------------------------|---------|----------|
 | `collect_interval` | `duration` | How frequently to collect information from database. | `"1m"`  | no       |
 
-The collector scans every database that the login can access on the instance and collects schema details from each. Only databases where the login has `CONNECT` access to catalog views are collected.
+The collector scans every database that the login can access on the instance and collects schema details from each. Only databases where the login has `CONNECT` and `VIEW DEFINITION` permissions are collected.
 
 ### `server_configuration`
 
@@ -342,6 +359,125 @@ The `configured` state reports the requested value from `sys.configurations.valu
 The `in_use` state reports the running value from `sys.configurations.value_in_use`.
 The values can differ when an administrator hasn't run `RECONFIGURE` or when a setting change requires a restart.
 SQL Server can also represent automatic defaults differently for `max server memory (MB)` and `min server memory (MB)`.
+
+## `server_metrics` collector
+
+The `server_metrics` collector queries SQL Server when Prometheus scrapes the component.
+It has no configuration block; enable or disable it with the `enable_collectors` and `disable_collectors` arguments.
+It supports SQL Server 2019 and later, including SQL Server on Amazon RDS, Google Cloud SQL, Azure SQL Database, and Azure SQL Managed Instance.
+
+The collector exports the following metrics:
+
+| Metric | Type | Source | Description |
+|--------|------|--------|-------------|
+| `database_observability_sql_server_batch_requests_total` | counter | `sys.dm_os_performance_counters` | Total Transact-SQL command batches received by SQL Server. |
+| `database_observability_sql_server_buffer_cache_hit_ratio` | gauge | `sys.dm_os_performance_counters` | Ratio of pages found in the buffer pool without reading from disk. |
+| `database_observability_sql_server_checkpoint_pages_total` | counter | `sys.dm_os_performance_counters` | Total pages flushed to disk by checkpoint operations. |
+| `database_observability_sql_server_connection_resets_total` | counter | `sys.dm_os_performance_counters` | Total logins started from the connection pool since SQL Server last started. |
+| `database_observability_sql_server_database_cpu_utilization_ratio` | gauge | `sys.dm_db_resource_stats` | Average Azure SQL Database CPU utilization relative to the service-tier limit. |
+| `database_observability_sql_server_database_data_io_utilization_ratio` | gauge | `sys.dm_db_resource_stats` | Average Azure SQL Database data I/O utilization relative to the service-tier limit. |
+| `database_observability_sql_server_database_dtu_limit` | gauge | `sys.dm_user_db_resource_governance` | DTU limit of an Azure SQL Database that uses the DTU purchasing model. |
+| `database_observability_sql_server_database_log_write_utilization_ratio` | gauge | `sys.dm_db_resource_stats` | Average Azure SQL Database log-write utilization relative to the service-tier limit. |
+| `database_observability_sql_server_database_memory_grant_limit_ratio` | gauge | `sys.dm_user_db_resource_governance` | Maximum memory grant for a single Azure SQL Database request as a ratio of user workload group memory. |
+| `database_observability_sql_server_database_memory_utilization_ratio` | gauge | `sys.dm_db_resource_stats` | Average Azure SQL Database memory utilization relative to the service-tier limit. |
+| `database_observability_sql_server_database_resource_stats_timestamp_seconds` | gauge | `sys.dm_db_resource_stats` | Unix timestamp of the latest Azure SQL Database resource statistics interval. |
+| `database_observability_sql_server_database_resource_governor_max_degree_of_parallelism` | gauge | `sys.dm_user_db_resource_governance` | Maximum degree of parallelism enforced by the Azure SQL Database user workload group. |
+| `database_observability_sql_server_database_session_utilization_ratio` | gauge | `sys.dm_db_resource_stats` | Maximum Azure SQL Database session utilization during the latest reporting interval. |
+| `database_observability_sql_server_database_storage_allocated_bytes` | gauge | `sys.database_files` | Space allocated to the connected database files, labeled by `file_type`. |
+| `database_observability_sql_server_database_storage_limit_bytes` | gauge | `DATABASEPROPERTYEX` | Maximum configured storage capacity of the connected database. |
+| `database_observability_sql_server_database_storage_used_bytes` | gauge | `sys.database_files` | Space used within the connected database files, labeled by `file_type`. |
+| `database_observability_sql_server_database_vcore_limit` | gauge | `sys.dm_user_db_resource_governance` | vCore limit of an Azure SQL Database that uses the vCore purchasing model. |
+| `database_observability_sql_server_database_worker_limit` | gauge | `sys.dm_user_db_resource_governance` | Worker thread limit of the Azure SQL Database user workload group. |
+| `database_observability_sql_server_database_worker_utilization_ratio` | gauge | `sys.dm_db_resource_stats` | Maximum Azure SQL Database worker utilization during the latest reporting interval. |
+| `database_observability_sql_server_deadlocks_total` | counter | `sys.dm_os_performance_counters` | Total lock requests that resulted in a deadlock. |
+| `database_observability_sql_server_free_list_stalls_total` | counter | `sys.dm_os_performance_counters` | Total requests that had to wait for a free page in the buffer pool. |
+| `database_observability_sql_server_full_scans_total` | counter | `sys.dm_os_performance_counters` | Total unrestricted base-table or full-index scans performed by SQL Server. |
+| `database_observability_sql_server_host_commit_available_bytes` | gauge | `sys.dm_os_sys_memory` | Available operating system commit visible to the SQL Server host. |
+| `database_observability_sql_server_host_commit_limit_bytes` | gauge | `sys.dm_os_sys_memory` | Operating system commit limit visible to the SQL Server host. |
+| `database_observability_sql_server_host_high_memory_signal` | gauge | `sys.dm_os_sys_memory` | Whether the host high-memory resource notification is set. |
+| `database_observability_sql_server_host_logical_cpu_count` | gauge | `sys.dm_os_sys_info` | Number of logical CPUs visible to the SQL Server host. |
+| `database_observability_sql_server_host_low_memory_signal` | gauge | `sys.dm_os_sys_memory` | Whether the host low-memory resource notification is set. |
+| `database_observability_sql_server_host_physical_memory_available_bytes` | gauge | `sys.dm_os_sys_memory` | Available physical memory visible to the SQL Server host. |
+| `database_observability_sql_server_host_physical_memory_total_bytes` | gauge | `sys.dm_os_sys_memory` | Total physical memory visible to the SQL Server host. |
+| `database_observability_sql_server_info` | gauge | `SERVERPROPERTY`, `sys.databases` | SQL Server engine edition and product version metadata, labeled by `engine_edition`, `edition_name`, `product_version`, `product_level`, `product_build`, and `compatibility_level`. |
+| `database_observability_sql_server_instance_cpu_utilization_ratio` | gauge | `sys.dm_db_resource_stats`, `master.sys.server_resource_stats` | Average CPU utilization relative to the Azure SQL service-tier limit. |
+| `database_observability_sql_server_instance_io_operations_per_second` | gauge | `master.sys.server_resource_stats` | Average physical I/O operations per second during the latest Azure SQL Managed Instance reporting interval. |
+| `database_observability_sql_server_instance_io_read_bytes_per_second` | gauge | `master.sys.server_resource_stats` | Average physical bytes read per second during the latest Azure SQL Managed Instance reporting interval. |
+| `database_observability_sql_server_instance_io_written_bytes_per_second` | gauge | `master.sys.server_resource_stats` | Average physical bytes written per second during the latest Azure SQL Managed Instance reporting interval. |
+| `database_observability_sql_server_instance_memory_utilization_ratio` | gauge | `sys.dm_db_resource_stats` | Average memory utilization of the database engine instance hosting an Azure SQL Database. |
+| `database_observability_sql_server_instance_resource_stats_timestamp_seconds` | gauge | `master.sys.server_resource_stats` | Unix timestamp of the latest Azure SQL Managed Instance resource statistics interval. |
+| `database_observability_sql_server_instance_storage_allocated_bytes` | gauge | `sys.dm_io_virtual_file_stats` | Total space allocated to database files on the SQL Server instance. |
+| `database_observability_sql_server_instance_storage_available_bytes` | gauge | `sys.dm_os_volume_stats` | Available storage capacity on operating system volumes hosting SQL Server files. |
+| `database_observability_sql_server_instance_storage_limit_bytes` | gauge | `master.sys.server_resource_stats`, `sys.dm_os_volume_stats` | Reserved storage capacity of an Azure SQL Managed Instance or total operating system volume capacity. |
+| `database_observability_sql_server_instance_storage_used_bytes` | gauge | `master.sys.server_resource_stats`, `sys.dm_os_volume_stats` | Storage used by an Azure SQL Managed Instance or across operating system volumes hosting SQL Server files. |
+| `database_observability_sql_server_instance_vcore_limit` | gauge | `master.sys.server_resource_stats` | vCore limit of an Azure SQL Managed Instance. |
+| `database_observability_sql_server_io_read_bytes_total` | counter | `sys.dm_io_virtual_file_stats` | Total bytes read from SQL Server database and log files. |
+| `database_observability_sql_server_io_read_stall_seconds_total` | counter | `sys.dm_io_virtual_file_stats` | Total time spent waiting for read operations on SQL Server files. |
+| `database_observability_sql_server_io_reads_total` | counter | `sys.dm_io_virtual_file_stats` | Total physical read operations issued on SQL Server database and log files. |
+| `database_observability_sql_server_io_write_stall_seconds_total` | counter | `sys.dm_io_virtual_file_stats` | Total time spent waiting for write operations on SQL Server files. |
+| `database_observability_sql_server_io_writes_total` | counter | `sys.dm_io_virtual_file_stats` | Total physical write operations issued on SQL Server database and log files. |
+| `database_observability_sql_server_io_written_bytes_total` | counter | `sys.dm_io_virtual_file_stats` | Total bytes written to SQL Server database and log files. |
+| `database_observability_sql_server_lazy_writes_total` | counter | `sys.dm_os_performance_counters` | Total pages written to disk by the lazy writer to free buffer pool pages. |
+| `database_observability_sql_server_lock_wait_seconds_total` | counter | `sys.dm_os_performance_counters` | Total time spent waiting for locks. |
+| `database_observability_sql_server_lock_waits_total` | counter | `sys.dm_os_performance_counters` | Total lock requests that required the caller to wait. |
+| `database_observability_sql_server_logins_total` | counter | `sys.dm_os_performance_counters` | Total logins started outside the connection pool since SQL Server last started. |
+| `database_observability_sql_server_logouts_total` | counter | `sys.dm_os_performance_counters` | Total logout operations since SQL Server last started. |
+| `database_observability_sql_server_memory_grants_pending` | gauge | `sys.dm_os_performance_counters` | Current number of processes waiting for a workspace memory grant. |
+| `database_observability_sql_server_memory_manager_committed_bytes` | gauge | `sys.dm_os_sys_info` | Memory committed by the SQL Server memory manager. |
+| `database_observability_sql_server_memory_manager_target_bytes` | gauge | `sys.dm_os_sys_info` | Memory the SQL Server memory manager can consume. |
+| `database_observability_sql_server_page_life_expectancy_seconds` | gauge | `sys.dm_os_performance_counters` | Duration in seconds that a data page stays in the buffer pool without references. |
+| `database_observability_sql_server_page_splits_total` | counter | `sys.dm_os_performance_counters` | Total index page splits performed by SQL Server. |
+| `database_observability_sql_server_process_available_commit_memory_bytes` | gauge | `sys.dm_os_process_memory` | Memory available to be committed by the SQL Server process. |
+| `database_observability_sql_server_process_committed_memory_resident_ratio` | gauge | `sys.dm_os_process_memory` | Ratio of committed process memory resident in the working set. |
+| `database_observability_sql_server_process_cpu_limit` | gauge | `sys.dm_os_job_object` | Logical CPU capacity available to Azure SQL Managed Instance. |
+| `database_observability_sql_server_process_cpu_seconds_total` | counter | `sys.dm_os_sys_info` | CPU time consumed by SQL Server threads, labeled by `mode`. |
+| `database_observability_sql_server_process_memory_limit_bytes` | gauge | `sys.dm_os_job_object` | Maximum committed memory available to Azure SQL Managed Instance. |
+| `database_observability_sql_server_process_page_faults_total` | counter | `sys.dm_os_process_memory` | Page faults incurred by the SQL Server process. |
+| `database_observability_sql_server_process_physical_memory_low` | gauge | `sys.dm_os_process_memory` | Whether the process is responding to a low physical-memory notification. |
+| `database_observability_sql_server_process_resident_memory_bytes` | gauge | `sys.dm_os_process_memory` | SQL Server process working set. |
+| `database_observability_sql_server_process_virtual_memory_bytes` | gauge | `sys.dm_os_process_memory` | Virtual address space committed by the SQL Server process. |
+| `database_observability_sql_server_process_virtual_memory_low` | gauge | `sys.dm_os_process_memory` | Whether the process has detected a low virtual-memory condition. |
+| `database_observability_sql_server_processes_blocked` | gauge | `sys.dm_os_performance_counters` | Current number of blocked processes. |
+| `database_observability_sql_server_sos_memory_target_bytes` | gauge | `sys.dm_os_job_object` | Memory available to the Azure SQL Managed Instance SQL operating system. |
+| `database_observability_sql_server_sql_compilations_total` | counter | `sys.dm_os_performance_counters` | Total SQL compilations performed by SQL Server. |
+| `database_observability_sql_server_sql_recompilations_total` | counter | `sys.dm_os_performance_counters` | Total SQL statement recompilations performed by SQL Server. |
+| `database_observability_sql_server_tempdb_space_unallocated_bytes` | gauge | `tempdb.sys.dm_db_file_space_usage` | Unallocated space in `tempdb` data files. |
+| `database_observability_sql_server_tempdb_space_used_bytes` | gauge | `tempdb.sys.dm_db_file_space_usage` | Space used in `tempdb` data files, labeled by `category`. |
+| `database_observability_sql_server_transactions_total` | counter | `sys.dm_os_performance_counters` | Total transactions started across all databases. |
+| `database_observability_sql_server_uptime_seconds` | gauge | `sys.dm_os_sys_info` | Time since the SQL Server process started. |
+| `database_observability_sql_server_user_session_limit` | gauge | `sys.configurations` | Maximum user sessions allowed by the active configuration and service limit. |
+| `database_observability_sql_server_user_sessions` | gauge | `sys.dm_exec_sessions` | Authenticated user sessions, labeled by `status`. |
+
+The `process_cpu_seconds_total` counter has the `mode` label values `user` and `kernel`.
+The `user_sessions` gauge has the `status` label values `running`, `sleeping`, `dormant`, and `preconnect`.
+Process-lifetime counters reset when SQL Server restarts or fails over.
+
+The `user_session_limit` metric resolves the default `user connections` setting of `0` to `32767`.
+For Azure SQL Managed Instance, it reports the lower of the configured limit and the service limit of `30000`.
+Other resources, such as workers and memory, can become saturated before the session limit.
+For Azure SQL Database, `user_sessions` is a current count from the connected database.
+The separate `database_session_utilization_ratio` metric is the maximum session utilization during the latest 15-second resource statistics interval.
+CPU, memory, data I/O, and log-write ratios are averages over that interval.
+Worker and session ratios are maxima.
+For databases in an elastic pool, these ratios are relative to the per-database limits configured by the pool.
+
+The Azure SQL Database resource metrics require `VIEW DATABASE STATE`.
+For Basic, S0, and S1 service objectives and databases in elastic pools, the monitoring login must be a server administrator, a Microsoft Entra administrator, or a member of the `##MS_ServerStateReader##` server role.
+
+The host CPU and memory metrics are available for self-hosted SQL Server, Amazon RDS, and Google Cloud SQL.
+They describe the operating system visible to SQL Server and can include managed-service overhead.
+Use provider metrics as the authoritative source for cloud service entitlement.
+
+The host metrics aren't emitted for Azure SQL Managed Instance because its host values don't represent the resources allocated to the managed instance.
+The collector instead uses `sys.dm_os_job_object` to export the governed CPU and memory limits.
+It uses `master.sys.server_resource_stats` for direct CPU, vCore, storage, and I/O metrics.
+The I/O metrics are average rates calculated from the totals and actual duration of the latest source interval.
+This view is refreshed independently of the Prometheus scrape interval.
+
+The login requires `VIEW SERVER STATE` on SQL Server 2019.
+On SQL Server 2022 and later, `VIEW SERVER PERFORMANCE STATE` is also sufficient.
+Azure SQL Managed Instance requires `VIEW SERVER PERFORMANCE STATE` for process, job-object, and complete session metrics.
+Without that permission, `user_sessions` can include only the monitoring login's own session.
 
 ## Example
 

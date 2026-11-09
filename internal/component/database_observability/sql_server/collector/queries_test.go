@@ -18,6 +18,7 @@ func TestQueryMarkers(t *testing.T) {
 		"metrics":              selectQueryMetrics,
 		"query store state":    selectQueryStoreState,
 		"permissions":          selectMyPermissionsQuery,
+		"server permissions":   selectMyServerPermissionsQuery,
 		"query store rows":     selectQueryStoreHasRowsQuery,
 		"databases":            fmt.Sprintf(selectDatabasesTemplate, "('master', 'model')"),
 		"tables":               fmt.Sprintf(selectTablesTemplate, "('sys', 'information_schema')"),
@@ -28,6 +29,18 @@ func TestQueryMarkers(t *testing.T) {
 		"server configuration": selectServerConfiguration,
 		"azure sql database server configuration": selectAzureSQLDatabaseServerConfiguration,
 		"database max degree of parallelism":      selectDatabaseMaxDegreeOfParallelism,
+		"server metrics":                          selectServerMetrics,
+		"user sessions":                           selectUserSessions,
+		"managed instance metrics":                selectManagedInstanceMetrics,
+		"azure sql database resource metrics":     selectAzureSQLDatabaseResourceMetrics,
+		"azure sql database user sessions":        selectAzureSQLDatabaseUserSessions,
+		"azure sql database limits":               selectAzureSQLDatabaseLimits,
+		"managed instance resource metrics":       selectManagedInstanceResourceMetrics,
+		"database storage":                        selectDatabaseStorage,
+		"volume storage":                          selectVolumeStorage,
+		"performance counters":                    selectPerformanceCounters,
+		"file io stats":                           selectFileIOStats,
+		"tempdb space usage":                      selectTempdbSpaceUsage,
 	} {
 		t.Run(name, func(t *testing.T) { requireQueryMarker(t, query) })
 	}
@@ -39,9 +52,12 @@ func TestQueryBuilderMarkers(t *testing.T) {
 			for name, build := range map[string]func() (string, []any, error){
 				"details":                         func() (string, []any, error) { return buildQueryTextStatement(hashes, exclude) },
 				"plans":                           func() (string, []any, error) { return buildExplainPlansStatement(hashes, exclude) },
-				"samples without user exclusions": func() (string, []any, error) { return buildQuerySamplesStatement(hashes, nil, exclude) },
+				"samples without user exclusions": func() (string, []any, error) { return buildQuerySamplesStatement(hashes, nil, nil, exclude) },
 				"samples with user exclusions": func() (string, []any, error) {
-					return buildQuerySamplesStatement(hashes, []string{"db-o11y", "quote's login"}, exclude)
+					return buildQuerySamplesStatement(hashes, []string{"db-o11y", "quote's login"}, nil, exclude)
+				},
+				"samples with user inclusions and exclusions": func() (string, []any, error) {
+					return buildQuerySamplesStatement(hashes, []string{"db-o11y"}, []string{"app_user"}, exclude)
 				},
 			} {
 				t.Run(fmt.Sprintf("%s/exclude=%t/hashes=%d", name, exclude, len(hashes)), func(t *testing.T) {

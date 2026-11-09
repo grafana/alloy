@@ -34,7 +34,7 @@ func TestDatabaseObservabilityMySQL(t *testing.T) {
 	loki.QueryLogsPresent(t, testName,
 		deps.LogMatcher{Labels: map[string]string{"op": "health_status"}},
 		deps.LogMatcher{Labels: map[string]string{"op": "query_association"}},
-		deps.LogMatcher{Labels: map[string]string{"op": "query_parsed_table_name"}},
+		deps.LogMatcher{Labels: map[string]string{"op": "query_parsed_table_names_v2"}},
 		deps.LogMatcher{Labels: map[string]string{"op": "table_detection"}},
 		deps.LogMatcher{Labels: map[string]string{"op": "create_statement"}},
 	)
