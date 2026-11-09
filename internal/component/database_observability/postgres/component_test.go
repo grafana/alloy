@@ -2294,7 +2294,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		assert.Equal(t, uint(100), exporterArgs.StatStatementFlags.Limit)
 	})
 
-	t.Run("no block at all defaults to stat_statements only with default stat_statements limit", func(t *testing.T) {
+	t.Run("no block at all defaults to defaultEnabledCollectors with default stat_statements limit", func(t *testing.T) {
 		cfg := `
 			data_source_name = "postgresql://user:pass@localhost:5432/db"
 			forward_to = []
@@ -2302,7 +2302,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
-		assert.Equal(t, []string{"stat_statements"}, exporterArgs.EnabledCollectors)
+		assert.Equal(t, defaultEnabledCollectors, exporterArgs.EnabledCollectors)
 		require.NotNil(t, exporterArgs.StatStatementFlags)
 		assert.Equal(t, uint(100), exporterArgs.StatStatementFlags.Limit)
 	})
@@ -2320,7 +2320,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
-		assert.Equal(t, []string{"stat_statements"}, exporterArgs.EnabledCollectors)
+		assert.Equal(t, defaultEnabledCollectors, exporterArgs.EnabledCollectors)
 		require.NotNil(t, exporterArgs.StatStatementFlags)
 		assert.Equal(t, uint(50), exporterArgs.StatStatementFlags.Limit)
 	})
@@ -2350,7 +2350,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
-		assert.Equal(t, []string{"stat_statements"}, exporterArgs.EnabledCollectors)
+		assert.Equal(t, defaultEnabledCollectors, exporterArgs.EnabledCollectors)
 	})
 
 	t.Run("disable_default_metrics without enabled_collectors does not error and does not inject", func(t *testing.T) {
