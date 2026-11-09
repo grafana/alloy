@@ -17,6 +17,7 @@ import (
 const (
 	clusterName  = "alloy-k8s-integration"
 	promGenImage = "prom-gen:latest"
+	otelGenImage = "otel-gen:latest"
 
 	// distrolessTagSuffix is appended to the Alloy image tag for the distroless
 	// flavor, matching the tags published by scripts/docker-containers.
@@ -118,7 +119,7 @@ func parseFlags() (config, error) {
 
 	var pkgFlag string
 	fs.BoolVar(&cfg.reuseCluster, "reuse-cluster", false, "Reuse the existing kind cluster and keep it after the run. The runner does NOT clean leftover namespaces, so a flaky previous run can fail with AlreadyExists; rerun without this flag to recreate the cluster from scratch")
-	fs.BoolVar(&cfg.skipImageBuilds, "skip-image-builds", false, "Skip building local docker images (alloy, prom-gen); they must already exist in the local docker daemon. CI uses this after restoring images built in a separate job")
+	fs.BoolVar(&cfg.skipImageBuilds, "skip-image-builds", false, "Skip building local docker images (alloy, prom-gen, otel-gen); they must already exist in the local docker daemon. CI uses this after restoring images built in a separate job")
 	fs.StringVar(&cfg.shard, "shard", "", "Split test packages across shards (e.g., 0/2)")
 	fs.StringVar(&pkgFlag, "package", "", "Restrict tests to one package path or pattern (default: "+defaultTestPackages+")")
 	fs.StringVar(&cfg.alloyImage, "alloy-image", "grafana/alloy:latest", "Alloy image (repo:tag) used by tests; must exist locally or in the kind cluster")
@@ -162,10 +163,10 @@ func requireCommands(commands ...string) error {
 	return nil
 }
 
-// maybeBuildImages builds the Alloy image and test fixture images (prom-gen).
+// maybeBuildImages builds the Alloy image and test fixture images (prom-gen, otel-gen).
 // With --skip-image-builds it just verifies they're already in the local daemon.
 func maybeBuildImages(cfg config) error {
-	images := []string{cfg.alloyImage, promGenImage}
+	images := []string{cfg.alloyImage, promGenImage, otelGenImage}
 	if cfg.skipImageBuilds {
 		util.Logf("--skip-image-builds set; expecting images already in local docker daemon: %v", images)
 		for _, image := range images {
@@ -185,9 +186,14 @@ func maybeBuildImages(cfg config) error {
 	}); err != nil {
 		return err
 	}
-	return util.Step("make prom-gen-image", func() error {
-		return harness.RunCommand("make", "prom-gen-image")
-	})
+	for _, target := range []string{"prom-gen-image", "otel-gen-image"} {
+		if err := util.Step("make "+target, func() error {
+			return harness.RunCommand("make", target)
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func ensureCluster(cfg config) error {
@@ -251,7 +257,7 @@ func configureEnvVariables(cfg config) error {
 // loadImages kind-loads the Alloy and fixture images so tests can reference
 // them by name.
 func loadImages(cfg config) error {
-	for _, image := range []string{cfg.alloyImage, promGenImage} {
+	for _, image := range []string{cfg.alloyImage, promGenImage, otelGenImage} {
 		if err := util.Step("kind load "+image, func() error {
 			return harness.RunCommand("kind", "load", "docker-image", image, "--name", clusterName)
 		}); err != nil {

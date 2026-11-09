@@ -20,6 +20,9 @@ type AlloyOptions struct {
 	// ConfigPath is an optional .alloy file. When set, mounted via a "alloy-config"
 	// ConfigMap and wired to the chart (alloy.configMap.{create,name,key}).
 	ConfigPath string
+	// ExtraFiles are added to the "alloy-config" ConfigMap next to the config,
+	// so Alloy sees each one as /etc/alloy/<base name>. Requires ConfigPath.
+	ExtraFiles []string
 	// ValuesPath is an optional helm values file applied to the Alloy chart.
 	ValuesPath string
 	// ForwardPorts are Service ports made reachable from the test via Endpoint.
@@ -50,8 +53,11 @@ func (a *Alloy) Install(ctx *harness.TestContext) error {
 		return fmt.Errorf("alloy release name is required")
 	}
 
+	if len(a.opts.ExtraFiles) > 0 && a.opts.ConfigPath == "" {
+		return fmt.Errorf("alloy extra files require a config path")
+	}
 	if a.opts.ConfigPath != "" {
-		if err := createAlloyConfigMap(a.opts.Namespace, a.opts.ConfigPath); err != nil {
+		if err := createAlloyConfigMap(a.opts.Namespace, a.opts.ConfigPath, a.opts.ExtraFiles); err != nil {
 			return err
 		}
 	}
@@ -158,16 +164,25 @@ func (a *Alloy) Cleanup() {
 }
 
 // createAlloyConfigMap creates the "alloy-config" ConfigMap with key
-// "config.alloy" sourced from configPath. Fails if it already exists.
-func createAlloyConfigMap(namespace, configPath string) error {
+// "config.alloy" sourced from configPath, plus one key per extra file named
+// after its base name. Fails if it already exists.
+func createAlloyConfigMap(namespace, configPath string, extraFiles []string) error {
 	absConfigPath, err := filepath.Abs(configPath)
 	if err != nil {
 		return fmt.Errorf("resolve alloy config path: %w", err)
 	}
-	if err := harness.RunCommand("kubectl", "create", "configmap", "alloy-config",
+	args := []string{"create", "configmap", "alloy-config",
 		"--namespace", namespace,
-		"--from-file=config.alloy="+absConfigPath,
-	); err != nil {
+		"--from-file=config.alloy=" + absConfigPath,
+	}
+	for _, f := range extraFiles {
+		absPath, err := filepath.Abs(f)
+		if err != nil {
+			return fmt.Errorf("resolve alloy extra file path: %w", err)
+		}
+		args = append(args, "--from-file="+filepath.Base(f)+"="+absPath)
+	}
+	if err := harness.RunCommand("kubectl", args...); err != nil {
 		return fmt.Errorf("create alloy configmap: %w", err)
 	}
 	return nil

@@ -35,46 +35,6 @@ func mockQueryMetricsRows(executions, errorExecutions int64, durationMicrosecond
 		AddRow(queryHashBytes, executions, errorExecutions, durationMicroseconds)
 }
 
-func TestQueryMetrics_CollectDeltas(t *testing.T) {
-	defer goleak.VerifyNone(t)
-
-	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-	require.NoError(t, err)
-	defer db.Close()
-
-	c, err := NewQueryMetrics(QueryMetricsArguments{
-		DB:              db,
-		Registry:        prometheus.NewRegistry(),
-		CollectInterval: time.Minute,
-		Limit:           50,
-		Lookback:        time.Hour,
-		Logger:          util.TestAlloyLogger(t).Slog(),
-	})
-	require.NoError(t, err)
-
-	// First poll: first sighting, series created at zero.
-	mockSelectQueryStoreState(mock, "READ_WRITE")
-	mock.ExpectQuery(selectQueryMetrics).
-		WithArgs(sql.Named("limit", 50), sql.Named("lookback_window", 3600), sql.Named("exclude_current_user", false), sql.Named("collector_marker", QueryMarker)).
-		WillReturnRows(mockQueryMetricsRows(10, 2, 5_000_000))
-	require.NoError(t, c.collect(context.Background()))
-	require.Equal(t, 0.0, counterValue(t, c.executionsMetric))
-	require.Equal(t, 0.0, counterValue(t, c.errorsMetric))
-	require.Equal(t, 0.0, counterValue(t, c.durationMetric))
-
-	// Second poll: only the increase is emitted.
-	mockSelectQueryStoreState(mock, "READ_WRITE")
-	mock.ExpectQuery(selectQueryMetrics).
-		WithArgs(sql.Named("limit", 50), sql.Named("lookback_window", 3600), sql.Named("exclude_current_user", false), sql.Named("collector_marker", QueryMarker)).
-		WillReturnRows(mockQueryMetricsRows(14, 3, 8_500_000))
-	require.NoError(t, c.collect(context.Background()))
-	require.Equal(t, 4.0, counterValue(t, c.executionsMetric))
-	require.Equal(t, 1.0, counterValue(t, c.errorsMetric))
-	require.InDelta(t, 3.5, counterValue(t, c.durationMetric), 1e-9)
-
-	require.NoError(t, mock.ExpectationsWereMet())
-}
-
 func TestQueryMetrics_CollectAcrossIntervalRollover(t *testing.T) {
 	defer goleak.VerifyNone(t)
 

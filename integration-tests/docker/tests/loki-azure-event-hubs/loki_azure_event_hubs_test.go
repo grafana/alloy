@@ -28,7 +28,13 @@ const (
 )
 
 func TestLokiAzureEventHubs(t *testing.T) {
-	producer, err := newProducer(t.Context())
+	cfg, err := newConfig()
+	require.NoError(t, err)
+
+	// Create the topics before the producer so that its initial metadata fetch sees them.
+	common.CreateKafkaTopics(t, []string{broker}, cfg, 3, topics...)
+
+	producer, err := newProducer(t.Context(), cfg)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, producer.Close()) }()
 
@@ -57,7 +63,7 @@ func TestLokiAzureEventHubs(t *testing.T) {
 	)
 }
 
-func newProducer(ctx context.Context) (sarama.SyncProducer, error) {
+func newConfig() (*sarama.Config, error) {
 	caBytes, err := os.ReadFile(caPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read CA cert at %q: %w", caPath, err)
@@ -70,6 +76,9 @@ func newProducer(ctx context.Context) (sarama.SyncProducer, error) {
 	cfg := sarama.NewConfig()
 	cfg.Version = sarama.V1_0_0_0
 	cfg.Producer.Return.Successes = true
+	// Leader election can lag right after topic creation; retry NotLeaderForPartition for longer than the defaults.
+	cfg.Producer.Retry.Max = 10
+	cfg.Producer.Retry.Backoff = 500 * time.Millisecond
 	cfg.Net.SASL.Enable = true
 	cfg.Net.SASL.Mechanism = sarama.SASLTypePlaintext
 	cfg.Net.SASL.User = "$ConnectionString"
@@ -77,6 +86,10 @@ func newProducer(ctx context.Context) (sarama.SyncProducer, error) {
 	cfg.Net.TLS.Enable = true
 	cfg.Net.TLS.Config = &tls.Config{RootCAs: pool}
 
+	return cfg, nil
+}
+
+func newProducer(ctx context.Context, cfg *sarama.Config) (sarama.SyncProducer, error) {
 	bk := backoff.New(ctx, backoff.Config{
 		MinBackoff: 50 * time.Millisecond,
 		MaxBackoff: 5 * time.Second,

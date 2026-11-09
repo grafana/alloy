@@ -1,12 +1,10 @@
 package common
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/grafana/alloy/integration-tests/internal/lokihttp"
 	"github.com/stretchr/testify/assert"
@@ -107,34 +105,6 @@ func AssertLabelsNotIndexed(t *testing.T, labels ...string) {
 			if _, ok := series[label]; ok {
 				require.Failf(t, "indexed label present", "label %q was unexpectedly indexed in series %v", label, series)
 			}
-		}
-	}
-}
-
-// WaitForInitalLogs will try to wait until any logs can be retrieved from loki for testName.
-// It will return an error if no logs are found after test timeout.
-func WaitForInitalLogs(testName string) error {
-	var (
-		after = time.After(DefaultTimeout)
-		tick  = time.NewTicker(DefaultRetryInterval)
-	)
-
-	for {
-		select {
-		case <-tick.C:
-			var resp lokihttp.LogResponse
-
-			err := fetchLokiQueryRange(testName, 1, &resp)
-			if err != nil {
-				continue
-			}
-
-			// We start seeing initial logs
-			if len(resp.Data.Result) > 0 {
-				return nil
-			}
-		case <-after:
-			return errors.New("faild to get first log")
 		}
 	}
 }

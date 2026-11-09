@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"net/url"
 	"regexp"
 	"slices"
 	"strings"
@@ -82,21 +83,25 @@ type Arguments struct {
 	EnableCollectors   []string `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors  []string `alloy:"disable_collectors,attr,optional"`
 	ExcludeSchemas     []string `alloy:"exclude_schemas,attr,optional"`
+	IncludeSchemas     []string `alloy:"include_schemas,attr,optional"`
 	ExcludeDatabases   []string `alloy:"exclude_databases,attr,optional"`
+	IncludeDatabases   []string `alloy:"include_databases,attr,optional"`
 	ExcludeUsers       []string `alloy:"exclude_users,attr,optional"`
+	IncludeUsers       []string `alloy:"include_users,attr,optional"`
 	ExcludeCurrentUser bool     `alloy:"exclude_current_user,attr,optional"`
 
 	Databases []DatabaseArguments `alloy:"database_instance,block,optional"`
 
 	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 
-	CloudProvider          *CloudProvider         `alloy:"cloud_provider,block,optional"`
-	SchemaDetailsArguments SchemaDetailsArguments `alloy:"schema_details,block,optional"`
-	QueryMetricsArguments  QueryMetricsArguments  `alloy:"query_metrics,block,optional"`
-	QuerySamplesArguments  QuerySamplesArguments  `alloy:"query_samples,block,optional"`
-	QueryDetailsArguments  QueryDetailsArguments  `alloy:"query_details,block,optional"`
-	ExplainPlansArguments  ExplainPlansArguments  `alloy:"explain_plans,block,optional"`
-	HealthCheckArguments   HealthCheckArguments   `alloy:"health_check,block,optional"`
+	CloudProvider                *CloudProvider               `alloy:"cloud_provider,block,optional"`
+	SchemaDetailsArguments       SchemaDetailsArguments       `alloy:"schema_details,block,optional"`
+	ServerConfigurationArguments ServerConfigurationArguments `alloy:"server_configuration,block,optional"`
+	QueryMetricsArguments        QueryMetricsArguments        `alloy:"query_metrics,block,optional"`
+	QuerySamplesArguments        QuerySamplesArguments        `alloy:"query_samples,block,optional"`
+	QueryDetailsArguments        QueryDetailsArguments        `alloy:"query_details,block,optional"`
+	ExplainPlansArguments        ExplainPlansArguments        `alloy:"explain_plans,block,optional"`
+	HealthCheckArguments         HealthCheckArguments         `alloy:"health_check,block,optional"`
 }
 
 // DatabaseArguments configures one monitored SQL Server instance. When one or
@@ -136,6 +141,10 @@ type SchemaDetailsArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 }
 
+type ServerConfigurationArguments struct {
+	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+}
+
 type QueryMetricsArguments struct {
 	CollectInterval    time.Duration `alloy:"collect_interval,attr,optional"`
 	StatementsLimit    int           `alloy:"statements_limit,attr,optional"`
@@ -149,6 +158,10 @@ type QueryDetailsArguments struct {
 type QuerySamplesArguments struct {
 	CollectInterval       time.Duration `alloy:"collect_interval,attr,optional"`
 	DisableQueryRedaction bool          `alloy:"disable_query_redaction,attr,optional"`
+	SampleMinDuration     time.Duration `alloy:"sample_min_duration,attr,optional"`
+	WaitEventMinDuration  time.Duration `alloy:"wait_event_min_duration,attr,optional"`
+	MaxSamplesPerQuery    int           `alloy:"max_samples_per_query,attr,optional"`
+	MaxSamplesPerCollect  int           `alloy:"max_samples_per_collect,attr,optional"`
 }
 
 type ExplainPlansArguments struct {
@@ -163,13 +176,17 @@ func defaultArguments() Arguments {
 	return Arguments{
 		QueryTimeout: defaultQueryTimeout,
 
-		ExcludeSchemas:     database_observability.DefaultExcludedSchemas(),
-		ExcludeDatabases:   database_observability.DefaultExcludedDatabases(),
-		ExcludeUsers:       database_observability.DefaultExcludedUsers(),
+		ExcludeSchemas:     defaultExcludedSchemas(),
+		ExcludeDatabases:   defaultExcludedDatabases(),
+		ExcludeUsers:       defaultExcludedUsers(),
 		ExcludeCurrentUser: true,
 
 		SchemaDetailsArguments: SchemaDetailsArguments{
 			CollectInterval: 1 * time.Minute,
+		},
+
+		ServerConfigurationArguments: ServerConfigurationArguments{
+			CollectInterval: 10 * time.Minute,
 		},
 
 		QueryMetricsArguments: QueryMetricsArguments{
@@ -183,7 +200,11 @@ func defaultArguments() Arguments {
 		},
 
 		QuerySamplesArguments: QuerySamplesArguments{
-			CollectInterval: 10 * time.Second,
+			CollectInterval:      10 * time.Second,
+			SampleMinDuration:    0,
+			WaitEventMinDuration: 1 * time.Millisecond,
+			MaxSamplesPerQuery:   5,
+			MaxSamplesPerCollect: 50,
 		},
 
 		ExplainPlansArguments: ExplainPlansArguments{
@@ -193,6 +214,37 @@ func defaultArguments() Arguments {
 		HealthCheckArguments: HealthCheckArguments{
 			CollectInterval: 1 * time.Hour,
 		},
+	}
+}
+
+func defaultExcludedSchemas() []string {
+	return []string{
+		"alloydbadmin",
+		"alloydbmetadata",
+		"azure_maintenance",
+		"azure_sys",
+		"cloudsqladmin",
+		"rdsadmin",
+	}
+}
+
+func defaultExcludedDatabases() []string {
+	return []string{
+		"alloydbadmin",
+		"alloydbmetadata",
+		"azure_maintenance",
+		"azure_sys",
+		"cloudsqladmin",
+		"rdsadmin",
+	}
+}
+
+func defaultExcludedUsers() []string {
+	return []string{
+		"azuresu",
+		"cloudsqladmin",
+		"db-o11y", // default recommended user
+		"rdsadmin",
 	}
 }
 
@@ -207,6 +259,16 @@ func (a *Arguments) SetToDefault() {
 var databaseNameRegex = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 func (a *Arguments) Validate() error {
+	if err := database_observability.ValidateInclusions(a.IncludeSchemas, collector.AlwaysExcludedSchemas(), a.ExcludeSchemas, defaultExcludedSchemas(), "include_schemas", "exclude_schemas", true); err != nil {
+		return err
+	}
+	if err := database_observability.ValidateInclusions(a.IncludeDatabases, collector.AlwaysExcludedDatabases(), a.ExcludeDatabases, defaultExcludedDatabases(), "include_databases", "exclude_databases", true); err != nil {
+		return err
+	}
+	if err := database_observability.ValidateInclusions(a.IncludeUsers, nil, a.ExcludeUsers, defaultExcludedUsers(), "include_users", "exclude_users", true); err != nil {
+		return err
+	}
+
 	if len(a.Databases) == 0 {
 		if a.DataSourceName == "" {
 			return fmt.Errorf("one of data_source_name or database_instance blocks must be set")
@@ -288,6 +350,12 @@ func (a *Arguments) Validate() error {
 		}
 	}
 
+	if enableOrDisableCollectors(*a)[collector.ServerConfigurationCollector] {
+		if a.ServerConfigurationArguments.CollectInterval <= 0 {
+			return fmt.Errorf("server_configuration.collect_interval must be greater than zero")
+		}
+	}
+
 	if enableOrDisableCollectors(*a)[collector.QueryDetailsCollector] {
 		if a.QueryDetailsArguments.CollectInterval <= 0 {
 			return fmt.Errorf("query_details.collect_interval must be greater than zero")
@@ -297,6 +365,18 @@ func (a *Arguments) Validate() error {
 	if enableOrDisableCollectors(*a)[collector.QuerySamplesCollector] {
 		if a.QuerySamplesArguments.CollectInterval <= 0 {
 			return fmt.Errorf("query_samples.collect_interval must be greater than zero")
+		}
+		if a.QuerySamplesArguments.SampleMinDuration < 0 {
+			return fmt.Errorf("query_samples.sample_min_duration must be non-negative")
+		}
+		if a.QuerySamplesArguments.WaitEventMinDuration < 0 {
+			return fmt.Errorf("query_samples.wait_event_min_duration must be non-negative")
+		}
+		if a.QuerySamplesArguments.MaxSamplesPerQuery < 0 {
+			return fmt.Errorf("query_samples.max_samples_per_query must be non-negative")
+		}
+		if a.QuerySamplesArguments.MaxSamplesPerCollect < 0 {
+			return fmt.Errorf("query_samples.max_samples_per_collect must be non-negative")
 		}
 	}
 
@@ -721,7 +801,12 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 		inst.dbConnection = nil
 	}
 
-	dbConnection, err := c.openSQL("sqlserver", string(inst.cfg.dsn))
+	formattedDSN, err := formatDSN(string(inst.cfg.dsn))
+	if err != nil {
+		return fmt.Errorf("failed to format DSN: %w", err)
+	}
+
+	dbConnection, err := c.openSQL("sqlserver", formattedDSN)
 	if err != nil {
 		return fmt.Errorf("failed to open database connection: %w", err)
 	}
@@ -740,20 +825,21 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	inst.dbConnection = dbConnection
 
 	queryCtx, cancelQuery := context.WithTimeout(ctx, c.args.QueryTimeout)
-	var serverName, machineName, engineVersion sql.NullString
-	err = inst.dbConnection.QueryRowContext(queryCtx, collector.SelectServerInfo).Scan(&serverName, &machineName, &engineVersion)
+	var serverName, machineName, instanceName, engineVersion, productLevel, productBuild, compatibilityLevel sql.NullString
+	var engineEdition sql.NullInt64
+	err = inst.dbConnection.QueryRowContext(queryCtx, collector.SelectServerInfo).Scan(&serverName, &machineName, &instanceName, &engineVersion, &productLevel, &productBuild, &engineEdition, &compatibilityLevel)
 	cancelQuery()
 	if err != nil {
 		return fmt.Errorf("failed to query server information: %w", err)
 	}
 
 	excludeCurrentUser := c.args.ExcludeCurrentUser && enableOrDisableCollectors(c.args)[collector.QuerySamplesCollector]
-	effectiveExcludeUsers, err := resolveExcludeUsers(ctx, inst.dbConnection, c.args.QueryTimeout, c.args.ExcludeUsers, excludeCurrentUser)
+	effectiveExcludeUsers, err := resolveExcludeUsers(ctx, inst.dbConnection, c.args.QueryTimeout, c.args.ExcludeUsers, c.args.IncludeUsers, excludeCurrentUser)
 	if err != nil {
 		return fmt.Errorf("failed to resolve current login for query_samples user exclusion: %w", err)
 	}
 
-	generatedServerID := fmt.Sprintf("%x", sha256.Sum256(fmt.Appendf(nil, "%s:%s", serverName.String, machineName.String)))
+	generatedServerID := generateServerID(serverName.String, machineName.String, instanceName.String)
 
 	var cp *database_observability.CloudProvider
 	if inst.cfg.cloudProvider != nil {
@@ -793,20 +879,30 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	}
 	inst.collectors = nil
 
-	if err := c.startCollectors(ctx, inst, generatedServerID, engineVersion.String, cp, effectiveExcludeUsers); err != nil {
+	if err := c.startCollectors(ctx, inst, generatedServerID, engineVersion.String, productLevel.String, productBuild.String, int(engineEdition.Int64), compatibilityLevel.String, cp, effectiveExcludeUsers); err != nil {
 		return fmt.Errorf("failed to start collectors: %w", err)
 	}
 
 	return nil
 }
 
+func generateServerID(serverName, machineName, instanceName string) string {
+	identity := fmt.Appendf(nil, "%s:%s", serverName, machineName)
+	if instanceName != "" {
+		identity = fmt.Appendf(identity, ":%s", instanceName)
+	}
+	return fmt.Sprintf("%x", sha256.Sum256(identity))
+}
+
 func enableOrDisableCollectors(a Arguments) map[string]bool {
 	collectors := map[string]bool{
-		collector.SchemaDetailsCollector: true,
-		collector.QueryMetricsCollector:  true,
-		collector.QuerySamplesCollector:  true,
-		collector.QueryDetailsCollector:  true,
-		collector.ExplainPlansCollector:  true,
+		collector.SchemaDetailsCollector:       true,
+		collector.ServerConfigurationCollector: true,
+		collector.ServerMetricsCollector:       true,
+		collector.QueryMetricsCollector:        true,
+		collector.QuerySamplesCollector:        true,
+		collector.QueryDetailsCollector:        true,
+		collector.ExplainPlansCollector:        true,
 	}
 
 	for _, disabled := range a.DisableCollectors {
@@ -826,7 +922,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 // startCollectors attempts to start all of the enabled collectors for a
 // database instance. If one or more collectors fail to start, their errors
 // are reported.
-func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serverID string, engineVersion string, cloudProviderInfo *database_observability.CloudProvider, effectiveExcludeUsers []string) error {
+func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serverID string, engineVersion string, productLevel string, productBuild string, engineEdition int, compatibilityLevel string, cloudProviderInfo *database_observability.CloudProvider, effectiveExcludeUsers []string) error {
 	var startErrors []string
 
 	logStartError := func(collectorName, action string, err error) {
@@ -836,6 +932,12 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 	}
 	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), inst.instanceKey, serverID, inst.cfg.rules)
 
+	excludeSchemas := database_observability.EffectiveExclusions(defaultExcludedSchemas(), c.args.ExcludeSchemas, c.args.IncludeSchemas, true)
+	includeSchemas := database_observability.MergeExclusions(c.args.IncludeSchemas)
+	excludeDatabases := database_observability.EffectiveExclusions(defaultExcludedDatabases(), c.args.ExcludeDatabases, c.args.IncludeDatabases, true)
+	includeDatabases := database_observability.MergeExclusions(c.args.IncludeDatabases)
+	includeUsers := database_observability.MergeExclusions(c.args.IncludeUsers)
+
 	collectors := enableOrDisableCollectors(c.args)
 	var tableRegistry *collector.TableRegistry
 
@@ -844,8 +946,10 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 			DB:               inst.dbConnection,
 			CollectInterval:  c.args.SchemaDetailsArguments.CollectInterval,
 			QueryTimeout:     c.args.QueryTimeout,
-			ExcludeSchemas:   c.args.ExcludeSchemas,
-			ExcludeDatabases: c.args.ExcludeDatabases,
+			ExcludeSchemas:   excludeSchemas,
+			IncludeSchemas:   includeSchemas,
+			ExcludeDatabases: excludeDatabases,
+			IncludeDatabases: includeDatabases,
 			EntryHandler:     entryHandler,
 			Logger:           c.opts.Logger,
 		})
@@ -857,6 +961,48 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 				logStartError(collector.SchemaDetailsCollector, "start", err)
 			}
 			inst.collectors = append(inst.collectors, stCollector)
+		}
+	}
+
+	if collectors[collector.ServerMetricsCollector] {
+		smCollector, err := collector.NewServerMetrics(collector.ServerMetricsArguments{
+			DB:                 inst.dbConnection,
+			Registry:           inst.registry,
+			QueryTimeout:       c.args.QueryTimeout,
+			ExcludeCurrentUser: c.args.ExcludeCurrentUser,
+			Logger:             c.opts.Logger,
+			EngineEdition:      engineEdition,
+			ProductVersion:     engineVersion,
+			ProductLevel:       productLevel,
+			ProductBuild:       productBuild,
+			CompatibilityLevel: compatibilityLevel,
+		})
+		if err != nil {
+			logStartError(collector.ServerMetricsCollector, "create", err)
+		} else {
+			if err := smCollector.Start(ctx); err != nil {
+				logStartError(collector.ServerMetricsCollector, "start", err)
+			}
+			inst.collectors = append(inst.collectors, smCollector)
+		}
+	}
+
+	if collectors[collector.ServerConfigurationCollector] {
+		scCollector, err := collector.NewServerConfiguration(collector.ServerConfigurationArguments{
+			DB:              inst.dbConnection,
+			Registry:        inst.registry,
+			CollectInterval: c.args.ServerConfigurationArguments.CollectInterval,
+			QueryTimeout:    c.args.QueryTimeout,
+			Logger:          c.opts.Logger,
+			EngineEdition:   engineEdition,
+		})
+		if err != nil {
+			logStartError(collector.ServerConfigurationCollector, "create", err)
+		} else {
+			if err := scCollector.Start(ctx); err != nil {
+				logStartError(collector.ServerConfigurationCollector, "start", err)
+			}
+			inst.collectors = append(inst.collectors, scCollector)
 		}
 	}
 
@@ -884,6 +1030,10 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 	}
 
 	if collectors[collector.QuerySamplesCollector] {
+		if c.args.QuerySamplesArguments.SampleMinDuration > 0 && c.args.QuerySamplesArguments.WaitEventMinDuration > c.args.QuerySamplesArguments.SampleMinDuration {
+			c.opts.Logger.Warn("wait_event_min_duration is greater than sample_min_duration, which may result in query samples with no associated wait events")
+		}
+
 		qsArgs := collector.QuerySamplesArguments{
 			DB:                    inst.dbConnection,
 			CollectInterval:       c.args.QuerySamplesArguments.CollectInterval,
@@ -891,8 +1041,14 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 			EntryHandler:          entryHandler,
 			Logger:                c.opts.Logger,
 			DisableQueryRedaction: c.args.QuerySamplesArguments.DisableQueryRedaction,
-			ExcludeDatabases:      c.args.ExcludeDatabases,
+			SampleMinDuration:     c.args.QuerySamplesArguments.SampleMinDuration,
+			WaitEventMinDuration:  c.args.QuerySamplesArguments.WaitEventMinDuration,
+			MaxSamplesPerQuery:    c.args.QuerySamplesArguments.MaxSamplesPerQuery,
+			MaxSamplesPerCollect:  c.args.QuerySamplesArguments.MaxSamplesPerCollect,
+			ExcludeDatabases:      excludeDatabases,
+			IncludeDatabases:      includeDatabases,
 			ExcludeUsers:          effectiveExcludeUsers,
+			IncludeUsers:          includeUsers,
 			ExcludeCurrentUser:    c.args.ExcludeCurrentUser,
 		}
 		if queryMetricsCollector != nil {
@@ -989,7 +1145,9 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 		DB:               inst.dbConnection,
 		CollectInterval:  c.args.HealthCheckArguments.CollectInterval,
 		QueryTimeout:     c.args.QueryTimeout,
-		ExcludeDatabases: c.args.ExcludeDatabases,
+		EngineEdition:    engineEdition,
+		ExcludeDatabases: excludeDatabases,
+		IncludeDatabases: includeDatabases,
 		EntryHandler:     entryHandler,
 		Logger:           c.opts.Logger,
 	})
@@ -1015,8 +1173,8 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 //
 // ORIGINAL_LOGIN() pairs with the sys.dm_exec_sessions.original_login_name
 // column that the query_samples filter matches against.
-func resolveExcludeUsers(ctx context.Context, db *sql.DB, queryTimeout time.Duration, configured []string, excludeCurrentUser bool) ([]string, error) {
-	effective := slices.Clone(configured)
+func resolveExcludeUsers(ctx context.Context, db *sql.DB, queryTimeout time.Duration, configuredExclude, configuredInclude []string, excludeCurrentUser bool) ([]string, error) {
+	effective := database_observability.EffectiveExclusions(defaultExcludedUsers(), configuredExclude, configuredInclude, true)
 	if !excludeCurrentUser {
 		return effective, nil
 	}
@@ -1110,4 +1268,39 @@ func addLokiLabels(entryHandler loki.EntryHandler, instanceKey string, serverID 
 	}, rules).Wrap(entryHandler)
 
 	return entryHandler
+}
+
+// formatDSN sets the connection's application name to collector.AppName when
+// the DSN does not already specify a non-empty application name.
+func formatDSN(dsn string) (string, error) {
+	cfg, err := msdsn.Parse(dsn)
+	if err != nil {
+		return "", err
+	}
+	if cfg.Parameters[msdsn.AppName] != "" {
+		return dsn, nil
+	}
+
+	if strings.HasPrefix(dsn, "sqlserver://") {
+		u, err := url.Parse(dsn)
+		if err != nil {
+			return "", err
+		}
+		q := u.Query()
+		for k := range q {
+			if strings.EqualFold(k, msdsn.AppName) {
+				q.Del(k)
+			}
+		}
+		q.Set(msdsn.AppName, collector.AppName)
+		u.RawQuery = q.Encode()
+		return u.String(), nil
+	}
+
+	param := msdsn.AppName + "=" + collector.AppName
+	trimmed := strings.TrimRight(dsn, "; ")
+	if trimmed == "" || strings.EqualFold(trimmed, "odbc:") {
+		return trimmed + param, nil
+	}
+	return trimmed + ";" + param, nil
 }

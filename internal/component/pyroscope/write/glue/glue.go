@@ -30,7 +30,6 @@ func init() {
 				},
 				userAgent,
 				uid,
-				o.DataPath,
 				args,
 			)
 			if err != nil {

@@ -8,10 +8,18 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/grafana/alloy/internal/alloycli/clifeature"
 	"github.com/grafana/alloy/internal/build"
 )
 
+// Command returns the root command with the features registered with
+// [clifeature].
 func Command() *cobra.Command {
+	return NewCommand(clifeature.All())
+}
+
+// NewCommand returns the root command with the given features.
+func NewCommand(features clifeature.Set) *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:     fmt.Sprintf("%s [global options] <subcommand>", filepath.Base(os.Args[0])),
 		Short:   "Grafana Alloy",
@@ -24,12 +32,12 @@ func Command() *cobra.Command {
 	cmd.SetVersionTemplate("{{ .Version }}\n")
 
 	cmd.AddCommand(
-		convertCommand(),
+		convertCommand(features.Converter),
 		fmtCommand(),
 		gqlCommand(),
-		RunCommand(),
-		toolsCommand(),
-		validateCommand(),
+		runCommand(features.Converter),
+		toolsCommand(features.Tools),
+		validateCommand(features.Converter),
 	)
 
 	return cmd

@@ -93,7 +93,7 @@ func toSaslXAuth2(cfg configoptional.Optional[solacereceiver.SaslXAuth2Config]) 
 
 	return &solace.SaslXAuth2Config{
 		Username: cfg.Get().Username,
-		Bearer:   cfg.Get().Bearer,
+		Bearer:   alloytypes.Secret(cfg.Get().Bearer),
 	}
 }
 

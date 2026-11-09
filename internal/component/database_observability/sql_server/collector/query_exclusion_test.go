@@ -3,7 +3,6 @@ package collector
 import (
 	"context"
 	"database/sql"
-	"strings"
 	"testing"
 	"time"
 
@@ -14,22 +13,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/util"
 )
-
-func TestQueryExclusionPlacement(t *testing.T) {
-	// All three stages must read filtered records, so a shared hash doesn't
-	// reintroduce tagged query IDs during historical aggregation.
-	require.Equal(t, 1, strings.Count(selectQueryMetrics, "FROM sys.query_store_query q"))
-	require.Equal(t, 3, strings.Count(selectQueryMetrics, "FROM filtered_queries q"))
-	require.Less(t, strings.Index(selectQueryMetrics, "CHARINDEX"), strings.Index(selectQueryMetrics, "eligible AS"))
-	require.Contains(t, selectQueryMetrics, "qt.query_text_id = q.query_text_id")
-	require.Contains(t, selectQueryMetrics, "@exclude_current_user = 0 OR CHARINDEX(@collector_marker, qt.query_sql_text) = 0")
-	require.NotContains(t, selectQueryMetrics, "query_hash NOT IN")
-	require.Contains(t, selectQueryTextTemplate, "CHARINDEX(@collector_marker, qt.query_sql_text) = 0")
-	require.Contains(t, selectExplainPlansTemplate, "qt.query_text_id = q.query_text_id")
-	require.Less(t, strings.Index(selectExplainPlansTemplate, "CHARINDEX"), strings.Index(selectExplainPlansTemplate, "FROM ranked_plans"))
-	require.Contains(t, selectQuerySamplesTemplate, "r.statement_text IS NULL OR CHARINDEX(@collector_marker, r.statement_text) = 0")
-	require.NotContains(t, selectQuerySamplesTemplate, "CHARINDEX(@collector_marker, st.text)")
-}
 
 func TestQueryMetricsExcludeCurrentUser(t *testing.T) {
 	raw, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
@@ -87,7 +70,7 @@ func TestQueryCollectorsExcludeCurrentUser(t *testing.T) {
 				c, e := NewQuerySamples(QuerySamplesArguments{DB: db, Tracker: tracker, Logger: logger, ExcludeCurrentUser: true, ExcludeUsers: []string{"db-o11y"}})
 				require.NoError(t, e)
 				collect = c.collect
-				query, args, err = buildQuerySamplesStatement([]string{testHash}, []string{"db-o11y"}, true)
+				query, args, err = buildQuerySamplesStatement([]string{testHash}, []string{"db-o11y"}, nil, true)
 				rows = querySampleRows()
 			}
 			require.NoError(t, err)
@@ -97,4 +80,54 @@ func TestQueryCollectorsExcludeCurrentUser(t *testing.T) {
 			require.NoError(t, mock.ExpectationsWereMet())
 		})
 	}
+}
+
+func TestServerMetricsExcludeCurrentUser(t *testing.T) {
+	t.Run("sql server user sessions", func(t *testing.T) {
+		raw, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer raw.Close()
+
+		c, err := NewServerMetrics(ServerMetricsArguments{
+			DB:                 raw,
+			Registry:           prometheus.NewRegistry(),
+			Logger:             util.TestAlloyLogger(t).Slog(),
+			EngineEdition:      3,
+			ExcludeCurrentUser: true,
+		})
+		require.NoError(t, err)
+
+		mock.ExpectQuery(selectUserSessions).
+			WithArgs(sql.Named("exclude_current_user", true), sql.Named("collector_app_name", AppName)).
+			WillReturnRows(sqlmock.NewRows(userSessionColumns).AddRow(1, 2, 0, 0, 0)).
+			RowsWillBeClosed()
+
+		ch := make(chan prometheus.Metric, 8)
+		c.collectUserSessions(context.Background(), 3, ch)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("azure sql database user sessions", func(t *testing.T) {
+		raw, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer raw.Close()
+
+		c, err := NewServerMetrics(ServerMetricsArguments{
+			DB:                 raw,
+			Registry:           prometheus.NewRegistry(),
+			Logger:             util.TestAlloyLogger(t).Slog(),
+			EngineEdition:      azureSQLDatabaseEngineEdition,
+			ExcludeCurrentUser: true,
+		})
+		require.NoError(t, err)
+
+		mock.ExpectQuery(selectAzureSQLDatabaseUserSessions).
+			WithArgs(sql.Named("exclude_current_user", true), sql.Named("collector_app_name", AppName)).
+			WillReturnRows(sqlmock.NewRows(azureSQLDatabaseUserSessionColumns).AddRow(1, 2, 0, 0)).
+			RowsWillBeClosed()
+
+		ch := make(chan prometheus.Metric, 8)
+		c.collectAzureSQLDatabaseUserSessions(context.Background(), ch)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
 }

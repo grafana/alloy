@@ -10,6 +10,41 @@ internal API changes are not present.
 Unreleased
 ----------
 
+1.15.0 (2026-10-29)
+----------
+
+### Enhancements
+
+- Add `image.distroless` option to use the distroless variant of the Alloy image. Has no effect when `image.digest` is set. (@x1unix)
+
+1.14.4 (2026-10-28)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.21.3 (@ptodev)
+
+1.14.3 (2026-10-22)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.21.2 (@jharvey10)
+
+1.14.2 (2026-10-22)
+----------
+
+### Enhancements
+
+- Update the `prometheus-config-reloader` image from v0.94.0 to v0.94.2, which rebuilds it with an updated Go toolchain and base image. (@kgeckhart)
+
+1.14.1 (2026-10-21)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.21.1 (@kgeckhart)
+
 1.14.0 (2026-10-19)
 ----------
 

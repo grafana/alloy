@@ -216,18 +216,35 @@ func NewTableRegistry() *TableRegistry {
 }
 
 func (tr *TableRegistry) SetTablesForDatabase(database database, tablesInfo []*tableInfo) {
+	var schemas map[schema]map[table]struct{}
+	if len(tablesInfo) > 0 {
+		schemas = make(map[schema]map[table]struct{})
+		for _, tblInfo := range tablesInfo {
+			if schemas[tblInfo.schema] == nil {
+				schemas[tblInfo.schema] = make(map[table]struct{})
+			}
+			schemas[tblInfo.schema][tblInfo.tableName] = struct{}{}
+		}
+	}
+
 	tr.mu.Lock()
 	defer tr.mu.Unlock()
 
-	delete(tr.tables, database)
+	if schemas == nil {
+		delete(tr.tables, database)
+		return
+	}
+	tr.tables[database] = schemas
+}
 
-	if len(tablesInfo) > 0 {
-		tr.tables[database] = make(map[schema]map[table]struct{})
-		for _, tblInfo := range tablesInfo {
-			if tr.tables[database][tblInfo.schema] == nil {
-				tr.tables[database][tblInfo.schema] = make(map[table]struct{})
-			}
-			tr.tables[database][tblInfo.schema][tblInfo.tableName] = struct{}{}
+// PruneDatabases removes databases that are no longer returned by discovery.
+func (tr *TableRegistry) PruneDatabases(discovered map[database]struct{}) {
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+
+	for db := range tr.tables {
+		if _, ok := discovered[db]; !ok {
+			delete(tr.tables, db)
 		}
 	}
 }
@@ -269,11 +286,13 @@ func (tr *TableRegistry) IsValid(database database, parsedTableName string) (str
 			if _, ok := tables[tableName]; ok {
 				return string(tableName), true
 			}
+		}
 
-			// The sqllexer library doesn't preserve quote information for non-schema-qualified names,
-			// so we try exact match first, then fall back to lowercase for PostgreSQL's identifier folding.
-			lowercaseName := table(strings.ToLower(string(tableName)))
-			if lowercaseName != tableName {
+		// The sqllexer library doesn't preserve quote information for non-schema-qualified names,
+		// so we try exact match first, then fall back to lowercase for PostgreSQL's identifier folding.
+		lowercaseName := table(strings.ToLower(string(tableName)))
+		if lowercaseName != tableName {
+			for _, tables := range schemas {
 				if _, ok := tables[lowercaseName]; ok {
 					return string(lowercaseName), true
 				}
@@ -316,6 +335,7 @@ type SchemaDetailsArguments struct {
 	DSN              string
 	CollectInterval  time.Duration
 	ExcludeDatabases []string
+	IncludeDatabases []string
 	EntryHandler     loki.EntryHandler
 
 	Logger *slog.Logger
@@ -329,6 +349,7 @@ type SchemaDetails struct {
 	dbConnectionFactory databaseConnectionFactory
 	collectInterval     time.Duration
 	excludeDatabases    []string
+	includeDatabases    []string
 	entryHandler        loki.EntryHandler
 
 	// lastEmittedAt records the wall-clock time at which OP_CREATE_STATEMENT
@@ -361,6 +382,7 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 		dbConnectionFactory: factory,
 		collectInterval:     args.CollectInterval,
 		excludeDatabases:    args.ExcludeDatabases,
+		includeDatabases:    args.IncludeDatabases,
 		entryHandler:        args.EntryHandler,
 		lastEmittedAt:       map[database]map[string]time.Time{},
 		now:                 time.Now,
@@ -423,7 +445,7 @@ func (c *SchemaDetails) Stop() {
 }
 
 func (c *SchemaDetails) getAllDatabases(ctx context.Context) ([]string, error) {
-	databases, err := discoverDatabases(ctx, c.initialConnection, c.excludeDatabases)
+	databases, err := discoverDatabases(ctx, c.initialConnection, c.excludeDatabases, c.includeDatabases)
 	if err != nil {
 		c.logger.Error("failed to discover databases", "err", err)
 		return nil, err
@@ -442,10 +464,12 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 	defer schemaRs.Close()
 
 	var schemas []string
+	schemaScanComplete := true
 	for schemaRs.Next() {
 		var schema string
 		if err := schemaRs.Scan(&schema); err != nil {
 			c.logger.Error("failed to scan pg_namespace", "datname", dbName, "err", err)
+			schemaScanComplete = false
 			break
 		}
 		schemas = append(schemas, schema)
@@ -455,8 +479,13 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 		return fmt.Errorf("error during iterating over pg_namespace result set for database %s: %w", dbName, err)
 	}
 
+	if !schemaScanComplete {
+		return nil
+	}
+
 	if len(schemas) == 0 {
 		c.logger.Info("no schema detected from pg_namespace", "datname", dbName)
+		c.tableRegistry.SetTablesForDatabase(db, nil)
 		c.pruneDatabaseThrottle(db, nil)
 		return nil
 	}
@@ -602,9 +631,10 @@ func (c *SchemaDetails) extractNames(ctx context.Context) error {
 		closeConn()
 	}
 
-	// Drop throttle entries for databases that getAllDatabases no longer
-	// returns (dropped, CONNECT revoked, added to exclude list). Per-table
-	// cleanup within a still-present database is handled by extractSchemas.
+	// Drop throttle and table registry entries for databases that
+	// getAllDatabases no longer returns (dropped, CONNECT revoked, added to
+	// exclude list). Per-table cleanup within a still-present database is
+	// handled by extractSchemas.
 	seenDatabases := make(map[database]struct{}, len(databases))
 	for _, dbName := range databases {
 		seenDatabases[database(dbName)] = struct{}{}
@@ -614,6 +644,7 @@ func (c *SchemaDetails) extractNames(ctx context.Context) error {
 			delete(c.lastEmittedAt, db)
 		}
 	}
+	c.tableRegistry.PruneDatabases(seenDatabases)
 
 	return nil
 }

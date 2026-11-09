@@ -1,0 +1,137 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sql-server-dbo-init
+data:
+  init.sql: |
+    IF DB_ID(N'testdb') IS NULL
+    BEGIN
+        CREATE DATABASE testdb;
+    END
+    GO
+
+    ALTER DATABASE testdb SET QUERY_STORE = ON;
+    ALTER DATABASE testdb SET QUERY_STORE (
+        OPERATION_MODE = READ_WRITE,
+        QUERY_CAPTURE_MODE = ALL,
+        DATA_FLUSH_INTERVAL_SECONDS = 60,
+        INTERVAL_LENGTH_MINUTES = 1
+    );
+    GO
+
+    IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = N'monitoring_user')
+    BEGIN
+        CREATE LOGIN monitoring_user WITH PASSWORD = N'Monitoring_Password_1', CHECK_POLICY = OFF;
+    END
+    GO
+
+    GRANT VIEW SERVER PERFORMANCE STATE TO monitoring_user;
+    GO
+
+    USE testdb;
+    GO
+
+    IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = N'monitoring_user')
+    BEGIN
+        CREATE USER monitoring_user FOR LOGIN monitoring_user;
+    END
+    GO
+
+    GRANT VIEW DEFINITION TO monitoring_user;
+    GRANT VIEW DATABASE PERFORMANCE STATE TO monitoring_user;
+    GO
+
+    IF OBJECT_ID(N'dbo.orders', N'U') IS NULL
+    BEGIN
+        CREATE TABLE dbo.products (
+            id INT IDENTITY(1,1) PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            price DECIMAL(10, 2) NOT NULL,
+            quantity INT DEFAULT 0
+        );
+
+        CREATE TABLE dbo.orders (
+            id INT IDENTITY(1,1) PRIMARY KEY,
+            product_id INT CONSTRAINT fk_orders_products FOREIGN KEY REFERENCES dbo.products(id),
+            quantity INT NOT NULL,
+            total DECIMAL(10, 2) NOT NULL,
+            status VARCHAR(50) DEFAULT 'pending',
+            created_at DATETIME2 DEFAULT SYSUTCDATETIME()
+        );
+
+        CREATE INDEX idx_orders_status ON dbo.orders(status);
+
+        INSERT INTO dbo.products (name, price, quantity) VALUES
+            ('Widget', 19.99, 100),
+            ('Gadget', 29.99, 50),
+            ('Gizmo', 39.99, 25);
+
+        INSERT INTO dbo.orders (product_id, quantity, total, status) VALUES
+            (1, 2, 39.98, 'completed'),
+            (2, 1, 29.99, 'pending'),
+            (3, 3, 119.97, 'shipped');
+    END
+    GO
+
+    SELECT id, name, price, quantity FROM dbo.products WHERE id = 1;
+    SELECT id, name, price, quantity FROM dbo.products WHERE price > 20;
+    SELECT id, product_id, quantity, total, status FROM dbo.orders WHERE status = 'pending';
+    SELECT p.name, o.total FROM dbo.products p INNER JOIN dbo.orders o ON p.id = o.product_id;
+    GO
+
+    EXEC sys.sp_query_store_flush_db;
+    GO
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sql-server-dbo-seed
+  labels:
+    app: sql-server-dbo-seed
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: sql-server-dbo-seed
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: seed
+          image: mcr.microsoft.com/mssql/server:2022-latest
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c"]
+          args:
+            - |
+              set -eu
+              SQLCMD=""
+              for candidate in /opt/mssql-tools18/bin/sqlcmd /opt/mssql-tools/bin/sqlcmd; do
+                if [ -x "$candidate" ]; then
+                  SQLCMD="$candidate"
+                  break
+                fi
+              done
+              if [ -z "$SQLCMD" ]; then
+                echo "sqlcmd binary not found in container" >&2
+                exit 1
+              fi
+
+              attempt=0
+              until "$SQLCMD" -C -S mssql -U sa -P "Alloy_Integration_Test_1" -Q "SELECT 1" >/dev/null 2>&1; do
+                attempt=$((attempt + 1))
+                if [ "$attempt" -ge 60 ]; then
+                  echo "timed out waiting for sql_server to accept connections" >&2
+                  exit 1
+                fi
+                sleep 2
+              done
+
+              "$SQLCMD" -C -b -S mssql -U sa -P "Alloy_Integration_Test_1" -i /init/init.sql
+          volumeMounts:
+            - name: init
+              mountPath: /init
+              readOnly: true
+      volumes:
+        - name: init
+          configMap:
+            name: sql-server-dbo-init

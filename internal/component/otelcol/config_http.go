@@ -2,6 +2,7 @@ package otelcol
 
 import (
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/alecthomas/units"
@@ -333,8 +334,21 @@ func (args *HTTPClientArguments) Extensions() map[otelcomponent.ID]otelcomponent
 	return m
 }
 
+var _ DeprecationLogger = (*HTTPClientArguments)(nil)
+
+// LogDeprecations logs a warning for each deprecated client setting in use.
+// Call it from the embedding component's own LogDeprecations.
+func (args *HTTPClientArguments) LogDeprecations(logger *slog.Logger) {
+	if logger == nil || args == nil {
+		return
+	}
+	if args.Cookies != nil && args.Cookies.Enabled != nil {
+		logger.Warn("client.cookies.enabled is deprecated and has no effect; the cookies block being present turns cookies on")
+	}
+}
+
 type Cookies struct {
-	Enabled bool `alloy:"enabled,attr,optional"`
+	Enabled *bool `alloy:"enabled,attr,optional"` // Deprecated: no-op, upstream turns cookies on whenever the block is present.
 }
 
 func (c *Cookies) Convert() configoptional.Optional[otelconfighttp.CookiesConfig] {

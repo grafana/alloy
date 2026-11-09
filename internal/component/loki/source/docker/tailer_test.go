@@ -49,8 +49,7 @@ func TestTailer(t *testing.T) {
 	require.NoError(t, err)
 
 	ps, err := positions.New(logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
-		PositionsFile: t.TempDir() + "/positions.yml",
+		Path: t.TempDir() + "/positions.yml",
 	})
 	require.NoError(t, err)
 
@@ -118,8 +117,7 @@ func TestTailerStartStopStressTest(t *testing.T) {
 	)
 
 	ps, err := positions.New(logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
-		PositionsFile: t.TempDir() + "/positions.yml",
+		Path: t.TempDir() + "/positions.yml",
 	})
 	require.NoError(t, err)
 
@@ -493,8 +491,7 @@ func setupTailer(t *testing.T, client clientMock) (*tailer, *loki.CollectingHand
 	)
 
 	ps, err := positions.New(logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
-		PositionsFile: t.TempDir() + "/positions.yml",
+		Path: t.TempDir() + "/positions.yml",
 	})
 	require.NoError(t, err)
 

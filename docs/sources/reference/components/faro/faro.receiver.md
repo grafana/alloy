@@ -173,12 +173,11 @@ Those requests come from the host that runs {{< param "PRODUCT_NAME" >}}, so any
 If the receiver accepts telemetry from the internet or from other networks that you don't trust, take one or more of the following steps:
 
 * Set `download` to `false`, and provide sourcemaps with [`location` blocks](#location).
-* Set `download_from_origins` so {{< param "PRODUCT_NAME" >}} downloads sourcemaps only for scripts served from your own origins, and end each origin with a `/`.
+* Set `download_from_origins` so {{< param "PRODUCT_NAME" >}} downloads sourcemaps only for scripts served from your own origins.
 * Restrict outbound network access from the host that runs {{< param "PRODUCT_NAME" >}}, for example with a network policy or firewall rules, so that it can only reach the destinations it needs.
-
-`download_from_origins` only restricts the script URLs that {{< param "PRODUCT_NAME" >}} fetches.
-It doesn't restrict the sourcemap URL that a script refers to, so restrict outbound network access as well.
 {{< /admonition >}}
+
+{{< param "PRODUCT_NAME" >}} checks the script URL, the sourcemap URL that the script refers to, and every redirect against `download_from_origins`.
 
 The `download_from_origins` argument restricts sourcemap downloads to scripts served from the listed origins.
 The receiver compares the URL of the script file in each stack frame of the telemetry it receives with these origins.
@@ -186,11 +185,23 @@ The client that sends the telemetry sets that URL.
 The default value, `["*"]`, enables downloading sourcemaps from all origins.
 The `*` character indicates a wildcard.
 
-The receiver matches each origin as a prefix of the full URL, where `*` matches any characters, including `/`, and `?` matches a single character.
-End each origin with a `/` so that it can't match a longer host name.
-For example, the origin `https://app.example.com/` doesn't match a script at  `https://app.example.com.example.net/app.js`, but the origin `https://app.example.com` does.
-Avoid using `*` in the host part of an origin.
-For example, `https://*.example.com/` also matches `https://example.net/x.example.com/app.js`.
+Each origin has the form `[<SCHEME>://]<HOST>[:<PORT>][/<PATH>]`, and the receiver compares it with each part of the URL separately.
+If you omit the scheme, both `http` and `https` match.
+If you omit the port, only the default port for the scheme matches.
+To match other ports, add the port, for example `:8443` or `:*`.
+The host must match the whole host name, ignoring case.
+The path matches as a prefix of the URL path.
+Write the path the way it appears in the URL, with special characters percent-encoded, for example `/my%20app/`.
+`*` matches any characters and `?` matches a single character.
+In the host, `*` and `?` don't match `.`.
+For example, `http://10.0.0.*/` matches `http://10.0.0.1/app.js` but not `http://10.0.0.1.example.net/app.js`, and `https://*example.com/` matches `https://myexample.com/app.js` but not `https://cdn.example.com/app.js`.
+To match subdomains, start the host with `*.`.
+For example, `https://*.example.com/` matches `https://cdn.example.com/app.js` and `https://eu.cdn.example.com/app.js`, but not `https://example.com/app.js` or `https://example.net/cdn.example.com/app.js`.
+To match any host, use `*` as the whole host, for example `https://*:8443/`.
+
+The receiver ignores any origin that it can't parse and logs a warning that names the origin.
+An origin can't be parsed if it has no host, for example `""`, `https://`, or `/static/`, or if its IPv6 address is missing the closing `]` or has anything other than a port after the `]`.
+If every origin is ignored, the receiver doesn't download any sourcemaps.
 
 The following example downloads sourcemaps only for scripts served from `https://app.example.com/`:
 

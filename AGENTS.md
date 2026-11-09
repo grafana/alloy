@@ -131,7 +131,7 @@ with relevant playbooks from the list below:
 - [Writing documentation](docs/developer/writing-docs.md)
 - [Write component docs](docs/developer/writing-component-documentation.md)
 - [Create exporter components](docs/developer/writing-exporter-components.md)
-- [Key dependency updates](docs/developer/key-deps-update/key-dep-updates.md)
+- [Key dependency updates](skills/key-deps-update/SKILL.md)
 
 ## Useful commands
 

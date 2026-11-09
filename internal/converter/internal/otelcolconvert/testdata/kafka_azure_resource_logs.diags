@@ -1,0 +1,1 @@
+(Warning) receiver/kafka: the azure_resource_logs encoding is deprecated, consider using otelcol.encoding.azure with encoding_extension instead

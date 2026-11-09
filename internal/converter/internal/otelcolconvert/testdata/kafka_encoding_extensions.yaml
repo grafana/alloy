@@ -1,0 +1,34 @@
+receivers:
+  kafka:
+    brokers:
+      - broker:9092
+    protocol_version: 2.0.0
+    group_rebalance_strategies: [range]
+    logs:
+      # An encoding naming a configured extension converts to encoding_extension.
+      encoding: azure_encoding/eventhub
+    metrics:
+      # Built-in encodings are kept as strings.
+      encoding: otlp_json
+    traces:
+      encoding: azure_encoding/eventhub
+
+extensions:
+  azure_encoding/eventhub:
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+service:
+  extensions: [azure_encoding/eventhub]
+  pipelines:
+    logs:
+      receivers: [kafka]
+      exporters: [otlp]
+    metrics:
+      receivers: [kafka]
+      exporters: [otlp]
+    traces:
+      receivers: [kafka]
+      exporters: [otlp]

@@ -7,17 +7,20 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-10-19
 title: prometheus.exporter.snmp
 ---
 
 # `prometheus.exporter.snmp`
 
-The `prometheus.exporter.snmp` component embeds the [`snmp_exporter`](https://github.com/prometheus/snmp_exporter/tree/{{< param "SNMP_VERSION" >}}).
+The `prometheus.exporter.snmp` component embeds the [`snmp_exporter`][snmp-exporter].
 The `snmp_exporter` lets you collect SNMP data and expose them as Prometheus metrics.
 
 {{< admonition type="note" >}}
-`prometheus.exporter.snmp` uses the latest configuration introduced in version {{< param "SNMP_VERSION" >}} of the Prometheus `snmp_exporter`.
+`prometheus.exporter.snmp` uses the configuration format introduced in version {{< param "SNMP_VERSION" >}} of the Prometheus `snmp_exporter`.
 {{< /admonition >}}
+
+You can specify multiple `prometheus.exporter.snmp` components by giving them different labels.
 
 ## Usage
 
@@ -38,47 +41,57 @@ prometheus.exporter.snmp "<LABEL>" {
   config_files = ["<SNMP_CONFIG_FILE_PATH>", ...]
   targets     = <TARGET_LIST>
 }
-```
 
 ## Arguments
 
 You can use the following arguments with `prometheus.exporter.snmp`:
 
-| Name                    | Type                 | Description                                                                                                                      | Default     | Required |
-|-------------------------|----------------------|----------------------------------------------------------------------------------------------------------------------------------|-------------|----------|
-| `concurrency`           | `int`                | SNMP exporter concurrency.                                                                                                       | `1`         | no       |
-| `config_file`           | `string`             | Deprecated. Use `config_files` instead.                                                                                         |             | no       |
-| `config_files`          | `list(string)`       | SNMP configuration files defining custom modules.                                                                                |             | no       |
-| `config_merge_strategy` | `string`             | A strategy defining how `config` or `config_file` contents merge with the embedded SNMP config. Can be `replace` or `merge`.     | `"replace"` | no       |
-| `config`                | `string` or `secret` | SNMP configuration as inline string.                                                                                             |             | no       |
-| `targets`               | `list(map(string))`  | SNMP targets.                                                                                                                    |             | no       |
+| Name                    | Type                 | Description                                                                                                              | Default     | Required |
+| ----------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------ | ----------- | -------- |
+| `concurrency`           | `int`                | Number of modules to scrape in parallel for each target.                                                                 | `1`         | no       |
+| `config`                | `string` or `secret` | SNMP configuration as inline string.                                                                                     |             | no       |
+| `config_file`           | `string`             | Deprecated. Use `config_files` instead.                                                                                  |             | no       |
+| `config_files`          | `list(string)`       | Paths to YAML files that define SNMP modules and authentications.                                                        |             | no       |
+| `config_merge_strategy` | `string`             | Defines how `config` or `config_files` contents merge with the embedded SNMP configuration. Can be `replace` or `merge`. | `"replace"` | no       |
+| `targets`               | `list(map(string))`  | List of SNMP targets, where each target is a map of labels.                                                              |             | no       |
 
 The `config_files` argument points to YAML files that define which `snmp_exporter` modules to use.
-Refer to [Configuration](https://github.com/prometheus/snmp_exporter/tree/{{< param "SNMP_VERSION" >}}?tab=readme-ov-file#configuration) in the Prometheus `snmp_exporter` documentation for configuration-generation details.
+Refer to the [`snmp_exporter` configuration documentation][snmp-exporter-config] for details on how to generate a configuration file.
 
-The `config_file` and `config_files` arguments are mutually exclusive, and an error will be produced if both are provided.
+The `config_file` and `config_files` arguments are mutually exclusive.
+If you set both, the component fails with an invalid configuration error.
 
 The `config` argument must be a YAML document as string defining which SNMP modules and authorizations to use.
 `config` is typically loaded by using the exports of another component.
 For example,
 
-* `local.file.LABEL.content`
-* `remote.http.LABEL.content`
-* `remote.s3.LABEL.content`
+- `local.file.LABEL.content`
+- `remote.http.LABEL.content`
+- `remote.s3.LABEL.content`
+
+Set either `config` or a configuration file argument, `config_files` or the deprecated `config_file`, not both.
+If you set `config` together with `config_files` or `config_file`, the component fails with an invalid configuration error.
 
 Set `config_merge_strategy` to `merge` to add additional configuration to the embedded SNMP configuration.
 For example, if you need to add a few custom `auth` settings without regenerating the whole configuration.
 
-The `targets` argument is an alternative to the [target](#target) block. This is useful when SNMP targets are supplied by another component.
-The following labels can be set to a target:
+The `targets` argument is an alternative to the [`target`][target] block, and is useful when another component supplies the SNMP targets.
+Use either `target` blocks or the `targets` argument, not both.
+If you use both, the component fails with an invalid configuration error.
 
-* `name`: The name of the target (required).
-* `address` or `__address__`: The address of SNMP device (required).
-* `module`: SNMP modules to use for polling, separated by comma.
-* `auth`: The SNMP authentication profile to use.
-* `walk_params`: The configuration to use for this target.
+You can set the following labels on a target:
 
-Any other labels defined are added to the scraped metrics.
+- `name`: The name of the target. Required.
+- `address` or `__address__`: The address of the SNMP device. Required.
+- `module`: SNMP modules to use for polling, separated by comma.
+- `auth`: The SNMP authentication profile to use.
+- `walk_params`: The `walk_param` profile to use for this target.
+- `snmp_context`: Override the `context_name` parameter in the SNMP configuration file.
+
+The component adds any other labels you define to the scraped metrics.
+
+The component sets the `instance` label on its exported targets to the component ID, for example, `prometheus.exporter.snmp.example`.
+The component also appends the target name to the `job` label of each exported target, for example, `integrations/snmp/network_switch_1`.
 
 ## Blocks
 
@@ -86,10 +99,10 @@ You can use the following blocks with `prometheus.exporter.snmp`:
 
 {{< docs/alloy-config >}}
 
-| Name                       | Description                                                 | Required |
-| -------------------------- | ----------------------------------------------------------- | -------- |
-| [`target`][target]         | Configures an SNMP target.                                  | no       |
-| [`walk_param`][walk_param] | SNMP connection profiles to override default SNMP settings. | no       |
+| Block                      | Description                                                                | Required |
+| -------------------------- | -------------------------------------------------------------------------- | -------- |
+| [`target`][target]         | Configures an SNMP target.                                                 | no       |
+| [`walk_param`][walk_param] | Configures an SNMP connection profile that overrides the default settings. | no       |
 
 [target]: #target
 [walk_param]: #walk_param
@@ -99,29 +112,36 @@ You can use the following blocks with `prometheus.exporter.snmp`:
 ### `target`
 
 The `target` block defines an individual SNMP target.
-The `target` block may be specified multiple times to define multiple targets.
-The label of the block is required and is used in the target's `job` label.
+You can define multiple `target` blocks to configure multiple targets.
+Each `target` block requires a label, which the component uses in the `job` label of the target.
+
+You can use the following arguments with the `target` block:
 
 | Name           | Type          | Description                                                           | Default | Required |
 | -------------- | ------------- | --------------------------------------------------------------------- | ------- | -------- |
-| `address`      | `string`      | The address of SNMP device.                                           |         | yes      |
-| `auth`         | `string`      | SNMP authentication profile to use.                                   | `""`    | no       |
-| `labels`       | `map(string)` | Map of labels to apply to all metrics captured from the target.       | `""`    | no       |
+| `address`      | `string`      | The address of the SNMP device.                                       |         | yes      |
+| `auth`         | `string`      | The SNMP authentication profile to use.                               | `""`    | no       |
+| `labels`       | `map(string)` | Map of labels to apply to all metrics captured from the target.       | `{}`    | no       |
 | `module`       | `string`      | SNMP modules to use for polling, separated by comma.                  | `""`    | no       |
 | `snmp_context` | `string`      | Override the `context_name` parameter in the SNMP configuration file. | `""`    | no       |
-| `walk_params`  | `string`      | Config to use for this target.                                        | `""`    | no       |
+| `walk_params`  | `string`      | The `walk_param` profile to use for this target.                      | `""`    | no       |
 
 ### `walk_param`
 
-The `walk_param` block defines an individual SNMP connection profile that can be used to override default SNMP settings.
-The `walk_param` block may be specified multiple times to define multiple SNMP connection profiles.
+The `walk_param` block defines an individual SNMP connection profile that overrides the default SNMP settings.
+You can define multiple `walk_param` blocks to configure multiple connection profiles.
+Each `walk_param` block requires a label, which is the name that the `walk_params` argument of a target refers to.
+
+You can use the following arguments with the `walk_param` block:
 
 | Name              | Type       | Description                                   | Default | Required |
 | ----------------- | ---------- | --------------------------------------------- | ------- | -------- |
 | `max_repetitions` | `int`      | How many objects to request with GET/GETBULK. | `25`    | no       |
-| `name`            | `string`   | Name of the module to override.               |         | no       |
-| `retries`         | `int`      | How many times to retry a failed request.     | `3`     | no       |
-| `timeout`         | `duration` | Timeout for each individual SNMP request.     |         | no       |
+| `retries`         | `int`      | How many times to retry a failed request.     | `0`     | no       |
+| `timeout`         | `duration` | Timeout for each individual SNMP request.     | `5s`    | no       |
+
+A `walk_param` block always overrides the `retries` value from the module configuration.
+If you omit `retries`, targets that use the block don't retry failed requests.
 
 ## Exported fields
 
@@ -146,36 +166,36 @@ The following example uses a [`prometheus.scrape` component][scrape] to collect 
 
 ```alloy
 prometheus.exporter.snmp "example" {
-    config_file = "snmp_modules.yml"
+  config_files = ["snmp_modules.yml"]
 
-    target "network_switch_1" {
-        address     = "192.168.1.2"
-        module      = "system,if_mib"
-        walk_params = "public"
-        labels = {
-            "env" = "dev",
-        }
+  target "network_switch_1" {
+    address     = "192.168.1.2"
+    module      = "system,if_mib"
+    walk_params = "public"
+    labels = {
+      "env" = "dev",
     }
+  }
 
-    target "network_router_2" {
-        address     = "192.168.1.3"
-        module      = "system,if_mib,mikrotik"
-        walk_params = "private"
-    }
+  target "network_router_2" {
+    address     = "192.168.1.3"
+    module      = "system,if_mib,mikrotik"
+    walk_params = "private"
+  }
 
-    walk_param "private" {
-        retries = "2"
-    }
+  walk_param "private" {
+    retries = 2
+  }
 
-    walk_param "public" {
-        retries = "2"
-    }
+  walk_param "public" {
+    retries = 2
+  }
 }
 
 // Configure a prometheus.scrape component to collect SNMP metrics.
 prometheus.scrape "demo" {
-    targets    = prometheus.exporter.snmp.example.targets
-    forward_to = [ /* ... */ ]
+  targets    = prometheus.exporter.snmp.example.targets
+  forward_to = [ /* ... */ ]
 }
 ```
 
@@ -183,93 +203,93 @@ The following example uses an embedded configuration with secrets:
 
 ```alloy
 local.file "snmp_config" {
-    filename  = "snmp_modules.yml"
-    is_secret = true
+  filename  = "snmp_modules.yml"
+  is_secret = true
 }
 
 prometheus.exporter.snmp "example" {
-    config = local.file.snmp_config.content
+  config = local.file.snmp_config.content
 
-    target "network_switch_1" {
-        address     = "192.168.1.2"
-        module      = "system,if_mib"
-        walk_params = "public"
-    }
+  target "network_switch_1" {
+    address     = "192.168.1.2"
+    module      = "system,if_mib"
+    walk_params = "public"
+  }
 
-    target "network_router_2" {
-        address     = "192.168.1.3"
-        module      = "system,if_mib,mikrotik"
-        walk_params = "private"
-    }
+  target "network_router_2" {
+    address     = "192.168.1.3"
+    module      = "system,if_mib,mikrotik"
+    walk_params = "private"
+  }
 
-    walk_param "private" {
-        retries = "2"
-    }
+  walk_param "private" {
+    retries = 2
+  }
 
-    walk_param "public" {
-        retries = "2"
-    }
+  walk_param "public" {
+    retries = 2
+  }
 }
 
 // Configure a prometheus.scrape component to collect SNMP metrics.
 prometheus.scrape "demo" {
-    targets    = prometheus.exporter.snmp.example.targets
-    forward_to = [prometheus.remote_write.demo.receiver]
+  targets    = prometheus.exporter.snmp.example.targets
+  forward_to = [prometheus.remote_write.demo.receiver]
 }
 
 prometheus.remote_write "demo" {
-    endpoint {
-        url = "<PROMETHEUS_REMOTE_WRITE_URL>"
+  endpoint {
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
 
-        basic_auth {
-            username = "<USERNAME>"
-            password = "<PASSWORD>"
-        }
+    basic_auth {
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
     }
+  }
 }
 ```
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 The following example uses the alternative way to pass targets:
 
 ```alloy
 prometheus.exporter.snmp "example" {
-    config_file = "snmp_modules.yml"
+  config_files = ["snmp_modules.yml"]
 
-    targets = [
-        {
-            "name"        = "network_switch_1",
-            "address"     = "192.168.1.2",
-            "module"      = "system,if_mib",
-            "walk_params" = "public",
-            "env"         = "dev",
-        },
-        {
-            "name"        = "network_router_2",
-            "address"     = "192.168.1.3",
-            "module"      = "system,if_mib,mikrotik",
-            "walk_params" = "private",
-        },
-    ]
+  targets = [
+    {
+      "name"        = "network_switch_1",
+      "address"     = "192.168.1.2",
+      "module"      = "system,if_mib",
+      "walk_params" = "public",
+      "env"         = "dev",
+    },
+    {
+      "name"        = "network_router_2",
+      "address"     = "192.168.1.3",
+      "module"      = "system,if_mib,mikrotik",
+      "walk_params" = "private",
+    },
+  ]
 
-    walk_param "private" {
-        retries = "2"
-    }
+  walk_param "private" {
+    retries = 2
+  }
 
-    walk_param "public" {
-        retries = "2"
-    }
+  walk_param "public" {
+    retries = 2
+  }
 }
 
 // Configure a prometheus.scrape component to collect SNMP metrics.
 prometheus.scrape "demo" {
-    targets    = prometheus.exporter.snmp.example.targets
-    forward_to = [ /* ... */ ]
+  targets    = prometheus.exporter.snmp.example.targets
+  forward_to = [ /* ... */ ]
 }
 ```
 
@@ -281,23 +301,23 @@ local.file "targets" {
 }
 
 prometheus.exporter.snmp "example" {
-    config_file = "snmp_modules.yml"
+  config_files = ["snmp_modules.yml"]
 
-    targets = encoding.from_yaml(local.file.targets.content)
+  targets = encoding.from_yaml(local.file.targets.content)
 
-    walk_param "private" {
-        retries = "2"
-    }
+  walk_param "private" {
+    retries = 2
+  }
 
-    walk_param "public" {
-        retries = "2"
-    }
+  walk_param "public" {
+    retries = 2
+  }
 }
 
 // Configure a prometheus.scrape component to collect SNMP metrics.
 prometheus.scrape "demo" {
-    targets    = prometheus.exporter.snmp.example.targets
-    forward_to = [ /* ... */ ]
+  targets    = prometheus.exporter.snmp.example.targets
+  forward_to = [ /* ... */ ]
 }
 ```
 
@@ -322,7 +342,7 @@ discovery.file "example" {
 }
 
 prometheus.exporter.snmp "example" {
-  config_file = "snmp_modules.yml"
+  config_files = ["snmp_modules.yml"]
   targets = discovery.file.example.targets
 }
 
@@ -353,6 +373,9 @@ The YAML file in this example looks like this:
 [scrape]: ../prometheus.scrape/
 [file]: ../../local/local.file/
 [disc]: ../../discovery/discovery.file/
+[target]: #target
+[snmp-exporter]: https://github.com/prometheus/snmp_exporter/tree/{{< param "SNMP_VERSION" >}}
+[snmp-exporter-config]: https://github.com/prometheus/snmp_exporter/tree/{{< param "SNMP_VERSION" >}}?tab=readme-ov-file#configuration
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

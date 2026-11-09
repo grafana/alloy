@@ -1,0 +1,53 @@
+# GCP Pub/Sub emulator. PUBSUB_PROJECT1 creates the topic and its
+# subscription on boot. Must match the constants in gcp_pubsub.go.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gcp-pubsub
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gcp-pubsub
+  template:
+    metadata:
+      labels:
+        app: gcp-pubsub
+    spec:
+      containers:
+        - name: gcp-pubsub
+          image: thekevjames/gcloud-pubsub-emulator:592.0.0
+          imagePullPolicy: Never
+          env:
+            - name: PUBSUB_PROJECT1
+              value: test-project,gcplog-topic:gcplog-subscription
+          ports:
+            - name: gcp-pubsub
+              containerPort: 8681
+          # Ready once the topic exists, not just when the port is open.
+          readinessProbe:
+            exec:
+              command:
+                - curl
+                - -sf
+                - -o
+                - /dev/null
+                - http://localhost:8681/v1/projects/test-project/topics/gcplog-topic
+            initialDelaySeconds: 2
+            periodSeconds: 2
+            timeoutSeconds: 5
+            failureThreshold: 60
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gcp-pubsub
+  labels:
+    app: gcp-pubsub
+spec:
+  selector:
+    app: gcp-pubsub
+  ports:
+    - name: gcp-pubsub
+      port: 8681
+      targetPort: gcp-pubsub

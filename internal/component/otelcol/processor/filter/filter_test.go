@@ -207,7 +207,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			output {}
 			`,
-			errMsg: `unable to parse OTTL condition "UnknowFunction(\"http.method\")": undefined function "UnknowFunction"`,
+			errMsg: `undefined function "UnknowFunction"`,
 		},
 	}
 

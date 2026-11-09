@@ -8,9 +8,9 @@ The following arguments are supported:
 
 | Name         | Type     | Description                                                        | Default | Required |
 |--------------|----------|--------------------------------------------------------------------|---------|----------|
-| `auth`       | `string` | The authorization value used to authenticate the TPM device.       | `""`    | no       |
+| `auth`       | `secret` | The authorization value used to authenticate the TPM device.       | `""`    | no       |
 | `enabled`    | `bool`   | Load the `tls.key_file` from TPM.                                  | `false` | no       |
-| `owner_auth` | `string` | The owner authorization value used to authenticate the TPM device. | `""`    | no       |
+| `owner_auth` | `secret` | The owner authorization value used to authenticate the TPM device. | `""`    | no       |
 | `path`       | `string` | Path to the TPM device or Unix domain socket.                      | `""`    | no       |
 
 The [trusted platform module][tpm] (TPM) configuration can be used for loading TLS key from TPM. Currently only TSS2 format is supported.
