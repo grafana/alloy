@@ -179,3 +179,21 @@ func TestArguments_ValidateRequiresEndpoint(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "endpoint")
 }
+
+func TestArguments_ValidateCompress(t *testing.T) {
+	for _, value := range []string{"", "none", "true", "zstd", "lz4", "lz4hc", "gzip", "deflate", "br"} {
+		var args clickhouse.Arguments
+		args.SetToDefault()
+		args.Endpoint = "tcp://127.0.0.1:9000"
+		args.Compress = value
+		require.NoError(t, args.Validate(), value)
+	}
+
+	var args clickhouse.Arguments
+	args.SetToDefault()
+	args.Endpoint = "tcp://127.0.0.1:9000"
+	args.Compress = "lz5"
+	err := args.Validate()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid compress")
+}

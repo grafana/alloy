@@ -2,6 +2,9 @@
 package clickhouse
 
 import (
+	"fmt"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/grafana/alloy/internal/component"
@@ -80,6 +83,10 @@ type MetricTableConfig struct {
 
 var _ exporter.Arguments = Arguments{}
 
+// validCompress lists the compress values accepted by the ClickHouse driver.
+// The driver silently ignores unknown values, so they're rejected here.
+var validCompress = []string{"", "none", "true", "zstd", "lz4", "lz4hc", "gzip", "deflate", "br"}
+
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	defaultCfg := clickhouseexporter.NewFactory().CreateDefaultConfig().(*clickhouseexporter.Config)
@@ -102,6 +109,10 @@ func (args *Arguments) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
+	if !slices.Contains(validCompress, args.Compress) {
+		return fmt.Errorf("invalid compress %q, must be one of: %s", args.Compress, strings.Join(validCompress[1:], ", "))
+	}
+
 	cfg, err := args.Convert()
 	if err != nil {
 		return err
