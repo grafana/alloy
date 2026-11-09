@@ -984,4 +984,48 @@ func BenchmarkMatchStage(b *testing.B) {
 
 		runPipelineBenchmark(b, cfgs, []loki.Batch{batch})
 	})
+
+	b.Run("regex alternation line filter matches no entries", func(b *testing.B) {
+		cfgs := loadConfig(`
+		stage.match {
+			selector = "{app=\"bench\"} |~ \"(?i)error|warn|fatal\""
+
+			stage.label_drop {
+				values = ["unused"]
+			}
+		}
+		`)
+
+		entries := make([]push.Entry, numEntries)
+		for i := range entries {
+			entries[i] = push.Entry{Timestamp: time.Now(), Line: `level=info msg="request handled" method=GET path=/api/v1/items status=200 duration=15ms user=bob`}
+		}
+
+		batch := loki.NewBatch()
+		batch.Add(loki.NewStream(model.LabelSet{"app": "bench"}, entries...))
+
+		runPipelineBenchmark(b, cfgs, []loki.Batch{batch})
+	})
+
+	b.Run("regex alternation line filter matches all entries", func(b *testing.B) {
+		cfgs := loadConfig(`
+		stage.match {
+			selector = "{app=\"bench\"} |~ \"(?i)error|warn|fatal\""
+
+			stage.label_drop {
+				values = ["unused"]
+			}
+		}
+		`)
+
+		entries := make([]push.Entry, numEntries)
+		for i := range entries {
+			entries[i] = push.Entry{Timestamp: time.Now(), Line: `level=ERROR msg="request failed" method=GET path=/api/v1/items status=500 duration=15ms user=bob`}
+		}
+
+		batch := loki.NewBatch()
+		batch.Add(loki.NewStream(model.LabelSet{"app": "bench"}, entries...))
+
+		runPipelineBenchmark(b, cfgs, []loki.Batch{batch})
+	})
 }
