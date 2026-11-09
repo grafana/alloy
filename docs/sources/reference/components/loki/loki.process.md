@@ -837,8 +837,26 @@ The following arguments are supported:
 | `drop_counter_reason` | `string` | A custom reason to report for dropped lines.                                                          | `"match_stage"` | no       |
 | `pipeline_name`       | `string` | A custom name to use for the nested pipeline.                                                         | `""`            | no       |
 
+The `selector` argument is a LogQL stream selector, optionally followed by line filter expressions, for example `{app="example"} |= "error"`.
+The following line filter expressions are supported:
+
+- **Contains**: `|= "text"` matches lines that contain the text.
+- **Doesn't contain**: `!= "text"` matches lines that don't contain the text.
+- **Regular expression**: `|~ "regex"` matches lines that match the regular expression.
+- **Not a regular expression**: `!~ "regex"` matches lines that don't match the regular expression.
+
+If you chain several line filter expressions, a line must match all of them.
+Use `or` between strings to match any of them, for example `|= "error" or "warn"`.
+With `!=` and `!~`, `or` excludes lines that match any of the strings.
+
 {{< admonition type="note" >}}
-The filters don't include label filter expressions such as `| label == "examplelabel"`.
+The selector only supports labels matchers and the line filter expressions listed above.
+It doesn't support:
+
+- Label filter expressions, such as `| label == "examplelabel"`.
+- Parser stages, such as `| json` and `| logfmt`.
+- Pattern line filter expressions, such as `|>` and `!>`.
+- The `ip()` function.
 {{< /admonition >}}
 
 The `stage.match` block supports a number of `stage.*` inner blocks, like the top-level block.
