@@ -7,6 +7,7 @@ labels:
   tags:
     - text: Community
       tooltip: This component is developed, maintained, and supported by the Alloy user community.
+review_date: 2026-10-26
 title: otelcol.exporter.clickhouse
 ---
 
@@ -14,7 +15,9 @@ title: otelcol.exporter.clickhouse
 
 {{< docs/shared lookup="stability/community.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`otelcol.exporter.clickhouse` accepts metrics, logs, and traces telemetry data from other `otelcol` components and sends it to a [ClickHouse](https://clickhouse.com) database.
+`otelcol.exporter.clickhouse` accepts metrics, logs, and traces telemetry data from other `otelcol` components and sends it to a [ClickHouse][] database.
+
+[ClickHouse]: https://clickhouse.com
 
 {{< admonition type="note" >}}
 `otelcol.exporter.clickhouse` is a wrapper over the upstream OpenTelemetry Collector [`clickhouse`][] exporter.
@@ -29,7 +32,7 @@ You can specify multiple `otelcol.exporter.clickhouse` components by giving them
 
 ```alloy
 otelcol.exporter.clickhouse "<LABEL>" {
-  endpoint = "tcp://127.0.0.1:9000"
+  endpoint = "<ENDPOINT>"
 }
 ```
 
@@ -55,17 +58,31 @@ You can use the following arguments with `otelcol.exporter.clickhouse`:
 | `username`          | `string`      | Authentication username.                                    | `""`            | no       |
 
 The `endpoint` argument supports the `tcp://`, `http://`, `https://`, and `clickhouse://` schemes.
+When you use the `https://` scheme, the component enables TLS for the connection.
 To connect to more than one host, separate the addresses with commas, for example, `tcp://addr1:9000,addr2:9000`.
 
-The `compress` argument accepts `none`, `zstd`, `lz4`, `gzip`, `deflate`, `br`, and `true`, which is an alias for `lz4`.
+Values in `connection_params` override query parameters with the same name in `endpoint`.
+If `endpoint` or `connection_params` sets `async_insert` or `compress`, that value overrides the matching argument.
+
+The component uses `password` only when you also set `username`.
+If you don't set `username`, the component uses any credentials in `endpoint` and ignores `password`.
+
+When `database` is `"default"`, the component uses the database in the `endpoint` path, if the path includes one.
+
+The `compress` argument accepts `none`, `zstd`, `lz4`, `lz4hc`, `gzip`, `deflate`, `br`, and `true`, which is an alias for `lz4`.
 When `compress` is empty, the component uses `lz4`.
+
+The `gzip`, `deflate`, and `br` values only apply to the `http://` and `https://` schemes.
+The `lz4hc` value only applies to the `tcp://` and `clickhouse://` schemes.
 
 The `json` argument stores attributes in the logs and traces tables as JSON columns.
 Use ClickHouse v25+ for reliable JSON support.
 You might also need to set `enable_json_type=1` in `endpoint` or `connection_params`.
 
 The `create_schema` argument controls whether the component runs data definition language (DDL) statements at startup.
-The `cluster_name` and `ttl` arguments only affect those statements, so they do nothing when `create_schema` is `false`.
+When `create_schema` is `true`, the component creates the logs, traces, and metrics tables, even if you only send one type of telemetry data.
+
+The `cluster_name` and `ttl` arguments only affect the DDL statements, so they do nothing when `create_schema` is `false`.
 When you set `cluster_name`, the component appends `ON CLUSTER <name>` to each DDL statement.
 Set `ttl` to `0s` to keep data indefinitely.
 
@@ -85,10 +102,12 @@ You can use the following blocks with `otelcol.exporter.clickhouse`:
 | `metrics_tables` > [`sum`][sum]                                     | Configures the table for sum metrics.                                          | no       |
 | `metrics_tables` > [`summary`][summary]                             | Configures the table for summary metrics.                                      | no       |
 | [`retry_on_failure`][retry_on_failure]                              | Configures retry mechanism for failed requests.                                | no       |
-| [`sending_queue`][sending_queue]                                    | Configures batching of data before sending.                                    | no       |
+| [`sending_queue`][sending_queue]                                    | Configures queueing and batching for the exporter.                             | no       |
 | `sending_queue` > [`batch`][batch]                                  | Configures batching requests based on a timeout and a minimum number of items. | no       |
+| `sending_queue` > `batch` > [`partition`][partition]                | Configures partitioning of batches by client metadata.                         | no       |
 | [`table_engine`][table_engine]                                      | Configures the ClickHouse table engine.                                        | no       |
 | [`tls`][tls]                                                        | Configures TLS for the connection.                                             | no       |
+| `tls` > [`tpm`][tpm]                                                | Configures TPM settings for the TLS `key_file`.                                | no       |
 
 [debug_metrics]: #debug_metrics
 [metrics_tables]: #metrics_tables
@@ -102,6 +121,8 @@ You can use the following blocks with `otelcol.exporter.clickhouse`:
 [batch]: #batch
 [table_engine]: #table_engine
 [tls]: #tls
+[partition]: #partition
+[tpm]: #tpm
 
 {{< /docs/alloy-config >}}
 
@@ -118,7 +139,7 @@ Each metric type has its own sub-block.
 
 The `exponential_histogram` block configures the table used to store exponential histogram metrics.
 
-The following arguments are supported:
+You can use the following argument with the `exponential_histogram` block:
 
 | Name   | Type     | Description        | Default                                | Required |
 |--------|----------|--------------------|----------------------------------------|----------|
@@ -128,7 +149,7 @@ The following arguments are supported:
 
 The `gauge` block configures the table used to store gauge metrics.
 
-The following arguments are supported:
+You can use the following argument with the `gauge` block:
 
 | Name   | Type     | Description        | Default                | Required |
 |--------|----------|--------------------|------------------------|----------|
@@ -138,7 +159,7 @@ The following arguments are supported:
 
 The `histogram` block configures the table used to store histogram metrics.
 
-The following arguments are supported:
+You can use the following argument with the `histogram` block:
 
 | Name   | Type     | Description        | Default                    | Required |
 |--------|----------|--------------------|----------------------------|----------|
@@ -148,7 +169,7 @@ The following arguments are supported:
 
 The `sum` block configures the table used to store sum metrics.
 
-The following arguments are supported:
+You can use the following argument with the `sum` block:
 
 | Name   | Type     | Description        | Default              | Required |
 |--------|----------|--------------------|----------------------|----------|
@@ -158,7 +179,7 @@ The following arguments are supported:
 
 The `summary` block configures the table used to store summary metrics.
 
-The following arguments are supported:
+You can use the following argument with the `summary` block:
 
 | Name   | Type     | Description        | Default                  | Required |
 |--------|----------|--------------------|--------------------------|----------|
@@ -166,13 +187,13 @@ The following arguments are supported:
 
 ### `retry_on_failure`
 
-The `retry_on_failure` block configures how failed requests to ClickHouse are retried.
+The `retry_on_failure` block configures how the component retries failed requests to ClickHouse.
 
 {{< docs/shared lookup="reference/components/otelcol-retry-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `sending_queue`
 
-The `sending_queue` block configures an in-memory buffer of batches before data is sent to ClickHouse.
+The `sending_queue` block configures queueing and batching for the exporter.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -182,24 +203,36 @@ The `batch` block configures batching requests based on a timeout and a minimum 
 
 {{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
+### `partition`
+
+The `partition` block configures how the component partitions batches by client metadata.
+
+{{< docs/shared lookup="reference/components/otelcol-queue-batch-partition-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
 ### `table_engine`
 
 The `table_engine` block configures the ClickHouse table engine used when `create_schema` is `true`.
 
-The following arguments are supported:
+You can use the following arguments with the `table_engine` block:
 
 | Name     | Type     | Description                            | Default | Required |
 |----------|----------|----------------------------------------|---------|----------|
 | `name`   | `string` | ClickHouse table engine name.          | `""`    | no       |
 | `params` | `string` | Parameters passed to the table engine. | `""`    | no       |
 
-When `name` is empty, the component uses `MergeTree`.
+When `name` is empty, the component uses `MergeTree` and ignores `params`.
 
 ### `tls`
 
 The `tls` block configures TLS settings used for the connection to ClickHouse.
 
 {{< docs/shared lookup="reference/components/otelcol-tls-client-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `tpm`
+
+The `tpm` block configures retrieving the TLS `key_file` from a trusted device.
+
+{{< docs/shared lookup="reference/components/otelcol-tls-tpm-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 
@@ -209,11 +242,14 @@ The following fields are exported and can be referenced by other components:
 |---------|--------------------|-------------------------------------------------------------|
 | `input` | `otelcol.Consumer` | A value other components can use to send telemetry data to. |
 
-`input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).
+`input` accepts `otelcol.Consumer` data for metrics, logs, and traces.
 
 ## Component health
 
-`otelcol.exporter.clickhouse` is reported as unhealthy if given an invalid configuration.
+`otelcol.exporter.clickhouse` is reported as unhealthy if given an invalid configuration or if it fails to start.
+
+When `create_schema` is `true`, the component connects to ClickHouse at startup to run the DDL statements, so it's reported as unhealthy if it can't reach the server.
+When `create_schema` is `false`, the component doesn't connect to ClickHouse at startup, so it isn't reported as unhealthy if the server is unreachable.
 
 ## Debug information
 
