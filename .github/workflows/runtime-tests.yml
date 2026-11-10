@@ -1,0 +1,157 @@
+name: Runtime tests
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  detect_chart_changes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.charts.outputs.changed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.13"
+          check-latest: true
+      - name: Install chart-testing
+        uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f # v2.8.0
+      - name: Determine changed charts
+        id: charts
+        run: |
+          changed=$(ct list-changed --config ./operations/helm/ct.yaml)
+          if [[ -n "$changed" ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  build_standard:
+    needs: detect_chart_changes
+    if: needs.detect_chart_changes.outputs.changed == 'true'
+    runs-on: github-hosted-ubuntu-x64-large
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Login to DockerHub
+        if: github.event.pull_request.head.repo.fork != true
+        continue-on-error: true
+        uses: grafana/shared-workflows/actions/dockerhub-login@3ffeda28e54d6c8e02c3998594fafaf0a359328d # dockerhub-login/v2.0.0
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - name: Build standard image
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          make ALLOY_IMAGE="alloy-ci:${GITHUB_SHA}" alloy-image
+      - name: Save image
+        run: docker save "alloy-ci:${GITHUB_SHA}" -o alloy-standard.tar
+      - name: Upload image
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: alloy-ci-standard-${{ github.sha }}
+          path: alloy-standard.tar
+          retention-days: 1
+          if-no-files-found: error
+
+  build_distroless:
+    runs-on: github-hosted-ubuntu-x64-large
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      image_tag: ${{ steps.image.outputs.tag }}
+    steps:
+      - name: Login to DockerHub
+        if: github.event.pull_request.head.repo.fork != true
+        continue-on-error: true
+        uses: grafana/shared-workflows/actions/dockerhub-login@3ffeda28e54d6c8e02c3998594fafaf0a359328d # dockerhub-login/v2.0.0
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - name: Determine image tag
+        id: image
+        run: |
+          tag="$(git rev-parse HEAD)"
+          test "$tag" = "$GITHUB_SHA"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - name: Build distroless image
+        env:
+          IMAGE_TAG: ${{ steps.image.outputs.tag }}
+        run: SKIP_CODE_GENERATION=1 make ALLOY_IMAGE_DISTROLESS="alloy-ci:${IMAGE_TAG}-distroless" alloy-image-distroless
+      - name: Save image
+        env:
+          IMAGE_TAG: ${{ steps.image.outputs.tag }}
+        run: docker save "alloy-ci:${IMAGE_TAG}-distroless" -o alloy-distroless.tar
+      - name: Upload image
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: alloy-ci-distroless-${{ steps.image.outputs.tag }}
+          path: alloy-distroless.tar
+          retention-days: 1
+          if-no-files-found: error
+
+  build_fixture_images:
+    runs-on: github-hosted-ubuntu-x64-large
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Login to DockerHub
+        if: github.event.pull_request.head.repo.fork != true
+        continue-on-error: true
+        uses: grafana/shared-workflows/actions/dockerhub-login@3ffeda28e54d6c8e02c3998594fafaf0a359328d # dockerhub-login/v2.0.0
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - name: Setup tools
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+        with:
+          version: v2026.5.18
+          sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
+          install_args: go
+      - name: Build fixture images
+        run: |
+          make prom-gen-image
+          make otel-gen-image
+      - name: Save images
+        run: docker save prom-gen:latest otel-gen:latest -o fixture-images.tar
+      - name: Upload images
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: test-images-fixtures
+          path: fixture-images.tar
+          retention-days: 1
+          if-no-files-found: error
+
+  docker:
+    needs: build_distroless
+    uses: $/.github/workflows/integration-tests.yml
+    with:
+      image_tag: ${{ needs.build_distroless.outputs.image_tag }}
+
+  kubernetes:
+    needs: [build_distroless, build_fixture_images]
+    uses: $/.github/workflows/integration-tests-k8s.yml
+    with:
+      image_tag: ${{ needs.build_distroless.outputs.image_tag }}
+
+  helm:
+    needs: [detect_chart_changes, build_standard, build_distroless]
+    if: needs.detect_chart_changes.outputs.changed == 'true'
+    uses: $/.github/workflows/helm-install.yml
+    with:
+      image_tag: ${{ needs.build_distroless.outputs.image_tag }}

@@ -1,0 +1,100 @@
+name: Install Helm chart
+on:
+  workflow_call:
+    inputs:
+      image_tag:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install Helm
+        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
+        with:
+          # renovate: datasource=github-releases packageName=helm/helm
+          version: v3.21.1
+
+      - name: Download standard image
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: alloy-ci-standard-${{ inputs.image_tag }}
+
+      - name: Download distroless image
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: alloy-ci-distroless-${{ inputs.image_tag }}
+
+      - name: Create kind cluster
+        uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0
+
+      - name: Load test images
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          docker load -i alloy-standard.tar
+          docker load -i alloy-distroless.tar
+          chart_version=$(ruby -r yaml -e 'version = YAML.safe_load(File.read(ARGV.fetch(0))).fetch("appVersion"); abort "invalid appVersion" unless version.is_a?(String) && !version.empty?; puts version' operations/helm/charts/alloy/Chart.yaml)
+          for suffix in '' '-distroless'; do
+            docker tag "alloy-ci:${IMAGE_TAG}${suffix}" "docker.io/grafana/alloy:${chart_version}${suffix}"
+            kind load docker-image "docker.io/grafana/alloy:${chart_version}${suffix}" --name chart-testing
+          done
+
+      - name: Add dependency chart repos
+        run: helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+
+      - name: Install Prometheus Operator CRDs
+        run: helm install my-prometheus-operator-crds prometheus-community/prometheus-operator-crds --version 6.0.0
+
+      - name: Test daemonset
+        run: |
+          chart=operations/helm/charts/alloy
+          namespace=alloy-ci-daemonset
+          helm install alloy "$chart" --namespace "$namespace" --create-namespace \
+            --values "$chart/ci/create-daemonset-values.yaml" --wait --timeout 5m
+          kubectl rollout status daemonset/alloy --namespace "$namespace" --timeout=5m
+          helm uninstall alloy --namespace "$namespace" --wait
+          kubectl delete namespace "$namespace" --wait
+
+      - name: Test deployment with custom configuration
+        run: |
+          chart=operations/helm/charts/alloy
+          namespace=alloy-ci-deployment
+          helm install alloy "$chart" --namespace "$namespace" --create-namespace \
+            --values "$chart/ci/create-deployment-values.yaml" \
+            --values "$chart/ci/custom-config-values.yaml" --wait --timeout 5m
+          kubectl rollout status deployment/alloy --namespace "$namespace" --timeout=5m
+          helm uninstall alloy --namespace "$namespace" --wait
+          kubectl delete namespace "$namespace" --wait
+
+      - name: Test clustered statefulset
+        run: |
+          chart=operations/helm/charts/alloy
+          namespace=alloy-ci-statefulset
+          helm install alloy "$chart" --namespace "$namespace" --create-namespace \
+            --values "$chart/ci/clustering-values.yaml" \
+            --values "$chart/ci/enable-servicemonitor-values.yaml" --wait --timeout 5m
+          kubectl rollout status statefulset/alloy --namespace "$namespace" --timeout=5m
+          helm uninstall alloy --namespace "$namespace" --wait
+          kubectl delete namespace "$namespace" --wait
+
+      - name: Test distroless deployment
+        run: |
+          chart=operations/helm/charts/alloy
+          namespace=alloy-ci-distroless
+          helm install alloy "$chart" --namespace "$namespace" --create-namespace \
+            --values "$chart/ci/create-deployment-values.yaml" \
+            --values "$chart/ci/distroless-values.yaml" --wait --timeout 5m
+          kubectl rollout status deployment/alloy --namespace "$namespace" --timeout=5m
+          helm uninstall alloy --namespace "$namespace" --wait
+          kubectl delete namespace "$namespace" --wait

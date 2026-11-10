@@ -48,7 +48,7 @@ jobs:
             exit 1
           fi
 
-  lint-test:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -66,39 +66,14 @@ jobs:
       - name: Install Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
-          python-version: '3.13'
+          python-version: "3.13"
           check-latest: true
 
       - name: Install chart-testing
         uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f # v2.8.0
 
-      - name: Determine changed charts
-        id: list-changed
-        run: |
-          changed=$(ct list-changed --config ./operations/helm/ct.yaml)
-          if [[ -n "$changed" ]]; then
-            echo "changed=true" >> $GITHUB_OUTPUT
-          fi
-
       - name: Lint charts
         run: ct lint --config ./operations/helm/ct.yaml
-
-      - name: Create kind cluster
-        uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0
-        if: steps.list-changed.outputs.changed == 'true'
-
-      - name: Add dependency chart repos
-        if: steps.list-changed.outputs.changed == 'true'
-        run: |
-          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-
-      - name: Install Prometheus Operator CRDs
-        if: steps.list-changed.outputs.changed == 'true'
-        run: |
-          helm install my-prometheus-operator-crds prometheus-community/prometheus-operator-crds --version 6.0.0
-
-      - name: Test charts
-        run: ct install --config ./operations/helm/ct.yaml
 
       - name: Assert external HPA validation failure
         run: |
