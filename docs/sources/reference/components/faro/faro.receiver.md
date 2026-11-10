@@ -109,15 +109,15 @@ The default value, `[]`, disables CORS support.
 To support requests from all origins, set `cors_allowed_origins` to `["*"]`.
 The `*` character indicates a wildcard.
 
-By default, you can use the following headers for cross-domain requests: `Content-Type`, `Content-Encoding`, `Idempotency-Key`, `Traceparent`, `X-API-Key`, `X-Faro-Session-Id`, or `X-Scope-OrgID`.
+By default, `faro.receiver` allows the following headers in cross-origin requests: `Content-Type`, `Content-Encoding`, `Idempotency-Key`, `Traceparent`, `X-API-Key`, `X-Faro-Session-Id`, and `X-Scope-OrgID`.
 
-Use `cors_allowed_headers` to configure the request headers allowed for cross-origin requests.
-Omitting the argument preserves the default list above.
-A configured list replaces the defaults, so include every header your Faro clients send.
-Setting it to `[]` uses the CORS library defaults: `Accept`, `Content-Type`, and `X-Requested-With`.
+Use `cors_allowed_headers` to change the request headers allowed in cross-origin requests.
+If you omit `cors_allowed_headers`, the component uses the default list.
+A list you set replaces the default list, so include every header your Faro clients send.
+If you set `cors_allowed_headers` to `[]`, the component allows only `Accept`, `Content-Type`, and `X-Requested-With`.
+If you set `cors_allowed_headers` to `["*"]`, the component allows any request header.
 Header names are case-insensitive.
-Setting it to `["*"]` allows any request header.
-This argument doesn't change `cors_allowed_origins` or enable CORS when it's disabled.
+`cors_allowed_headers` has no effect if `cors_allowed_origins` is empty.
 
 For example, allow an application-specific header from an allowed origin:
 
