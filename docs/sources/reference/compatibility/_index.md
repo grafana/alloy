@@ -192,6 +192,7 @@ The following components, grouped by namespace, _export_ Prometheus `MetricsRece
 {{< collapse title="prometheus" >}}
 - [`prometheus.echo`](../components/prometheus/prometheus.echo)
 - [`prometheus.enrich`](../components/prometheus/prometheus.enrich)
+- [`prometheus.preview`](../components/prometheus/prometheus.preview)
 - [`prometheus.relabel`](../components/prometheus/prometheus.relabel)
 - [`prometheus.remote_write`](../components/prometheus/prometheus.remote_write)
 {{< /collapse >}}
@@ -215,6 +216,7 @@ The following components, grouped by namespace, _consume_ Prometheus `MetricsRec
 - [`prometheus.operator.probes`](../components/prometheus/prometheus.operator.probes)
 - [`prometheus.operator.scrapeconfigs`](../components/prometheus/prometheus.operator.scrapeconfigs)
 - [`prometheus.operator.servicemonitors`](../components/prometheus/prometheus.operator.servicemonitors)
+- [`prometheus.preview`](../components/prometheus/prometheus.preview)
 - [`prometheus.receive_http`](../components/prometheus/prometheus.receive_http)
 - [`prometheus.relabel`](../components/prometheus/prometheus.relabel)
 - [`prometheus.scrape`](../components/prometheus/prometheus.scrape)

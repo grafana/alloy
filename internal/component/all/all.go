@@ -171,6 +171,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/prometheus/operator/probes"               // Import prometheus.operator.probes
 	_ "github.com/grafana/alloy/internal/component/prometheus/operator/scrapeconfigs"        // Import prometheus.operator.scrapeconfigs
 	_ "github.com/grafana/alloy/internal/component/prometheus/operator/servicemonitors"      // Import prometheus.operator.servicemonitors
+	_ "github.com/grafana/alloy/internal/component/prometheus/preview"                       // Import prometheus.preview
 	_ "github.com/grafana/alloy/internal/component/prometheus/receive_http"                  // Import prometheus.receive_http
 	_ "github.com/grafana/alloy/internal/component/prometheus/relabel"                       // Import prometheus.relabel
 	_ "github.com/grafana/alloy/internal/component/prometheus/remotewrite"                   // Import prometheus.remote_write
