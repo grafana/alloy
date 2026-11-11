@@ -376,10 +376,7 @@ func TestMatchStageNestedPipelineError(t *testing.T) {
 		selector = "{app=\"loki\"}"
 		action   = "keep"
 
-		stage.timestamp {
-			source = "timestamp"
-			format = ""
-		}
+		stage.json { }
 	}
 	`)
 

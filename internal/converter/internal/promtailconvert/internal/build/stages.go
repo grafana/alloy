@@ -424,14 +424,16 @@ func convertTimestamp(cfg any, diags *diag.Diagnostics) (stages.StageConfig, boo
 		addInvalidStageError(diags, cfg, err)
 		return stages.StageConfig{}, false
 	}
-	return stages.StageConfig{TimestampConfig: &stages.TimestampConfig{
-		Source:          pTimestamp.Source,
-		Format:          pTimestamp.Format,
-		FallbackFormats: pTimestamp.FallbackFormats,
-		Location:        pTimestamp.Location,
-		ActionOnFailure: defaultEmpty(pTimestamp.ActionOnFailure),
-	},
-	}, true
+	timestampConfig := &stages.TimestampConfig{}
+	timestampConfig.SetToDefault()
+	timestampConfig.Source = pTimestamp.Source
+	timestampConfig.Format = pTimestamp.Format
+	timestampConfig.FallbackFormats = pTimestamp.FallbackFormats
+	timestampConfig.Location = pTimestamp.Location
+	if pTimestamp.ActionOnFailure != nil {
+		timestampConfig.ActionOnFailure = *pTimestamp.ActionOnFailure
+	}
+	return stages.StageConfig{TimestampConfig: timestampConfig}, true
 }
 
 func convertLabelDrop(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
