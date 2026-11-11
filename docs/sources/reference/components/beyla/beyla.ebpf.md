@@ -198,6 +198,10 @@ You can use the following blocks with `beyla.ebpf`:
 | [`traces`][traces]                                                     | Configures trace collection and sampling options for all services instrumented by the component.   | no       |
 | `traces` > [`sampler`][sampler]                                        | Configures global trace sampling settings                                                          | no       |
 | [`routes`][routes]                                                     | Configures the routes to match HTTP paths into user-provided HTTP routes.                          | no       |
+| [`dynamic_instrumentation`][dynamic instrumentation]                  | Configures live mitigation rules (patches) for running Java processes.                             | no       |
+| `dynamic_instrumentation` > [`rule`][dynamic instrumentation]          | Selects processes and lists the patches applied to them.                                           | no       |
+| `dynamic_instrumentation` > `rule` > [`service`][dynamic instrumentation] | Selects the processes a rule applies to. Takes the same attributes as `discovery` > `instrument`. | yes      |
+| `dynamic_instrumentation` > `rule` > [`patch`][dynamic instrumentation] | Makes one Java method return a constant string until its TTL ends.                                | yes      |
 | [`injector`][injector]                                                 | Configures the SDK injection feature for automatic instrumentation without eBPF.                   | no       |
 | `injector` > [`instrument`][services]                                  | Configures the services to instrument with SDK injection.                                          | no       |
 | `injector` > [`exclude_instrument`][services]                          | Configures the services to exclude from SDK injection.                                             | no       |
@@ -209,6 +213,7 @@ You can use the following blocks with `beyla.ebpf`:
 | [`jvm_runtime_metrics`][jvm_runtime_metrics]                           | Configures collection of JVM runtime metrics from instrumented Java processes.                     | no       |
 
 [routes]: #routes
+[dynamic instrumentation]: #dynamic_instrumentation
 [traces]: #traces
 [attributes]: #attributes
 [kubernetes attributes]: #kubernetes-attributes
@@ -982,6 +987,69 @@ The `stats` block configures stats observability options for Beyla. You must app
 You can set `agent_ip_iface` to `external` (default), `local`, or `name:<interface name>`, for example `name:eth0`.
 
 You can set `agent_ip_type` to `ipv4`, `ipv6`, or `any` (default).
+
+### `dynamic_instrumentation`
+
+{{< admonition type="caution" >}}
+This block changes the behavior of running applications. A patch short-circuits a method, so use it only for documented, reviewed mitigations, with a short `ttl`.
+{{< /admonition >}}
+
+The `dynamic_instrumentation` block declares live mitigation rules. Beyla applies them to matching Java processes without restarting the process.
+
+| Name      | Type   | Description                                                                                                                                  | Default | Required |
+|-----------|--------|----------------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
+| `enabled` | `bool` | Starts Beyla's rule engine even when there are no `rule` blocks yet. Set it to add the first rule later without restarting Beyla. It opens no network listener. | `false` | no       |
+
+Beyla only watches for rule changes when it was started with at least one rule or with `enabled = true`.
+
+Alloy deliberately doesn't expose Beyla's rules HTTP API (`listen_address`). Alloy's HTTP server isn't authenticated by default, so a rule endpoint reachable through it would let anyone who can reach the pod write rules. Rules can only be written here, in the component's configuration.
+
+The `rule` block has one or more `service` blocks and one or more `patch` blocks. A `service` block uses the same attributes as the [`discovery` > `instrument`](#discovery) block and must define at least one of `open_ports`, `exe_path`, `cmd_args`, or `kubernetes`. A rule applies to the processes matched by any of its `service` blocks.
+
+The `patch` block supports the following attributes:
+
+| Name         | Type       | Description                                                                                          | Default    | Required |
+|--------------|------------|------------------------------------------------------------------------------------------------------|------------|----------|
+| `class`      | `string`   | Fully qualified Java class name, for example `org.apache.logging.log4j.core.lookup.JndiLookup`.       |            | yes      |
+| `method`     | `string`   | Method name.                                                                                         |            | yes      |
+| `descriptor` | `string`   | JVM method descriptor. It must return `java.lang.String`, so that overloads are never patched by accident. |       | yes      |
+| `action`     | `string`   | What the patched method does. Only `return` is supported: return the constant in `value`.            | `"return"` | no       |
+| `value`      | `string`   | The constant the method returns. At most 4096 bytes.                                                 |            | yes      |
+| `ttl`        | `duration` | How long the patch stays active, greater than zero and at most 24 hours.                             |            | yes      |
+
+You can declare at most 256 patches per component.
+
+Beyla removes a patch when its `ttl` ends, even if Alloy isn't running. The `ttl` is relative: any change to the component's arguments other than `dynamic_instrumentation` restarts the Beyla subprocess, and the restarted Beyla applies every patch again with a full `ttl`. Changes that only add, change, or remove `rule` blocks are applied to the running Beyla in place, without a restart, and leave the remaining patches, with their remaining `ttl`, as they are. This requires that Beyla was started with the rule engine on (at least one rule, or `enabled = true`); otherwise the first rule restarts Beyla once.
+
+```alloy
+beyla.ebpf "default" {
+  discovery {
+    instrument {
+      open_ports = "8080"
+    }
+  }
+
+  dynamic_instrumentation {
+    rule {
+      service {
+        open_ports = "8080"
+      }
+
+      patch {
+        class      = "org.apache.logging.log4j.core.lookup.JndiLookup"
+        method     = "lookup"
+        descriptor = "(Lorg/apache/logging/log4j/core/LogEvent;Ljava/lang/String;)Ljava/lang/String;"
+        value      = "none"
+        ttl        = "30m"
+      }
+    }
+  }
+
+  output {
+    traces = []
+  }
+}
+```
 
 ### `jvm_runtime_metrics`
 

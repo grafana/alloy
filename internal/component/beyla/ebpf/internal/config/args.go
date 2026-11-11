@@ -30,6 +30,41 @@ type Arguments struct {
 	Javaagent         Javaagent                  `alloy:"javaagent,block,optional"`
 	Nodejs            Nodejs                     `alloy:"nodejs,block,optional"`
 	JVMRuntimeMetrics JVMRuntimeMetrics          `alloy:"jvm_runtime_metrics,block,optional"`
+
+	// DynamicInstrumentation carries live mitigation rules (patches) for running Java processes.
+	DynamicInstrumentation DynamicInstrumentation `alloy:"dynamic_instrumentation,block,optional"`
+}
+
+// DynamicInstrumentation declares rules that Beyla applies to running processes without restarting
+// them. Only the declarative `rule` blocks are exposed: Beyla's rules HTTP API (listen_address) is
+// deliberately not configurable from Alloy, because Alloy's HTTP server is unauthenticated by default
+// and a rule endpoint reachable through it would let anyone who can reach the pod write rules.
+type DynamicInstrumentation struct {
+	// Enabled starts Beyla's rule engine even when there are no rules yet. Beyla only watches for rule
+	// changes when the engine was started with it, so set this to add the first rule later without
+	// restarting Beyla. It opens no network listener.
+	Enabled bool          `alloy:"enabled,attr,optional"`
+	Rules   []DynamicRule `alloy:"rule,block,optional"`
+}
+
+// EngineOn reports whether a Beyla started with these settings runs the rule engine.
+func (d DynamicInstrumentation) EngineOn() bool { return d.Enabled || len(d.Rules) > 0 }
+
+// DynamicRule selects processes and lists the patches to apply to them.
+type DynamicRule struct {
+	Service Services `alloy:"service,block"`
+	Patches []Patch  `alloy:"patch,block"`
+}
+
+// Patch makes one Java method return a constant String until its TTL ends. The JVM descriptor is
+// required so overloads are never patched by accident.
+type Patch struct {
+	Class      string        `alloy:"class,attr"`
+	Method     string        `alloy:"method,attr"`
+	Descriptor string        `alloy:"descriptor,attr"`
+	Action     string        `alloy:"action,attr,optional"`
+	Value      string        `alloy:"value,attr"`
+	TTL        time.Duration `alloy:"ttl,attr"`
 }
 
 type Attributes struct {

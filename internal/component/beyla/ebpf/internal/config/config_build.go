@@ -1,5 +1,10 @@
 package config
 
+import (
+	"strconv"
+	"time"
+)
+
 // Convert builds the discovery configuration.
 func (d Discovery) Convert() map[string]any {
 	m := make(map[string]any)
@@ -901,4 +906,47 @@ func (s Services) Convert() []map[string]any {
 		}
 	}
 	return result
+}
+
+// Convert builds the dynamic_instrumentation configuration. The rules API listen address is never
+// emitted: Alloy only carries declarative rules.
+func (d DynamicInstrumentation) Convert() map[string]any {
+	m := make(map[string]any)
+	if d.Enabled {
+		m["enabled"] = true
+	}
+	if len(d.Rules) == 0 {
+		return m
+	}
+	rules := make([]map[string]any, 0, len(d.Rules))
+	for _, rule := range d.Rules {
+		r := map[string]any{"service": rule.Service.Convert()}
+		patches := make([]map[string]any, 0, len(rule.Patches))
+		for _, p := range rule.Patches {
+			action := p.Action
+			if action == "" {
+				action = PatchActionReturn
+			}
+			patches = append(patches, map[string]any{
+				"action":     action,
+				"class":      p.Class,
+				"descriptor": p.Descriptor,
+				"method":     p.Method,
+				"ttl":        patchTTL(p.TTL),
+				"value":      p.Value,
+			})
+		}
+		r["patches"] = patches
+		rules = append(rules, r)
+	}
+	m["rules"] = rules
+	return m
+}
+
+// patchTTL renders a TTL in the "<n>ms|s|m" form Beyla's schema documents (whole seconds when it can).
+func patchTTL(d time.Duration) string {
+	if d%time.Second == 0 {
+		return strconv.FormatInt(int64(d/time.Second), 10) + "s"
+	}
+	return strconv.FormatInt(d.Milliseconds(), 10) + "ms"
 }

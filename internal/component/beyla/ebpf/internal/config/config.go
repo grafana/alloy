@@ -28,6 +28,7 @@ func (a Arguments) Convert(rt Runtime) map[string]any {
 
 	// Generated section translations.
 	set(cfg, "discovery", a.Discovery.Convert())
+	set(cfg, "dynamic_instrumentation", a.DynamicInstrumentation.Convert())
 	set(cfg, "ebpf", a.EBPF.Convert())
 	set(cfg, "injector", a.Injector.Convert())
 	set(cfg, "javaagent", a.Javaagent.Convert())

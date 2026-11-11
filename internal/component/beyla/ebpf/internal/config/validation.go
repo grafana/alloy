@@ -2,8 +2,10 @@ package config
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Samplers that take a ratio arg — a semantic rule the schema enum can't express.
@@ -103,8 +105,73 @@ func (args Services) Validate() error {
 	return nil
 }
 
+// PatchActionReturn is the only patch action: the method returns the configured constant.
+const PatchActionReturn = "return"
+
+// MaxPatchTTL mirrors Beyla's cap on a patch lifetime.
+const MaxPatchTTL = 24 * time.Hour
+
+// MaxPatchValueBytes bounds the constant a patch returns (it travels in the config and to the agent).
+const MaxPatchValueBytes = 4096
+
+// MaxPatches bounds the patches one component may declare.
+const MaxPatches = 256
+
+var (
+	javaClassNamePattern  = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]*(\.[A-Za-z_$][A-Za-z0-9_$]*)*$`)
+	javaMethodNamePattern = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]*$`)
+)
+
+// Validate validates the dynamic_instrumentation configuration.
+func (d DynamicInstrumentation) Validate() error {
+	total := 0
+	for i, rule := range d.Rules {
+		if len(rule.Service) == 0 {
+			return fmt.Errorf("dynamic_instrumentation.rule[%d] needs at least one service block", i)
+		}
+		if err := rule.Service.Validate(); err != nil {
+			return fmt.Errorf("dynamic_instrumentation.rule[%d]: %w", i, err)
+		}
+		if len(rule.Patches) == 0 {
+			return fmt.Errorf("dynamic_instrumentation.rule[%d] needs at least one patch block", i)
+		}
+		for j, p := range rule.Patches {
+			total++
+			if err := p.validate(); err != nil {
+				return fmt.Errorf("dynamic_instrumentation.rule[%d].patch[%d]: %w", i, j, err)
+			}
+		}
+	}
+	if total > MaxPatches {
+		return fmt.Errorf("dynamic_instrumentation declares %d patches, the maximum is %d", total, MaxPatches)
+	}
+	return nil
+}
+
+func (p Patch) validate() error {
+	switch {
+	case !javaClassNamePattern.MatchString(p.Class):
+		return fmt.Errorf("class %q must be a fully qualified Java class name", p.Class)
+	case !javaMethodNamePattern.MatchString(p.Method):
+		return fmt.Errorf("method %q must be a Java method name", p.Method)
+	case !strings.HasPrefix(p.Descriptor, "(") || !strings.HasSuffix(p.Descriptor, ")Ljava/lang/String;"):
+		return fmt.Errorf("descriptor %q must be a JVM method descriptor returning java.lang.String", p.Descriptor)
+	case p.Action != "" && p.Action != PatchActionReturn:
+		return fmt.Errorf("action %q is not supported, only %q", p.Action, PatchActionReturn)
+	case p.TTL <= 0 || p.TTL > MaxPatchTTL:
+		return fmt.Errorf("ttl must be greater than 0 and at most %s", MaxPatchTTL)
+	case len(p.Value) > MaxPatchValueBytes:
+		return fmt.Errorf("value is %d bytes, the maximum is %d", len(p.Value), MaxPatchValueBytes)
+	}
+	return nil
+}
+
 // Validate validates the Arguments configuration
 func (args *Arguments) Validate() error {
+	if err := args.DynamicInstrumentation.Validate(); err != nil {
+		return err
+	}
+
 	hasAppFeature := args.Metrics.hasAppFeature()
 
 	if args.TracePrinter == "" {

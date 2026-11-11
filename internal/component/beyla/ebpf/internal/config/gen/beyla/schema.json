@@ -156,9 +156,13 @@
           "items": {
             "type": "string",
             "enum": [
+              "dotnet",
               "go",
               "java",
-              "nodejs"
+              "nodejs",
+              "php",
+              "python",
+              "ruby"
             ]
           },
           "type": "array"
@@ -277,6 +281,12 @@
           },
           "type": "array"
         },
+        "jvm_gc_duration_histogram": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
         "request_size_histogram": {
           "items": {
             "type": "number"
@@ -374,6 +384,76 @@
       },
       "type": "object"
     },
+    "CustomSpanAttr": {
+      "properties": {
+        "arg": {
+          "type": "integer"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "i16",
+            "i32",
+            "i64",
+            "i8",
+            "string",
+            "u16",
+            "u32",
+            "u64",
+            "u8"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "CustomSpanMatch": {
+      "properties": {
+        "arg": {
+          "type": "integer"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "CustomSpanSpec": {
+      "properties": {
+        "attrs": {
+          "additionalProperties": {
+            "$ref": "#/$defs/CustomSpanAttr"
+          },
+          "type": "object"
+        },
+        "name": {
+          "type": "string"
+        },
+        "on": {
+          "$ref": "#/$defs/CustomSpanTarget"
+        }
+      },
+      "type": "object"
+    },
+    "CustomSpanTarget": {
+      "properties": {
+        "function_noret": {
+          "type": "string"
+        },
+        "function_span": {
+          "type": "string"
+        },
+        "match": {
+          "$ref": "#/$defs/CustomSpanMatch"
+        },
+        "usdt_noret": {
+          "type": "string"
+        },
+        "usdt_span": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "Definitions": {
       "items": {
         "oneOf": [
@@ -402,6 +482,109 @@
       },
       "type": "array",
       "description": "A list of CIDRs to be set as the \"src.cidr\" and \"dst.cidr\" attribute as a function of the source and destination IP addresses. Each entry can be a plain CIDR string or an object with \"cidr\" and \"name\" fields."
+    },
+    "DotnetRuntimeMetricsConfig": {
+      "properties": {
+        "sampling_interval": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OBI_DOTNET_RUNTIME_METRICS_SAMPLING_INTERVAL"
+        },
+        "timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OBI_DOTNET_RUNTIME_METRICS_TIMEOUT"
+        }
+      },
+      "type": "object"
+    },
+    "DynamicInstrumentationConfig": {
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_DYNAMIC_INSTRUMENTATION_ENABLED"
+        },
+        "listen_address": {
+          "type": "string",
+          "x-env-var": "OTEL_EBPF_DYNAMIC_INSTRUMENTATION_LISTEN_ADDRESS"
+        },
+        "max_cached_binary_bytes": {
+          "type": "integer"
+        },
+        "max_probes": {
+          "type": "integer"
+        },
+        "request_timeout": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ]
+        },
+        "rules": {
+          "items": {
+            "$ref": "#/$defs/DynamicInstrumentationRule"
+          },
+          "type": "array"
+        },
+        "symbol_cache_bytes": {
+          "type": "integer"
+        },
+        "symbol_cache_entries": {
+          "type": "integer"
+        },
+        "ttl": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ]
+        },
+        "watch_interval": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "DynamicInstrumentationRule": {
+      "properties": {
+        "patches": {
+          "items": {
+            "$ref": "#/$defs/PatchSpec"
+          },
+          "type": "array"
+        },
+        "service": {
+          "$ref": "#/$defs/GlobDefinitionCriteria"
+        },
+        "spans": {
+          "items": {
+            "$ref": "#/$defs/CustomSpanSpec"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
     },
     "EBPFBufferSizes": {
       "properties": {
@@ -565,6 +748,10 @@
         "payload_extraction": {
           "$ref": "#/$defs/PayloadExtraction"
         },
+        "populate_trace_context": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_BPF_POPULATE_TRACE_CONTEXT"
+        },
         "postgres_prepared_statements_cache_size": {
           "type": "integer",
           "x-env-var": "OTEL_EBPF_BPF_POSTGRES_PREPARED_STATEMENTS_CACHE_SIZE"
@@ -672,8 +859,10 @@
               "application",
               "application_host",
               "application_process",
+              "application_red",
               "application_runtime",
               "application_service_graph",
+              "application_sizes",
               "application_span_otel",
               "ebpf",
               "network",
@@ -683,7 +872,8 @@
               "stats_tcp_failed_connections",
               "stats_tcp_io",
               "stats_tcp_retransmits",
-              "stats_tcp_rtt"
+              "stats_tcp_rtt",
+              "stats_tcp_successful_connections"
             ]
           },
           {
@@ -836,6 +1026,9 @@
           "$ref": "#/$defs/GlobAttr"
         },
         "k8s_replicaset_name": {
+          "$ref": "#/$defs/GlobAttr"
+        },
+        "k8s_service_name": {
           "$ref": "#/$defs/GlobAttr"
         },
         "k8s_statefulset_name": {
@@ -1898,6 +2091,35 @@
       },
       "type": "object"
     },
+    "PatchSpec": {
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "class": {
+          "type": "string"
+        },
+        "descriptor": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "ttl": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "PayloadExtraction": {
       "properties": {
         "http": {
@@ -2092,6 +2314,9 @@
           "$ref": "#/$defs/RegexpAttr"
         },
         "k8s_replicaset_name": {
+          "$ref": "#/$defs/RegexpAttr"
+        },
+        "k8s_service_name": {
           "$ref": "#/$defs/RegexpAttr"
         },
         "k8s_statefulset_name": {
@@ -2556,6 +2781,14 @@
           ],
           "x-env-var": "OTEL_EBPF_OTLP_TRACES_BATCH_TIMEOUT"
         },
+        "compression": {
+          "type": "string",
+          "enum": [
+            "gzip",
+            "none"
+          ],
+          "x-env-var": "OTEL_EXPORTER_OTLP_TRACES_COMPRESSION"
+        },
         "endpoint": {
           "type": "string",
           "format": "uri",
@@ -2666,6 +2899,13 @@
     "discovery": {
       "$ref": "#/$defs/BeylaDiscoveryConfig",
       "description": "Discovery configuration"
+    },
+    "dotnet_runtime_metrics": {
+      "$ref": "#/$defs/DotnetRuntimeMetricsConfig"
+    },
+    "dynamic_instrumentation": {
+      "$ref": "#/$defs/DynamicInstrumentationConfig",
+      "description": "DynamicInstrumentation enables OBI's runtime rules API and rules (custom spans and live patches) for Java, Node.js and Go processes. It is converted to the OBI configuration as is."
     },
     "ebpf": {
       "$ref": "#/$defs/EBPFTracer"

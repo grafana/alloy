@@ -12,8 +12,9 @@ import (
 	"github.com/grafana/alloy/internal/component/beyla/ebpf/internal/subprocess"
 )
 
-func (c *Component) writeConfigFile() (string, func(), error) {
-	cfg := config.Build(c.args, config.Runtime{
+// renderConfig generates the Beyla YAML for args with the runtime values of the running subprocess.
+func (c *Component) renderConfig(args Arguments) ([]byte, error) {
+	cfg := config.Build(args, config.Runtime{
 		Port:       c.subprocess.Port(),
 		HealthAddr: c.subprocess.HealthAddr(),
 		OTLPAddr:   c.otlpReceiverAddr,
@@ -22,10 +23,20 @@ func (c *Component) writeConfigFile() (string, func(), error) {
 	configData, err := yaml.Marshal(cfg)
 
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to marshal config: %w", err)
+		return nil, fmt.Errorf("failed to marshal config: %w", err)
 	}
 
 	c.opts.Logger.Debug("generated Beyla YAML config", "yaml", string(configData))
+
+	return configData, nil
+}
+
+func (c *Component) writeConfigFile() (string, func(), error) {
+	configData, err := c.renderConfig(c.args)
+
+	if err != nil {
+		return "", nil, err
+	}
 
 	fd, err := unix.MemfdCreate("beyla-config", 0)
 
@@ -46,6 +57,10 @@ func (c *Component) writeConfigFile() (string, func(), error) {
 
 	configPath := fmt.Sprintf("/proc/self/fd/%d", fd)
 	cleanup := func() { unix.Close(fd) }
+
+	// Kept so that dynamic_instrumentation rule changes can be written in place (see rules_inplace_linux.go).
+	c.configFD = fd
+	c.ruleEngineOn = c.args.DynamicInstrumentation.EngineOn()
 
 	return configPath, cleanup, nil
 }

@@ -216,6 +216,40 @@ discovery:
           sampler:
             arg: x
             name: x
+dynamic_instrumentation:
+    enabled: true
+    rules:
+        - patches:
+            - action: x
+              class: x
+              descriptor: x
+              method: x
+              ttl: 1s
+              value: x
+          service:
+            - cmd_args: x
+              containers_only: true
+              exe_path: x
+              exports:
+                - x
+              k8s_daemonset_name: x
+              k8s_deployment_name: x
+              k8s_namespace: x
+              k8s_owner_name: x
+              k8s_pod_annotations:
+                x: x
+              k8s_pod_labels:
+                x: x
+              k8s_pod_name: x
+              k8s_replicaset_name: x
+              k8s_statefulset_name: x
+              languages: x
+              name: x
+              namespace: x
+              open_ports: x
+              sampler:
+                arg: x
+                name: x
 ebpf:
     batch_length: 1
     batch_timeout: 1s

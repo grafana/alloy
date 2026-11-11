@@ -48,6 +48,11 @@ type Component struct {
 
 	subprocess *subprocess.Handle
 	health     *health.Reporter
+
+	// configFD is the memfd holding the YAML the running Beyla was started with (owned by Run()).
+	configFD int
+	// ruleEngineOn records whether that Beyla was started with its rule engine on (owned by Run()).
+	ruleEngineOn bool
 }
 
 var _ component.HealthComponent = (*Component)(nil)
@@ -126,7 +131,16 @@ func (c *Component) applyPendingArgsUpdate() bool {
 }
 
 func (c *Component) handleArgsUpdate(newArgs Arguments) {
-	c.args = getLatestArgsFromChannel(c.argsUpdate, newArgs)
+	newArgs = getLatestArgsFromChannel(c.argsUpdate, newArgs)
+
+	// A change that only touches dynamic_instrumentation rules is written into the config file the
+	// running Beyla watches: no restart, so no loss of eBPF programs, telemetry or other patches.
+	if c.applyRulesInPlace(newArgs) {
+		c.args = newArgs
+		return
+	}
+
+	c.args = newArgs
 
 	c.stopSubprocess()
 

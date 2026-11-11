@@ -162,6 +162,7 @@ func (c *Component) stopSubprocess() {
 }
 
 func (c *Component) cleanup() {
+	c.configFD = 0
 	c.stopOTLPReceiver()
 	c.otlpReceiverAddr = ""
 	c.subprocess.Reset()
