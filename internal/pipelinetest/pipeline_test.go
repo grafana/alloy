@@ -9,7 +9,7 @@ import (
 )
 
 func TestPipelines(t *testing.T) {
-	found, err := FindTestFiles([]string{"tests"}, DefaultMatch)
+	found, err := FindTestFiles([]string{"tests"}, DefaultMatch(Kind), []string{Kind})
 	require.NoError(t, err)
 	require.Empty(t, found.Skipped, "every matched file must have kind: pipelinetest")
 	require.NotEmpty(t, found.Files)

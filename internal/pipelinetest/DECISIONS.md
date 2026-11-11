@@ -1,7 +1,7 @@
 # Pipeline test decisions
 
-This page records the design choices behind the experimental `alloy test`:
-what we chose, why, and how to change it. None of them is hard to reverse
+This page records the design choices behind the experimental
+`alloy test pipeline`: what we chose, why, and how to change it. None of them is hard to reverse
 yet, because the command is experimental and nothing outside this package
 depends on the format.
 
@@ -11,7 +11,7 @@ For how to write and run tests, refer to [README.md](README.md).
 
 The first version includes:
 
-- **Command:** `alloy test` with text and JSON output.
+- **Command:** `alloy test pipeline` with text and JSON output.
 - **Real configs:** a test swaps a config's entry and exit components. It can
   also replace discovery with fake targets, override attributes and remove
   components. The config file doesn't change.
@@ -38,15 +38,17 @@ Likely next steps:
 
 ## Command
 
-We chose a top-level `alloy test [path ...]`, labelled experimental in its
-help and not gated behind `--stability.level`.
+We chose `alloy test pipeline [path ...]`, labelled experimental in its
+help and not gated behind `--stability.level`. `alloy test` with no
+subcommand runs pipeline and static tests. For static tests, refer to
+[../statictest/DECISIONS.md](../statictest/DECISIONS.md).
 
 Users run configs with `alloy run` and check them with `alloy validate`, so
 they expect `alloy test` next to those. A stability flag adds friction
 without protecting anything, because the command doesn't change a running
 Alloy.
 
-To rename or move the command, change `internal/alloycli/cmd_pipelinetest.go`.
+To rename or move the command, change `internal/alloycli/cmd_test_command.go`.
 It wraps `pipelinetest.RunFiles`.
 
 ### Finding test files

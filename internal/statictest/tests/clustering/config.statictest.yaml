@@ -1,0 +1,46 @@
+kind: statictest
+version: 1
+config:
+  path: config.alloy
+
+rules:
+  # From the prometheus-metrics-clustering recipe.
+  - name: clustering on all Prometheus scrape components
+    description: >-
+      If one Prometheus scrape component has no clustering block, each
+      instance scrapes all of its targets, and nothing reports an error.
+    docs: https://grafana.com/docs/alloy/latest/get-started/clustering/
+    severity: must
+    type: all-or-none
+    select: [prometheus.scrape, prometheus.operator.podmonitors, prometheus.operator.servicemonitors]
+    path: clustering.enabled
+    equals: true
+
+  - name: no clustering for node logs
+    description: >-
+      A configuration that only reads log files from the node has no
+      clustering blocks. Each instance reads only the logs of its own node,
+      so clustering adds cost and gives no benefit.
+    severity: must
+    type: count
+    select: "*"
+    path: clustering
+    max: 0
+    when:
+      select: [prometheus.scrape, prometheus.operator.podmonitors, prometheus.operator.servicemonitors]
+      max: 0
+
+  # User rules.
+  - name: logs go only to our gateway
+    description: Our security policy doesn't permit other log destinations.
+    type: attribute
+    select: loki.write
+    path: endpoint[*].url
+    matches: 'https://logs-gateway\.example\.com/.*'
+
+  - name: every log path goes through our secret filter
+    description: Logs must not reach a destination before the secret filter removes secrets.
+    type: flows-through
+    from: loki.source.*
+    to: loki.write
+    through: loki.secretfilter

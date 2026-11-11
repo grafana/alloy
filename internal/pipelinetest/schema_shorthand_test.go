@@ -87,12 +87,12 @@ func TestLoadTestFileChecksKindAndVersion(t *testing.T) {
 		content string
 		err     string
 	}{
-		"no kind":       {"config: 'x'\n", "not a pipeline test"},
-		"other kind":    {"kind: Deployment\nversion: 1\n", "not a pipeline test"},
-		"not a mapping": {"- a\n- b\n", "not a pipeline test"},
+		"no kind":       {"config: 'x'\n", "not a test file"},
+		"other kind":    {"kind: Deployment\nversion: 1\n", "not a test file"},
+		"not a mapping": {"- a\n- b\n", "not a test file"},
 		"no version":    {"kind: pipelinetest\nconfig: 'x'\n", "version is missing, set version: 1"},
 		// A newer format reports its version, not its new fields.
-		"newer version": {"kind: pipelinetest\nversion: 2\nnew_field: x\n", "version 2 not supported, this Alloy supports version 1"},
+		"newer version": {"kind: pipelinetest\nversion: 2\nnew_field: x\n", "pipelinetest version 2 not supported, this Alloy supports version 1"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			path := t.TempDir() + "/a.pipelinetest.yaml"

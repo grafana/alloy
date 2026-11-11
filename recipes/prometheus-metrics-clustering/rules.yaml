@@ -1,0 +1,91 @@
+rules:
+  - name: clustering on all Prometheus scrape components
+    description: >-
+      If one Prometheus scrape component has no clustering block, each
+      instance scrapes all of its targets, and nothing reports an error.
+    docs: https://grafana.com/docs/alloy/latest/get-started/clustering/
+    severity: must
+    scope: alloy
+    static:
+      type: all-or-none
+      select: [prometheus.scrape, prometheus.operator.podmonitors, prometheus.operator.servicemonitors]
+      path: clustering.enabled
+      equals: true
+
+  - name: no clustering for node logs
+    description: >-
+      A configuration that only reads log files from the node has no
+      clustering blocks. Each instance reads only the logs of its own node,
+      so clustering adds cost and gives no benefit.
+    severity: must
+    scope: alloy
+    static:
+      type: count
+      select: "*"
+      path: clustering
+      max: 0
+      when:
+        select: [prometheus.scrape, prometheus.operator.podmonitors, prometheus.operator.servicemonitors]
+        max: 0
+
+  - name: scraped_by with write relabel
+    description: >-
+      Add the scraped_by label with a write_relabel_config in
+      prometheus.remote_write, which runs once for each series. A
+      prometheus.relabel component costs more, because it runs for each
+      sample.
+    severity: should
+    scope: alloy
+
+  - name: cluster flags
+    description: >-
+      Start Alloy with --cluster.enabled, and with --cluster.join-addresses or
+      --cluster.discover-peers.
+    severity: must
+    scope: deployment
+
+  - name: more than one replica
+    description: The peers must be able to find each other and talk to each other.
+    severity: must
+    scope: deployment
+
+  - name: StatefulSet
+    description: >-
+      Clustering also works with a Deployment. A StatefulSet is better
+      because each pod keeps a stable name. A restarted pod then joins the
+      cluster as the same node, so fewer targets move to other pods.
+    severity: should
+    scope: deployment
+
+  - name: safe wait-for-size
+    description: >-
+      --cluster.wait-for-size is not more than the value from the
+      instructions. A value that is too high can stop all scraping. If not
+      enough peers can start during a disruption, no instance scrapes until
+      the timeout.
+    severity: must
+    scope: deployment
+
+  - name: timeout only with wait-for-size
+    description: >-
+      If --cluster.wait-for-size is set, --cluster.wait-timeout is 15m. If
+      --cluster.wait-for-size is not set, there is no timeout.
+    severity: should
+    scope: deployment
+
+  - name: enough CPU
+    description: >-
+      CPU throttling breaks the gossip between peers, so the cluster doesn't
+      converge, and pods can run out of memory one after another. A CPU limit
+      is possible if the HPA scales on CPU, the limit is very high, or other
+      measures prevent throttling.
+    severity: must
+    scope: deployment
+
+  - name: pods sized for the largest target
+    description: >-
+      Clustering balances the number of targets, not the number of series. A
+      few very large targets, such as kube-state-metrics, can make one pod run
+      out of memory. Use fewer, larger pods, or split very large targets.
+    severity: should
+    scope: deployment

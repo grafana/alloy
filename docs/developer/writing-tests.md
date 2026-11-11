@@ -30,7 +30,7 @@ If the change you are making modifies the way that components connect to each ot
 
 Be careful not to implement pipeline tests for features that would be more suitable to verify in unit tests.
 
-Pipeline tests can be found in the `internal/pipelinetest` package. See its [README](../../internal/pipelinetest/README.md) for the test file format, and for `alloy test`, the experimental command that runs pipeline tests against any configuration.
+Pipeline tests can be found in the `internal/pipelinetest` package. See its [README](../../internal/pipelinetest/README.md) for the test file format, and for `alloy test pipeline`, the experimental command that runs pipeline tests against any configuration.
 
 ### Consider: integration tests
 

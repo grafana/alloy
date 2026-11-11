@@ -8,21 +8,24 @@ You can run pipeline tests in two ways:
 
 - `go test ./internal/pipelinetest/` runs every test under `tests/`. Alloy
   uses this to test itself.
-- `alloy test` runs any test file. It's **experimental**: the command, the
-  file format and the JSON output can change in any release. For the design
-  and how to change it, refer to [DECISIONS.md](DECISIONS.md).
+- `alloy test pipeline` runs any test file. It's **experimental**: the
+  command, the file format and the JSON output can change in any release.
+  For the design and how to change it, refer to [DECISIONS.md](DECISIONS.md).
+
+`alloy test`, with no subcommand, runs pipeline tests and
+[static tests](../statictest/README.md).
 
 ## Run tests
 
 ```sh
-alloy test                       # every test file under the current directory
-alloy test ./checkout.pipelinetest.yaml ./logs/
-alloy test --match='*.yaml' ci/  # select files in a directory by pattern
-alloy test --output=json .       # one JSON report, for CI or an agent
-alloy test --timeout=1m -v .     # retry assertions longer, and show Alloy's logs
+alloy test pipeline                       # every test file under the current directory
+alloy test pipeline ./checkout.pipelinetest.yaml ./logs/
+alloy test pipeline --match='*.yaml' ci/  # select files in a directory by pattern
+alloy test pipeline --output=json .       # one JSON report, for CI or an agent
+alloy test pipeline --timeout=1m -v .     # retry assertions longer, and show Alloy's logs
 ```
 
-`alloy test` runs each file you name. It searches each directory, and its
+`alloy test pipeline` runs each file you name. It searches each directory, and its
 subdirectories, for files that match `--match`. The default matches names
 ending in `.pipelinetest.yaml` or `.pipelinetest.yml`.
 
@@ -64,7 +67,7 @@ the config's edges for the harness:
    and one it rewrites.
 6. **Assert** what comes out. Add `sink: <exit>` to check routing, such as
    audit logs reaching only the audit writer.
-7. **Run `alloy test`** until it passes.
+7. **Run `alloy test pipeline`** until it passes.
 
 ```yaml
 kind: pipelinetest
@@ -152,10 +155,10 @@ are relative to the test file's directory.
 
 An agent can do steps 2 to 7. This prompt works:
 
-> Write an `alloy test` file for `config.alloy`, using the format in
+> Write an `alloy test pipeline` file for `config.alloy`, using the format in
 > `internal/pipelinetest/README.md` of the Alloy repository. Send a few
 > inputs per pipeline that each exercise its processing, and assert on the
-> result. Run `alloy test --output=json` until it passes. If a failure looks
+> result. Run `alloy test pipeline --output=json` until it passes. If a failure looks
 > like a bug in the config, say so instead of changing the assertion.
 
 ## File format

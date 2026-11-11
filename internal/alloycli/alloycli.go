@@ -36,7 +36,7 @@ func NewCommand(features clifeature.Set) *cobra.Command {
 		fmtCommand(),
 		gqlCommand(),
 		runCommand(features.Converter),
-		pipelineTestCommand(),
+		testCommand(),
 		toolsCommand(features.Tools),
 		validateCommand(features.Converter),
 	)

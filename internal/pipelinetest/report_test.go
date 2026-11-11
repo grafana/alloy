@@ -55,7 +55,7 @@ assert:
 	writeFile(t, filepath.Join(dir, "sub", "z.pipelinetest.yaml"), "kind: pipelinetest\nversion: 1\nconfig: 'not alloy {'\nassert:\n  loki:\n    - count: 1\n")
 	writeFile(t, filepath.Join(dir, "ignored.yaml"), "not a test")
 
-	files, err := FindTestFiles([]string{dir}, DefaultMatch)
+	files, err := FindTestFiles([]string{dir}, DefaultMatch(Kind), []string{Kind})
 	require.NoError(t, err)
 	require.Empty(t, files.Skipped)
 	require.Equal(t, []string{
@@ -114,7 +114,7 @@ func TestFindTestFiles(t *testing.T) {
 	join := func(p ...string) string { return filepath.Join(append([]string{dir}, p...)...) }
 
 	t.Run("default patterns", func(t *testing.T) {
-		found, err := FindTestFiles([]string{dir}, DefaultMatch)
+		found, err := FindTestFiles([]string{dir}, DefaultMatch(Kind), []string{Kind})
 		require.NoError(t, err)
 		// A bad version is still a test, so the run shows its error. Hidden
 		// directories are skipped.
@@ -123,7 +123,7 @@ func TestFindTestFiles(t *testing.T) {
 	})
 
 	t.Run("file name pattern", func(t *testing.T) {
-		found, err := FindTestFiles([]string{dir}, []string{"*.yaml"})
+		found, err := FindTestFiles([]string{dir}, []string{"*.yaml"}, []string{Kind})
 		require.NoError(t, err)
 		require.Equal(t, []string{join("a.pipelinetest.yaml"), join("new.pipelinetest.yaml"), join("other", "d.yaml"), join("sub", "c.yaml")}, found.Files)
 		require.Equal(t, []SkippedFile{
@@ -133,19 +133,19 @@ func TestFindTestFiles(t *testing.T) {
 	})
 
 	t.Run("path pattern", func(t *testing.T) {
-		found, err := FindTestFiles([]string{dir}, []string{"sub/**/*.yaml"})
+		found, err := FindTestFiles([]string{dir}, []string{"sub/**/*.yaml"}, []string{Kind})
 		require.NoError(t, err)
 		require.Equal(t, []string{join("sub", "c.yaml")}, found.Files)
 	})
 
 	t.Run("a file always runs", func(t *testing.T) {
-		found, err := FindTestFiles([]string{join("sub", "values.yaml")}, DefaultMatch)
+		found, err := FindTestFiles([]string{join("sub", "values.yaml")}, DefaultMatch(Kind), []string{Kind})
 		require.NoError(t, err)
 		require.Equal(t, []string{join("sub", "values.yaml")}, found.Files)
 	})
 
 	t.Run("invalid pattern", func(t *testing.T) {
-		_, err := FindTestFiles([]string{dir}, []string{"[a"})
+		_, err := FindTestFiles([]string{dir}, []string{"[a"}, []string{Kind})
 		require.ErrorContains(t, err, `invalid --match pattern "[a"`)
 	})
 }
