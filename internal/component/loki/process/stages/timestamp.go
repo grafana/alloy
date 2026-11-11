@@ -126,7 +126,7 @@ func timestampFudgeEnabled(cfg TimestampConfig) bool {
 var _ entryProcessor = (*timestampStage)(nil)
 
 // newTimestampStage creates a new timestamp extraction pipeline stage.
-func newTimestampStage(config TimestampConfig, opts stageOpts) (*timestampStage, error) {
+func newTimestampStage(config TimestampConfig, opts stageOpts) *timestampStage {
 	var (
 		lastKnownTimestamps *simplelru.LRU[string, timestampCacheEntry]
 		err                 error
@@ -134,7 +134,7 @@ func newTimestampStage(config TimestampConfig, opts stageOpts) (*timestampStage,
 	if timestampFudgeEnabled(config) {
 		lastKnownTimestamps, err = simplelru.NewLRU[string, timestampCacheEntry](maxLastKnownTimestampsCacheSize, nil)
 		if err != nil {
-			return nil, err
+			panic("invalid size passed to simplelru constructor")
 		}
 	}
 
@@ -144,7 +144,7 @@ func newTimestampStage(config TimestampConfig, opts stageOpts) (*timestampStage,
 		logger:              opts.slogger.With("stage", "timestamp"),
 		parser:              newTimestampParser(config),
 		lastKnownTimestamps: lastKnownTimestamps,
-	}, nil
+	}
 }
 
 // timestampCacheEntry holds both the original parsed timestamp and the last
