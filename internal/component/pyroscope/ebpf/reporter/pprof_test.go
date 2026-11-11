@@ -102,7 +102,7 @@ func TestPPROFReporter_DoesNotOverrideScopeLabels(t *testing.T) {
 		},
 	}
 
-	profiles := rep.createProfile(
+	profiles := rep.createProfile(time.Time{}, time.Time{},
 		samples.ResourceKey{PID: 123},
 		profileTypeSampling,
 		events,
@@ -130,7 +130,7 @@ func TestPPROFReporter_StringAndFunctionTablePopulation(t *testing.T) {
 		},
 	}
 
-	profiles := rep.createProfile(
+	profiles := rep.createProfile(time.Time{}, time.Time{},
 		samples.ResourceKey{PID: 123},
 		profileTypeSampling,
 		events,
@@ -188,7 +188,7 @@ func TestPPROFReporter_NativeFrame(t *testing.T) {
 			Timestamps: []uint64{789},
 		},
 	}
-	profiles := rep.createProfile(
+	profiles := rep.createProfile(time.Time{}, time.Time{},
 		samples.ResourceKey{PID: 123},
 		profileTypeSampling,
 		events,
@@ -229,7 +229,7 @@ func TestPPROFReporter_WithoutMapping(t *testing.T) {
 		},
 	}
 
-	profiles := rep.createProfile(
+	profiles := rep.createProfile(time.Time{}, time.Time{},
 		samples.ResourceKey{PID: 123},
 		profileTypeSampling,
 		events,
@@ -279,7 +279,7 @@ func TestPPROFReporter_SpanAndTraceIDsBecomeSampleLabels(t *testing.T) {
 		},
 	}
 
-	profiles := rep.createProfile(
+	profiles := rep.createProfile(time.Time{}, time.Time{},
 		samples.ResourceKey{PID: 123},
 		profileTypeSampling,
 		events,
@@ -346,7 +346,7 @@ func TestPPROFReporter_UsesProfileType(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			rep := newReporter()
-			profiles := rep.createProfile(samples.ResourceKey{PID: 123}, tc.profileType, samples.SampleToEvents{
+			profiles := rep.createProfile(time.Unix(0, 0), time.Unix(0, 0), samples.ResourceKey{PID: 123}, tc.profileType, samples.SampleToEvents{
 				{}: {
 					Frames:     singleFrameTrace(libpf.KernelFrame, libpf.FrameMappingFile{}, 0x2000, "", "", 0),
 					Timestamps: []uint64{42, 43},
@@ -402,7 +402,7 @@ func TestPPROFReporter_Bug(t *testing.T) {
 		},
 	}
 
-	profiles := rep.createProfile(
+	profiles := rep.createProfile(time.Time{}, time.Time{},
 		samples.ResourceKey{PID: 123},
 		profileTypeSampling,
 		events,
@@ -490,7 +490,7 @@ func TestPPROFReporter_Demangle(t *testing.T) {
 		},
 	}
 
-	profiles := rep.createProfile(
+	profiles := rep.createProfile(time.Time{}, time.Time{},
 		samples.ResourceKey{PID: 123},
 		profileTypeSampling,
 		events,
@@ -553,7 +553,7 @@ func TestPPROFReporter_UnsymbolizedStub(t *testing.T) {
 		},
 	}
 
-	profiles := rep.createProfile(
+	profiles := rep.createProfile(time.Time{}, time.Time{},
 		samples.ResourceKey{PID: 123},
 		profileTypeSampling,
 		events,
@@ -604,4 +604,43 @@ func (s symbolizer) ResolveAddress(file libpf.FileID, addr uint64) (irsymcache.S
 
 func (s symbolizer) Cleanup() {
 
+}
+
+func TestPPROFReporter_CollectionInterval(t *testing.T) {
+	rep := newReporter()
+	rep.cfg.ReportInterval = 15 * time.Second
+	rep.intervalStart = time.Now().Add(-23 * time.Second)
+	var reported []PPROF
+	rep.consumer = func(_ context.Context, profiles []PPROF) {
+		reported = profiles
+	}
+
+	// An empty collection window must also advance the interval boundary.
+	for _, empty := range []bool{false, true, false} {
+		start := rep.intervalStart
+		if !empty {
+			for _, profileType := range []*samples.TypeMetadata{profileTypeSampling, profileTypeOffCPU, profileTypeProbe} {
+				require.NoError(t, rep.ReportTraceEvent(&libpf.Trace{}, &samples.TraceEventMeta{
+					PID: 123, ProfileType: profileType, Value: 1,
+				}))
+			}
+		}
+		beforeReport := time.Now()
+		rep.reportProfile(context.Background())
+		end := rep.intervalStart
+		require.False(t, end.Before(beforeReport))
+		require.False(t, end.After(time.Now()))
+		if empty {
+			require.Empty(t, reported)
+			continue
+		}
+		require.Len(t, reported, 3)
+		for _, raw := range reported {
+			parsed, err := profile.ParseData(raw.Raw)
+			require.NoError(t, err)
+			assert.Equal(t, start.UnixNano(), parsed.TimeNanos)
+			assert.Equal(t, end.Sub(start).Nanoseconds(), parsed.DurationNanos)
+			assert.Positive(t, parsed.DurationNanos)
+		}
+	}
 }
