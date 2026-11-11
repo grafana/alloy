@@ -4,7 +4,7 @@ config:
   path: config.alloy
 
 rules:
-  # From the prometheus-metrics-clustering recipe.
+  # Clustering rules.
   - name: clustering on all Prometheus scrape components
     description: >-
       If one Prometheus scrape component has no clustering block, each

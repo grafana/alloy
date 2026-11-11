@@ -54,8 +54,7 @@ type Rule struct {
 	Check    `yaml:",inline"`
 }
 
-// Check is the part of a rule that the checker runs. Recipes store it on its
-// own, so a test file can copy it.
+// Check is the part of a rule that the checker runs.
 type Check struct {
 	Type string `yaml:"type"`
 

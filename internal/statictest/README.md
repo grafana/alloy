@@ -117,6 +117,4 @@ applies when the condition holds:
 - Components inside modules.
 - Expressions in rules, such as CEL.
 
-For an example, refer to [tests/clustering](tests/clustering). The rules
-there come from the
-[prometheus-metrics-clustering recipe](../../recipes/prometheus-metrics-clustering).
+For an example, refer to [tests/clustering](tests/clustering).

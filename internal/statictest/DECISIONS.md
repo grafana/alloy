@@ -19,7 +19,7 @@ into its own package.
 ## Our own rule types, not CEL
 
 We start with four rule types: `attribute`, `all-or-none`, `count` and
-`flows-through`. They cover the clustering recipe and the user rules we know
+`flows-through`. They cover the clustering rules and the user rules we know
 of, such as a secret filter on every log path.
 
 - A named type gives a clear error message, such as which component has no
@@ -51,21 +51,9 @@ component with another push export needs an entry there.
 A failed `should` rule is a warning: it shows `!` and doesn't fail the test.
 The exit status then only depends on `must` rules, so CI can gate on them.
 
-## Recipes
-
-A recipe stores its rules in `rules.yaml`, with an optional `static` check in
-the static test format. The static test agent copies these checks into a test
-file, so the copy must match the recipe exactly. `TestRecipeRules` checks
-this for the examples.
-
-We put rules in YAML, not in `RECIPE.md`. Then Go tests can check them, and
-an agent copies them without parsing prose. The recipe format only has
-what the static test agent needs. The rest of the recipe format is not
-designed yet.
-
 ## Not done yet
 
 - OTel Collector configurations, Helm values and Kubernetes manifests.
 - Components inside modules.
-- `alloy test static init`, which would collect the static checks of the
-  selected recipes into a test file. The agent does this for now.
+- Shared rules that a test file can include, such as Grafana's
+  recommendations for a task. For now, each test file holds its own rules.
