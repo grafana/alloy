@@ -203,7 +203,6 @@ level=info msg="rejoining peers" peers_count=2 peers=192.168.1.10:12345,192.168.
 
 ```text
 level=info msg="minimum cluster size reached, marking cluster as ready to admit traffic" minimum_cluster_size=3 peers_count=3
-level=warn msg="minimum cluster size requirements are not met - marking cluster as not ready for traffic" minimum_cluster_size=3 minimum_size_wait_timeout=5m0s peers_count=2
 level=warn msg="deadline passed, marking cluster as ready to admit traffic" minimum_cluster_size=3 minimum_size_wait_timeout=5m0s peers_count=2
 ```
 

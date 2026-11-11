@@ -124,20 +124,27 @@ If a node tries to join a cluster with the wrong `--cluster.name`, it returns a 
 
 For `--cluster.join-addresses` DNS prefix syntax and `--cluster.discover-peers` tuple quoting rules, refer to the [`alloy run` reference][run].
 
-For production deployments, set `--cluster.wait-for-size` to your expected cluster size and `--cluster.wait-timeout` to a reasonable duration.
-This ensures all nodes join before processing begins, which reduces duplicate scrapes and out-of-order samples at remote write during startup.
+For production deployments, set `--cluster.wait-for-size` to a value well below your expected cluster size.
+Also set `--cluster.wait-timeout`.
+The minimum cluster size stops a single node from processing all the traffic while the cluster starts.
+It also reduces duplicate scrapes and out-of-order samples at remote write during startup.
+After the cluster reaches the minimum size, nodes keep processing traffic even if the cluster shrinks below it later.
+To choose safe values for both flags, refer to [Use `--cluster.wait-for-size`, but with caution][clustering-best-practices].
 
-If you leave `--cluster.wait-for-size` at the default `0`, nodes can scrape before enough peers have joined, so two nodes may write the same series and trigger errors.
+If you leave `--cluster.wait-for-size` at the default `0`, nodes can scrape before enough peers have joined.
+Two nodes may then write the same series and trigger errors.
 Refer to [Out of order errors][remote-write-out-of-order] for additional troubleshooting.
 
-The following example configures a 3-node cluster where each node waits up to 5 minutes for all cluster members to join before it starts processing traffic:
+The following example configures a node in a 3-node cluster.
+The node waits for at least 2 nodes to join the cluster before it processes traffic.
+If 2 nodes don't join within 10 minutes, the node starts to process traffic anyway.
 
 ```bash
 alloy run config.alloy \
    --cluster.enabled \
    --cluster.join-addresses=alloy-1:7946,alloy-2:7946,alloy-3:7946 \
-   --cluster.wait-for-size=3 \
-   --cluster.wait-timeout=5m
+   --cluster.wait-for-size=2 \
+   --cluster.wait-timeout=10m
 ```
 
 
@@ -155,6 +162,7 @@ After you enable clustering, verify that all nodes have joined the cluster:
 
 After you enable clustering in {{< param "PRODUCT_NAME" >}}, [configure components to distribute workload][distribute-workload].
 
+[clustering-best-practices]: ../../../get-started/clustering/#best-practices
 [distribute-workload]: ../distribute-workload/
 [install-helm]: ../../../set-up/install/kubernetes/
 [remote-write-out-of-order]: ../../../reference/components/prometheus/prometheus.remote_write/#out-of-order-errors
