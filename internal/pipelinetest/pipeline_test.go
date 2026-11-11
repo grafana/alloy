@@ -1,40 +1,25 @@
 package pipelinetest
 
 import (
-	"errors"
-	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
 )
 
 func TestPipelines(t *testing.T) {
-	entries, err := os.ReadDir("tests")
+	found, err := FindTestFiles([]string{"tests"}, DefaultMatch)
 	require.NoError(t, err)
+	require.Empty(t, found.Skipped, "every matched file must have kind: pipelinetest")
+	require.NotEmpty(t, found.Files)
 
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-
-		name := entry.Name()
-		path := filepath.Join("tests", name, "test.yaml")
-
-		_, err := os.Stat(path)
-		if errors.Is(err, os.ErrNotExist) {
-			continue
-		}
-		require.NoError(t, err)
-
+	for _, path := range found.Files {
+		name := strings.TrimSuffix(filepath.Base(path), ".pipelinetest.yaml")
 		t.Run(name, func(t *testing.T) {
-			bb, err := os.ReadFile(path)
+			result, err := RunTestFile(t.Context(), path, TestConfig{DataPath: t.TempDir()})
 			require.NoError(t, err)
-
-			var schema TestSchema
-			require.NoError(t, yaml.Unmarshal(bb, &schema))
-			require.NoError(t, RunTest(t.Context(), schema, TestConfig{DataPath: t.TempDir()}))
+			require.NoError(t, result.Err())
 		})
 	}
 }

@@ -1,3 +1,6 @@
+kind: pipelinetest
+version: 1
+
 config: |
   loki.process "drop_existing_metadata" {
     forward_to = [loki.write.primary.receiver]

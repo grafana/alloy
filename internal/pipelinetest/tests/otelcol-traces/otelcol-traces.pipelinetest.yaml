@@ -1,0 +1,49 @@
+kind: pipelinetest
+version: 1
+
+config: |
+  otelcol.processor.attributes "default" {
+    action {
+      key    = "env"
+      value  = "test"
+      action = "insert"
+    }
+
+    action {
+      key    = "user.email"
+      action = "delete"
+    }
+
+    output {
+      traces = [pipelinetest.otel.input]
+    }
+  }
+
+inputs:
+  traces:
+    - components: [otelcol.processor.attributes.default.input]
+      spans:
+        - name: GET /cart
+          service_name: shop
+          kind: server
+          status: ok
+          attributes: {http.route: /cart, user.email: a@example.com}
+        - name: SELECT carts
+          service_name: shop
+          kind: client
+
+assert:
+  traces:
+    - count: 2
+    - name: attributes are inserted and deleted
+      match:
+        name: GET /cart
+        service_name: shop
+        kind: server
+        status: ok
+        attributes:
+          mode: exact
+          values: {http.route: /cart, env: test}
+    - count: 0
+      match:
+        attributes: {user.email: a@example.com}

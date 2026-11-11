@@ -1,3 +1,6 @@
+kind: pipelinetest
+version: 1
+
 mocks:
   http:
     # A stub Cloudflare API, laid out like the real one under /client/v4.

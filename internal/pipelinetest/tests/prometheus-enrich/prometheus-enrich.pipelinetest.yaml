@@ -1,3 +1,6 @@
+kind: pipelinetest
+version: 1
+
 config: |
   // Two exporters with the same metric. Scraped series carry the exporter's
   // component ID as instance, so only "matched" has a target to enrich from.

@@ -1,24 +1,27 @@
+kind: pipelinetest
+version: 1
+
 config: |
   import.file "module" {
-    filename = "./tests/modules/loki_pipeline.alloy"
+    filename = "../modules/loki_pipeline.alloy"
   }
 
   loki.source.file "f" {
     targets = [
       {
-        __path__     = "./tests/loki-pipeline-file/api.log",
+        __path__     = "./api.log",
         pod          = "api-1234",
         service_name = "api",
         namespace    = "ns1",
       },
       {
-        __path__     = "./tests/loki-pipeline-file/worker.log",
+        __path__     = "./worker.log",
         pod          = "worker-3345",
         service_name = "worker",
         namespace    = "ns2",
       },
       {
-        __path__     = "./tests/loki-pipeline-file/audit.log",
+        __path__     = "./audit.log",
         pod          = "audit-7788",
         service_name = "audit",
         namespace    = "ns3",

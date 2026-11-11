@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Prints the GCP Pub/Sub push bodies for test.yaml:
+// Prints the GCP Pub/Sub push bodies for loki-source-gcplog.pipelinetest.yaml:
 //
 //	go test ./internal/pipelinetest/tests/loki-source-gcplog/ -run TestPushEnvelopes -v
 func TestPushEnvelopes(t *testing.T) {

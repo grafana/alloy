@@ -54,6 +54,7 @@ Available Commands:
   gql         [EXPERIMENTAL] Run a GraphQL query against a running Alloy instance
   help        Help about any command
   run         Run Grafana Alloy with Default Engine
+  test        [EXPERIMENTAL] Run pipeline tests against configuration files
   validate    Validate a configuration file
 
 Flags:

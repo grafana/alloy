@@ -1,6 +1,6 @@
 // Package lokisourceawsfirehose holds a utility for the loki-source-awsfirehose
 // pipeline test. Firehose carries CloudWatch Logs data as gzip-compressed,
-// base64-encoded JSON, so test.yaml can only hold it as a blob. The component
+// base64-encoded JSON, so the test file can only hold it as a blob. The component
 // detects CloudWatch Logs by the gzip header, so plain base64 is not enough.
 //
 // To print the blob for cwLogsRecord, run:
@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// cwLogsRecord is the CloudWatch Logs record behind the blob in test.yaml.
+// cwLogsRecord is the CloudWatch Logs record behind the blob in the test file.
 const cwLogsRecord = `{"owner":"123456789012","logGroup":"/aws/lambda/test-function","logStream":"2026/01/01/[$LATEST]stream0","subscriptionFilters":["test-filter"],"messageType":"DATA_MESSAGE","logEvents":[{"id":"event-0","timestamp":1767225604000,"message":"cw log event 0 from cw-stream"},{"id":"event-1","timestamp":1767225605000,"message":"cw log event 1 from cw-stream"}]}`
 
 func TestCWLogsRecordBlob(t *testing.T) {
@@ -28,7 +28,7 @@ func TestCWLogsRecordBlob(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, gz.Close())
 	blob := base64.StdEncoding.EncodeToString(buf.Bytes())
-	// Copy this blob into the CloudWatch Logs record's data in test.yaml.
+	// Copy this blob into the CloudWatch Logs record's data in the test file.
 	t.Logf("blob:\n%s", blob)
 
 	compressed, err := base64.StdEncoding.DecodeString(blob)

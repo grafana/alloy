@@ -12,7 +12,7 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 )
 
-func init() {
+func registerMockHTTP() {
 	component.Register(component.Registration{
 		Name:      "pipelinetest.mocks.http",
 		Stability: featuregate.StabilityExperimental,
