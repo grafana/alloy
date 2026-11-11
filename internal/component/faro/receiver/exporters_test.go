@@ -60,9 +60,9 @@ func Test_metricsExporter_Export(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func Test_LogsExporter_SendTimeout(t *testing.T) {
+func Test_LogsExporter_RequestContextDeadline(t *testing.T) {
 	blocked := loki.NewLogsReceiver()
-	exp := newLogsExporter(util.TestAlloyLogger(t).Slog(), &varSourceMapsStore{}, FormatLogfmt, 50*time.Millisecond)
+	exp := newLogsExporter(util.TestAlloyLogger(t).Slog(), &varSourceMapsStore{}, FormatLogfmt)
 	exp.SetReceivers([]loki.LogsReceiver{blocked})
 
 	p := payload.Payload{
@@ -70,7 +70,9 @@ func Test_LogsExporter_SendTimeout(t *testing.T) {
 	}
 
 	start := time.Now()
-	err := exp.Export(t.Context(), p)
+	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+	defer cancel()
+	err := exp.Export(ctx, p)
 	elapsed := time.Since(start)
 
 	require.Error(t, err)
@@ -337,7 +339,7 @@ func Test_LogsExporter_Export(t *testing.T) {
 			t.Parallel()
 			var (
 				lr  = newFakeLogsReceiver(t)
-				exp = newLogsExporter(util.TestAlloyLogger(t).Slog(), &varSourceMapsStore{}, tc.format, 2*time.Second)
+				exp = newLogsExporter(util.TestAlloyLogger(t).Slog(), &varSourceMapsStore{}, tc.format)
 			)
 			exp.SetReceivers([]loki.LogsReceiver{lr})
 			exp.SetLabels(map[string]string{

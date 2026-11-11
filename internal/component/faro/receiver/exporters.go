@@ -85,8 +85,6 @@ type logsExporter struct {
 	sourceMaps sourceMapsStore
 	format     LogFormat
 
-	sendTimeout time.Duration
-
 	fanout *loki.Fanout
 
 	labelsMut sync.RWMutex
@@ -95,13 +93,12 @@ type logsExporter struct {
 
 var _ exporter = (*logsExporter)(nil)
 
-func newLogsExporter(log *slog.Logger, sourceMaps sourceMapsStore, format LogFormat, sendTimeout time.Duration) *logsExporter {
+func newLogsExporter(log *slog.Logger, sourceMaps sourceMapsStore, format LogFormat) *logsExporter {
 	return &logsExporter{
-		log:         log,
-		sourceMaps:  sourceMaps,
-		format:      format,
-		sendTimeout: sendTimeout,
-		fanout:      loki.NewFanout([]loki.LogsReceiver{}),
+		log:        log,
+		sourceMaps: sourceMaps,
+		format:     format,
+		fanout:     loki.NewFanout([]loki.LogsReceiver{}),
 	}
 }
 
@@ -109,11 +106,6 @@ func newLogsExporter(log *slog.Logger, sourceMaps sourceMapsStore, format LogFor
 // emitted by the exporter.
 func (exp *logsExporter) SetReceivers(receivers []loki.LogsReceiver) {
 	exp.fanout.UpdateChildren(receivers)
-}
-
-// SetSendTimeout updates the per entry send timeout.
-func (exp *logsExporter) SetSendTimeout(d time.Duration) {
-	exp.sendTimeout = d
 }
 
 func (exp *logsExporter) Name() string { return "logs exporter" }
@@ -192,12 +184,6 @@ func (exp *logsExporter) sendKeyValsToLogsPipeline(ctx context.Context, kv *payl
 		return err
 	}
 
-	timeout := exp.sendTimeout
-	if timeout <= 0 {
-		timeout = 2 * time.Second
-	}
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
 	return exp.fanout.Send(ctx, loki.NewEntry(exp.labelSet(kv), push.Entry{
 		Timestamp: time.Now(),
 		Line:      string(line),
