@@ -292,7 +292,7 @@ func TestRemoveTarget(t *testing.T) {
 				synctest.Wait()
 
 				// No time passes before the target is removed, so the tailer has not polled these lines.
-				_, err = f.WriteString("line 2\nline 3\n")
+				_, err = f.WriteString("line 2\nline 3\nline 4")
 				require.NoError(t, err)
 
 				require.NoError(t, ctrl.Update(Arguments{
@@ -302,10 +302,10 @@ func TestRemoveTarget(t *testing.T) {
 				}))
 
 				var lines []string
-				for _, entry := range recv.Next(t, 2) {
+				for _, entry := range recv.Next(t, 3) {
 					lines = append(lines, entry.Line)
 				}
-				require.Equal(t, []string{"line 2", "line 3"}, lines)
+				require.Equal(t, []string{"line 2", "line 3", "line 4"}, lines)
 			})
 		})
 	})

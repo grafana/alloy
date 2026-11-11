@@ -195,7 +195,7 @@ func (t *tailer) tail(ctx, stop context.Context, pos int64) {
 			return
 		}
 
-		line, err := t.next()
+		line, err := t.next(t.readOnce() || draining())
 
 		switch {
 		case errors.Is(err, io.EOF):
@@ -245,11 +245,11 @@ func (t *tailer) tail(ctx, stop context.Context, pos int64) {
 	}
 }
 
-// next returns the next line from the file.
-func (t *tailer) next() (*tail.Line, error) {
+// next returns the next line from the file. If final is true, any trailing data
+// without a newline is returned as a last line.
+func (t *tailer) next(final bool) (*tail.Line, error) {
 	line, err := t.file.Next()
-	if errors.Is(err, io.EOF) && t.readOnce() {
-		// Compressed files are read once, so return any trailing data without a newline.
+	if errors.Is(err, io.EOF) && final {
 		return t.file.Flush()
 	}
 
