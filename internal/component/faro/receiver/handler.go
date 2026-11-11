@@ -2,8 +2,10 @@ package receiver
 
 import (
 	"compress/gzip"
+	"context"
 	"crypto/subtle"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -97,6 +99,11 @@ func (h *handler) Update(args ServerArguments) {
 func (h *handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	h.argsMut.RLock()
 	defer h.argsMut.RUnlock()
+	if h.args.RequestTimeout > 0 {
+		ctx, cancel := context.WithTimeout(req.Context(), h.args.RequestTimeout)
+		defer cancel()
+		req = req.WithContext(ctx)
+	}
 
 	// Propagate request headers as metadata
 	if h.args.IncludeMetadata {
@@ -199,6 +206,13 @@ func (h *handler) processRequest(rw http.ResponseWriter, req *http.Request, p pa
 		})
 	}
 	wg.Wait()
+	if errors.Is(req.Context().Err(), context.DeadlineExceeded) {
+		http.Error(rw, http.StatusText(http.StatusGatewayTimeout), http.StatusGatewayTimeout)
+		return
+	}
+	if req.Context().Err() != nil {
+		return
+	}
 
 	rw.WriteHeader(http.StatusAccepted)
 	_, _ = rw.Write([]byte("ok"))
