@@ -17,6 +17,7 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 
 	"github.com/grafana/alloy/internal/pipelinetest/harness"
+	"github.com/grafana/alloy/internal/statictest"
 )
 
 // Status is the outcome of one test file.
@@ -54,7 +55,10 @@ type Summary struct {
 
 // FileReport is the outcome of one test file.
 type FileReport struct {
-	File            string  `json:"file"`
+	File string `json:"file"`
+	// Kind is pipelinetest or statictest. It's empty when the file has no
+	// known kind.
+	Kind            string  `json:"kind,omitempty"`
 	Status          Status  `json:"status"`
 	DurationSeconds float64 `json:"duration_seconds"`
 	// Error is set when Status is error.
@@ -67,11 +71,19 @@ type FileReport struct {
 	Snapshot            *harness.Snapshot         `json:"snapshot,omitempty"`
 }
 
-// AssertionReport is the outcome of one assertion.
+// AssertionReport is the outcome of one assertion, or of one rule of a static
+// test.
 type AssertionReport struct {
 	Name    string `json:"name"`
 	Passed  bool   `json:"passed"`
 	Message string `json:"message,omitempty"`
+	// Severity is set for static rules: must, should, or empty for must. A
+	// failed should rule doesn't fail the test.
+	Severity string `json:"severity,omitempty"`
+	// Description and Docs are set for a failed static rule, so the reader
+	// can decide whether the config is a valid exception.
+	Description string `json:"description,omitempty"`
+	Docs        string `json:"docs,omitempty"`
 }
 
 // Passed reports whether every test passed.
@@ -79,9 +91,18 @@ func (r Report) Passed() bool {
 	return r.Summary.Passed == r.Summary.Total
 }
 
-// DefaultMatch holds the default patterns that select test files in a
-// directory.
-var DefaultMatch = []string{"*.pipelinetest.yaml", "*.pipelinetest.yml"}
+// DefaultMatch returns the default patterns that select test files of the
+// given kinds in a directory, such as *.pipelinetest.yaml.
+func DefaultMatch(kinds ...string) []string {
+	var out []string
+	for _, k := range kinds {
+		out = append(out, "*."+k+".yaml", "*."+k+".yml")
+	}
+	return out
+}
+
+// AllKinds lists every test kind.
+var AllKinds = []string{Kind, statictest.Kind}
 
 // SkippedFile is a file that matched a pattern but is not a pipeline test.
 type SkippedFile struct {
@@ -93,7 +114,7 @@ type SkippedFile struct {
 type Discovery struct {
 	// Files are the test files to run, sorted and without duplicates.
 	Files []string
-	// Skipped are matched files without kind: pipelinetest.
+	// Skipped are matched files that aren't tests of the requested kinds.
 	Skipped []SkippedFile
 }
 
@@ -101,10 +122,10 @@ type Discovery struct {
 //
 // A file is always a test. A directory is searched recursively, and skips
 // directories whose names start with a dot. A file in it is a test when it
-// matches one of the patterns and has kind: pipelinetest. A pattern without a
+// matches one of the patterns and has one of the kinds. A pattern without a
 // slash matches the file name. A pattern with a slash matches the path
 // relative to the directory, and supports **.
-func FindTestFiles(paths, patterns []string) (Discovery, error) {
+func FindTestFiles(paths, patterns, kinds []string) (Discovery, error) {
 	for _, p := range patterns {
 		if !doublestar.ValidatePattern(p) {
 			return Discovery{}, fmt.Errorf("invalid --match pattern %q", p)
@@ -136,10 +157,10 @@ func FindTestFiles(paths, patterns []string) (Discovery, error) {
 				return err
 			}
 			path = filepath.Clean(path)
-			if isPipelineTest(path) {
-				d.Files = append(d.Files, path)
+			if reason := skipReason(path, kinds); reason != "" {
+				d.Skipped = append(d.Skipped, SkippedFile{File: path, Reason: reason})
 			} else {
-				d.Skipped = append(d.Skipped, SkippedFile{File: path, Reason: "no kind: " + Kind})
+				d.Files = append(d.Files, path)
 			}
 			return nil
 		})
@@ -168,19 +189,29 @@ func matchesAny(patterns []string, rel string) bool {
 	return false
 }
 
-// isPipelineTest reports whether a file in a directory is a test. A file that
-// can't be read, or has kind: pipelinetest with a bad version, is a test, so
-// the run shows its error.
-func isPipelineTest(path string) bool {
+// skipReason says why a matched file in a directory isn't a test of the
+// kinds, or returns "". A file that can't be read, or has a bad version, is a
+// test, so the run shows its error.
+func skipReason(path string, kinds []string) string {
 	bb, err := os.ReadFile(path)
 	if err != nil {
-		return true
+		return ""
 	}
-	return !errors.Is(readHeader(bb), ErrNotPipelineTest)
+	kind, err := readHeader(bb)
+	if errors.Is(err, ErrNotTest) {
+		return "no kind: " + strings.Join(kinds, " or ")
+	}
+	if !slices.Contains(kinds, kind) {
+		return "kind is " + kind
+	}
+	return ""
 }
 
 // RunOptions configures RunFiles.
 type RunOptions struct {
+	// Kinds limits which kinds of test run. A named file of another kind is
+	// an error. Empty means every kind.
+	Kinds         []string
 	AssertTimeout time.Duration
 	// LogWriter receives Alloy's logs. They are discarded when nil.
 	LogWriter io.Writer
@@ -226,6 +257,24 @@ func runFile(ctx context.Context, file string, opts RunOptions) (fr FileReport) 
 	fr = FileReport{File: file}
 	defer func() { fr.DurationSeconds = roundSeconds(time.Since(start)) }()
 
+	bb, err := os.ReadFile(file)
+	if err != nil {
+		fr.Status, fr.Error = StatusError, err.Error()
+		return fr
+	}
+	fr.Kind, err = readHeader(bb)
+	switch {
+	case err != nil:
+		fr.Status, fr.Error = StatusError, err.Error()
+		return fr
+	case len(opts.Kinds) > 0 && !slices.Contains(opts.Kinds, fr.Kind):
+		fr.Status, fr.Error = StatusError, fmt.Sprintf("kind is %s, but this command runs %s", fr.Kind, strings.Join(opts.Kinds, " and "))
+		return fr
+	case fr.Kind == statictest.Kind:
+		runStatic(&fr)
+		return fr
+	}
+
 	dataPath, err := os.MkdirTemp("", "alloy-pipelinetest-")
 	if err != nil {
 		fr.Status, fr.Error = StatusError, err.Error()
@@ -259,6 +308,32 @@ func runFile(ctx context.Context, file string, opts RunOptions) (fr FileReport) 
 		fr.Snapshot = &result.Snapshot
 	}
 	return fr
+}
+
+// runStatic runs a static test into fr.
+func runStatic(fr *FileReport) {
+	result, err := statictest.RunFile(fr.File)
+	if err != nil {
+		fr.Status, fr.Error = StatusError, err.Error()
+		return
+	}
+	for _, rr := range result.Rules {
+		ar := AssertionReport{
+			Name:     rr.Rule.Name,
+			Passed:   rr.Passed,
+			Message:  rr.Message,
+			Severity: rr.Rule.Severity,
+		}
+		if !rr.Passed {
+			ar.Description = strings.TrimSpace(rr.Rule.Description)
+			ar.Docs = rr.Rule.Docs
+		}
+		fr.Assertions = append(fr.Assertions, ar)
+	}
+	fr.Status = StatusPassed
+	if !result.Passed() {
+		fr.Status = StatusFailed
+	}
 }
 
 func roundSeconds(d time.Duration) float64 {
@@ -312,12 +387,25 @@ func (t TextReporter) File(fr FileReport) {
 	}
 
 	for _, a := range fr.Assertions {
-		if a.Passed {
+		switch {
+		case a.Passed:
 			t.printf("    %s %s\n", t.paint(ansiGreen, "✓"), a.Name)
+			if a.Message != "" {
+				t.indented(8, t.paint(ansiDim, a.Message))
+			}
 			continue
+		case a.Severity == "should":
+			t.printf("    %s %s\n", t.paint(ansiYellow, "!"), t.paint(ansiYellow, a.Name+" (should)"))
+		default:
+			t.printf("    %s %s\n", t.paint(ansiRed, "✗"), t.paint(ansiRed, a.Name))
 		}
-		t.printf("    %s %s\n", t.paint(ansiRed, "✗"), t.paint(ansiRed, a.Name))
 		t.indented(8, a.Message)
+		if a.Description != "" {
+			t.indented(8, t.paint(ansiDim, "why: "+a.Description))
+		}
+		if a.Docs != "" {
+			t.indented(8, t.paint(ansiDim, "docs: "+a.Docs))
+		}
 	}
 
 	if fr.Status != StatusFailed {

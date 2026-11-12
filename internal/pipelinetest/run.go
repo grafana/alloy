@@ -14,6 +14,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/grafana/alloy/internal/pipelinetest/harness"
+	"github.com/grafana/alloy/internal/statictest"
 )
 
 type TestConfig struct {
@@ -57,8 +58,14 @@ const (
 	Version = 1
 )
 
-// ErrNotPipelineTest means a file has no kind: pipelinetest.
-var ErrNotPipelineTest = errors.New("not a pipeline test: kind is not " + Kind)
+// versions maps each test kind to the format version this Alloy reads.
+var versions = map[string]int{
+	Kind:            Version,
+	statictest.Kind: statictest.Version,
+}
+
+// ErrNotTest means a file has no known kind.
+var ErrNotTest = errors.New("not a test file")
 
 // header holds the fields LoadTestFile checks before the full parse.
 type header struct {
@@ -66,25 +73,27 @@ type header struct {
 	Version int    `yaml:"version"`
 }
 
-// readHeader checks the kind and version of a test file. It parses only those
-// two fields, so a file from a newer format reports its version, and not an
-// unknown field.
-func readHeader(bb []byte) error {
+// readHeader returns the kind of a test file and checks its version. It
+// parses only those two fields, so a file from a newer format reports its
+// version, and not an unknown field. It returns the kind with a version
+// error, so the caller knows which kind of test failed.
+func readHeader(bb []byte) (string, error) {
 	var h header
 	if err := yaml.Unmarshal(bb, &h); err != nil {
 		// A file that is not a YAML mapping is not a test.
-		return fmt.Errorf("%w: %v", ErrNotPipelineTest, err)
+		return "", fmt.Errorf("%w: %v", ErrNotTest, err)
 	}
-	if h.Kind != Kind {
-		return ErrNotPipelineTest
+	want, ok := versions[h.Kind]
+	if !ok {
+		return "", fmt.Errorf("%w: kind is %q, not %s or %s", ErrNotTest, h.Kind, Kind, statictest.Kind)
 	}
 	if h.Version == 0 {
-		return fmt.Errorf("version is missing, set version: %d", Version)
+		return h.Kind, fmt.Errorf("version is missing, set version: %d", want)
 	}
-	if h.Version != Version {
-		return fmt.Errorf("version %d not supported, this Alloy supports version %d", h.Version, Version)
+	if h.Version != want {
+		return h.Kind, fmt.Errorf("%s version %d not supported, this Alloy supports version %d", h.Kind, h.Version, want)
 	}
-	return nil
+	return h.Kind, nil
 }
 
 // LoadTestFile reads a test file. It rejects a file without kind: pipelinetest
@@ -98,8 +107,12 @@ func LoadTestFile(path string) (TestSchema, error) {
 	if len(bytes.TrimSpace(bb)) == 0 {
 		return TestSchema{}, errors.New("test file is empty")
 	}
-	if err := readHeader(bb); err != nil {
+	kind, err := readHeader(bb)
+	if err != nil {
 		return TestSchema{}, err
+	}
+	if kind != Kind {
+		return TestSchema{}, fmt.Errorf("kind is %s, not %s", kind, Kind)
 	}
 
 	var schema TestSchema

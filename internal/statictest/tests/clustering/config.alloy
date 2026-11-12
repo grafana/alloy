@@ -1,0 +1,45 @@
+discovery.kubernetes "pods" {
+  role = "pod"
+}
+
+prometheus.scrape "pods" {
+  targets    = discovery.kubernetes.pods.targets
+  forward_to = [prometheus.remote_write.default.receiver]
+
+  clustering {
+    enabled = true
+  }
+}
+
+prometheus.operator.servicemonitors "default" {
+  forward_to = [prometheus.remote_write.default.receiver]
+
+  clustering {
+    enabled = true
+  }
+}
+
+prometheus.remote_write "default" {
+  endpoint {
+    url = "https://prometheus.example.com/api/prom/push"
+  }
+}
+
+loki.source.kubernetes "pods" {
+  targets    = discovery.kubernetes.pods.targets
+  forward_to = [loki.secretfilter.default.receiver]
+
+  clustering {
+    enabled = true
+  }
+}
+
+loki.secretfilter "default" {
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = "https://logs-gateway.example.com/loki/api/v1/push"
+  }
+}
