@@ -1,5 +1,0 @@
-[project]
-name = "alloy-helm-test-tools"
-version = "0.0.0"
-requires-python = ">=3.13"
-dependencies = ["yamllint==1.33.0"]
