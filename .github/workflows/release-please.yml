@@ -101,7 +101,7 @@ jobs:
         with:
           version: v2026.5.18
           sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
-          install_args: go helm helm-docs
+          install_args: go helm helm-docs python uv
 
       - name: Find release-please branch 🔎
         id: release-branch
@@ -140,7 +140,7 @@ jobs:
 
       - name: Regenerate Helm documentation and tests 🏗️
         if: steps.release-branch.outputs.exists == 'true'
-        run: make generate-helm-docs generate-helm-tests
+        run: UV_PYTHON="$(mise where python)/bin/python" make generate-helm-docs generate-helm-tests
 
       - name: Write release-please pull request body 📝
         if: steps.release-branch.outputs.exists == 'true'
