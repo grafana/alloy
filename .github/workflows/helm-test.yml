@@ -40,9 +40,14 @@ jobs:
           # renovate: datasource=github-releases packageName=helm/helm
           version: v3.21.1
 
+      - name: Setup tools
+        uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
+        with:
+          install_args: python uv
+
       - name: Regenerate tests
         run: |
-          make generate-helm-tests
+          UV_PYTHON="$(mise where python)/bin/python" make generate-helm-tests
           if [ ! -z "$(git status --porcelain)" ]; then
             echo "Helm chart tests are not up to date. Please run 'make generate-helm-tests' and commit changes!" >&2
             exit 1
@@ -63,14 +68,22 @@ jobs:
           # renovate: datasource=github-releases packageName=helm/helm
           version: v3.21.1
 
-      - name: Install Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      - name: Setup tools
+        uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
         with:
-          python-version: "3.13"
-          check-latest: true
+          install_args: python uv
+
+      - name: Get yamllint version
+        id: yamllint
+        run: |
+          yamllint_version=$(UV_PYTHON="$(mise where python)/bin/python" uv run --locked --project operations/helm yamllint --version)
+          echo "version=${yamllint_version#yamllint }" >> "$GITHUB_OUTPUT"
+          echo "UV_PYTHON=$(mise where python)/bin/python" >> "$GITHUB_ENV"
 
       - name: Install chart-testing
         uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f # v2.8.0
+        with:
+          yamllint_version: ${{ steps.yamllint.outputs.version }}
 
       - name: Lint charts
         run: ct lint --config ./operations/helm/ct.yaml
