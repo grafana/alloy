@@ -139,6 +139,11 @@
       "enabled": true
     },
     {
+      "matchManagers": ["pep621"],
+      "groupName": "python dependencies",
+      "enabled": true
+    },
+    {
       "matchManagers": ["mise"],
       "groupName": "mise dependencies",
       "enabled": true
