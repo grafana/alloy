@@ -139,7 +139,7 @@ func Run(ctx context.Context, schema TestSchema, cfg TestConfig) (Result, error)
 		return Result{}, errors.New("the test has no assertions")
 	}
 
-	source, sinks, err := buildSource(schema)
+	built, err := buildSource(schema)
 	if err != nil {
 		return Result{}, err
 	}
@@ -154,9 +154,9 @@ func Run(ctx context.Context, schema TestSchema, cfg TestConfig) (Result, error)
 
 	alloy, err := harness.NewAlloy(harness.Config{
 		SinkID:         "pipelinetest.sink.out",
-		Sinks:          sinks,
+		Sinks:          built.sinks,
 		DataPath:       cfg.DataPath,
-		Source:         source,
+		Source:         built.source,
 		SourceName:     configName(schema.Config),
 		ConfigPath:     configPath,
 		LokiPipelineV2: schema.Flags.LokiPipelineV2,
@@ -168,7 +168,7 @@ func Run(ctx context.Context, schema TestSchema, cfg TestConfig) (Result, error)
 	}
 	defer alloy.Stop()
 
-	if err := produceInputs(ctx, alloy, schema.Inputs); err != nil {
+	if err := produceInputs(ctx, alloy, built.inputs, schema.Inputs); err != nil {
 		return Result{}, err
 	}
 

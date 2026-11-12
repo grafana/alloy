@@ -60,11 +60,16 @@ type ConfigSchema struct {
 	Sinks []string `yaml:"sinks,omitempty"`
 	// Remove lists components to delete from the config, such as discovery
 	// components that need a real environment. Nothing may reference them.
+	// A component inside a declare block is <module>/<component>, here and
+	// in Override and the replace field of inputs.
 	Remove []string `yaml:"remove,omitempty"`
 	// Override sets top-level attributes to literal values, such as a file
 	// path that only exists in production. It only replaces attributes the
 	// config already sets.
 	Override map[string]map[string]any `yaml:"override,omitempty"`
+	// KeepWriteRelabel makes the sink of each prometheus.remote_write apply
+	// the exit's write_relabel_config blocks, after its external_labels.
+	KeepWriteRelabel bool `yaml:"keep_write_relabel,omitempty"`
 }
 
 func (c *ConfigSchema) UnmarshalYAML(value *yaml.Node) error {
@@ -185,14 +190,14 @@ func isFullMapMatch(value *yaml.Node) bool {
 // produceInputs sends all configured test inputs into the running pipeline,
 // in this order: Loki entries, Prometheus samples, spans, HTTP requests, TCP
 // data, then UDP datagrams.
-func produceInputs(ctx context.Context, alloy *harness.Alloy, inputs InputSchema) error {
-	if err := produceLokiInputs(ctx, alloy, inputs.Loki); err != nil {
+func produceInputs(ctx context.Context, alloy *harness.Alloy, ids inputComponents, inputs InputSchema) error {
+	if err := produceLokiInputs(ctx, alloy, ids, inputs.Loki); err != nil {
 		return err
 	}
-	if err := producePrometheusInputs(ctx, alloy, inputs.Prometheus); err != nil {
+	if err := producePrometheusInputs(ctx, alloy, ids, inputs.Prometheus); err != nil {
 		return err
 	}
-	if err := produceTraceInputs(ctx, alloy, inputs.Traces); err != nil {
+	if err := produceTraceInputs(ctx, alloy, ids, inputs.Traces); err != nil {
 		return err
 	}
 	if err := produceHTTPInputs(ctx, inputs.HTTP); err != nil {

@@ -225,7 +225,7 @@ func buildPrometheusSamples(samples []PrometheusSampleSchema) ([]harness.InputSa
 	return out, nil
 }
 
-func producePrometheusInputs(ctx context.Context, alloy *harness.Alloy, inputs []PrometheusInputSchema) error {
+func producePrometheusInputs(ctx context.Context, alloy *harness.Alloy, ids inputComponents, inputs []PrometheusInputSchema) error {
 	for i, input := range inputs {
 		samples, err := buildPrometheusSamples(input.Samples)
 		if err != nil {
@@ -234,9 +234,14 @@ func producePrometheusInputs(ctx context.Context, alloy *harness.Alloy, inputs [
 		if len(samples) == 0 {
 			continue
 		}
-		source := harness.MustComponent[*harness.Source](alloy, generatedInputComponentID(signalMetrics, i))
-		if err := source.SendSamples(ctx, samples...); err != nil {
-			return fmt.Errorf("prometheus input %d: %w", i, err)
+		sources, err := ids.sources(alloy, signalMetrics, i)
+		if err != nil {
+			return err
+		}
+		for _, source := range sources {
+			if err := source.SendSamples(ctx, samples...); err != nil {
+				return fmt.Errorf("prometheus input %d: %w", i, err)
+			}
 		}
 	}
 	return nil

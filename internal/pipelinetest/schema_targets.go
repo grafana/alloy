@@ -46,7 +46,7 @@ func targetLiterals(inputs []TargetInputSchema) (map[string]string, error) {
 		if in.Replace == "" {
 			return nil, fmt.Errorf("targets input %d: replace is required", i)
 		}
-		if !strings.HasPrefix(in.Replace, "discovery.") {
+		if _, local := splitModulePath(in.Replace); !strings.HasPrefix(local, "discovery.") {
 			return nil, fmt.Errorf("targets input %d: only discovery components can be replaced with targets, got %s", i, in.Replace)
 		}
 		targets := in.Targets
@@ -72,7 +72,7 @@ func alloyLiteral(v any) string {
 func overrideExprs(overrides map[string]map[string]any) (map[string]map[string]string, error) {
 	out := make(map[string]map[string]string, len(overrides))
 	for id, attrs := range overrides {
-		if !isReference(id) {
+		if _, local := splitModulePath(id); !isReference(local) {
 			return nil, fmt.Errorf("override: %q is not a component ID", id)
 		}
 		out[id] = make(map[string]string, len(attrs))
@@ -96,7 +96,9 @@ func targetRefs(assertions []TargetAssertionSchema) []string {
 func buildTargetAssertions(assertions []TargetAssertionSchema) ([]harness.Assertion, error) {
 	out := make([]harness.Assertion, 0, len(assertions))
 	for i, a := range assertions {
-		if a.From == "" || !isReference(a.From) {
+		// A component inside a module is read through its instance, such as
+		// cluster_metrics.feature/discovery.relabel.nodes.output.
+		if _, local := splitModulePath(a.From); a.From == "" || !isReference(local) {
 			return nil, fmt.Errorf("targets assertion %d: from must be a component export such as discovery.relabel.pods.output", i)
 		}
 

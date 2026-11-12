@@ -1,0 +1,63 @@
+// A feature pipeline in a declare block, as the Kubernetes Monitoring Helm
+// chart writes them. The destination is passed in as an argument.
+declare "cluster_metrics" {
+  argument "metrics_destinations" {
+    comment = "Where to send the metrics"
+  }
+
+  discovery.kubernetes "nodes" {
+    role = "node"
+  }
+
+  discovery.relabel "nodes" {
+    targets = discovery.kubernetes.nodes.targets
+
+    rule {
+      source_labels = ["__meta_kubernetes_node_name"]
+      target_label  = "node"
+    }
+  }
+
+  prometheus.scrape "nodes" {
+    targets    = discovery.relabel.nodes.output
+    job_name   = "integrations/kubernetes/kubelet"
+    forward_to = [prometheus.relabel.nodes.receiver]
+  }
+
+  prometheus.relabel "nodes" {
+    rule {
+      source_labels = ["__name__"]
+      regex         = "go_.*"
+      action        = "drop"
+    }
+    forward_to = argument.metrics_destinations.value
+  }
+}
+
+cluster_metrics "feature" {
+  metrics_destinations = [prometheus.remote_write.metrics_service.receiver]
+}
+
+// A top-level component with the same ID as one in the module. The test
+// replaces only the one in the module.
+discovery.kubernetes "nodes" {
+  role = "node"
+}
+
+prometheus.remote_write "metrics_service" {
+  endpoint {
+    url = "https://prometheus.example.com/api/v1/write"
+
+    write_relabel_config {
+      replacement  = "alloy"
+      target_label = "scraped_by"
+    }
+
+    write_relabel_config {
+      source_labels = ["__name__"]
+      regex         = "kubelet_debug_.*"
+      action        = "drop"
+    }
+  }
+  external_labels = {cluster = "prod-eu"}
+}

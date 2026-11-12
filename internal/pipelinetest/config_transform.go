@@ -53,6 +53,11 @@ type replacedSource struct {
 	// forwardTo is the rewritten source text of the expression the component
 	// sent its data to.
 	forwardTo string
+	// modules lists the module instances, such as cluster_metrics.feature,
+	// that hold the generated pipelinetest.source when the replaced component
+	// is inside a declare block. It's empty for a top-level component, whose
+	// source goes after the config.
+	modules []string
 }
 
 // transformedConfig is the user config with entry and exit components
@@ -77,6 +82,9 @@ type generatedSink struct {
 	// externalLabels is the source text of the exit's external_labels, or
 	// empty when it sets none.
 	externalLabels string
+	// writeRelabel holds the source text of each write_relabel_config block
+	// of a prometheus.remote_write exit, when the test keeps them.
+	writeRelabel []string
 }
 
 // componentID is the sink's component ID.
@@ -91,9 +99,13 @@ func sinkLabel(exit string) string { return strings.ReplaceAll(exit, ".", "_") }
 type sourceReplacement struct {
 	id     string
 	signal signal
+	// name is the label of the generated pipelinetest.source.
+	name string
 }
 
-// transformSpec lists what transformConfig changes.
+// transformSpec lists what transformConfig changes. A component ID can name
+// a component inside a declare block as <module>/<component>, such as
+// cluster_metrics/discovery.kubernetes.nodes.
 type transformSpec struct {
 	sources []sourceReplacement
 	sinks   []string
@@ -104,10 +116,94 @@ type transformSpec struct {
 	// overrides maps a component ID to attribute names and the Alloy
 	// expressions that replace their values.
 	overrides map[string]map[string]string
+	// writeRelabel keeps the write_relabel_config blocks of each
+	// prometheus.remote_write exit in its sink.
+	writeRelabel bool
 }
 
 func (s transformSpec) empty() bool {
 	return len(s.sources) == 0 && len(s.sinks) == 0 && len(s.remove) == 0 && len(s.discovery) == 0 && len(s.overrides) == 0
+}
+
+// scope is the config's top level or the body of one declare block.
+// Components in a module only see the components of the same module.
+type scope struct {
+	// path is "" for the top level, and the declare labels joined with /
+	// for a module, such as cluster_metrics or outer/inner.
+	path   string
+	label  string
+	parent *scope
+	// stmts are the scope's statements, without the declare blocks inside
+	// it. Those are scopes of their own.
+	stmts  []ast.Stmt
+	blocks map[string]*ast.BlockStmt
+}
+
+func (s *scope) describe() string {
+	if s.path == "" {
+		return "a top-level block of the config"
+	}
+	return "a component of module " + s.path
+}
+
+// instances returns the IDs of the module instances that run this scope,
+// such as cluster_metrics.feature, or "" for the top level. A module's
+// instances are the blocks that use it in the scope that declares it.
+func (s *scope) instances() []string {
+	if s.parent == nil {
+		return []string{""}
+	}
+	var out []string
+	for _, parent := range s.parent.instances() {
+		for _, stmt := range s.parent.stmts {
+			if b, ok := stmt.(*ast.BlockStmt); ok && b.GetBlockName() == s.label {
+				id := blockID(b)
+				if parent != "" {
+					id = parent + "/" + id
+				}
+				out = append(out, id)
+			}
+		}
+	}
+	return out
+}
+
+// collectScopes returns the top-level scope and every declare block in it,
+// at any depth, keyed by path.
+func collectScopes(file *ast.File) map[string]*scope {
+	scopes := map[string]*scope{}
+	var walk func(path, label string, parent *scope, body ast.Body)
+	walk = func(path, label string, parent *scope, body ast.Body) {
+		s := &scope{path: path, label: label, parent: parent, blocks: map[string]*ast.BlockStmt{}}
+		scopes[path] = s
+		for _, stmt := range body {
+			block, ok := stmt.(*ast.BlockStmt)
+			if ok && block.GetBlockName() == "declare" {
+				child := block.Label
+				if path != "" {
+					child = path + "/" + block.Label
+				}
+				walk(child, block.Label, s, block.Body)
+				continue
+			}
+			s.stmts = append(s.stmts, stmt)
+			if ok {
+				s.blocks[blockID(block)] = block
+			}
+		}
+	}
+	walk("", "", nil, file.Body)
+	return scopes
+}
+
+// splitModulePath splits an ID such as cluster_metrics/discovery.kubernetes.nodes
+// into the module path and the component ID.
+func splitModulePath(id string) (string, string) {
+	i := strings.LastIndexByte(id, '/')
+	if i < 0 {
+		return "", id
+	}
+	return id[:i], id[i+1:]
 }
 
 // transformConfig applies spec to src. It edits the text in place, so
@@ -128,12 +224,23 @@ func transformConfig(name, src string, spec transformSpec) (transformedConfig, e
 	if err != nil {
 		return out, err
 	}
+	scopes := collectScopes(file)
 
-	blocks := map[string]*ast.BlockStmt{}
-	for _, stmt := range file.Body {
-		if block, ok := stmt.(*ast.BlockStmt); ok {
-			blocks[blockID(block)] = block
+	// find returns the block of a component, such as loki.write.default or
+	// cluster_metrics/discovery.kubernetes.nodes. what says why it's
+	// looked up, for the error.
+	find := func(id, what string) (*scope, *ast.BlockStmt, error) {
+		path, local := splitModulePath(id)
+		s, ok := scopes[path]
+		if !ok {
+			modules := slices.DeleteFunc(slices.Sorted(maps.Keys(scopes)), func(p string) bool { return p == "" })
+			return nil, nil, fmt.Errorf("component %s to %s: the config has no declare block %q; modules: %s", id, what, path, strings.Join(modules, ", "))
 		}
+		block, ok := s.blocks[local]
+		if !ok {
+			return nil, nil, fmt.Errorf("component %s to %s is not %s; components: %s", id, what, s.describe(), strings.Join(slices.Sorted(maps.Keys(s.blocks)), ", "))
+		}
+		return s, block, nil
 	}
 
 	var (
@@ -141,62 +248,89 @@ func transformConfig(name, src string, spec transformSpec) (transformedConfig, e
 		removed []span
 		seen    = map[string]string{}
 	)
-	lookup := func(id, role string) (*ast.BlockStmt, error) {
+	lookup := func(id, role string) (*scope, *ast.BlockStmt, error) {
 		if prev, ok := seen[id]; ok {
-			return nil, fmt.Errorf("component %s is listed twice, as %s and as %s", id, prev, role)
+			return nil, nil, fmt.Errorf("component %s is listed twice, as %s and as %s", id, prev, role)
 		}
 		seen[id] = role
-		block, ok := blocks[id]
-		if !ok {
-			return nil, fmt.Errorf("component %s to replace with %s is not a top-level block of the config; components: %s", id, role, strings.Join(slices.Sorted(maps.Keys(blocks)), ", "))
-		}
-		removed = append(removed, blockSpan(block))
-		return block, nil
+		return find(id, "replace with "+role)
 	}
 
-	sinkParts := map[string]sinkTarget{}
+	// refParts maps a scope path to the components whose references are
+	// rewritten in that scope.
+	refParts := map[string]map[string]sinkTarget{}
+	addRef := func(s *scope, local string, target sinkTarget) {
+		if refParts[s.path] == nil {
+			refParts[s.path] = map[string]sinkTarget{}
+		}
+		refParts[s.path][local] = target
+	}
+
 	for _, id := range sinks {
-		block, err := lookup(id, "the sink")
+		s, block, err := lookup(id, "the sink")
 		if err != nil {
 			return out, err
 		}
+		if s.path != "" {
+			return out, fmt.Errorf("sink %s: exits inside modules can't be replaced yet; pass the exit to the module as an argument", id)
+		}
+		removed = append(removed, blockSpan(block))
 		gen := generatedSink{exit: id, label: sinkLabel(id)}
 		target, err := sinkTargetFor(block.GetBlockName(), gen.componentID())
 		if err != nil {
 			return out, fmt.Errorf("sink %s: %w", id, err)
 		}
-		sinkParts[id] = target
+		addRef(s, id, target)
 		out.sinkRefs[id+"."+target.field] = target.replacement
 		if attr := findAttribute(block.Body, "external_labels"); attr != nil {
 			gen.externalLabels = src[ast.StartPos(attr.Value).Offset() : ast.EndPos(attr.Value).Offset()+1]
+		}
+		if spec.writeRelabel && block.GetBlockName() == "prometheus.remote_write" {
+			if gen.writeRelabel, err = writeRelabelBlocks(src, block); err != nil {
+				return out, fmt.Errorf("sink %s: %w", id, err)
+			}
 		}
 		out.sinks = append(out.sinks, gen)
 	}
 
 	for _, id := range slices.Sorted(maps.Keys(discovery)) {
-		if _, err := lookup(id, "a targets input"); err != nil {
+		s, block, err := lookup(id, "a targets input")
+		if err != nil {
 			return out, err
 		}
-		sinkParts[id] = sinkTarget{field: "targets", replacement: discovery[id]}
+		removed = append(removed, blockSpan(block))
+		_, local := splitModulePath(id)
+		addRef(s, local, sinkTarget{field: "targets", replacement: discovery[id]})
 	}
 
-	forwardExprs := map[string]ast.Expr{}
-	for _, s := range sources {
-		block, err := lookup(s.id, "a "+string(s.signal)+" input")
+	type entry struct {
+		scope *scope
+		block *ast.BlockStmt
+		expr  ast.Expr
+		spec  sourceReplacement
+	}
+	var entries []entry
+	for _, r := range sources {
+		s, block, err := lookup(r.id, "a "+string(r.signal)+" input")
 		if err != nil {
 			return out, err
 		}
-		expr, err := forwardToExpr(block, s.signal)
+		expr, err := forwardToExpr(block, r.signal)
 		if err != nil {
-			return out, fmt.Errorf("input replacing %s: %w", s.id, err)
+			return out, fmt.Errorf("input replacing %s: %w", r.id, err)
 		}
-		forwardExprs[s.id] = expr
+		if s.path == "" {
+			removed = append(removed, blockSpan(block))
+		}
+		entries = append(entries, entry{scope: s, block: block, expr: expr, spec: r})
 	}
 
 	for _, id := range remove {
-		if _, err := lookup(id, "nothing (remove)"); err != nil {
+		_, block, err := lookup(id, "nothing (remove)")
+		if err != nil {
 			return out, err
 		}
+		removed = append(removed, blockSpan(block))
 	}
 
 	var overridden []span
@@ -204,9 +338,9 @@ func transformConfig(name, src string, spec transformSpec) (transformedConfig, e
 		if role, ok := seen[id]; ok {
 			return out, fmt.Errorf("component %s is replaced with %s, so its arguments cannot be overridden", id, role)
 		}
-		block, ok := blocks[id]
-		if !ok {
-			return out, fmt.Errorf("component %s to override is not a top-level block of the config", id)
+		_, block, err := find(id, "override")
+		if err != nil {
+			return out, err
 		}
 		attrs := spec.overrides[id]
 		for _, name := range slices.Sorted(maps.Keys(attrs)) {
@@ -220,14 +354,36 @@ func transformConfig(name, src string, spec transformSpec) (transformedConfig, e
 		}
 	}
 
-	refEdits, err := sinkReferenceEdits(file, sinkParts)
-	if err != nil {
-		return out, err
+	var refEdits []textEdit
+	for _, path := range slices.Sorted(maps.Keys(refParts)) {
+		e, err := referenceEdits(scopes[path].stmts, refParts[path])
+		if err != nil {
+			return out, err
+		}
+		refEdits = append(refEdits, e...)
 	}
 
-	for id, expr := range forwardExprs {
-		start, end := ast.StartPos(expr).Offset(), ast.EndPos(expr).Offset()+1
-		out.sources[id] = replacedSource{forwardTo: applyEdits(src[start:end], start, refEdits)}
+	for _, e := range entries {
+		start, end := ast.StartPos(e.expr).Offset(), ast.EndPos(e.expr).Offset()+1
+		forwardTo := applyEdits(src[start:end], start, refEdits)
+		if e.scope.path == "" {
+			out.sources[e.spec.id] = replacedSource{forwardTo: forwardTo}
+			continue
+		}
+		// A module can't reference components outside it, so the input's
+		// source goes where the replaced block was, on its first line.
+		modules := e.scope.instances()
+		if len(modules) == 0 {
+			return out, fmt.Errorf("input replacing %s: nothing in the config uses module %s", e.spec.id, e.scope.path)
+		}
+		out.sources[e.spec.id] = replacedSource{forwardTo: forwardTo, modules: modules}
+		r := blockSpan(e.block)
+		removed = append(removed, r)
+		text := fmt.Sprintf("pipelinetest.source %q { forward_to { %s = %s } }", e.spec.name, e.spec.signal, forwardTo)
+		if pad := strings.Count(src[r.start:r.end], "\n") - strings.Count(forwardTo, "\n"); pad > 0 {
+			text += strings.Repeat("\n", pad)
+		}
+		edits = append(edits, textEdit{start: r.start, end: r.end, text: text})
 	}
 
 	for _, e := range refEdits {
@@ -236,10 +392,38 @@ func transformConfig(name, src string, spec transformSpec) (transformedConfig, e
 		}
 	}
 	for _, r := range removed {
+		if slices.ContainsFunc(edits, func(e textEdit) bool { return e.start == r.start && e.end == r.end }) {
+			continue
+		}
 		edits = append(edits, textEdit{start: r.start, end: r.end, text: strings.Repeat("\n", strings.Count(src[r.start:r.end], "\n"))})
 	}
 
 	out.source = applyEdits(src, 0, edits)
+	return out, nil
+}
+
+// writeRelabelBlocks returns the source text of the write_relabel_config
+// blocks of a prometheus.remote_write. It rejects more than one endpoint,
+// because each endpoint has its own rules and the sink is one.
+func writeRelabelBlocks(src string, block *ast.BlockStmt) ([]string, error) {
+	var endpoints []*ast.BlockStmt
+	for _, stmt := range block.Body {
+		if b, ok := stmt.(*ast.BlockStmt); ok && b.GetBlockName() == "endpoint" {
+			endpoints = append(endpoints, b)
+		}
+	}
+	if len(endpoints) > 1 {
+		return nil, fmt.Errorf("write_relabel needs one endpoint block, the exit has %d", len(endpoints))
+	}
+	var out []string
+	for _, ep := range endpoints {
+		for _, stmt := range ep.Body {
+			if b, ok := stmt.(*ast.BlockStmt); ok && b.GetBlockName() == "write_relabel_config" {
+				sp := blockSpan(b)
+				out = append(out, src[sp.start:sp.end])
+			}
+		}
+	}
 	return out, nil
 }
 
@@ -283,15 +467,17 @@ func findBlock(body ast.Body, name string) *ast.BlockStmt {
 	return nil
 }
 
-// sinkReferenceEdits finds every reference to a sink component's export, such
-// as loki.write.default.receiver, and returns the edits replacing it with the
-// sink's export.
-func sinkReferenceEdits(file *ast.File, sinks map[string]sinkTarget) ([]textEdit, error) {
-	if len(sinks) == 0 {
+// referenceEdits finds every reference in stmts to an export of a replaced
+// component, such as loki.write.default.receiver, and returns the edits
+// replacing it.
+func referenceEdits(stmts []ast.Stmt, targets map[string]sinkTarget) ([]textEdit, error) {
+	if len(targets) == 0 {
 		return nil, nil
 	}
-	v := &refVisitor{sinks: sinks}
-	ast.Walk(v, file)
+	v := &refVisitor{sinks: targets}
+	for _, stmt := range stmts {
+		ast.Walk(v, stmt)
+	}
 	return v.edits, v.err
 }
 

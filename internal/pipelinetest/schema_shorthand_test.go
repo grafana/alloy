@@ -120,3 +120,15 @@ func TestAssertionSinkMustBeConfigured(t *testing.T) {
 	}, []string{"loki.write.default"})
 	require.ErrorContains(t, err, "sink loki.write.audit is not one of config.sinks")
 }
+
+func TestLokiEntryLineRepeat(t *testing.T) {
+	e, err := buildLokiEntry(LokiEntrySchema{Line: "ab", LineRepeat: 3})
+	require.NoError(t, err)
+	require.Equal(t, "ababab", e.Line)
+
+	_, err = buildLokiEntry(LokiEntrySchema{LineRepeat: 3})
+	require.ErrorContains(t, err, "line_repeat needs a line")
+
+	_, err = buildLokiEntry(LokiEntrySchema{Line: "ab", LineRepeat: -1})
+	require.ErrorContains(t, err, "line_repeat must be positive")
+}

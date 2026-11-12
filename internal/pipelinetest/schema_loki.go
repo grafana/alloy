@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/prometheus/common/model"
@@ -29,6 +30,9 @@ type LokiInputSchema struct {
 type LokiEntrySchema struct {
 	Labels map[string]string `yaml:"labels,omitempty"`
 	Line   string            `yaml:"line,omitempty"`
+	// LineRepeat, when set, repeats Line that many times, so a test can send
+	// a long line without a large file.
+	LineRepeat int `yaml:"line_repeat,omitempty"`
 	// Timestamp is RFC 3339. It defaults to the time the entry is sent.
 	Timestamp          string            `yaml:"timestamp,omitempty"`
 	StructuredMetadata map[string]string `yaml:"structured_metadata,omitempty"`
@@ -66,21 +70,26 @@ type LokiMatchSchema struct {
 	StructuredMetadata MapMatchSchema `yaml:"structured_metadata,omitempty"`
 }
 
-func produceLokiInputs(ctx context.Context, alloy *harness.Alloy, inputs []LokiInputSchema) error {
+func produceLokiInputs(ctx context.Context, alloy *harness.Alloy, ids inputComponents, inputs []LokiInputSchema) error {
 	for i, input := range inputs {
 		if len(input.Entries) == 0 {
 			continue
 		}
 
-		source := harness.MustComponent[*harness.Source](alloy, generatedInputComponentID(signalLogs, i))
+		sources, err := ids.sources(alloy, signalLogs, i)
+		if err != nil {
+			return err
+		}
 
 		entries, err := buildLokiEntries(input.Entries)
 		if err != nil {
 			return fmt.Errorf("loki input %d: %w", i, err)
 		}
 
-		if err := source.SendEntries(ctx, entries...); err != nil {
-			return err
+		for _, source := range sources {
+			if err := source.SendEntries(ctx, entries...); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -110,11 +119,22 @@ func buildLokiEntry(entry LokiEntrySchema) (loki.Entry, error) {
 		timestamp = parsed
 	}
 
+	line := entry.Line
+	switch {
+	case entry.LineRepeat < 0:
+		return loki.Entry{}, fmt.Errorf("line_repeat must be positive, got %d", entry.LineRepeat)
+	case entry.LineRepeat > 0:
+		if line == "" {
+			return loki.Entry{}, errors.New("line_repeat needs a line to repeat")
+		}
+		line = strings.Repeat(line, entry.LineRepeat)
+	}
+
 	return loki.NewEntry(
 		toLabelSet(entry.Labels),
 		push.Entry{
 			Timestamp:          timestamp,
-			Line:               entry.Line,
+			Line:               line,
 			StructuredMetadata: toLabelsAdapter(entry.StructuredMetadata),
 		},
 	), nil

@@ -16,12 +16,14 @@ import (
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/metadata"
+	"github.com/prometheus/prometheus/model/relabel"
 	promql_parser "github.com/prometheus/prometheus/promql/parser"
 	"github.com/prometheus/prometheus/storage"
 	promremote "github.com/prometheus/prometheus/storage/remote"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	alloyprom "github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -52,6 +54,10 @@ type SinkArguments struct {
 	// them, as loki.write and prometheus.remote_write do. A sink replacing an
 	// exit gets the exit's external_labels.
 	ExternalLabels map[string]string `alloy:"external_labels,attr,optional"`
+	// WriteRelabelConfigs relabel captured samples after the external labels,
+	// as an endpoint of prometheus.remote_write does. A sample they drop
+	// isn't captured.
+	WriteRelabelConfigs []*alloy_relabel.Config `alloy:"write_relabel_config,block,optional"`
 }
 
 type SinkExports struct {
@@ -289,6 +295,7 @@ func (s *Sink) snapshot() snapshot {
 	defer s.mux.Unlock()
 
 	external := s.args.ExternalLabels
+	writeRelabel := alloy_relabel.ComponentToPromRelabelConfigs(s.args.WriteRelabelConfigs)
 
 	entries := make([]loki.Entry, 0, len(s.lokiEntries))
 	for _, e := range s.lokiEntries {
@@ -302,8 +309,18 @@ func (s *Sink) snapshot() snapshot {
 			m = &stored
 		}
 
+		ls := withExternalPromLabels(sample.Labels, external)
+		if len(writeRelabel) > 0 {
+			lb := labels.NewBuilder(ls)
+			if !relabel.ProcessBuilder(lb, writeRelabel...) {
+				continue
+			}
+			if ls = lb.Labels(); ls.IsEmpty() {
+				continue
+			}
+		}
 		samples = append(samples, PrometheusSample{
-			Labels:    withExternalPromLabels(sample.Labels, external),
+			Labels:    ls,
 			Timestamp: sample.Timestamp,
 			Value:     sample.Value,
 			Histogram: sample.Histogram,

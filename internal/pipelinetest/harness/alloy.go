@@ -24,6 +24,9 @@ import (
 const (
 	defaultTimeout  = 30 * time.Second
 	defaultInterval = 50 * time.Millisecond
+	// componentWaitTimeout bounds how long WaitComponent waits for a
+	// component inside a module.
+	componentWaitTimeout = 5 * time.Second
 )
 
 type Config struct {
@@ -127,7 +130,7 @@ func NewAlloy(cfg Config) (*Alloy, error) {
 			return nil
 		}
 		return fmt.Errorf("runtime has not finished loading")
-	}, defaultTimeout, defaultInterval); err != nil {
+	}, defaultTimeout); err != nil {
 		a.Stop()
 		return nil, fmt.Errorf("timed out waiting for runtime to finish loading: %w", err)
 	}
@@ -187,7 +190,7 @@ func (a *Alloy) Assert(assertions ...Assertion) error {
 			Errors:   errs,
 			Snapshot: s,
 		}
-	}, a.assertTimeout, defaultInterval)
+	}, a.assertTimeout)
 }
 
 // Check is an Assertion with a human-readable name, used for reporting.
@@ -222,7 +225,7 @@ func (a *Alloy) RunChecks(checks []Check) ([]CheckResult, Snapshot) {
 			return errors.New("checks failed")
 		}
 		return nil
-	}, a.assertTimeout, defaultInterval)
+	}, a.assertTimeout)
 
 	return results, exportSnapshot(s)
 }
@@ -295,6 +298,26 @@ type ComponentHealth struct {
 	Message string `json:"message,omitempty"`
 }
 
+// WaitComponent returns the component with the given ID, such as
+// cluster_metrics.feature/pipelinetest.source.x. It waits for a component
+// inside a module, because a module loads its components after the runtime
+// reports the load complete.
+func WaitComponent[T any](a *Alloy, id string) (T, error) {
+	var typed T
+	err := eventually(func() error {
+		info, err := a.ctrl.GetComponent(component.ParseID(id), component.InfoOptions{})
+		if err != nil {
+			return fmt.Errorf("component %s: %w", id, err)
+		}
+		var ok bool
+		if typed, ok = info.Component.(T); !ok {
+			return fmt.Errorf("component %s has type %T, want %T", id, info.Component, *new(T))
+		}
+		return nil
+	}, componentWaitTimeout)
+	return typed, err
+}
+
 func MustComponent[T any](a *Alloy, id string) T {
 	info, err := a.ctrl.GetComponent(component.ParseID(id), component.InfoOptions{})
 	if err != nil {
@@ -308,7 +331,7 @@ func MustComponent[T any](a *Alloy, id string) T {
 	return typed
 }
 
-func eventually(fn func() error, timeout, interval time.Duration) error {
+func eventually(fn func() error, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
 
 	var lastErr error
@@ -321,6 +344,6 @@ func eventually(fn func() error, timeout, interval time.Duration) error {
 		if time.Now().After(deadline) {
 			return lastErr
 		}
-		time.Sleep(interval)
+		time.Sleep(defaultInterval)
 	}
 }

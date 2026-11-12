@@ -32,7 +32,7 @@ Likely next steps:
 4. **Which rule fired:** assert on Alloy's own metrics, such as
    `loki_process_dropped_lines_total{reason=...}`.
 5. **Coverage:** report the match blocks and relabel rules no input reached.
-6. **Modules:** swap components inside modules.
+6. **Modules from `import.*`:** swap components inside imported modules.
 7. **`hold_for`:** keep a `count` passing for a while. Refer to
    [Retries](#retries).
 
@@ -110,9 +110,31 @@ look, but inputs would then need a second way to say what they replace.
 Printing a modified syntax tree is simpler code, but loses comments and line
 numbers.
 
-The logic lives in `config_transform.go`. Only top-level blocks can be
-swapped. Supporting modules means searching `declare` bodies and resolving
-`import.*` sources.
+The logic lives in `config_transform.go`.
+
+### Modules
+
+A component inside a `declare` block is `<module>/<component>`, such as
+`cluster_metrics/discovery.kubernetes.nodes`. The Kubernetes Monitoring Helm chart puts each feature pipeline in a
+`declare` block, so without this its pipelines can't be tested.
+
+- **Scopes:** each `declare` body is its own scope. A reference is only
+  rewritten in the scope of the component it names. So
+  `discovery.kubernetes.nodes` at the top level and in a module are
+  different components.
+- **Inputs:** a module can't reference a component outside it. So the
+  `pipelinetest.source` of an input goes into the module, on the first line
+  of the block it replaces. The lines after it don't move. Each block that
+  uses the module runs its own copy of the source, and the input sends to
+  each one.
+- **Assertions:** `targets` assertions use the runtime ID, such as
+  `cluster_metrics.feature/discovery.relabel.nodes.output`. That's the ID
+  Alloy's UI and logs show.
+- **Exits:** the sink is a top-level component, which a module can't
+  reference. The chart passes its destinations in as arguments, so we don't
+  support exits inside modules yet.
+- **`import.*`:** an imported module's source isn't in the config file. We
+  could support it later by reading `import.file` sources.
 
 ### Exits
 
@@ -134,10 +156,17 @@ harness copies the expression as written, and Alloy evaluates it. So
 `sys.env` works with `env` from the test file. A label the data already has
 wins, as in `loki.write` and `prometheus.remote_write`.
 
+With `config.keep_write_relabel`, the sink also applies the
+`write_relabel_config` blocks of a `prometheus.remote_write`. The harness
+copies the blocks into the sink as written, and the sink runs them with
+Prometheus's relabel code, after the external labels. That's the order
+`prometheus.remote_write` uses. It's off by default, so a test of the
+pipeline doesn't depend on the destination's rules. A remote write with more
+than one `endpoint` is rejected, because each endpoint has its own rules and
+gets its own copy of the data.
+
 We don't plan to emulate more until users ask for it:
 
-- **`write_relabel_config`:** it's a nested block, so the sink would have to
-  reimplement Prometheus write relabeling.
 - **The real writer, with its URL set to the sink:** it tests the most. But
   the harness must remove auth, `batch_wait` makes every test slower, and
   OTLP exporters need an OTLP server in the sink.
@@ -194,6 +223,8 @@ each. A sample's series uses the text exposition form,
 - **Plain maps** work for labels: `labels: {job: api}`. A map whose only keys
   are `mode` and `values` is read as the full form.
 - **`line_regex`** matches lines with parts that vary, such as hashes.
+- **`line_repeat`** on a log input repeats its line, so a truncation test
+  doesn't need a large file.
 - **`name`** labels an assertion in reports. Without it, the report describes
   the match.
 

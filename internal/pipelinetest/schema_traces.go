@@ -261,7 +261,7 @@ func decodeHexID(s string, dst []byte) error {
 	return nil
 }
 
-func produceTraceInputs(ctx context.Context, alloy *harness.Alloy, inputs []TraceInputSchema) error {
+func produceTraceInputs(ctx context.Context, alloy *harness.Alloy, ids inputComponents, inputs []TraceInputSchema) error {
 	for i, input := range inputs {
 		if len(input.Spans) == 0 {
 			continue
@@ -270,9 +270,14 @@ func produceTraceInputs(ctx context.Context, alloy *harness.Alloy, inputs []Trac
 		if err != nil {
 			return fmt.Errorf("traces input %d: %w", i, err)
 		}
-		source := harness.MustComponent[*harness.Source](alloy, generatedInputComponentID(signalTraces, i))
-		if err := source.SendTraces(ctx, td); err != nil {
-			return fmt.Errorf("traces input %d: %w", i, err)
+		sources, err := ids.sources(alloy, signalTraces, i)
+		if err != nil {
+			return err
+		}
+		for _, source := range sources {
+			if err := source.SendTraces(ctx, td); err != nil {
+				return fmt.Errorf("traces input %d: %w", i, err)
+			}
 		}
 	}
 	return nil

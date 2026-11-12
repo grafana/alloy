@@ -97,13 +97,53 @@ assert:
 
 For metrics and traces as well, refer to [tests/real-config](tests/real-config).
 
-A test doesn't cover:
+### Components inside modules
 
-- **The swapped components:** an exit's sink applies its `external_labels`
-  and nothing else. The test doesn't cover write relabel rules, batching,
-  auth or the wire protocol. A replaced `prometheus.scrape` doesn't add `job`
-  and `instance`, so set them on your samples if the pipeline uses them.
-- **Components inside modules:** you can only swap top-level components.
+To swap a component inside a `declare` block, write
+`<module>/<component>`, such as `cluster_metrics/discovery.kubernetes.nodes`.
+This works in `replace`, `config.remove` and `config.override`. For a
+`declare` inside another `declare`, write `outer/inner/<component>`.
+
+```yaml
+inputs:
+  targets:
+    - replace: cluster_metrics/discovery.kubernetes.nodes
+      targets: [{__address__: 10.0.0.1:10250, __meta_kubernetes_node_name: node-a}]
+  prometheus:
+    - replace: cluster_metrics/prometheus.scrape.nodes
+      samples: [{series: 'kubelet_running_pods{job="kubelet"}', value: 12}]
+
+assert:
+  targets:
+    - from: cluster_metrics.feature/discovery.relabel.nodes.output
+      match: {labels: {node: node-a}}
+```
+
+- A replace or remove changes the module for every block that uses it. An
+  input sends its data once for each of these blocks.
+- A `targets` assertion reads a component in a module through the block that
+  uses the module, such as `cluster_metrics.feature/...`.
+- Exits must be top-level. Pass them to the module as an argument, as the
+  Kubernetes Monitoring Helm chart does.
+- Modules from `import.*` blocks aren't supported.
+
+For an example, refer to [tests/declare-module](tests/declare-module).
+
+### Keep write relabel rules
+
+Set `config.keep_write_relabel: true` to make the sink of each
+`prometheus.remote_write` apply its `write_relabel_config` blocks. The sink
+applies them after `external_labels`, as `prometheus.remote_write` does. A
+sample the rules drop doesn't reach the sink. Use it to test rules such as a
+`scraped_by` label. The exit must have one `endpoint` block.
+
+### What a test doesn't cover
+
+- **The swapped components:** an exit's sink applies its `external_labels`,
+  and its `write_relabel_config` with `keep_write_relabel`. The test doesn't
+  cover batching, auth or the wire protocol. A replaced `prometheus.scrape`
+  doesn't add `job` and `instance`, so set them on your samples if the
+  pipeline uses them.
 
 Paths in the test file and in the config, such as `import.file` filenames,
 are relative to the test file's directory.
@@ -168,6 +208,7 @@ inputs:
       entries:
         - labels: {service_name: api}
           line: 'level=error msg="boom"'
+          line_repeat: 1000                     # optional, repeats line, for a long line
           timestamp: 2026-04-22T12:00:00Z       # optional, defaults to now
           structured_metadata: {trace_id: abc}  # optional
   prometheus:
@@ -259,4 +300,6 @@ about.
 - **OTLP metrics and logs:** they reach the sink and the report counts them,
   but you can't assert on them. Convert them to Prometheus or Loki in the
   config to test them.
-- **Modules:** you can't swap components inside modules.
+- **Modules from `import.*`:** you can only swap components inside `declare`
+  blocks of the config.
+- **Exits inside modules:** you can't swap them for a sink.

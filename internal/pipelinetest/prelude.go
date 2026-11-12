@@ -4,57 +4,103 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/grafana/alloy/internal/pipelinetest/harness"
 	"github.com/grafana/alloy/syntax/scanner"
 	builder "github.com/grafana/alloy/syntax/token/builder"
 )
 
+// builtSource is the Alloy source a test runs, and the IDs of the
+// components the harness reads from or sends to.
+type builtSource struct {
+	source string
+	// sinks maps each exit ID to its sink's component ID.
+	sinks map[string]string
+	// inputs maps the name of a generated pipelinetest.source to its
+	// component IDs. A source inside a module has one ID per module
+	// instance. A name that is missing has the top-level ID.
+	inputs inputComponents
+}
+
+// inputComponents maps the name of a generated pipelinetest.source to its
+// component IDs.
+type inputComponents map[string][]string
+
+// ids returns the component IDs of the source of one input.
+func (c inputComponents) ids(sig signal, i int) []string {
+	if ids, ok := c[generatedInputComponentName(sig, i)]; ok {
+		return ids
+	}
+	return []string{generatedInputComponentID(sig, i)}
+}
+
+// sources returns the running pipelinetest.source components of one input.
+func (c inputComponents) sources(alloy *harness.Alloy, sig signal, i int) ([]*harness.Source, error) {
+	var out []*harness.Source
+	for _, id := range c.ids(sig, i) {
+		s, err := harness.WaitComponent[*harness.Source](alloy, id)
+		if err != nil {
+			return nil, fmt.Errorf("%s input %d: %w", sig, i, err)
+		}
+		out = append(out, s)
+	}
+	return out, nil
+}
+
 // buildSource builds the Alloy source a test runs: the transformed config,
 // then the sinks, mocks and input sources. Generated code goes after the
-// config, so error line numbers still match the user's file. It also returns
-// each exit's sink component ID, keyed by exit ID.
-func buildSource(schema TestSchema) (string, map[string]string, error) {
+// config, so error line numbers still match the user's file. An input that
+// replaces a component inside a module is the exception: its source goes
+// inside the module, in place of the component.
+func buildSource(schema TestSchema) (builtSource, error) {
 	inputs := collectInputs(schema.Inputs)
 
 	var replacements []sourceReplacement
 	for _, in := range inputs {
 		if in.replace != "" {
-			replacements = append(replacements, sourceReplacement{id: in.replace, signal: in.signal})
+			replacements = append(replacements, sourceReplacement{id: in.replace, signal: in.signal, name: generatedInputComponentName(in.signal, in.index)})
 		}
 	}
 
 	discovery, err := targetLiterals(schema.Inputs.Targets)
 	if err != nil {
-		return "", nil, err
+		return builtSource{}, err
 	}
 
 	overrides, err := overrideExprs(schema.Config.Override)
 	if err != nil {
-		return "", nil, err
+		return builtSource{}, err
 	}
 
 	transformed, err := transformConfig(configName(schema.Config), schema.Config.Source, transformSpec{
-		sources:   replacements,
-		sinks:     schema.Config.Sinks,
-		remove:    schema.Config.Remove,
-		discovery: discovery,
-		overrides: overrides,
+		sources:      replacements,
+		sinks:        schema.Config.Sinks,
+		remove:       schema.Config.Remove,
+		discovery:    discovery,
+		overrides:    overrides,
+		writeRelabel: schema.Config.KeepWriteRelabel,
 	})
 	if err != nil {
-		return "", nil, err
+		return builtSource{}, err
 	}
 
 	generated, err := buildSources(inputs, transformed, schema.Mocks)
 	if err != nil {
-		return "", nil, err
+		return builtSource{}, err
 	}
 
-	sinks := make(map[string]string, len(transformed.sinks))
+	out := builtSource{sinks: map[string]string{}, inputs: inputComponents{}}
 	for _, s := range transformed.sinks {
-		sinks[s.exit] = s.componentID()
+		out.sinks[s.exit] = s.componentID()
+	}
+	for _, r := range replacements {
+		src := transformed.sources[r.id]
+		for _, m := range src.modules {
+			out.inputs[r.name] = append(out.inputs[r.name], m+"/pipelinetest.source."+r.name)
+		}
 	}
 
-	source := rewritePipelineTestRefs(transformed.source) + "\n\n" + buildSinks(transformed.sinks) + "\n\n" + generated
-	return source, sinks, nil
+	out.source = rewritePipelineTestRefs(transformed.source) + "\n\n" + buildSinks(transformed.sinks) + "\n\n" + generated
+	return out, nil
 }
 
 func configName(cfg ConfigSchema) string {
@@ -84,6 +130,9 @@ func buildSinks(sinks []generatedSink) string {
 		fmt.Fprintf(&b, "\n\npipelinetest.sink %q {", s.label)
 		if s.externalLabels != "" {
 			fmt.Fprintf(&b, "\n\texternal_labels = %s\n", s.externalLabels)
+		}
+		for _, rule := range s.writeRelabel {
+			fmt.Fprintf(&b, "\n\t%s\n", rule)
 		}
 		b.WriteString("}")
 	}
@@ -132,6 +181,10 @@ func buildSources(inputs []testInput, cfg transformedConfig, mocks MockSchema) (
 		var forwardTo string
 		switch {
 		case in.replace != "":
+			if len(cfg.sources[in.replace].modules) > 0 {
+				// The source is inside the module.
+				continue
+			}
 			forwardTo = cfg.sources[in.replace].forwardTo
 		case len(in.components) > 0:
 			targets := make([]string, 0, len(in.components))

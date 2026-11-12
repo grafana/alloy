@@ -139,3 +139,134 @@ func TestTransformConfigOverride(t *testing.T) {
 	})
 	require.ErrorContains(t, err, "cannot be overridden")
 }
+
+const moduleSrc = `declare "cluster_metrics" {
+  argument "destinations" {}
+
+  discovery.kubernetes "nodes" {
+    role = "node"
+  }
+
+  discovery.relabel "nodes" {
+    targets = discovery.kubernetes.nodes.targets
+  }
+
+  prometheus.scrape "nodes" {
+    targets    = discovery.relabel.nodes.output
+    forward_to = argument.destinations.value
+  }
+
+  local.file "token" {
+    filename = "/var/run/token"
+  }
+}
+
+cluster_metrics "a" {
+  destinations = [prometheus.remote_write.cloud.receiver]
+}
+
+cluster_metrics "b" {
+  destinations = [prometheus.remote_write.cloud.receiver]
+}
+
+discovery.kubernetes "nodes" {
+  role = "node"
+}
+
+prometheus.scrape "top" {
+  targets    = discovery.kubernetes.nodes.targets
+  forward_to = [prometheus.remote_write.cloud.receiver]
+}
+
+prometheus.remote_write "cloud" {
+  endpoint {
+    url = "https://example.com"
+    write_relabel_config {
+      target_label = "scraped_by"
+      replacement  = "alloy"
+    }
+  }
+}
+`
+
+func TestTransformConfigModules(t *testing.T) {
+	out, err := transformConfig("config.alloy", moduleSrc, transformSpec{
+		sources:      []sourceReplacement{{id: "cluster_metrics/prometheus.scrape.nodes", signal: signalMetrics, name: "in"}},
+		sinks:        []string{"prometheus.remote_write.cloud"},
+		remove:       []string{"cluster_metrics/local.file.token"},
+		discovery:    map[string]string{"cluster_metrics/discovery.kubernetes.nodes": `[{"__address__" = "a"}]`},
+		writeRelabel: true,
+	})
+	require.NoError(t, err)
+
+	// The input's source goes inside the module, once per instance.
+	require.Equal(t, replacedSource{forwardTo: "argument.destinations.value", modules: []string{"cluster_metrics.a", "cluster_metrics.b"}}, out.sources["cluster_metrics/prometheus.scrape.nodes"])
+	require.Contains(t, out.source, `pipelinetest.source "in" { forward_to { metrics = argument.destinations.value } }`)
+	require.NotContains(t, out.source, "local.file")
+
+	// Only the module's discovery.kubernetes.nodes is replaced. The top-level
+	// one with the same ID stays.
+	require.Contains(t, out.source, "targets = [{\"__address__\" = \"a\"}]")
+	require.Contains(t, out.source, "targets    = discovery.kubernetes.nodes.targets\n  forward_to = [pipelinetest.sink")
+
+	require.Equal(t, []string{"write_relabel_config {\n      target_label = \"scraped_by\"\n      replacement  = \"alloy\"\n    }"}, out.sinks[0].writeRelabel)
+
+	require.Equal(t, strings.Count(moduleSrc, "\n"), strings.Count(out.source, "\n"))
+	require.Equal(t, lineOf(moduleSrc, `cluster_metrics "a"`), lineOf(out.source, `cluster_metrics "a"`))
+}
+
+func TestTransformConfigModuleErrors(t *testing.T) {
+	tests := []struct {
+		name    string
+		spec    transformSpec
+		wantErr string
+	}{
+		{
+			name:    "unknown module",
+			spec:    transformSpec{remove: []string{"node_logs/local.file.token"}},
+			wantErr: `the config has no declare block "node_logs"; modules: cluster_metrics`,
+		},
+		{
+			name:    "unknown component in module",
+			spec:    transformSpec{remove: []string{"cluster_metrics/local.file.missing"}},
+			wantErr: "is not a component of module cluster_metrics",
+		},
+		{
+			name:    "top-level ID does not reach into the module",
+			spec:    transformSpec{remove: []string{"local.file.token"}},
+			wantErr: "is not a top-level block of the config",
+		},
+		{
+			name:    "sink in a module",
+			spec:    transformSpec{sinks: []string{"cluster_metrics/local.file.token"}},
+			wantErr: "exits inside modules can't be replaced yet",
+		},
+		{
+			name:    "override in a module",
+			spec:    transformSpec{overrides: map[string]map[string]string{"cluster_metrics/local.file.token": {"missing": `"x"`}}},
+			wantErr: "component cluster_metrics/local.file.token does not set missing",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := transformConfig("config.alloy", moduleSrc, tt.spec)
+			require.ErrorContains(t, err, tt.wantErr)
+		})
+	}
+
+	out, err := transformConfig("config.alloy", moduleSrc, transformSpec{
+		overrides: map[string]map[string]string{"cluster_metrics/local.file.token": {"filename": `"./token"`}},
+	})
+	require.NoError(t, err)
+	require.Contains(t, out.source, `filename = "./token"`)
+}
+
+func TestTransformConfigWriteRelabelNeedsOneEndpoint(t *testing.T) {
+	src := `prometheus.remote_write "cloud" {
+  endpoint { url = "https://a.example.com" }
+  endpoint { url = "https://b.example.com" }
+}
+`
+	_, err := transformConfig("config.alloy", src, transformSpec{sinks: []string{"prometheus.remote_write.cloud"}, writeRelabel: true})
+	require.ErrorContains(t, err, "write_relabel needs one endpoint block, the exit has 2")
+}
