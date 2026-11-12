@@ -8,6 +8,9 @@
 
 1.14.4 (2026-10-28)
 ----------
+### Enhancements
+
+- Expand `extraObjects` to have more flexibility in templating (@TheRealNoob)
 
 ### Enhancements
 
