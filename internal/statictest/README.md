@@ -60,10 +60,23 @@ config.
 
 `select` takes one pattern or a list. A pattern matches a component name,
 such as `prometheus.scrape`, or a component ID, such as
-`prometheus.scrape.default`. `*` matches any characters, so `loki.source.*`
-matches every log source, and `*` matches every component.
+`prometheus.scrape.default`. `*` matches any characters except `/`, so
+`loki.source.*` matches every log source, and `*` matches every component.
 
-Only top-level components are checked. Components inside modules aren't.
+### Modules
+
+Components inside `declare` blocks are checked too. Their ID starts with
+the module path, such as `cluster_metrics/prometheus.scrape.nodes`. For a
+`declare` inside another `declare`, the path is `outer/inner`. Pipeline
+tests use the same IDs.
+
+- A name, such as `prometheus.scrape`, matches components in every module.
+- `cluster_metrics/*` matches every component in the module.
+- `flows-through` follows data into a module through its arguments, and out
+  through its exports. A path shows them, such as
+  `cluster_metrics/argument.metrics_destinations`.
+- A module is checked once, however many blocks use it.
+- Modules from `import.*` blocks aren't checked.
 
 ### Paths
 
@@ -114,7 +127,7 @@ applies when the condition holds:
 
 - OTel Collector configurations.
 - Helm values and Kubernetes manifests.
-- Components inside modules.
+- Modules from `import.*` blocks.
 - Expressions in rules, such as CEL.
 
 For an example, refer to [tests/clustering](tests/clustering).

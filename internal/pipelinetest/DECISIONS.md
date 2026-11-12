@@ -117,7 +117,8 @@ The logic lives in `config_transform.go`.
 ### Modules
 
 A component inside a `declare` block is `<module>/<component>`, such as
-`cluster_metrics/discovery.kubernetes.nodes`. The Kubernetes Monitoring Helm chart puts each feature pipeline in a
+`cluster_metrics/discovery.kubernetes.nodes`. Static tests use the same
+IDs. The Kubernetes Monitoring Helm chart puts each feature pipeline in a
 `declare` block, so without this its pipelines can't be tested.
 
 - **Scopes:** each `declare` body is its own scope. A reference is only

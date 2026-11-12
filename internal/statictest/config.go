@@ -13,19 +13,45 @@ import (
 	"github.com/grafana/alloy/syntax/vm"
 )
 
-// component is a top-level block of the config, such as
-// prometheus.scrape "default".
+// component is a block of the config, such as prometheus.scrape "default".
+// A component inside a declare block has the module path before its ID, such
+// as cluster_metrics/prometheus.scrape.nodes.
 type component struct {
-	name  string // prometheus.scrape
-	id    string // prometheus.scrape.default
-	block *ast.BlockStmt
-	line  int
+	name   string // prometheus.scrape
+	id     string // prometheus.scrape.default, or cluster_metrics/prometheus.scrape.nodes
+	local  string // prometheus.scrape.default, the ID inside its module
+	module string // the module path, such as cluster_metrics, or "" at the top level
+	// instanceOf is the path of the module this block uses, such as
+	// cluster_metrics for cluster_metrics "feature". It's "" for other
+	// components.
+	instanceOf string
+	block      *ast.BlockStmt
+	line       int
+}
+
+// module is the body of a declare block.
+type module struct {
+	path   string
+	parent string
+	// exports maps an export name to its export block.
+	exports map[string]*ast.BlockStmt
 }
 
 type config struct {
 	file       string
 	components []component
 	byID       map[string]*component
+	modules    map[string]*module
+	// declares maps a scope and a declare label to the module path.
+	declares map[string]map[string]string
+}
+
+// joinModule returns the ID of a component inside a module.
+func joinModule(module, id string) string {
+	if module == "" {
+		return id
+	}
+	return module + "/" + id
 }
 
 func parseConfig(file string, src []byte) (*config, error) {
@@ -33,31 +59,79 @@ func parseConfig(file string, src []byte) (*config, error) {
 	if err != nil {
 		return nil, err
 	}
-	c := &config{file: file, byID: map[string]*component{}}
-	for _, stmt := range f.Body {
-		block, ok := stmt.(*ast.BlockStmt)
-		if !ok {
-			continue
-		}
-		comp := component{
-			name:  block.GetBlockName(),
-			id:    block.GetBlockName(),
-			block: block,
-			line:  block.NamePos.Position().Line,
-		}
-		if block.Label != "" {
-			comp.id += "." + block.Label
-		}
-		c.components = append(c.components, comp)
+	c := &config{
+		file:     file,
+		byID:     map[string]*component{},
+		modules:  map[string]*module{},
+		declares: map[string]map[string]string{},
 	}
+	c.collect("", f.Body)
 	for i := range c.components {
-		c.byID[c.components[i].id] = &c.components[i]
+		comp := &c.components[i]
+		comp.instanceOf = c.lookupDeclare(comp.module, comp.name)
+		c.byID[comp.id] = comp
 	}
 	return c, nil
 }
 
+// collect adds the components of one scope, and the scopes of the declare
+// blocks in it.
+func (c *config) collect(scope string, body ast.Body) {
+	for _, stmt := range body {
+		block, ok := stmt.(*ast.BlockStmt)
+		if !ok {
+			continue
+		}
+		name := block.GetBlockName()
+		switch {
+		case name == "declare":
+			path := joinModule(scope, block.Label)
+			if c.declares[scope] == nil {
+				c.declares[scope] = map[string]string{}
+			}
+			c.declares[scope][block.Label] = path
+			c.modules[path] = &module{path: path, parent: scope, exports: map[string]*ast.BlockStmt{}}
+			c.collect(path, block.Body)
+			continue
+		case scope != "" && name == "export":
+			c.modules[scope].exports[block.Label] = block
+			continue
+		case scope != "" && name == "argument":
+			continue
+		}
+		local := name
+		if block.Label != "" {
+			local += "." + block.Label
+		}
+		c.components = append(c.components, component{
+			name:   name,
+			id:     joinModule(scope, local),
+			local:  local,
+			module: scope,
+			block:  block,
+			line:   block.NamePos.Position().Line,
+		})
+	}
+}
+
+// lookupDeclare returns the path of the module that a block named name uses
+// in scope, or "" when no declare block of that name is visible there.
+func (c *config) lookupDeclare(scope, name string) string {
+	for {
+		if path, ok := c.declares[scope][name]; ok {
+			return path
+		}
+		if scope == "" {
+			return ""
+		}
+		scope = c.modules[scope].parent
+	}
+}
+
 // selectComponents returns the components that match any pattern, by name or
-// by ID. In a pattern, * matches any characters, including dots.
+// by ID. In a pattern, * matches any characters except /, so it matches
+// dots. A name pattern such as prometheus.scrape matches components in
+// modules too.
 func (c *config) selectComponents(sel Selector) []*component {
 	var out []*component
 	for i := range c.components {

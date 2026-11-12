@@ -229,3 +229,154 @@ func TestValidate(t *testing.T) {
 		}
 	}
 }
+
+const moduleConfig = `
+declare "node_logs" {
+  argument "logs_destinations" {}
+
+  loki.source.journal "node" {
+    forward_to = argument.logs_destinations.value
+  }
+
+  export "receiver" {
+    value = loki.secretfilter.default.receiver
+  }
+
+  loki.secretfilter "default" {
+    forward_to = argument.logs_destinations.value
+  }
+}
+
+declare "cluster_metrics" {
+  argument "metrics_destinations" {}
+  argument "targets" {}
+
+  prometheus.scrape "nodes" {
+    targets    = argument.targets.value
+    forward_to = argument.metrics_destinations.value
+  }
+}
+
+node_logs "feature" {
+  logs_destinations = [loki.write.default.receiver]
+}
+
+loki.source.file "app" {
+  targets    = []
+  forward_to = [node_logs.feature.receiver]
+}
+
+discovery.kubernetes "nodes" {
+  role = "node"
+}
+
+cluster_metrics "feature" {
+  targets              = discovery.kubernetes.nodes.targets
+  metrics_destinations = [prometheus.remote_write.default.receiver]
+}
+
+prometheus.remote_write "default" {
+  endpoint {
+    url = "https://prom.example.com/api/prom/push"
+  }
+}
+
+loki.write "default" {
+  endpoint {
+    url = "https://logs.example.com/loki/api/v1/push"
+  }
+}
+`
+
+func TestRulesInModules(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		rule    string
+		passed  bool
+		message string
+	}{
+		{
+			name: "a name selects components in modules",
+			rule: `
+type: attribute
+select: prometheus.scrape
+path: clustering.enabled
+equals: true`,
+			message: "cluster_metrics/prometheus.scrape.nodes (config.alloy:22): clustering.enabled is not set",
+		},
+		{
+			name: "an ID selects one component in a module",
+			rule: `
+type: count
+select: cluster_metrics/prometheus.scrape.nodes
+min: 1`,
+			passed: true,
+		},
+		{
+			name: "a module pattern selects every component in it",
+			rule: `
+type: count
+select: "node_logs/*"
+min: 2
+max: 2`,
+			passed: true,
+		},
+		{
+			name: "* doesn't cross the module path in an ID",
+			rule: `
+type: count
+select: "*.nodes"
+max: 1`,
+			passed: true,
+		},
+		{
+			name: "flows-through follows a module argument",
+			rule: `
+type: flows-through
+from: loki.source.*
+to: loki.write
+through: loki.secretfilter`,
+			message: "node_logs/loki.source.journal.node (config.alloy:5) reaches loki.write.default without loki.secretfilter: node_logs/loki.source.journal.node -> node_logs/argument.logs_destinations -> loki.write.default",
+		},
+		{
+			name: "flows-through follows a module export",
+			rule: `
+type: flows-through
+from: loki.source.file
+to: loki.write
+through: loki.secretfilter`,
+			passed: true,
+		},
+		{
+			name: "flows-through follows pulled exports into a module",
+			rule: `
+type: flows-through
+from: discovery.kubernetes
+to: prometheus.remote_write
+through: prometheus.scrape`,
+			passed: true,
+		},
+		{
+			name: "flows-through finds a path into a module",
+			rule: `
+type: flows-through
+from: discovery.kubernetes
+to: prometheus.remote_write
+through: prometheus.relabel`,
+			message: "discovery.kubernetes.nodes -> cluster_metrics/argument.targets -> cluster_metrics/prometheus.scrape.nodes -> cluster_metrics/argument.metrics_destinations -> prometheus.remote_write.default",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var chk Check
+			require.NoError(t, yaml.Unmarshal([]byte(tc.rule), &chk))
+			require.NoError(t, chk.Validate())
+			res, err := Run("config.alloy", []byte(moduleConfig), []Rule{{Name: "r", Check: chk}})
+			require.NoError(t, err)
+			got := res.Rules[0]
+			require.Equal(t, tc.passed, got.Passed, got.Message)
+			if tc.message != "" {
+				require.Contains(t, got.Message, tc.message)
+			}
+		})
+	}
+}

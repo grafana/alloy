@@ -46,6 +46,30 @@ as `targets`, sends data from the referenced component. This rule is in
 `pushExports` in `graph.go`. It's correct for the components we know, but a
 component with another push export needs an entry there.
 
+## Modules
+
+A component inside a `declare` block is checked, with the ID
+`<module>/<component>`, such as `cluster_metrics/prometheus.scrape.nodes`.
+Pipeline tests use the same IDs to replace components. The Kubernetes
+Monitoring Helm chart puts each feature in a `declare` block, so without this
+a rule such as clustering on every scrape misses most of the config.
+
+- **Scopes:** a reference inside a module only names components of the same
+  module. A module's `argument` and `export` blocks aren't components.
+- **Data flow:** each argument and export of a module is a node of the
+  graph. A module component that sends to `argument.X.value` sends to the
+  argument, and the argument sends to what each block using the module
+  passes as `X`. A reference to `cluster_metrics.feature.receiver` goes to
+  the module's export, and the export to what its value references. An
+  argument or export pushes data when what it holds does, such as a
+  `receiver`.
+- **One copy:** a module's components are checked once, not once per block
+  that uses the module. When two blocks pass different destinations, the
+  graph joins them. So `flows-through` can report a path that only one
+  combination has. It doesn't miss a path.
+- **`import.*`:** an imported module's source isn't in the config file. We
+  could read `import.file` sources later.
+
 ## Severity
 
 A failed `should` rule is a warning: it shows `!` and doesn't fail the test.
@@ -54,6 +78,6 @@ The exit status then only depends on `must` rules, so CI can gate on them.
 ## Not done yet
 
 - OTel Collector configurations, Helm values and Kubernetes manifests.
-- Components inside modules.
+- Modules from `import.*` blocks.
 - Shared rules that a test file can include, such as Grafana's
   recommendations for a task. For now, each test file holds its own rules.

@@ -2,6 +2,7 @@ package statictest
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -18,36 +19,97 @@ var pushExports = map[string]bool{
 	"input":    true,
 }
 
-// dataFlow returns, for each component ID, the components it sends data to.
+// dataFlow returns, for each node, the nodes it sends data to. A node is a
+// component ID, or a module's argument or export, such as
+// cluster_metrics/argument.metrics_destinations. Data that a module sends to
+// an argument goes on to what the blocks that use the module pass in.
 func dataFlow(c *config) map[string][]string {
+	// holder is something that holds references: a component, the value of
+	// an argument passed to a module, or a module's export.
+	type holder struct {
+		node string
+		refs []reference
+	}
+	var holders []holder
+	find := func(node, scope string, n ast.Node) {
+		v := &refFinder{config: c, scope: scope}
+		ast.Walk(v, n)
+		holders = append(holders, holder{node: node, refs: v.refs})
+	}
+	for _, comp := range c.components {
+		if comp.instanceOf == "" {
+			find(comp.id, comp.module, comp.block.Body)
+			continue
+		}
+		for _, stmt := range comp.block.Body {
+			if attr, ok := stmt.(*ast.AttributeStmt); ok {
+				find(argumentNode(comp.instanceOf, attr.Name.Name), comp.module, attr.Value)
+			}
+		}
+	}
+	for _, path := range slices.Sorted(maps.Keys(c.modules)) {
+		m := c.modules[path]
+		for _, name := range slices.Sorted(maps.Keys(m.exports)) {
+			find(exportNode(path, name), path, m.exports[name].Body)
+		}
+	}
+
+	// An argument or export pushes data when what it holds does, such as
+	// [prometheus.remote_write.default.receiver]. Arguments and exports can
+	// hold each other, so repeat until nothing changes.
+	pushNodes := map[string]bool{}
+	pushes := func(r reference) bool {
+		if r.pseudo {
+			return pushNodes[r.id]
+		}
+		return pushExports[r.export]
+	}
+	for changed := true; changed; {
+		changed = false
+		for _, h := range holders {
+			if pushNodes[h.node] || !slices.ContainsFunc(h.refs, pushes) {
+				continue
+			}
+			if _, isComp := c.byID[h.node]; !isComp {
+				pushNodes[h.node] = true
+				changed = true
+			}
+		}
+	}
+
 	edges := map[string][]string{}
 	add := func(from, to string) {
 		if from != to && !slices.Contains(edges[from], to) {
 			edges[from] = append(edges[from], to)
 		}
 	}
-	for _, comp := range c.components {
-		v := &refFinder{config: c}
-		ast.Walk(v, comp.block.Body)
-		for _, ref := range v.refs {
-			if pushExports[ref.export] {
-				add(comp.id, ref.id)
+	for _, h := range holders {
+		for _, ref := range h.refs {
+			if pushes(ref) {
+				add(h.node, ref.id)
 			} else {
-				add(ref.id, comp.id)
+				add(ref.id, h.node)
 			}
 		}
 	}
 	return edges
 }
 
+func argumentNode(module, name string) string { return module + "/argument." + name }
+func exportNode(module, name string) string   { return module + "/export." + name }
+
 type reference struct {
-	id     string // the component referenced
-	export string // the first part after its ID
+	id     string // the component, argument or export referenced
+	export string // the first part after a component's ID
+	// pseudo is true for a module's argument or export.
+	pseudo bool
 }
 
-// refFinder collects references to components of the config.
+// refFinder collects references to components, arguments and module exports
+// in one scope.
 type refFinder struct {
 	config *config
+	scope  string
 	refs   []reference
 }
 
@@ -60,13 +122,22 @@ func (v *refFinder) Visit(node ast.Node) ast.Visitor {
 	if !ok {
 		return v
 	}
+	if parts[0] == "argument" && v.scope != "" && len(parts) >= 2 {
+		v.refs = append(v.refs, reference{id: argumentNode(v.scope, parts[1]), pseudo: true})
+		return nil
+	}
 	// The longest prefix that names a component is the reference.
 	for n := len(parts) - 1; n >= 2; n-- {
-		id := strings.Join(parts[:n], ".")
-		if _, ok := v.config.byID[id]; ok {
-			v.refs = append(v.refs, reference{id: id, export: parts[n]})
-			return nil
+		comp, ok := v.config.byID[joinModule(v.scope, strings.Join(parts[:n], "."))]
+		if !ok {
+			continue
 		}
+		if comp.instanceOf != "" {
+			v.refs = append(v.refs, reference{id: exportNode(comp.instanceOf, parts[n]), pseudo: true})
+		} else {
+			v.refs = append(v.refs, reference{id: comp.id, export: parts[n]})
+		}
+		return nil
 	}
 	return nil
 }
