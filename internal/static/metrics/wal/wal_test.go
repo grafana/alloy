@@ -1295,3 +1295,54 @@ func TestStorage_AppendHistogramSTZeroSample(t *testing.T) {
 	require.Zero(t, zero.H.Count)
 	require.Equal(t, int64(100), collector.histograms[1].T)
 }
+
+func TestStorage_DiscardOutOfOrder(t *testing.T) {
+	s, err := NewStorage(logging.NewSlogNop(), nil, t.TempDir())
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, s.Close())
+	}()
+
+	lset := labels.FromStrings("__name__", "test_metric")
+	histLset := labels.FromStrings("__name__", "test_hist")
+
+	// Seed initial committed timestamps.
+	app := s.Appender(t.Context())
+	ref, err := app.Append(0, lset, 100, 1)
+	require.NoError(t, err)
+	histRef, err := app.AppendHistogram(0, histLset, 100, tsdbutil.GenerateTestHistogram(1), nil)
+	require.NoError(t, err)
+	require.NoError(t, app.Commit())
+
+	// With DiscardOutOfOrder enabled, samples at or before lastTs are rejected.
+	app = s.Appender(t.Context())
+	app.SetOptions(&storage.AppendOptions{DiscardOutOfOrder: true})
+
+	_, err = app.Append(ref, lset, 50, 2)
+	require.ErrorIs(t, err, storage.ErrOutOfOrderSample)
+	_, err = app.Append(ref, lset, 100, 3)
+	require.ErrorIs(t, err, storage.ErrDuplicateSampleForTimestamp)
+	_, err = app.Append(ref, lset, 200, 4)
+	require.NoError(t, err)
+
+	_, err = app.AppendHistogram(histRef, histLset, 50, tsdbutil.GenerateTestHistogram(2), nil)
+	require.ErrorIs(t, err, storage.ErrOutOfOrderSample)
+	_, err = app.AppendHistogram(histRef, histLset, 100, tsdbutil.GenerateTestHistogram(3), nil)
+	require.ErrorIs(t, err, storage.ErrDuplicateSampleForTimestamp)
+	_, err = app.AppendHistogram(histRef, histLset, 200, tsdbutil.GenerateTestHistogram(4), nil)
+	require.NoError(t, err)
+	require.NoError(t, app.Commit())
+
+	// Pooled appenders must reset options on reuse.
+	app = s.Appender(t.Context())
+	_, err = app.Append(ref, lset, 150, 5)
+	require.NoError(t, err)
+	require.NoError(t, app.Commit())
+
+	collector := walDataCollector{}
+	replayer := walReplayer{w: &collector}
+	require.NoError(t, replayer.Replay(s.wal.Dir()))
+
+	require.Len(t, collector.samples, 3)
+	require.Len(t, collector.histograms, 2)
+}
