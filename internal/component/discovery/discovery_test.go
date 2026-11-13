@@ -215,6 +215,30 @@ func assertExportsEqual(t *assert.CollectT, expected []component.Exports, actual
 	}
 }
 
+func TestToAlloyTargetsOrdersGroupsBySource(t *testing.T) {
+	cache := map[string]*targetgroup.Group{
+		"zeta": {
+			Source:  "zeta",
+			Labels:  model.LabelSet{"group": "zeta"},
+			Targets: []model.LabelSet{{"target": "one"}},
+		},
+		"alpha": {
+			Source:  "alpha",
+			Labels:  model.LabelSet{"group": "alpha"},
+			Targets: []model.LabelSet{{"target": "two"}},
+		},
+	}
+
+	expected := []Target{
+		NewTargetFromMap(map[string]string{"group": "alpha", "target": "two"}),
+		NewTargetFromMap(map[string]string{"group": "zeta", "target": "one"}),
+	}
+
+	for range 100 {
+		require.True(t, equality.DeepEqual(expected, toAlloyTargets(cache)))
+	}
+}
+
 /*
 on darwin/arm64/Apple M2:
 Benchmark_ToAlloyTargets-8   	     150	   7549967 ns/op	12768249 B/op	   40433 allocs/op
