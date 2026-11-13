@@ -184,8 +184,6 @@ func (exp *logsExporter) sendKeyValsToLogsPipeline(ctx context.Context, kv *payl
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Second) // TODO(rfratto): potentially make this configurable
-	defer cancel()
 	return exp.fanout.Send(ctx, loki.NewEntry(exp.labelSet(kv), push.Entry{
 		Timestamp: time.Now(),
 		Line:      string(line),

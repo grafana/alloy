@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
@@ -96,6 +97,46 @@ func TestMultipleExportersAllFail(t *testing.T) {
 	require.Equal(t, http.StatusAccepted, rr.Result().StatusCode)
 	require.Len(t, exporter1.payloads, 0)
 	require.Len(t, exporter2.payloads, 0)
+}
+
+func TestRequestTimeoutReturnsGatewayTimeout(t *testing.T) {
+	h := newHandler(
+		util.TestAlloyLogger(t).Slog(),
+		prometheus.NewRegistry(),
+		[]exporter{blockingExporter{}},
+	)
+	h.Update(ServerArguments{RequestTimeout: 20 * time.Millisecond})
+
+	req := httptest.NewRequest(http.MethodPost, "/collect", strings.NewReader(emptyPayload))
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusGatewayTimeout, rr.Code)
+}
+
+func TestRequestWithoutTimeoutWaitsForExporter(t *testing.T) {
+	done := make(chan struct{})
+	h := newHandler(
+		util.TestAlloyLogger(t).Slog(),
+		prometheus.NewRegistry(),
+		[]exporter{blockingExporter{done: done}},
+	)
+
+	finished := make(chan struct{})
+	rr := httptest.NewRecorder()
+	go func() {
+		defer close(finished)
+		h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/collect", strings.NewReader(emptyPayload)))
+	}()
+
+	select {
+	case <-finished:
+		t.Fatal("request completed before exporter")
+	case <-time.After(20 * time.Millisecond):
+	}
+	close(done)
+	<-finished
+	require.Equal(t, http.StatusAccepted, rr.Code)
 }
 
 func TestPayloadWithinLimit(t *testing.T) {
@@ -1017,6 +1058,21 @@ type testExporter struct {
 	name     string
 	broken   bool
 	payloads []payload.Payload
+}
+
+type blockingExporter struct {
+	done <-chan struct{}
+}
+
+func (blockingExporter) Name() string { return "blocking exporter" }
+
+func (exp blockingExporter) Export(ctx context.Context, _ payload.Payload) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-exp.done:
+		return nil
+	}
 }
 
 func (te *testExporter) Name() string {
