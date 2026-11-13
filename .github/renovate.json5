@@ -30,6 +30,18 @@
     "enabled": true
   },
 
+  // The nix manager (flake.nix / flake.lock) is opt-in.
+  "nix": {
+    "enabled": true
+  },
+
+  // Refreshes flake.lock (`nix flake update`), which moves every tool version
+  // provided by the dev shells. Restricted to nix by a packageRule below.
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["* 6-10 * * 1"]
+  },
+
   "packageRules": [
     {
       "matchManagers": ["docker-compose"],
@@ -139,9 +151,25 @@
       "enabled": true
     },
     {
-      "matchManagers": ["mise"],
-      "groupName": "mise dependencies",
+      // Keeps the nixpkgs pins in flake.lock, and with it every tool version, up to date.
+      "matchManagers": ["nix"],
+      "groupName": "nix dependencies",
       "enabled": true
+    },
+    {
+      // Only maintain lock files of the nix manager; other managers (e.g. npm)
+      // keep their current behavior.
+      "matchManagers": ["!nix"],
+      "matchUpdateTypes": ["lockFileMaintenance"],
+      "enabled": false
+    },
+    {
+      // Helm 4 changes the output of the golden chart tests (operations/helm/tests),
+      // so don't move this input to a newer channel. Lock refreshes within the
+      // channel still happen through lock file maintenance.
+      "matchManagers": ["nix"],
+      "matchDepNames": ["nixpkgs-helm3"],
+      "enabled": false
     },
     {
       // Supersede previous rules to require PR creation approval for major versions
