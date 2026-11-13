@@ -13,6 +13,7 @@ import (
 	loki_translator "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/loki"
 	"github.com/prometheus/common/model"
 	"go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 
 	"github.com/grafana/alloy/internal/component"
@@ -43,6 +44,9 @@ const hintAttributes = "loki.attribute.labels"
 
 // Arguments configures the otelcol.receiver.loki component.
 type Arguments struct {
+	// LabelsAsResourceAttributes maps stream labels to resource attributes instead of log attributes.
+	LabelsAsResourceAttributes bool `alloy:"labels_as_resource_attributes,attr,optional"`
+
 	// Output configures where to send received data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 }
@@ -58,10 +62,11 @@ type Component struct {
 	opts       component.Options
 	pipelineV2 bool
 
-	mut      sync.RWMutex
-	stopped  bool
-	receiver loki.LogsReceiver
-	logsSink consumer.Logs
+	mut              sync.RWMutex
+	stopped          bool
+	receiver         loki.LogsReceiver
+	logsSink         consumer.Logs
+	labelsAsResource bool
 
 	debugDataPublisher livedebugging.DebugDataPublisher
 }
@@ -126,7 +131,7 @@ func (c *Component) Run(ctx context.Context) error {
 			return nil
 		case entry := <-c.receiver.Chan():
 			c.mut.RLock()
-			if err := c.logsSink.ConsumeLogs(ctx, convertLokiEntryToPlog(entry)); err != nil {
+			if err := c.logsSink.ConsumeLogs(ctx, convertLokiEntryToPlog(entry, c.labelsAsResource)); err != nil {
 				c.opts.Logger.Error("failed to consume log entries", "err", err)
 			}
 			c.mut.RUnlock()
@@ -152,13 +157,14 @@ func (c *Component) Update(args component.Arguments) error {
 			return fanout.ConsumeLogs(ctx, ld)
 		},
 	)
+	c.labelsAsResource = newArgs.LabelsAsResourceAttributes
 	return nil
 }
 
 // Consume implements loki.Consumer.
 func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
 	c.mut.RLock()
-	stopped, sink := c.stopped, c.logsSink
+	stopped, sink, labelsAsResource := c.stopped, c.logsSink, c.labelsAsResource
 	c.mut.RUnlock()
 
 	if stopped {
@@ -170,11 +176,8 @@ func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
 	}
 
 	logs := plog.NewLogs()
-	logRecords := logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty().LogRecords()
-	logRecords.EnsureCapacity(batch.EntryLen())
-
 	for _, stream := range batch.Streams() {
-		appendToLogRecords(logRecords, stream.Labels, stream.Entries...)
+		appendLogs(logs, stream.Labels, labelsAsResource, stream.Entries...)
 	}
 
 	// Not holding c.mut here so Update is never blocked behind a slow downstream.
@@ -186,23 +189,43 @@ func (c *Component) String() string {
 }
 
 // Create a new Otlp Logs entry from a loki.Entry
-func convertLokiEntryToPlog(entry loki.Entry) plog.Logs {
+func convertLokiEntryToPlog(entry loki.Entry, labelsAsResource bool) plog.Logs {
 	logs := plog.NewLogs()
-	logRecords := logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty().LogRecords()
-	appendToLogRecords(logRecords, entry.Labels, entry.Entry)
+	appendLogs(logs, entry.Labels, labelsAsResource, entry.Entry)
 	return logs
 }
 
-// appendToLogRecords converts each entry in into a LogRecord and appends it to logRecords.
-func appendToLogRecords(logRecords plog.LogRecordSlice, lset model.LabelSet, entries ...push.Entry) {
-	filename, hasFilename := lset["filename"]
+// appendLogs converts each entry in entries, which all have the labels lset, into a LogRecord in logs.
+func appendLogs(logs plog.Logs, lset model.LabelSet, labelsAsResource bool, entries ...push.Entry) {
+	var (
+		logRecords   plog.LogRecordSlice
+		recordLabels = lset
+		hint         string
+	)
 
-	lbls := make([]string, 0, len(lset))
-	for key := range lset {
-		lbls = append(lbls, string(key))
+	if labelsAsResource {
+		// Each set of labels gets its own ResourceLogs since the labels become the resource.
+		rl := logs.ResourceLogs().AppendEmpty()
+		putResourceAttributes(rl.Resource().Attributes(), lset)
+		logRecords = rl.ScopeLogs().AppendEmpty().LogRecords()
+		recordLabels = nil
+	} else {
+		// Every LogRecord shares one ResourceLogs when labels stay on the log record.
+		if logs.ResourceLogs().Len() == 0 {
+			logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty()
+		}
+		logRecords = logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords()
+
+		lbls := make([]string, 0, len(lset))
+		for key := range lset {
+			lbls = append(lbls, string(key))
+		}
+		slices.Sort(lbls)
+		hint = strings.Join(lbls, ",")
 	}
-	slices.Sort(lbls)
-	hint := strings.Join(lbls, ",")
+	logRecords.EnsureCapacity(logRecords.Len() + len(entries))
+
+	filename, hasFilename := recordLabels["filename"]
 
 	for _, entry := range entries {
 		lr := logRecords.AppendEmpty()
@@ -223,7 +246,7 @@ func appendToLogRecords(logRecords plog.LogRecordSlice, lset model.LabelSet, ent
 			// because the Collector doesn't do it and we would be more in line with it.
 		}
 
-		if len(lbls) > 0 {
+		if hint != "" {
 			// This hint is defined in the pkg/translator/loki package and the
 			// opentelemetry-collector-contrib repo, but is not exported so we
 			// re-define it.
@@ -232,7 +255,18 @@ func appendToLogRecords(logRecords plog.LogRecordSlice, lset model.LabelSet, ent
 			lr.Attributes().PutStr(hintAttributes, hint)
 		}
 
-		loki_translator.ConvertEntryToLogRecord(&entry, &lr, lset, true)
+		loki_translator.ConvertEntryToLogRecord(&entry, &lr, recordLabels, true)
+	}
+}
+
+// putResourceAttributes puts lset into attrs, dropping internal labels like loki.write does.
+func putResourceAttributes(attrs pcommon.Map, lset model.LabelSet) {
+	attrs.EnsureCapacity(len(lset))
+	for name, value := range lset {
+		if strings.HasPrefix(string(name), model.ReservedLabelPrefix) {
+			continue
+		}
+		attrs.PutStr(string(name), string(value))
 	}
 }
 
