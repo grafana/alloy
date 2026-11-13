@@ -17,7 +17,7 @@ import (
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	pyroutil "github.com/grafana/alloy/internal/component/pyroscope/util"
-	"github.com/grafana/alloy/internal/component/pyroscope/write"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/writer"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/util"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
@@ -284,7 +284,7 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 
 	if errs != nil {
 		l.Warn("Failed to ingest profiles", "err", errs)
-		var writeErr *write.PyroscopeWriteError
+		var writeErr *writer.PyroscopeWriteError
 		if errors.As(errs, &writeErr) {
 			http.Error(w, http.StatusText(writeErr.StatusCode), writeErr.StatusCode)
 		} else {
