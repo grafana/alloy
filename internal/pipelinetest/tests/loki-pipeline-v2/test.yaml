@@ -10,19 +10,64 @@ config: |
       },
     ]
 
-    forward_to = [pipelinetest.loki.receiver, loki.echo.e.receiver]
+    forward_to = [loki.write.no_wal.receiver, loki.write.wal.receiver, loki.echo.e.receiver]
   }
 
   loki.echo "e" {}
+
+  loki.write "no_wal" {
+    endpoint {
+      url = pipelinetest.loki.url
+    }
+
+    external_labels = {
+      write = "no_wal",
+    }
+  }
+
+  loki.write "wal" {
+    endpoint {
+      url = pipelinetest.loki.url
+    }
+
+    external_labels = {
+      write = "wal",
+    }
+
+    wal {
+      enabled = true
+    }
+  }
 
 assert:
   loki:
     - type: count
       count: 3
+      match:
+        labels:
+          mode: partial
+          values:
+            write: no_wal
+    - type: count
+      count: 3
+      match:
+        labels:
+          mode: partial
+          values:
+            write: wal
     - type: contains
       match:
         labels:
           mode: partial
           values:
             service_name: app
+            write: no_wal
+        line: 'ts=2026-10-15T12:00:01Z level=warn msg="second line"'
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            service_name: app
+            write: wal
         line: 'ts=2026-10-15T12:00:01Z level=warn msg="second line"'
