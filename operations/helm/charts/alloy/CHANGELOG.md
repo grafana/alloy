@@ -8,6 +8,9 @@
 
 1.14.4 (2026-10-28)
 ----------
+### Enhancements
+
+- Add Support for `tpl` on affinity & topologySpreadConstraints in agent container (@therealnoob)
 
 ### Enhancements
 
