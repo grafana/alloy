@@ -201,7 +201,6 @@ func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, profileTy
 			p.log.Error("failed to create profile builder", "err", err)
 			return nil
 		}
-		fakeMapping := b.FakeMapping()
 
 		s := b.NewSample(len(traceInfo.Frames))
 		comm := sampleKey.Comm.String()
@@ -254,7 +253,7 @@ func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, profileTy
 					mapping.BuildID = pfMapping.GnuBuildID
 				}
 			} else {
-				mapping = fakeMapping
+				mapping = b.FakeMapping(fr.Type)
 			}
 
 			location, fresh = b.Location(mapping, fr.AddressOrLineno, fr.FunctionName, fr.SourceLine)
@@ -275,7 +274,6 @@ func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, profileTy
 								fr.SourceFile,
 							),
 						}}
-						location.Mapping.HasFunctions = true
 					}
 
 				default:
@@ -288,7 +286,6 @@ func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, profileTy
 								libpf.Intern("[unknown]"),
 							)},
 						}
-						location.Mapping.HasFunctions = true
 					} else if fr.FunctionName != libpf.NullString {
 						location.Line = []profile.Line{{
 							Line: int64(fr.SourceLine),
@@ -297,8 +294,6 @@ func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, profileTy
 								fr.SourceFile,
 							)},
 						}
-						location.Mapping.HasFunctions = true
-						location.Mapping.HasLineNumbers = true
 					}
 				}
 			}
@@ -359,7 +354,6 @@ func (p *PPROFReporter) symbolizeNativeFrame(
 			return
 		}
 		name = p.demangle(name)
-		loc.Mapping.HasFunctions = true
 		line := profile.Line{Function: b.Function(name, si.FilePath)}
 		loc.Line = append(loc.Line, line)
 	})
@@ -375,5 +369,4 @@ func (p *PPROFReporter) symbolizeStub(b *ProfileBuilder, location *profile.Locat
 			fr.SourceFile,
 		),
 	}}
-	location.Mapping.HasFunctions = true
 }

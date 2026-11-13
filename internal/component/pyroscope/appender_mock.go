@@ -3,18 +3,14 @@ package pyroscope
 import (
 	"context"
 
-	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
-	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 	"github.com/prometheus/prometheus/model/labels"
 )
 
 var _ Appendable = AppenderMock{}
 
 type AppenderMock struct {
-	AppendIngestFunc     func(ctx context.Context, profile *IncomingProfile) error
-	AppendFunc           func(ctx context.Context, labels labels.Labels, samples []*RawSample) error
-	DebugInfoClientsFunc func() []*debuginfoclient.Client
-	DebugInfoUploadFunc  func(j debuginfo.UploadJob)
+	AppendIngestFunc func(ctx context.Context, profile *IncomingProfile) error
+	AppendFunc       func(ctx context.Context, labels labels.Labels, samples []*RawSample) error
 }
 
 func (a AppenderMock) Append(ctx context.Context, labels labels.Labels, samples []*RawSample) error {
@@ -27,19 +23,6 @@ func (a AppenderMock) AppendIngest(ctx context.Context, profile *IncomingProfile
 
 func (a AppenderMock) Appender() Appender {
 	return a
-}
-
-func (a AppenderMock) DebugInfoClients() []*debuginfoclient.Client {
-	if a.DebugInfoClientsFunc != nil {
-		return a.DebugInfoClientsFunc()
-	}
-	return nil
-}
-
-func (a AppenderMock) Upload(j debuginfo.UploadJob) {
-	if a.DebugInfoUploadFunc != nil {
-		a.DebugInfoUploadFunc(j)
-	}
 }
 
 func AppendableFunc(f func(ctx context.Context, labels labels.Labels, samples []*RawSample) error) AppenderMock {

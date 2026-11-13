@@ -67,7 +67,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/grafana/alloy-remote-config v0.0.12
-	github.com/grafana/alloy/syntax v0.1.2 // x-release-please-version
+	github.com/grafana/alloy/syntax v0.1.3 // x-release-please-version
 	github.com/grafana/ckit v0.0.0-20260226120531-bbed30d6364e
 	github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2
 	github.com/grafana/databricks-prometheus-exporter v0.0.0-20260428132210-9d662a9256ff
@@ -310,7 +310,7 @@ require (
 	golang.org/x/crypto v0.58.0
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20240208163226-62c9f1799c91
 	golang.org/x/exp v0.0.0-20260908205506-85c1c2202aba
-	golang.org/x/net v0.61.0
+	golang.org/x/net v0.62.0
 	golang.org/x/oauth2 v0.37.0
 	golang.org/x/sync v0.24.0
 	golang.org/x/sys v0.49.0

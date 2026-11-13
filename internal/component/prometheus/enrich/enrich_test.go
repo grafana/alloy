@@ -11,7 +11,9 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/testappender"
 	prom "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/assert"
@@ -176,8 +178,9 @@ func TestEnricher(t *testing.T) {
 					return ref, nil
 				}))
 
+			dest := testappender.NewCollectingAppender()
 			var entry storage.AppendableV2
-			tt.args.ForwardTo = []storage.AppendableV2{fanout}
+			tt.args.ForwardTo = []storage.AppendableV2{fanout, testappender.ConstantAppendable{Inner: dest}}
 			_, err := New(component.Options{
 				ID:     "1",
 				Logger: util.TestAlloyLogger(t).Slog(),
@@ -199,6 +202,18 @@ func TestEnricher(t *testing.T) {
 
 			err = app.Commit()
 			require.NoError(t, err)
+
+			// ST zeros carry the enriched labels.
+			appV2 := entry.AppenderV2(t.Context())
+			_, err = appV2.Append(0, lbls, 10, 20, 1, nil, nil, storage.AppendV2Options{})
+			require.NoError(t, err)
+			_, err = appV2.Append(0, lbls, 10, 20, 0, &histogram.Histogram{Count: 1, Sum: 1}, nil, storage.AppendV2Options{})
+			require.NoError(t, err)
+			require.NoError(t, appV2.Commit())
+
+			want := labels.FromMap(tt.expectedLabels).String()
+			require.Contains(t, dest.CollectedSTZeroSamples(), want)
+			require.Contains(t, dest.CollectedSTZeroHistograms(), want)
 		})
 	}
 }
