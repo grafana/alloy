@@ -245,6 +245,11 @@ The bullets here are judgment calls the "Steps to update key dependencies" secti
   - Fix: check that the component ships in the latest release before noting it, and skip notes for ones not yet exposed.
   - Example: the `otelcol.receiver.awss3` change was left out of the changelog because the component wasn't in the latest release (#5128).
 
+- **The Alloy stage of an `otelcol` component follows upstream stability, but the bump PR doesn't change it.**
+  - Problem: upstream rates stability per signal and changes it between releases. Alloy has one stage per component, mapped from the highest upstream level among the signals Alloy exposes: development/alpha → experimental, beta → public preview, stable → GA. When upstream moves, it's tempting to change the Alloy stage in the bump PR to match.
+  - Fix: update the upstream stability line in the docs, and leave the stage change for a maintainer to decide in a follow-up. Never downgrade a GA component, because users without the stability flag would break. Existing mismatches are grandfathered in the `otel-stability` tool's `allowlist.txt`. Only add to it with maintainer approval.
+  - Example: most GA `otelcol` components predate the mapping and are beta upstream, like `otelcol.processor.tail_sampling`. They stay GA and are allowlisted.
+
 - **Link component docs to the `OTEL_VERSION` variable, not a hardcoded tag.**
   - Problem: a hardcoded upstream-source tag in component docs rots on every bump.
   - Fix: use `{{< param "OTEL_VERSION" >}}` so the link tracks each bump.
@@ -439,6 +444,10 @@ Use this information to check if any of our components have new arguments and to
 
 We have documentation for our components. If we have new arguments / blocks they should be added to the documentation. If default values changed we should update docs as well. This documentation is stored in md files prefix by component name and must be updated.
 
+Every `otelcol` component doc shows the upstream stability of the component it wraps. Run the `otel-stability` tool and work through its report. Fix the docs lines yourself. Don't change an Alloy stage or add an allowlist entry: list those findings in the output file for a maintainer to decide. See the "Common traps and hard-won lessons" section above.
+
 ### Step 10: Note down important changes
 
 It's important to list changes done in dependencies. Especially breaking changes and changes to default config values. What we note down here should only be user facing changes and not internal implementation details.
+
+An upstream component moving to deprecated or unmaintained is a user-facing change. Note it, even when nothing in Alloy's code changed.

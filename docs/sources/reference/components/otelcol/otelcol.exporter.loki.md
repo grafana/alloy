@@ -16,6 +16,7 @@ title: otelcol.exporter.loki
 
 {{< admonition type="note" >}}
 `otelcol.exporter.loki` is a custom component unrelated to the `lokiexporter` from the OpenTelemetry Collector.
+Upstream stability: none, this component is Alloy only.
 {{< /admonition >}}
 
 The attributes of the OTLP log aren't converted to Loki attributes by default.
