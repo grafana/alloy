@@ -3,21 +3,20 @@ package stages
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"reflect"
-	"regexp"
 	"strings"
 	"time"
 
 	"github.com/alecthomas/units"
+	"github.com/grafana/alloy/internal/component/common/regexp"
+	"github.com/grafana/alloy/syntax"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
 	errDropStageEmptyConfig       = errors.New("drop stage config must contain at least one of `source`, `expression`, `older_than` or `longer_than`")
 	errDropStageInvalidConfig     = errors.New("drop stage config error, `value` and `expression` cannot both be defined at the same time")
-	errDropStageInvalidRegex      = errors.New("drop stage regex compilation error")
 	errDropStageNoSourceWithValue = errors.New("drop stage config must contain `source` if `value` is specified")
 )
 
@@ -37,71 +36,59 @@ type DropConfig struct {
 	Source     string           `alloy:"source,attr,optional"`
 	Value      string           `alloy:"value,attr,optional"`
 	Separator  string           `alloy:"separator,attr,optional"`
-	Expression string           `alloy:"expression,attr,optional"`
+	Expression regexp.Regexp    `alloy:"expression,attr,optional"`
 	OlderThan  time.Duration    `alloy:"older_than,attr,optional"`
 	LongerThan units.Base2Bytes `alloy:"longer_than,attr,optional"`
 }
 
-// validateDropConfig validates the DropConfig for the dropStage
-func validateDropConfig(cfg *DropConfig) (*regexp.Regexp, error) {
-	if cfg == nil ||
-		(cfg.Source == "" && cfg.Expression == "" && cfg.OlderThan == emptyDuration && cfg.LongerThan == emptySize) {
+var (
+	_ syntax.Validator = (*DropConfig)(nil)
+	_ syntax.Defaulter = (*DropConfig)(nil)
+)
 
-		return nil, errDropStageEmptyConfig
+func (c *DropConfig) SetToDefault() {
+	*c = DropConfig{
+		DropReason: defaultDropReason,
+		Separator:  defaultSeparator,
 	}
-	if cfg.DropReason == "" {
-		cfg.DropReason = defaultDropReason
+}
+
+func (c *DropConfig) Validate() error {
+	if c == nil ||
+		(c.Source == "" && c.Expression.IsEmpty() && c.OlderThan == emptyDuration && c.LongerThan == emptySize) {
+
+		return errDropStageEmptyConfig
 	}
-	if cfg.Value != "" && cfg.Expression != "" {
-		return nil, errDropStageInvalidConfig
+	if c.Value != "" && !c.Expression.IsEmpty() {
+		return errDropStageInvalidConfig
 	}
-	if cfg.Separator == "" {
-		cfg.Separator = defaultSeparator
+	if c.Value != "" && c.Source == "" {
+		return errDropStageNoSourceWithValue
 	}
-	if cfg.Value != "" && cfg.Source == "" {
-		return nil, errDropStageNoSourceWithValue
-	}
-	var (
-		expr *regexp.Regexp
-		err  error
-	)
-	if cfg.Expression != "" {
-		if expr, err = regexp.Compile(cfg.Expression); err != nil {
-			return nil, fmt.Errorf("%w: %w", errDropStageInvalidRegex, err)
-		}
-	}
-	// The first step to exclude `value` and fully replace it with the `expression`.
-	// It will simplify code and less confusing for the end-user on which option to choose.
-	if cfg.Value != "" {
-		expr, err = regexp.Compile(fmt.Sprintf("^%s$", regexp.QuoteMeta(cfg.Value)))
-		if err != nil {
-			return nil, fmt.Errorf("%w: %w", errDropStageInvalidRegex, err)
-		}
-	}
-	return expr, nil
+	return nil
 }
 
 var _ entryProcessor = (*dropStage)(nil)
 
 // newDropStage creates a DropStage from config
-func newDropStage(config DropConfig, opts stageOpts) (*dropStage, error) {
-	regex, err := validateDropConfig(&config)
-	if err != nil {
-		return nil, err
+func newDropStage(config DropConfig, opts stageOpts) *dropStage {
+	// The first step to exclude `value` and fully replace it with the `expression`.
+	// It will simplify code and less confusing for the end-user on which option to choose.
+	if config.Value != "" {
+		config.Expression = *regexp.MustCompile("^" + regexp.QuoteMeta(config.Value) + "$")
 	}
 
 	dropCount, err := getDropCountMetric(opts.registerer)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
 	return &dropStage{
 		next:      opts.next,
 		logger:    opts.slogger.With("stage", "drop"),
 		cfg:       &config,
-		regex:     regex,
 		dropCount: dropCount,
-	}, nil
+	}
 }
 
 // dropStage applies Label matchers to determine if the include stages should be run
@@ -109,7 +96,6 @@ type dropStage struct {
 	next      nextFn
 	logger    *slog.Logger
 	cfg       *DropConfig
-	regex     *regexp.Regexp
 	dropCount *prometheus.CounterVec
 }
 
@@ -163,7 +149,7 @@ func (d *dropStage) shouldDrop(e Entry) bool {
 			return false
 		}
 	}
-	if d.cfg.Source != "" && d.regex == nil {
+	if d.cfg.Source != "" && d.cfg.Expression.IsEmpty() {
 		var match bool
 		match = true
 		for _, src := range splitSource(d.cfg.Source) {
@@ -184,8 +170,8 @@ func (d *dropStage) shouldDrop(e Entry) bool {
 		}
 	}
 
-	if d.cfg.Source == "" && d.regex != nil {
-		if !d.regex.MatchString(e.Line) {
+	if d.cfg.Source == "" && !d.cfg.Expression.IsEmpty() {
+		if !d.cfg.Expression.MatchString(e.Line) {
 			// Not a match to the regex, don't drop
 			if debugEnabled(d.logger) {
 				d.logger.Debug("line will not be dropped, the provided regular expression did not match the log line")
@@ -197,7 +183,7 @@ func (d *dropStage) shouldDrop(e Entry) bool {
 		}
 	}
 
-	if d.cfg.Source != "" && d.regex != nil {
+	if d.cfg.Source != "" && !d.cfg.Expression.IsEmpty() {
 		var extractedData []string
 		for _, src := range splitSource(d.cfg.Source) {
 			if e, ok := e.Extracted[src]; ok {
@@ -211,7 +197,7 @@ func (d *dropStage) shouldDrop(e Entry) bool {
 				extractedData = append(extractedData, s)
 			}
 		}
-		if !d.regex.MatchString(strings.Join(extractedData, d.cfg.Separator)) {
+		if !d.cfg.Expression.MatchString(strings.Join(extractedData, d.cfg.Separator)) {
 			// Not a match to the regex, don't drop
 			if debugEnabled(d.logger) {
 				d.logger.Debug("line will not be dropped, the provided regular expression did not match the log line")
