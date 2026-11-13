@@ -1,6 +1,7 @@
 package wal
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -265,6 +266,93 @@ func TestWriter_OldSegmentsAreCleanedUp(t *testing.T) {
 	// Expect last, or "head" segment to still be alive
 	_, err = os.Stat(filepath.Join(dir, "00000001"))
 	require.NoError(t, err)
+}
+
+func TestWriter_ExpiredSegmentsAreCleanedUpAtStartup(t *testing.T) {
+	var (
+		dir           = t.TempDir()
+		logger        = slog.New(slog.DiscardHandler)
+		reg           = prometheus.NewRegistry()
+		maxSegmentAge = time.Hour
+		cfg           = Config{
+			MaxSegmentAge: maxSegmentAge,
+		}
+	)
+
+	wl, err := New(logger, reg, dir)
+	require.NoError(t, err)
+	defer wl.Close()
+
+	writer := NewWriter(logger, NewWriterMetrics(reg), wl, cfg)
+	notifications := make(chan int, 1)
+	writer.SubscribeCleanup(notifySegmentsCleanedFunc(func(num int) {
+		select {
+		case notifications <- num:
+		default:
+		}
+	}))
+
+	// Create two segments and age out the first one, so it is already expired
+	// before the writer starts.
+	require.NoError(t, writer.WriteEntry(loki.Entry{
+		Labels: model.LabelSet{"testing": "log"},
+		Entry: push.Entry{
+			Timestamp: time.Now(),
+			Line:      "line in first segment",
+		},
+	}))
+	_, err = writer.wal.NextSegment()
+	require.NoError(t, err, "error closing current segment")
+	require.NoError(t, writer.WriteEntry(loki.Entry{
+		Labels: model.LabelSet{"testing": "log"},
+		Entry: push.Entry{
+			Timestamp: time.Now(),
+			Line:      "line in last segment",
+		},
+	}))
+	expired := time.Now().Add(-2 * maxSegmentAge)
+	require.NoError(t, os.Chtimes(filepath.Join(dir, "00000000"), expired, expired))
+
+	// The cleanup interval for this configuration is in the order of minutes,
+	// so if the expired segment goes away within seconds, it must have been
+	// removed by the cleanup pass run at startup.
+	writer.Start()
+	defer writer.Stop()
+
+	require.Eventually(t, func() bool {
+		_, err := os.Stat(filepath.Join(dir, "00000000"))
+		return errors.Is(err, os.ErrNotExist)
+	}, 5*time.Second, 50*time.Millisecond, "expired segment was not cleaned up at startup")
+
+	select {
+	case num := <-notifications:
+		require.Equal(t, 0, num)
+	default:
+		t.Error("expected a segment reclaimed notification")
+	}
+
+	// Expect last, or "head" segment to still be alive
+	_, err = os.Stat(filepath.Join(dir, "00000001"))
+	require.NoError(t, err)
+}
+
+func TestWriter_CleanupIntervalIsCapped(t *testing.T) {
+	cases := []struct {
+		maxSegmentAge time.Duration
+		expected      time.Duration
+	}{
+		{maxSegmentAge: 0, expected: minimumCleanSegmentsEvery},
+		{maxSegmentAge: 5 * time.Second, expected: minimumCleanSegmentsEvery},
+		{maxSegmentAge: time.Minute, expected: 6 * time.Second},
+		{maxSegmentAge: time.Hour, expected: 5 * time.Minute},
+		{maxSegmentAge: 24 * time.Hour, expected: 5 * time.Minute},
+		{maxSegmentAge: 7 * 24 * time.Hour, expected: 5 * time.Minute},
+	}
+	for _, testCase := range cases {
+		t.Run(fmt.Sprintf("max segment age %v", testCase.maxSegmentAge), func(t *testing.T) {
+			require.Equal(t, testCase.expected, cleanupInterval(testCase.maxSegmentAge))
+		})
+	}
 }
 
 func TestWriter_NoSegmentIsCleanedUpIfTheresOnlyOne(t *testing.T) {
