@@ -100,6 +100,30 @@ func TestVM_Stdlib(t *testing.T) {
 			[]map[string]any{{"a": 1, "b": 4.2, "c": 5}, {"d": "asdf"}, {"a": 2, "z": "z1", "b": "5.3"}},
 		},
 		{
+			// An unmatched element from the first array is passed through once, even if the second array has several elements.
+			"array.combine_maps",
+			`array.combine_maps([{"a" = "1", "x" = "l"}], [{"a" = "2"}, {"a" = "3"}], ["a"], true)`,
+			[]map[string]any{{"a": "1", "x": "l"}},
+		},
+		{
+			// A matched element from the first array isn't also passed through unmerged.
+			"array.combine_maps",
+			`array.combine_maps([{"a" = "1", "x" = "l"}], [{"a" = "1", "y" = "r"}, {"a" = "2"}], ["a"], true)`,
+			[]map[string]any{{"a": "1", "x": "l", "y": "r"}},
+		},
+		{
+			// Elements from the first array are passed through when the second array is empty.
+			"array.combine_maps",
+			`array.combine_maps([{"a" = "1", "x" = "l"}], [], ["a"], true)`,
+			[]map[string]any{{"a": "1", "x": "l"}},
+		},
+		{
+			// Each element from the first array appears once: merged if it matched, unmerged otherwise.
+			"array.combine_maps",
+			`array.combine_maps([{"a" = "1"}, {"a" = "2"}], [{"a" = "1", "y" = "r"}, {"a" = "3"}, {"a" = "4"}], ["a"], true)`,
+			[]map[string]any{{"a": "1", "y": "r"}, {"a": "2"}},
+		},
+		{
 			// Not enough matches for a join.
 			// The "a" value has differing types.
 			"array.combine_maps",

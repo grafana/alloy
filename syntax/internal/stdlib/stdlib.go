@@ -412,8 +412,9 @@ var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Va
 	}
 
 	for i := 0; i < args[0].Len(); i++ {
+		left := convertIfNeeded(args[0].Index(i))
+		matched := false
 		for j := 0; j < args[1].Len(); j++ {
-			left := convertIfNeeded(args[0].Index(i))
 			right := convertIfNeeded(args[1].Index(j))
 
 			if shouldJoin(left, right, args[2]) {
@@ -422,9 +423,12 @@ var combineMaps = value.RawFunction(func(funcValue value.Value, args ...value.Va
 					return value.Null, err
 				}
 				res = append(res, val)
-			} else if passthroughLHS {
-				res = append(res, args[0].Index(i))
+				matched = true
 			}
+		}
+		// Pass the left element through once if it matched nothing.
+		if passthroughLHS && !matched {
+			res = append(res, args[0].Index(i))
 		}
 	}
 
