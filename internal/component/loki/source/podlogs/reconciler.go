@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/grafana/ckit/shard"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	promlabels "github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -21,8 +22,10 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source/kubernetes/kubetail"
 	monitoringv1alpha2 "github.com/grafana/alloy/internal/component/loki/source/podlogs/internal/apis/monitoring/v1alpha2"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/cluster"
 )
 
@@ -61,9 +64,10 @@ const (
 // The reconciler reconciles the state of PodLogs on Kubernetes with targets to
 // collect logs from.
 type reconciler struct {
-	log     *slog.Logger
-	tailer  *kubetail.Manager
-	cluster cluster.Cluster
+	log       *slog.Logger
+	tailer    *kubetail.Manager
+	cluster   cluster.Cluster
+	pipelines *pipelineCache
 
 	reconcileMut             sync.RWMutex
 	podLogsSelector          labels.Selector
@@ -80,11 +84,12 @@ type reconciler struct {
 
 // newReconciler creates a new reconciler which synchronizes targets with the
 // provided tailer whenever Reconcile is called.
-func newReconciler(l *slog.Logger, tailer *kubetail.Manager, cluster cluster.Cluster) *reconciler {
+func newReconciler(l *slog.Logger, tailer *kubetail.Manager, cluster cluster.Cluster, registerer prometheus.Registerer, minStability featuregate.Stability, out chan<- loki.Entry) *reconciler {
 	return &reconciler{
-		log:     l,
-		tailer:  tailer,
-		cluster: cluster,
+		log:       l,
+		tailer:    tailer,
+		cluster:   cluster,
+		pipelines: newPipelineCache(l, registerer, minStability, out),
 
 		podLogsSelector:          labels.Everything(),
 		podLogsNamespaceSelector: labels.Everything(),
@@ -155,6 +160,7 @@ func (r *reconciler) getShouldDistribute() bool {
 func (r *reconciler) Reconcile(ctx context.Context, cli client.Client) error {
 	var newDebugInfo []DiscoveredPodLogs
 	var newTasks []*kubetail.Target
+	seen := make(map[client.ObjectKey]struct{})
 
 	listOpts := []client.ListOption{
 		client.MatchingLabelsSelector{Selector: r.podLogsSelector},
@@ -178,6 +184,7 @@ func (r *reconciler) Reconcile(ctx context.Context, cli client.Client) error {
 		}
 
 		targets, discoveredPodLogs := r.reconcilePodLogs(ctx, cli, podLogs)
+		seen[key] = struct{}{}
 
 		newTasks = append(newTasks, targets...)
 		newDebugInfo = append(newDebugInfo, discoveredPodLogs)
@@ -190,6 +197,9 @@ func (r *reconciler) Reconcile(ctx context.Context, cli client.Client) error {
 
 	if err := r.tailer.SyncTargets(ctx, newTasks); err != nil {
 		r.log.Error("failed to apply new tailers to run", "err", err)
+	} else {
+		// Stale tailers have exited, so nothing uses the dropped pipelines.
+		r.pipelines.retain(seen)
 	}
 
 	r.debugMut.Lock()
@@ -263,6 +273,13 @@ func (r *reconciler) reconcilePodLogs(ctx context.Context, cli client.Client, po
 	if err != nil {
 		discoveredPodLogs.ReconcileError = fmt.Sprintf("invalid relabelings: %s", err)
 		r.log.Error("failed to reconcile PodLogs", "operation", "convert relabelings", "key", key, "err", err)
+		return targets, discoveredPodLogs
+	}
+
+	pipeline, err := r.pipelines.get(podLogs)
+	if err != nil {
+		discoveredPodLogs.ReconcileError = fmt.Sprintf("invalid pipeline: %s", err)
+		r.log.Error("failed to reconcile PodLogs", "operation", "build pipeline", "key", key, "err", err)
 		return targets, discoveredPodLogs
 	}
 
@@ -355,6 +372,9 @@ func (r *reconciler) reconcilePodLogs(ctx context.Context, cli client.Client, po
 			}
 
 			target := kubetail.NewTarget(targetLabels.Copy(), finalLabels, preserveMetaLabels)
+			if pipeline != nil {
+				target = target.WithConsumer(pipeline.id, pipeline.consumer)
+			}
 			if processedLabels.Len() != 0 {
 				targets = append(targets, target)
 			}
