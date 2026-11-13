@@ -11,3 +11,38 @@ Error: main.alloy:21:15: error parsing regexp: missing closing ]: `[unclosed`
 21 |         firstline = "[unclosed"
    |                     ^^^^^^^^^^^
 22 |     }
+
+Error: main.alloy:29:14: selector cannot be empty
+
+28 |     stage.match {
+29 |         selector = ""
+   |                    ^^
+30 | 
+
+Error: main.alloy:37:14: selector must contain at least one matcher
+
+36 |     stage.match {
+37 |         selector = "{}"
+   |                    ^^^^
+38 | 
+
+Error: main.alloy:45:14: parse error at line 1, col 11: syntax error: unexpected $end, expecting } or ,
+
+44 |     stage.match {
+45 |         selector = "{app=\"foo\""
+   |                    ^^^^^^^^^^^^^^
+46 | 
+
+Error: main.alloy:53:14: unsupported stage in selector: | json
+
+52 |     stage.match {
+53 |         selector = "{app=\"foo\"} | json"
+   |                    ^^^^^^^^^^^^^^^^^^^^^^
+54 | 
+
+Error: main.alloy:61:14: unsupported line filter in selector: |> "<_>"
+
+60 |     stage.match {
+61 |         selector = "{app=\"foo\"} |> \"<_>\""
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+62 | 

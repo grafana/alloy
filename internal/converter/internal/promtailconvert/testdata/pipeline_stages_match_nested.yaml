@@ -5,18 +5,23 @@ scrape_configs:
     pipeline_stages:
       - match:
           pipeline_name: one
-          selector: foobar
-          action: drop
+          selector: '{app="one"}'
+          action: keep
           drop_counter_reason: "nope"
           stages:
             - docker: {}
             - match:
                 pipeline_name: two
-                selector: foobar_two
-                action: drop
+                selector: '{app="two"}'
+                action: keep
                 drop_counter_reason: "nope_two"
                 stages:
                   - cri: { }
+      - match:
+          pipeline_name: three
+          selector: '{app="three"}'
+          action: drop
+          drop_counter_reason: "nope_three"
 
 
     kubernetes_sd_configs:

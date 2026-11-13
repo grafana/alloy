@@ -23,3 +23,56 @@ loki.process "invalid_regex" {
 		firstline = "[unclosed"
 	}
 }
+
+loki.process "invalid_selector" {
+	forward_to = []
+
+	stage.match {
+		selector = ""
+
+		stage.label_drop {
+			values = ["unused"]
+		}
+	}
+
+	stage.match {
+		selector = "{}"
+
+		stage.label_drop {
+			values = ["unused"]
+		}
+	}
+
+	stage.match {
+		selector = "{app=\"foo\""
+
+		stage.label_drop {
+			values = ["unused"]
+		}
+	}
+
+	stage.match {
+		selector = "{app=\"foo\"} | json"
+
+		stage.label_drop {
+			values = ["unused"]
+		}
+	}
+
+	stage.match {
+		selector = "{app=\"foo\"} |> \"<_>\""
+
+		stage.label_drop {
+			values = ["unused"]
+		}
+	}
+
+	stage.match {
+		selector = "{app=\"foo\"}"
+		action   = "drop"
+
+		stage.label_drop {
+			values = ["unused"]
+		}
+	}
+}

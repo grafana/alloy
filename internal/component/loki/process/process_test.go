@@ -969,10 +969,8 @@ func TestComponent_UpdateInvalidConfig(t *testing.T) {
 		ForwardTo: []loki.LogsReceiver{collector.Receiver()},
 		Stages: []stages.StageConfig{
 			{
-				MatchConfig: &stages.MatchConfig{
-					// {} is not a valid selector.
-					Selector: "{}",
-				},
+				// label_drop requires at least one value.
+				LabelDropConfig: &stages.LabelDropConfig{},
 			},
 		},
 	})
