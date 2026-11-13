@@ -684,6 +684,7 @@ ConfigMap and Secret events are points in time with the following values:
 | `updated` | `Updated` | A compared field of the object changes. |
 
 Deleting a ConfigMap or Secret doesn't emit an event.
+Updates of an object that's being deleted, such as the removal of its finalizers, don't emit events either.
 The `event.id` is a deterministic hash of the cluster UID, object UID, resource version, and event type.
 
 `change.diff` contains the object [snapshots](#snapshots). These events have no `change.context`.

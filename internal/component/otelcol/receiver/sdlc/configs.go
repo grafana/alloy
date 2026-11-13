@@ -212,13 +212,14 @@ func configMeta(obj any) (metav1.ObjectMeta, bool) {
 
 // observeConfig is the single entry point for ConfigMap and Secret changes, and
 // applies exclusions. An update that leaves the scope of exclude rules reports
-// nothing; later updates compare against it.
+// nothing; later updates compare against it. Deletion isn't reported, including
+// the updates that remove finalizers from an object being deleted.
 func (c *controller) observeConfig(kind configKind, old, obj any, initial bool) {
 	if initial {
 		return
 	}
 	after, ok := configMeta(obj)
-	if !ok || c.opts.exclude.excludes(kind.resourceType, &after) {
+	if !ok || after.DeletionTimestamp != nil || c.opts.exclude.excludes(kind.resourceType, &after) {
 		return
 	}
 	afterSnapshot := kind.snapshot(obj)

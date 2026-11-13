@@ -214,10 +214,21 @@ func TestSecretMetadataOnlyAndInferredDataChange(t *testing.T) {
 	require.Zero(t, c.queue.Len())
 }
 
-func TestConfigEmptyValues(t *testing.T) {
+func TestConfigDeletionAndEmptyValues(t *testing.T) {
 	c := testController(t)
 	kind := newConfigKind(configMapKind, contentAll)
 	old := transformed(t, true, configMapFixture())
+	// Removing finalizers from an object being deleted isn't reported.
+	deleting := configMapFixture()
+	deleting.ResourceVersion = "2"
+	deleting.DeletionTimestamp = &metav1.Time{Time: time.Unix(100, 0)}
+	deleting.Finalizers = []string{"example.com/cleanup"}
+	c.observeConfig(kind, old, transformed(t, true, deleting), false)
+	deleted := deleting.DeepCopy()
+	deleted.ResourceVersion = "3"
+	deleted.Finalizers = nil
+	c.observeConfig(kind, transformed(t, true, deleting), transformed(t, true, deleted), false)
+	require.Zero(t, c.queue.Len())
 	// Missing and empty values are the same state.
 	empty := configMapFixture()
 	empty.ResourceVersion = "2"
