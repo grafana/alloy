@@ -292,7 +292,7 @@ If you forget to escape, you get `unknown escape sequence` errors.
 {{< /admonition >}}
 
 {{< admonition type="note" >}}
-Refer to [Limit to only Pods on the same node][discovery.kubernetes_samenode] for more information about restricting to Pods on the same node.
+Refer to [Limit to only Pods on the same node](../../reference/components/discovery/discovery.kubernetes/#limit-to-only-pods-on-the-same-node) for more information about restricting to Pods on the same node.
 {{< /admonition >}}
 
 ### Kubernetes Cluster Events
@@ -349,7 +349,6 @@ Replace the following values:
 
 [Loki]: https://grafana.com/oss/loki/
 [discovery.kubernetes]: ../../reference/components/discovery/discovery.kubernetes/
-[discovery.kubernetes_samenode]: ../../reference/components/discovery/discovery.kubernetes/#limit-to-only-pods-on-the-same-node
 [loki.write]: ../../reference/components/loki/loki.write/
 [local.file_match]: ../../reference/components/local/local.file_match/
 [loki.source.file]: ../../reference/components/loki/loki.source.file/

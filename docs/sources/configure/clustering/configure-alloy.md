@@ -12,7 +12,7 @@ You can enable clustering in {{< param "PRODUCT_NAME" >}} with Helm chart settin
 
 {{< admonition type="note" >}}
 Cluster mode in {{< param "PRODUCT_NAME" >}} allows instances to discover each other and form a cluster.
-To distribute workload, you must also [enable clustering in individual components][distribute-workload].
+To distribute workload, you must also [enable clustering in individual components](../distribute-workload/).
 {{< /admonition >}}
 
 ## Configure clustering with a Helm chart
