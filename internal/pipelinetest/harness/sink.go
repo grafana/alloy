@@ -104,6 +104,25 @@ func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
 	promrecv := alloyprom.NewInterceptor(
 		nil,
 		alloyprom.WithComponentID(opts.ID),
+		alloyprom.WithAppendV2Hook(func(_ storage.SeriesRef, l labels.Labels, _, t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, opts storage.AppendV2Options, _ storage.AppenderV2) (storage.SeriesRef, error) {
+			if h != nil || fh != nil {
+				s.appendPrometheusSample(PrometheusSample{
+					Labels:    l.Copy(),
+					Timestamp: timestampToTime(t),
+					Histogram: toFloatHistogram(h, fh),
+				})
+			} else {
+				s.appendPrometheusSample(PrometheusSample{
+					Labels:    l.Copy(),
+					Timestamp: timestampToTime(t),
+					Value:     v,
+				})
+			}
+			if opts.Metadata != (metadata.Metadata{}) {
+				s.storePrometheusMetadata(l, opts.Metadata)
+			}
+			return 0, nil
+		}),
 		alloyprom.WithAppendHook(func(_ storage.SeriesRef, l labels.Labels, t int64, v float64, _ storage.Appender) (storage.SeriesRef, error) {
 			s.appendPrometheusSample(PrometheusSample{
 				Labels:    l.Copy(),

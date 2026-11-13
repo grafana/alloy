@@ -17,6 +17,11 @@ import (
 // live debugging data using the provided debugDataPublisher if live debugging is active.
 func NewInterceptor(componentID livedebugging.ComponentID, debugDataPublisher livedebugging.DebugDataPublisher, appendable storage.AppendableV2) *prometheus.Interceptor {
 	return prometheus.NewInterceptor(appendable,
+		prometheus.WithAppendV2Hook(func(globalRef storage.SeriesRef, l labels.Labels, st, t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, opts storage.AppendV2Options, next storage.AppenderV2) (storage.SeriesRef, error) {
+			newRef, nextErr := next.Append(globalRef, l, st, t, v, h, fh, opts)
+			prometheus.PublishAppendV2LiveDebugging(debugDataPublisher, componentID, l, t, v, h, fh, opts)
+			return newRef, nextErr
+		}),
 		prometheus.WithAppendHook(func(globalRef storage.SeriesRef, l labels.Labels, t int64, v float64, next storage.Appender) (storage.SeriesRef, error) {
 			newRef, nextErr := next.Append(globalRef, l, t, v)
 			if debugDataPublisher.IsActive(componentID) {
