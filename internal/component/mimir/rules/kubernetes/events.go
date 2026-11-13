@@ -6,8 +6,10 @@ import (
 	"log/slog"
 	"maps"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/hashicorp/go-multierror"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -310,6 +312,19 @@ func convertCRDRuleGroupToRuleGroup(crd promv1.PrometheusRuleSpec) ([]client.Mim
 	groups, errs := client.Parse(buf)
 	if len(errs) > 0 {
 		return nil, multierror.Append(nil, errs...)
+	}
+
+	// Drop whitespace before the first token of each expression. PromQL ignores
+	// it, but go-yaml can't encode a block scalar that starts with a space or a
+	// blank line correctly when it is nested in a list, and Mimir uses go-yaml
+	// both to read rule groups and to return them. Without this, Mimir rejects
+	// the rule group, or accepts it and then lists rules as YAML that can't be
+	// parsed, which stops the sync of every rule group
+	// (https://github.com/grafana/alloy/issues/7500).
+	for _, group := range groups.Groups {
+		for i := range group.Rules {
+			group.Rules[i].Expr = strings.TrimLeftFunc(group.Rules[i].Expr, unicode.IsSpace)
+		}
 	}
 
 	return groups.Groups, nil
