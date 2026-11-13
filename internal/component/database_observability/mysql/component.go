@@ -15,6 +15,7 @@ import (
 	"github.com/blang/semver/v4"
 	"github.com/go-sql-driver/mysql"
 	"github.com/grafana/ckit/shard"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/grafana/alloy/internal/util"
@@ -140,9 +141,10 @@ type SetupActorsArguments struct {
 }
 
 type ExplainPlansArguments struct {
-	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
-	PerCollectRatio float64       `alloy:"per_collect_ratio,attr,optional"`
-	InitialLookback time.Duration `alloy:"initial_lookback,attr,optional"`
+	CollectInterval       time.Duration `alloy:"collect_interval,attr,optional"`
+	PerCollectRatio       float64       `alloy:"per_collect_ratio,attr,optional"`
+	InitialLookback       time.Duration `alloy:"initial_lookback,attr,optional"`
+	EnableFullScanMetrics bool          `alloy:"enable_full_scan_metrics,attr,optional"`
 }
 
 type LocksArguments struct {
@@ -964,6 +966,15 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 	return collectors
 }
 
+// explainPlansRegistry returns the registry for the metrics the explain_plans
+// collector derives from its plans, or nil when they are not enabled.
+func (c *Component) explainPlansRegistry(inst *dbInstance) *prometheus.Registry {
+	if !c.args.ExplainPlansArguments.EnableFullScanMetrics {
+		return nil
+	}
+	return inst.registry
+}
+
 // startCollectors attempts to start all of the enabled collectors for a database instance.
 // If one or more collectors fail to start, their errors are reported
 func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVersion string, parsedEngineVersion semver.Version, cloudProviderInfo *database_observability.CloudProvider) error {
@@ -1134,6 +1145,7 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 			InitialLookback: time.Now().Add(-c.args.ExplainPlansArguments.InitialLookback),
 			Logger:          c.opts.Logger,
 			EntryHandler:    entryHandler,
+			Registry:        c.explainPlansRegistry(inst),
 		})
 		if err != nil {
 			logStartError(collector.ExplainPlansCollector, "create", err)
