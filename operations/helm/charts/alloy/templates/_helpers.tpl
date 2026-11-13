@@ -84,6 +84,14 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
+Create the name of the SDK injection controller role to use
+*/}}
+{{- define "alloy.sdkInjectionControllerRoleName" -}}
+{{- $name := (include "alloy.fullname" .) | trunc 38 | trimSuffix "-" -}}
+{{- printf "%s-sdk-injection-controller" $name | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
 Calculate name of image ID to use for "alloy.
 */}}
 {{- define "alloy.imageId" -}}
