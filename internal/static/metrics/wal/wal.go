@@ -759,6 +759,7 @@ func (w *Storage) Close() error {
 
 type appender struct {
 	w                      *Storage
+	opts                   *storage.AppendOptions
 	pendingSeries          []record.RefSeries
 	pendingSamples         []record.RefSample
 	pendingExamplars       []record.RefExemplar
@@ -797,6 +798,17 @@ func (a *appender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v flo
 
 	series.Lock()
 	defer series.Unlock()
+
+	if a.opts != nil && a.opts.DiscardOutOfOrder {
+		if t < series.lastTs {
+			a.w.metrics.totalOutOfOrderSamples.Inc()
+			return 0, storage.ErrOutOfOrderSample
+		}
+		if t == series.lastTs {
+			a.w.metrics.totalOutOfOrderSamples.Inc()
+			return 0, storage.ErrDuplicateSampleForTimestamp
+		}
+	}
 
 	// NOTE(rfratto): always modify pendingSamples and sampleSeries together.
 	a.pendingSamples = append(a.pendingSamples, record.RefSample{
@@ -926,6 +938,17 @@ func (a *appender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int
 	series.Lock()
 	defer series.Unlock()
 
+	if a.opts != nil && a.opts.DiscardOutOfOrder {
+		if t < series.lastTs {
+			a.w.metrics.totalOutOfOrderSamples.Inc()
+			return 0, storage.ErrOutOfOrderSample
+		}
+		if t == series.lastTs {
+			a.w.metrics.totalOutOfOrderSamples.Inc()
+			return 0, storage.ErrDuplicateSampleForTimestamp
+		}
+	}
+
 	switch {
 	case h != nil:
 		// NOTE(rfratto): always modify pendingHistograms and histogramSeries
@@ -1028,9 +1051,8 @@ func (a *appender) UpdateMetadata(ref storage.SeriesRef, labels labels.Labels, m
 	return ref, nil
 }
 
-func (a *appender) SetOptions(_ *storage.AppendOptions) {
-	// TODO: implement this later
-	// TODO: currently only opts.DiscardOutOfOrder is available as an option. It is not supported in Alloy.
+func (a *appender) SetOptions(opts *storage.AppendOptions) {
+	a.opts = opts
 }
 
 // AppendHistogramSTZeroSample appends a synthetic empty histogram at the start
@@ -1224,6 +1246,7 @@ func (a *appender) log() error {
 
 // clearData clears all pending data.
 func (a *appender) clearData() {
+	a.opts = nil
 	a.pendingSeries = a.pendingSeries[:0]
 	a.pendingSamples = a.pendingSamples[:0]
 	a.pendingHistograms = a.pendingHistograms[:0]
