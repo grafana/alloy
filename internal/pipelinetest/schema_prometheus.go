@@ -1,11 +1,15 @@
 package pipelinetest
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
 
+	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/model/metadata"
+	promql_parser "github.com/prometheus/prometheus/promql/parser"
 
 	"github.com/grafana/alloy/internal/pipelinetest/harness"
 )
@@ -14,7 +18,15 @@ import (
 // Count assertions require Count and may optionally include match fields.
 // Contains assertions require at least one match field.
 type PrometheusAssertionSchema struct {
-	Type  string                `yaml:"type"`
+	// Sink, when set, checks only what the sink replacing this exit
+	// component captured, such as loki.write.audit. It must be one of
+	// config.sinks.
+	Sink string `yaml:"sink,omitempty"`
+	// Name optionally describes the assertion in reports.
+	Name string `yaml:"name,omitempty"`
+	// Type is count or contains. When unset, it is count if Count is set and
+	// contains otherwise.
+	Type  string                `yaml:"type,omitempty"`
 	Count *int                  `yaml:"count,omitempty"`
 	Match PrometheusMatchSchema `yaml:"match,omitempty"`
 }
@@ -22,6 +34,10 @@ type PrometheusAssertionSchema struct {
 // PrometheusMatchSchema describes Prometheus sample fields used by declarative
 // assertions. Match a metric by name through the __name__ label.
 type PrometheusMatchSchema struct {
+	// Selector is a PromQL series selector, such as
+	// probe_success{job="blackbox", instance=~"prod-.*"}. The sample's labels
+	// must satisfy every matcher, and may carry others.
+	Selector  string                    `yaml:"selector,omitempty"`
 	Labels    MapMatchSchema            `yaml:"labels,omitempty"`
 	Value     *float64                  `yaml:"value,omitempty"`
 	Timestamp string                    `yaml:"timestamp,omitempty"`
@@ -40,14 +56,14 @@ type PrometheusMetadataSchema struct {
 func buildPrometheusAssertions(assertions []PrometheusAssertionSchema) ([]harness.Assertion, error) {
 	out := make([]harness.Assertion, 0, len(assertions))
 	for _, assertion := range assertions {
-		switch assertion.Type {
-		case "count":
+		switch assertionType(assertion.Type, assertion.Count) {
+		case assertionTypeCount:
 			assert, err := buildPrometheusCountAssertion(assertion)
 			if err != nil {
 				return nil, err
 			}
 			out = append(out, assert)
-		case "contains":
+		case assertionTypeContains:
 			assert, err := buildPrometheusContainsAssertion(assertion)
 			if err != nil {
 				return nil, err
@@ -87,7 +103,15 @@ func buildPrometheusContainsAssertion(assertion PrometheusAssertionSchema) (harn
 }
 
 func buildPrometheusMatchers(match PrometheusMatchSchema) ([]harness.SampleMatcher, error) {
-	matchers := make([]harness.SampleMatcher, 0, 5)
+	matchers := make([]harness.SampleMatcher, 0, 6)
+
+	if match.Selector != "" {
+		selector, err := harness.ParseSelector(match.Selector)
+		if err != nil {
+			return nil, err
+		}
+		matchers = append(matchers, harness.PrometheusSampleSelector(match.Selector, selector))
+	}
 
 	if len(match.Labels.Values) > 0 {
 		partial, err := isPartialMapMatch("labels", match.Labels)
@@ -131,4 +155,94 @@ func toLabels(values map[string]string) labels.Labels {
 	}
 	builder.Sort()
 	return builder.Labels()
+}
+
+// PrometheusInputSchema sends samples to Components, or, with Replace, where
+// an entry component such as prometheus.scrape.default sent its samples. A
+// replaced scrape doesn't add job and instance, so set them if needed.
+type PrometheusInputSchema struct {
+	Components []string                 `yaml:"components,omitempty"`
+	Replace    string                   `yaml:"replace,omitempty"`
+	Samples    []PrometheusSampleSchema `yaml:"samples"`
+}
+
+// PrometheusSampleSchema is one sample. Set Series in text exposition form,
+// such as http_requests_total{code="200"}, or Labels including __name__.
+type PrometheusSampleSchema struct {
+	Series string            `yaml:"series,omitempty"`
+	Labels map[string]string `yaml:"labels,omitempty"`
+	Value  float64           `yaml:"value"`
+	// Timestamp is RFC 3339. It defaults to the time the sample is sent.
+	Timestamp string `yaml:"timestamp,omitempty"`
+	// Type, Help and Unit are optional metadata sent with the sample.
+	Type string `yaml:"type,omitempty"`
+	Help string `yaml:"help,omitempty"`
+	Unit string `yaml:"unit,omitempty"`
+}
+
+func buildPrometheusSamples(samples []PrometheusSampleSchema) ([]harness.InputSample, error) {
+	out := make([]harness.InputSample, 0, len(samples))
+	for i, sample := range samples {
+		var ls labels.Labels
+		switch {
+		case sample.Series != "" && len(sample.Labels) > 0:
+			return nil, fmt.Errorf("sample %d: set series or labels, not both", i)
+		case sample.Series != "":
+			parsed, err := promql_parser.NewParser(promql_parser.Options{}).ParseMetric(sample.Series)
+			if err != nil {
+				return nil, fmt.Errorf("sample %d: parse series %q: %w", i, sample.Series, err)
+			}
+			ls = parsed
+		case len(sample.Labels) > 0:
+			ls = toLabels(sample.Labels)
+		default:
+			return nil, fmt.Errorf("sample %d: series or labels is required", i)
+		}
+		if ls.Get(model.MetricNameLabel) == "" {
+			return nil, fmt.Errorf("sample %d: the series needs a metric name", i)
+		}
+
+		var ts time.Time
+		if sample.Timestamp != "" {
+			parsed, err := time.Parse(time.RFC3339Nano, sample.Timestamp)
+			if err != nil {
+				return nil, fmt.Errorf("sample %d: parse timestamp %q: %w", i, sample.Timestamp, err)
+			}
+			ts = parsed
+		}
+
+		out = append(out, harness.InputSample{
+			Labels:    ls,
+			Value:     sample.Value,
+			Timestamp: ts,
+			Metadata: metadata.Metadata{
+				Type: model.MetricType(sample.Type),
+				Help: sample.Help,
+				Unit: sample.Unit,
+			},
+		})
+	}
+	return out, nil
+}
+
+func producePrometheusInputs(ctx context.Context, alloy *harness.Alloy, ids inputComponents, inputs []PrometheusInputSchema) error {
+	for i, input := range inputs {
+		samples, err := buildPrometheusSamples(input.Samples)
+		if err != nil {
+			return fmt.Errorf("prometheus input %d: %w", i, err)
+		}
+		if len(samples) == 0 {
+			continue
+		}
+		sources, err := ids.sources(alloy, signalMetrics, i)
+		if err != nil {
+			return err
+		}
+		for _, source := range sources {
+			if err := source.SendSamples(ctx, samples...); err != nil {
+				return fmt.Errorf("prometheus input %d: %w", i, err)
+			}
+		}
+	}
+	return nil
 }

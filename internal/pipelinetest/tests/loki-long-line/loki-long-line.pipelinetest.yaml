@@ -1,0 +1,29 @@
+kind: pipelinetest
+version: 1
+
+# line_repeat sends a long line without a large file.
+config: |
+  loki.process "default" {
+    stage.truncate {
+      rule {
+        limit  = "1KiB"
+        suffix = "..."
+      }
+    }
+    forward_to = [pipelinetest.loki.receiver]
+  }
+
+inputs:
+  loki:
+    - components: [loki.process.default.receiver]
+      entries:
+        - labels: {service_name: api}
+          line: "abcd"
+          line_repeat: 75000  # 300 KB
+
+assert:
+  loki:
+    - name: the line is truncated to 1 KiB, with the suffix
+      match:
+        selector: '{service_name="api"}'
+        line_regex: '^(abcd){255}a\.\.\.$'
