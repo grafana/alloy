@@ -91,14 +91,15 @@ The `output` block specifies where to forward collected logs and traces.
 The `server` block configures the HTTP server managed by the `faro.receiver` component.
 Clients using the [Grafana Faro Web SDK][faro-sdk] forward telemetry data to this HTTP server for processing.
 
-| Name                       | Type           | Description                                                     | Default       | Required |
-|----------------------------|----------------|-----------------------------------------------------------------|---------------|----------|
-| `listen_address`           | `string`       | Address to listen for HTTP traffic on.                          | `"127.0.0.1"` | no       |
-| `listen_port`              | `number`       | Port to listen for HTTP traffic on.                             | `12347`       | no       |
-| `cors_allowed_origins`     | `list(string)` | Origins for which cross-origin requests are permitted.          | `[]`          | no       |
-| `api_key`                  | `secret`       | Optional API key to validate client requests with.              | `""`          | no       |
-| `max_allowed_payload_size` | `string`       | Maximum size (in bytes) for client requests.                    | `"5MiB"`      | no       |
-| `include_metadata`         | `bool`         | Propagate incoming connection metadata to downstream consumers. | `false`       | no       |
+| Name                         | Type           | Description                                                     | Default       | Required |
+|------------------------------|----------------|-----------------------------------------------------------------|---------------|----------|
+| `listen_address`             | `string`       | Address to listen for HTTP traffic on.                          | `"127.0.0.1"` | no       |
+| `listen_port`                | `number`       | Port to listen for HTTP traffic on.                             | `12347`       | no       |
+| `cors_allowed_origins`       | `list(string)` | Origins for which cross-origin requests are permitted.          | `[]`          | no       |
+| `cors_allowed_headers`       | `list(string)` | Request headers to allow for cross-origin requests.             | `["content-type", "content-encoding", "idempotency-key", "traceparent", "x-api-key", "x-faro-session-id", "x-scope-orgid"]` | no |
+| `api_key`                    | `secret`       | Optional API key to validate client requests with.              | `""`          | no       |
+| `max_allowed_payload_size`   | `string`       | Maximum size (in bytes) for client requests.                    | `"5MiB"`      | no       |
+| `include_metadata`           | `bool`         | Propagate incoming connection metadata to downstream consumers. | `false`       | no       |
 
 By default, telemetry data is only accepted from applications on the same local network as the browser.
 To accept telemetry data from a wider set of clients, modify the `listen_address` attribute to the IP address of the appropriate network interface to use.
@@ -108,7 +109,36 @@ The default value, `[]`, disables CORS support.
 To support requests from all origins, set `cors_allowed_origins` to `["*"]`.
 The `*` character indicates a wildcard.
 
-You can use the following headers for cross-domain requests: `Content-Type`, `Content-Encoding`, `Idempotency-Key`, `Traceparent`, `X-API-Key`, `X-Faro-Session-Id`, or `X-Scope-OrgID`.
+By default, `faro.receiver` allows the following headers in cross-origin requests: `Content-Type`, `Content-Encoding`, `Idempotency-Key`, `Traceparent`, `X-API-Key`, `X-Faro-Session-Id`, and `X-Scope-OrgID`.
+
+Use `cors_allowed_headers` to change the request headers allowed in cross-origin requests.
+If you omit `cors_allowed_headers`, the component uses the default list.
+A list you set replaces the default list, so include every header your Faro clients send.
+If you set `cors_allowed_headers` to `[]`, the component allows only `Accept`, `Content-Type`, and `X-Requested-With`.
+If you set `cors_allowed_headers` to `["*"]`, the component allows any request header.
+Header names are case-insensitive.
+`cors_allowed_headers` has no effect if `cors_allowed_origins` is empty.
+
+For example, allow an application-specific header from an allowed origin:
+
+```alloy
+faro.receiver "default" {
+  server {
+    cors_allowed_origins = ["https://example.com"]
+    cors_allowed_headers = [
+      "content-type",
+      "content-encoding",
+      "idempotency-key",
+      "traceparent",
+      "x-api-key",
+      "x-faro-session-id",
+      "x-scope-orgid",
+      "X-Custom-Header",
+    ]
+  }
+  output {}
+}
+```
 
 Browser clients can read the `Retry-After` response header when it's present.
 `faro.receiver` doesn't generate this header or deduplicate requests based on `Idempotency-Key`.
