@@ -70,21 +70,39 @@ involving the components you want to work on.
 
 ## Development tools
 
-We use [mise](https://mise.jdx.dev) to manage the versions of the tools used to build, lint, and test
-Alloy. The pinned versions live in the `[tools]` section of [`mise.toml`](../../mise.toml), so a
-single command installs the complete toolchain:
+We use [Nix](https://nixos.org) to manage the versions of the tools used to build, lint, and test
+Alloy. [`flake.nix`](../../flake.nix) defines the development shell, so a single command gives you the
+complete toolchain:
 
-1. [Install mise](https://mise.jdx.dev/installing-mise.html) and [activate it in your
-   shell](https://mise.jdx.dev/installing-mise.html#shells).
+1. [Install Nix](https://nixos.org/download/) with flakes enabled. The shells support Linux (x86_64
+   and aarch64) and Apple Silicon Macs. Intel Macs are not supported, because current nixpkgs no
+   longer supports them.
 2. From the repository root, run:
 
    ```bash
-   mise install
+   nix develop
    ```
 
-mise puts the tools on your `PATH` whenever you're inside the repository, so `make lint`, `make test`,
-and the Helm chart targets run with the same versions as CI. See the `[tools]` section of
-[`mise.toml`](../../mise.toml) for the full list, and run `mise ls` to see what's installed.
+Inside the shell, `make lint`, `make test`, and the Helm chart targets run with the same versions as
+CI. To enter the shell automatically when you `cd` into the repository, install
+[direnv](https://direnv.net) and run `direnv allow` once.
+
+The shell also provides a C compiler and, on Linux, the systemd headers needed by the cgo parts of
+Alloy. You don't need to install the system packages listed in
+[Compiling Alloy](#compiling-alloy) when you build inside the shell.
+
+CI uses the same shells through the [`setup-nix`](../../.github/actions/setup-nix/action.yml) action.
+Each job selects the smallest shell that covers its needs, for example `nix develop .#lint`. Run
+`nix flake show` to list them.
+
+Tool versions are pinned in two places, and Renovate updates both:
+
+- Node.js follows [`internal/web/ui/.nvmrc`](../../internal/web/ui/.nvmrc). Only the major version is
+  honored, and nixpkgs provides the patch version.
+- Everything else, including Go and the Go-based tools such as `golangci-lint` and `govulncheck`, is
+  pinned by [`flake.lock`](../../flake.lock). To update it, run `nix flake update` and commit the
+  result. The tools are deliberately not declared in any `go.mod`, so that their dependencies don't
+  end up in `go.sum` files that security scanners read.
 
 ## Compiling Alloy
 

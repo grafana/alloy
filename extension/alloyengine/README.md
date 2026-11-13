@@ -180,11 +180,10 @@ OCB writes the binary into the `dist.output_path` directory, named after `dist.n
    git checkout <ALLOY_VERSION>
    ```
 
-1. Build the UI assets. We use [mise](https://mise.jdx.dev), which installs the local toolchain, including the Node.js version that Alloy builds with. Versions are pinned in [`mise.toml`](../../mise.toml). Other versions may fail to build.
+1. Build the UI assets. We use [Nix](https://nixos.org), which provides the local toolchain, including the Node.js version that Alloy builds with. Versions are pinned in [`flake.lock`](../../flake.lock). Other versions may fail to build.
 
    ```shell
-   mise install
-   make generate-ui
+   nix develop --command make generate-ui
    ```
 
 1. Point the local module replaces at your local copy of the Alloy source. Find the `replaces` block you copied earlier in your builder config. Change the `github.com/grafana/alloy` and `github.com/grafana/alloy/syntax` paths to point to your local copy. For example, if you cloned Alloy into `/path/to/alloy`, use:

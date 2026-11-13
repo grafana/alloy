@@ -8,4 +8,4 @@ rebuild-tests:
 	bash ./scripts/rebuild-tests.sh
 
 check-helm-docs:
-	@command -v helm-docs >/dev/null 2>&1 || { echo "helm-docs is required. Run 'mise install' from the repository root or install https://github.com/norwoodj/helm-docs." >&2; exit 1; }
+	@command -v helm-docs >/dev/null 2>&1 || { echo "helm-docs is required. Run 'nix develop' from the repository root or install https://github.com/norwoodj/helm-docs." >&2; exit 1; }
