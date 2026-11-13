@@ -1,8 +1,8 @@
 name: Setup Nix devshell
 description: |
-  Install Nix and make one of the devShells defined in flake.nix, including its C
-  toolchain, available to all following steps. Tool versions are pinned by flake.lock,
-  so CI and local development (`nix develop`) use the same versions.
+  Install Nix and put the tools of one of the devShells defined in flake.nix on
+  PATH for all following steps. Tool versions are pinned by flake.lock, so CI and
+  local development (`nix develop`) use the same versions.
 
   Use the smallest devshell that covers the job (see `groups` in flake.nix).
 inputs:
@@ -21,19 +21,8 @@ runs:
         DEVSHELL: ${{ inputs.devshell }}
       run: |
         set -euo pipefail
-        nix print-dev-env "${GITHUB_WORKSPACE}#${DEVSHELL}" --json > "${RUNNER_TEMP}/devshell.json"
-
-        # Nix store entries of the devshell's PATH (tools and standard utilities).
-        jq -r '.variables.PATH.value' "${RUNNER_TEMP}/devshell.json" \
-          | tr ':' '\n' | grep '^/nix/store/' >> "${GITHUB_PATH}"
-
-        # Variables that make the C compiler wrapper work (NIX_CFLAGS_COMPILE, NIX_LDFLAGS,
-        # SDKROOT, ...). The rest of the devshell environment is deliberately not exported:
-        # it contains build sandbox values such as HOME=/homeless-shelter and TMPDIR=/build.
-        jq -r '
-          .variables | to_entries[]
-          | select(.value.type == "exported")
-          | select(.key | test("^(CC|CXX|CPP|LD|AR|AS|NM|RANLIB|STRIP|OBJCOPY|OBJDUMP|READELF|SIZE|STRINGS|PKG_CONFIG.*|NIX_.*|GOTOOLCHAIN|SDKROOT|DEVELOPER_DIR|MACOSX_DEPLOYMENT_TARGET|ZERO_AR_DATE)$"))
-          | select(.key | test("^NIX_(BUILD_|LOG_FD)") | not)
-          | "\(.key)<<__DEVSHELL_EOF__\n\(.value.value)\n__DEVSHELL_EOF__"
-        ' "${RUNNER_TEMP}/devshell.json" >> "${GITHUB_ENV}"
+        # Export only the tools of the devshell, not the shell's standard utilities, so
+        # the runner's own userland and C toolchain (used by cgo) stay untouched.
+        nix develop "${GITHUB_WORKSPACE}#${DEVSHELL}" --command bash -c 'echo "$TOOLS_PATH"' \
+          | tr ':' '\n' >> "${GITHUB_PATH}"
+        echo "GOTOOLCHAIN=local" >> "${GITHUB_ENV}"

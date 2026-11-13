@@ -58,15 +58,15 @@
             all = pkgs.lib.unique (lint ++ ui ++ k8s);
           };
 
-          # The shells include a C toolchain (cgo is on by default), so builds don't depend
-          # on whatever compiler and headers the host has installed.
+          # The shells provide tools only, not a C toolchain: cgo builds keep using the
+          # system compiler and headers (e.g. libsystemd-dev).
           mkShell =
             packages:
-            pkgs.mkShell {
+            pkgs.mkShellNoCC {
               inherit packages;
-              # Headers for the cgo journal reader (loki.source.journal), the equivalent of
-              # libsystemd-dev. Nix's compiler wrapper doesn't see system headers.
-              buildInputs = pkgs.lib.optionals pkgs.stdenv.isLinux [ pkgs.systemd ];
+              # Bin directories of just the tools above (no stdenv utilities). CI puts
+              # these on PATH, see .github/actions/setup-nix.
+              TOOLS_PATH = pkgs.lib.makeBinPath packages;
               # Never let Go download a different toolchain than the one provided here.
               GOTOOLCHAIN = "local";
             };

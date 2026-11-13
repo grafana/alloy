@@ -87,9 +87,8 @@ Inside the shell, `make lint`, `make test`, and the Helm chart targets run with 
 CI. To enter the shell automatically when you `cd` into the repository, install
 [direnv](https://direnv.net) and run `direnv allow` once.
 
-The shell also provides a C compiler and, on Linux, the systemd headers needed by the cgo parts of
-Alloy. You don't need to install the system packages listed in
-[Compiling Alloy](#compiling-alloy) when you build inside the shell.
+The shell only provides tools. It doesn't provide a C toolchain, so you still need the system
+compiler and headers described in [Compiling Alloy](#compiling-alloy).
 
 CI uses the same shells through the [`setup-nix`](../../.github/actions/setup-nix/action.yml) action.
 Each job selects the smallest shell that covers its needs, for example `nix develop .#lint`. Run
