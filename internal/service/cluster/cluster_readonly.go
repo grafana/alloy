@@ -13,11 +13,14 @@ import (
 type clusterState int
 
 const (
-	// stateNotReady is the state when the minimum cluster size is NOT reached and the deadline timer is NOT expired.
+	// stateNotReady is the initial state: the minimum cluster size has NOT been reached yet and the deadline timer
+	// (if any) has NOT expired. It is only ever occupied during startup.
 	stateNotReady clusterState = iota
-	// stateReady is the state when the minimum cluster size is reached. There should be no deadline timer running in this state.
+	// stateReady is the state when the minimum cluster size was reached. There is no deadline timer running in this
+	// state. This state is terminal: if the cluster later shrinks below the minimum size, it stays ready.
 	stateReady
-	// stateDeadlinePassed is the state when the minimum cluster size is NOT reached and the deadline timer is expired.
+	// stateDeadlinePassed is the state when the deadline timer expired before the minimum cluster size was reached.
+	// If the minimum size is reached later, the state moves to stateReady.
 	stateDeadlinePassed
 )
 
@@ -47,8 +50,12 @@ type Cluster interface {
 	// Ready returns true if the cluster is ready to accept traffic; otherwise, false. The cluster is ready to accept
 	// traffic when:
 	// - there is no minimum size requirement specified
-	// - there is a minimum size requirement and the cluster size is >= that size
+	// - there is a minimum size requirement and the cluster size has reached that size at least once
 	// - there is a minimum size requirement and cluster size is too small, but the configured wait deadline has passed.
+	//
+	// The minimum size requirement only gates startup. Once the cluster becomes ready, it stays ready even if the
+	// number of peers later drops below the minimum size, because refusing traffic then would turn a degraded
+	// cluster into a full outage.
 	Ready() bool
 
 	// Enabled returns true if clustering is enabled for this instance of Alloy as a whole, as set
@@ -115,14 +122,19 @@ func newAlloyCluster(sharder shard.Sharder, clusterChangeCallback func(), opts O
 	if !c.opts.EnableClustering || c.opts.MinimumClusterSize == 0 {
 		c.clusterState = stateReady
 		c.clusterReadyGauge.Set(1)
-	} else if opts.MinimumSizeWaitTimeout != 0 {
+		return c
+	}
+
+	// Wait for the minimum cluster size to be reached.
+	c.clusterState = stateNotReady
+	c.clusterReadyGauge.Set(0)
+	if opts.MinimumSizeWaitTimeout != 0 {
 		// Start the deadline timer if the minimum size wait timeout is set
 		c.deadlineTimer = time.AfterFunc(c.opts.MinimumSizeWaitTimeout, func() {
 			c.rwMutex.Lock()
 			defer c.rwMutex.Unlock()
 			c.transitionToStateDeadlinePassed()
 		})
-		c.clusterReadyGauge.Set(0)
 	}
 	return c
 }
@@ -154,20 +166,21 @@ func (c *alloyCluster) updateReadyState() {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	// Number of peers is greater or equal the minimum cluster size = update to ready to admit traffic.
-	if len(c.sharder.Peers()) >= c.opts.MinimumClusterSize {
-		c.transitionToStateReady()
+	// Once the cluster has reached the minimum size, it stays ready. The minimum size is only meant to protect the
+	// instances during startup, when a single instance could otherwise be asked to handle all the traffic. If the
+	// cluster shrinks later, it is safer to keep serving with the remaining instances than to stop serving entirely.
+	if c.clusterState == stateReady {
 		return
 	}
 
-	// The number of peers is less than the minimum and the deadline timer has expired, the cluster is ready to admit
-	// traffic and should remain in this state.
-	if c.clusterState == stateDeadlinePassed {
-		return // Logging and callback already handled in c.transitionToStateDeadlinePassed
+	// Number of peers is greater or equal the minimum cluster size = update to ready to admit traffic. This also
+	// applies when the deadline has already passed.
+	if len(c.sharder.Peers()) >= c.opts.MinimumClusterSize {
+		c.transitionToStateReady()
 	}
 
-	// The number of peers is less than the minimum, and the deadline is NOT expired = update to not ready to admit traffic
-	c.transitionToStateNotReady()
+	// Otherwise the cluster is either still waiting (stateNotReady) or the deadline has passed (stateDeadlinePassed),
+	// in which case it remains ready to admit traffic. Nothing to change in both cases.
 }
 
 // transitionToStateReady is called when the minimum cluster size is reached. rwMutex must be locked for writes by the caller.
@@ -186,33 +199,6 @@ func (c *alloyCluster) transitionToStateReady() {
 	c.log.Info(
 		"minimum cluster size reached, marking cluster as ready to admit traffic",
 		"minimum_cluster_size", c.opts.MinimumClusterSize,
-		"peers_count", len(c.sharder.Peers()),
-	)
-}
-
-// transitionToStateNotReady is called when the minimum cluster size is not reached. rwMutex must be locked for writes by the caller.
-func (c *alloyCluster) transitionToStateNotReady() {
-	if c.clusterState == stateNotReady {
-		return
-	}
-	c.clusterState = stateNotReady
-	c.clusterReadyGauge.Set(0)
-
-	// Restart the deadline timer if it is configured and we just transitioned to not ready
-	if c.opts.MinimumSizeWaitTimeout != 0 {
-		if c.deadlineTimer != nil {
-			c.deadlineTimer.Stop()
-		}
-		c.deadlineTimer = time.AfterFunc(c.opts.MinimumSizeWaitTimeout, func() {
-			c.rwMutex.Lock()
-			defer c.rwMutex.Unlock()
-			c.transitionToStateDeadlinePassed()
-		})
-	}
-	c.log.Warn(
-		"minimum cluster size requirements are not met - marking cluster as not ready for traffic",
-		"minimum_cluster_size", c.opts.MinimumClusterSize,
-		"minimum_size_wait_timeout", c.opts.MinimumSizeWaitTimeout,
 		"peers_count", len(c.sharder.Peers()),
 	)
 }
