@@ -94,6 +94,7 @@ type Arguments struct {
 	Netstat     NetstatConfig     `alloy:"netstat,block,optional"`
 	Perf        PerfConfig        `alloy:"perf,block,optional"`
 	Powersupply PowersupplyConfig `alloy:"powersupply,block,optional"`
+	Qdisc       QdiscConfig       `alloy:"qdisc,block,optional"`
 	Runit       RunitConfig       `alloy:"runit,block,optional"`
 	Supervisord SupervisordConfig `alloy:"supervisord,block,optional"`
 	Sysctl      SysctlConfig      `alloy:"sysctl,block,optional"`
@@ -154,6 +155,8 @@ func (a *Arguments) Convert() *node_integration.Config {
 		PerfDisableCacheProfilers:        a.Perf.DisableCacheProfilers,
 		PerfCacheProfilers:               a.Perf.CacheProfilers,
 		PowersupplyIgnoredSupplies:       a.Powersupply.IgnoredSupplies,
+		QdiscDeviceExclude:               a.Qdisc.DeviceExclude,
+		QdiscDeviceInclude:               a.Qdisc.DeviceInclude,
 		RunitServiceDir:                  a.Runit.ServiceDir,
 		SupervisordURL:                   a.Supervisord.URL,
 		SysctlInclude:                    a.Sysctl.Include,
@@ -177,6 +180,12 @@ func (a *Arguments) SetToDefault() {
 // PowersupplyConfig contains config specific to the powersupply collector.
 type PowersupplyConfig struct {
 	IgnoredSupplies string `alloy:"ignored_supplies,attr,optional"`
+}
+
+// QdiscConfig contains config specific to the qdisc collector.
+type QdiscConfig struct {
+	DeviceExclude string `alloy:"device_exclude,attr,optional"`
+	DeviceInclude string `alloy:"device_include,attr,optional"`
 }
 
 // RunitConfig contains config specific to the runit collector.
