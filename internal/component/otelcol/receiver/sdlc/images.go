@@ -416,10 +416,10 @@ func (c *controller) finalizeImages(ctx context.Context, x *imageCollection) {
 	}
 	event := rolloutEvent(x.workload, x.state, rolloutImagesResolved, rolloutID, x.cutoff)
 	event.summary = imagesSummary(containers, complete)
-	event.diff = func(diff pcommon.Map) {
-		c.putRolloutDiff(diff, x.workload, x.state, rolloutID)
-		diff.PutBool("complete", complete)
-		resolved := diff.PutEmptySlice("resolved_containers")
+	event.context = func(ctx pcommon.Map) {
+		c.putRolloutContext(ctx, x.workload, x.state, rolloutID)
+		ctx.PutBool("complete", complete)
+		resolved := ctx.PutEmptySlice("resolved_containers")
 		for _, container := range containers {
 			m := resolved.AppendEmpty().SetEmptyMap()
 			m.PutStr("name", container.name)

@@ -1,207 +1,200 @@
 package sdlc
 
 import (
+	"crypto/hmac"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
-	"sort"
-	"strconv"
+	"hash"
+	"maps"
+	"reflect"
+	"slices"
+	"strings"
+	"sync"
 
-	"k8s.io/apimachinery/pkg/api/equality"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-const (
-	operationAdded    = "added"
-	operationRemoved  = "removed"
-	operationModified = "modified"
-)
-
-// diffMode is how much of a changed field is reported. Objects can contain
-// credentials, so only fields declared as diffValue report before/after.
-type diffMode int
+// snapshotMode is how a field appears in the snapshots of change.diff. Fields
+// keep their values by default; rules redact fields known to hold credentials
+// and omit fields that only repeat other data.
+type snapshotMode int
 
 const (
-	// diffName reports that the field changed, without values. Fields without
-	// a rule fall back to this, so new Kubernetes fields never export values.
-	diffName diffMode = iota
-	// diffOperation reports whether the field was added, removed or modified.
-	diffOperation
-	// diffValue reports the operation with before/after values.
-	diffValue
-	// diffIgnore never reports the field.
-	diffIgnore
+	// keepValue keeps the value. Fields without a rule use it.
+	keepValue snapshotMode = iota
+	// redactValue keeps the shape of the value and replaces every scalar with
+	// a redacted placeholder.
+	redactValue
+	// redactQuery keeps a URL path and replaces its query string, which can
+	// hold tokens, with a redacted placeholder.
+	redactQuery
+	// omitField leaves the field out.
+	omitField
 )
 
-// diffRule describes how one node of an unstructured object is compared. A
-// rule with fields or each is a branch and is compared child by child;
-// otherwise it's a leaf reported according to mode.
-type diffRule struct {
-	mode diffMode
-	// fields holds rules for named children; each applies to every other map
-	// key, or to every element of a keyBy list.
-	fields map[string]*diffRule
-	each   *diffRule
-	// keyBy compares a list of objects as a map keyed by this field. Elements
-	// that are branches also report their own addition or removal.
-	keyBy string
-	// order, when set on a keyBy list, is the path reported when the same
-	// elements appear in a different order.
-	order string
-	// as replaces the path of this node and its children.
-	as string
-	// format renders a leaf value for comparison and reporting.
-	format func(any) (string, bool)
+var (
+	keepRule        = &snapshotRule{mode: keepValue}
+	redactRule      = &snapshotRule{mode: redactValue}
+	redactQueryRule = &snapshotRule{mode: redactQuery}
+	omitRule        = &snapshotRule{mode: omitField}
+)
+
+// leaderAnnotation is updated by leader election, without a change of the
+// object's configuration.
+const leaderAnnotation = "control-plane.alpha.kubernetes.io/leader"
+
+// ignoredAnnotations are set by tools or Kubernetes and only repeat other data
+// or change without a configuration change. last-applied-configuration holds
+// the full manifest, including Secret data.
+var ignoredAnnotations = []string{
+	lastAppliedAnnotation,
+	leaderAnnotation,
+	revisionAnnotation,
+	"deprecated.daemonset.template.generation",
 }
 
-func (r *diffRule) branch() bool {
-	return r.fields != nil || r.each != nil
-}
-
-// fieldChange is one entry of a change.diff "changes" map.
-type fieldChange struct {
-	Path      string  `json:"path"`
-	Operation string  `json:"operation"`
-	Before    *string `json:"before,omitempty"`
-	After     *string `json:"after,omitempty"`
-}
-
-// diffObjects compares two API objects according to rule. Either may be nil.
-// Changes are sorted by path.
-func diffObjects(rule *diffRule, before, after any) []fieldChange {
-	changes := []fieldChange{}
-	walkDiff(&changes, rule, "", toUnstructured(before), toUnstructured(after))
-	sort.Slice(changes, func(i, j int) bool { return changes[i].Path < changes[j].Path })
-	return changes
-}
-
-func toUnstructured(obj any) any {
-	switch obj := obj.(type) {
-	case nil:
-		return nil
-	case map[string]any:
-		return obj
+// annotationsRule keeps annotations, except ignored annotations.
+var annotationsRule = func() *snapshotRule {
+	rule := &snapshotRule{fields: map[string]*snapshotRule{}}
+	for _, key := range ignoredAnnotations {
+		rule.fields[key] = omitRule
 	}
-	out, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+	return rule
+}()
+
+func ignoredAnnotation(key string) bool {
+	return slices.Contains(ignoredAnnotations, key)
+}
+
+// snapshotRule describes how one node of an unstructured object appears in
+// snapshots. A rule with fields or each applies to a map, child by child; a
+// rule with items applies to every element of a list. Otherwise, mode applies
+// to the whole node.
+type snapshotRule struct {
+	mode snapshotMode
+	// fields holds rules for named children; each applies to every other key.
+	// Children without a rule use keepRule.
+	fields map[string]*snapshotRule
+	each   *snapshotRule
+	items  *snapshotRule
+}
+
+// childRule is the rule of the key child of a map rule.
+func (r *snapshotRule) childRule(key string) *snapshotRule {
+	if child := r.fields[key]; child != nil {
+		return child
+	}
+	if r.each != nil {
+		return r.each
+	}
+	return keepRule
+}
+
+// snapshotMetadata is the metadata snapshots show: identity and descriptive
+// fields, without fields that change with every write or are internal to the
+// API server. Labels and annotations are copied, so the result doesn't change
+// with m.
+func snapshotMetadata(m metav1.Object) metav1.ObjectMeta {
+	return metav1.ObjectMeta{Name: m.GetName(), Namespace: m.GetNamespace(), UID: m.GetUID(),
+		CreationTimestamp: m.GetCreationTimestamp(), Labels: maps.Clone(m.GetLabels()), Annotations: maps.Clone(m.GetAnnotations()),
+		OwnerReferences: m.GetOwnerReferences(), Finalizers: m.GetFinalizers()}
+}
+
+// snapshot is obj, an API object or part of one, redacted according to rule.
+// It's nil when obj is nil or has no fields to show.
+func snapshot[T any](rule *snapshotRule, obj *T) map[string]any {
+	if obj == nil {
+		return nil
+	}
+	// Conversion only fails for types that aren't structs.
+	raw, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
 	if err != nil {
 		return nil
+	}
+	out, _ := snapshotNode(rule, raw).(map[string]any)
+	return out
+}
+
+func snapshotNode(rule *snapshotRule, value any) any {
+	if isEmpty(value) || rule.mode == omitField {
+		return nil
+	}
+	switch {
+	case rule.items != nil:
+		list, ok := value.([]any)
+		if !ok {
+			return redactShape(value)
+		}
+		return nonEmpty(collect(list, func(item any) any { return snapshotNode(rule.items, item) }))
+	case rule.fields != nil || rule.each != nil:
+		m, ok := value.(map[string]any)
+		if !ok {
+			return redactShape(value)
+		}
+		out := make(map[string]any, len(m))
+		for key, child := range m {
+			if v := snapshotNode(rule.childRule(key), child); v != nil {
+				out[key] = v
+			}
+		}
+		return nonEmpty(out)
+	}
+	switch rule.mode {
+	case redactValue:
+		return redactShape(value)
+	case redactQuery:
+		path, ok := value.(string)
+		if !ok {
+			return redactShape(value)
+		}
+		if i := strings.IndexByte(path, '?'); i >= 0 {
+			return path[:i+1] + redacted(path[i+1:])
+		}
+		return path
+	}
+	return value
+}
+
+// redactShape keeps map keys and list elements and replaces every scalar.
+func redactShape(value any) any {
+	switch v := value.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(v))
+		for key, child := range v {
+			if r := redactShape(child); r != nil {
+				out[key] = r
+			}
+		}
+		return nonEmpty(out)
+	case []any:
+		return nonEmpty(collect(v, redactShape))
+	}
+	if isEmpty(value) {
+		return nil
+	}
+	return redacted(value)
+}
+
+// collect maps the elements of list, dropping nil results.
+func collect(list []any, f func(any) any) []any {
+	out := make([]any, 0, len(list))
+	for _, item := range list {
+		if v := f(item); v != nil {
+			out = append(out, v)
+		}
 	}
 	return out
 }
 
-func walkDiff(changes *[]fieldChange, rule *diffRule, path string, before, after any) {
-	if rule.as != "" {
-		path = rule.as
-	}
-	if rule.mode == diffIgnore || sameValue(before, after) {
-		return
-	}
-	switch {
-	case rule.keyBy != "":
-		walkList(changes, rule, path, before, after)
-	case rule.branch():
-		a, _ := before.(map[string]any)
-		b, _ := after.(map[string]any)
-		for _, key := range unionKeys(a, b) {
-			child := rule.fields[key]
-			if child == nil {
-				child = rule.each
-			}
-			childPath := join(path, key)
-			if child == nil {
-				if !sameValue(a[key], b[key]) {
-					*changes = append(*changes, fieldChange{Path: childPath, Operation: operationModified})
-				}
-				continue
-			}
-			walkDiff(changes, child, childPath, a[key], b[key])
-		}
-	default:
-		*changes = append(*changes, leafChange(rule, path, before, after))
-	}
-}
-
-func walkList(changes *[]fieldChange, rule *diffRule, path string, before, after any) {
-	a, aOrder := keyed(before, rule.keyBy)
-	b, bOrder := keyed(after, rule.keyBy)
-	each := rule.each
-	if each == nil {
-		each = &diffRule{}
-	}
-	sameKeys := len(a) == len(b)
-	for _, key := range unionKeys(a, b) {
-		old, had := a[key]
-		next, has := b[key]
-		elemPath := join(path, key)
-		if had != has {
-			sameKeys = false
-			if each.branch() {
-				operation := operationAdded
-				if had {
-					operation = operationRemoved
-				}
-				*changes = append(*changes, fieldChange{Path: elemPath, Operation: operation})
-			}
-		}
-		walkDiff(changes, each, elemPath, old, next)
-	}
-	if rule.order != "" && sameKeys && !equality.Semantic.DeepEqual(aOrder, bOrder) {
-		*changes = append(*changes, fieldChange{Path: rule.order, Operation: operationModified})
-	}
-}
-
-func leafChange(rule *diffRule, path string, before, after any) fieldChange {
-	if rule.mode == diffName {
-		return fieldChange{Path: path, Operation: operationModified}
-	}
-	change := fieldChange{Path: path, Operation: operationModified}
-	switch {
-	case isEmpty(before):
-		change.Operation = operationAdded
-	case isEmpty(after):
-		change.Operation = operationRemoved
-	}
-	if rule.mode == diffValue {
-		change.Before = renderValue(rule, before)
-		change.After = renderValue(rule, after)
-	}
-	return change
-}
-
-func renderValue(rule *diffRule, value any) *string {
-	if isEmpty(value) {
+// nonEmpty is v, or nil when v is empty.
+func nonEmpty[T map[string]any | []any](v T) any {
+	if len(v) == 0 {
 		return nil
 	}
-	if rule.format != nil {
-		s, ok := rule.format(value)
-		if !ok {
-			return nil
-		}
-		return &s
-	}
-	var s string
-	switch v := value.(type) {
-	case string:
-		s = v
-	case bool:
-		s = strconv.FormatBool(v)
-	case int64:
-		s = strconv.FormatInt(v, 10)
-	default:
-		encoded, err := json.Marshal(v)
-		if err != nil {
-			return nil
-		}
-		s = string(encoded)
-	}
-	return &s
-}
-
-// sameValue treats missing, null and empty values as equal, matching
-// equality.Semantic on the typed objects.
-func sameValue(a, b any) bool {
-	if isEmpty(a) || isEmpty(b) {
-		return isEmpty(a) && isEmpty(b)
-	}
-	return equality.Semantic.DeepEqual(a, b)
+	return v
 }
 
 func isEmpty(v any) bool {
@@ -218,36 +211,67 @@ func isEmpty(v any) bool {
 	return false
 }
 
-func keyed(list any, key string) (map[string]any, []string) {
-	items, _ := list.([]any)
-	out := make(map[string]any, len(items))
-	order := make([]string, 0, len(items))
-	for _, item := range items {
-		m, _ := item.(map[string]any)
-		name, _ := m[key].(string)
-		out[name] = m
-		order = append(order, name)
+// typed sets the apiVersion and kind of a snapshot.
+func typed(snapshot map[string]any, kind resourceKind) map[string]any {
+	if snapshot == nil {
+		snapshot = map[string]any{}
 	}
-	return out, order
+	snapshot["apiVersion"], snapshot["kind"] = kind.apiVersion, kind.kind
+	return snapshot
 }
 
-func unionKeys(a, b map[string]any) []string {
-	keys := make([]string, 0, len(a)+len(b))
-	for k := range a {
-		keys = append(keys, k)
-	}
-	for k := range b {
-		if _, ok := a[k]; !ok {
-			keys = append(keys, k)
-		}
-	}
-	sort.Strings(keys)
-	return keys
+// sameState reports whether two snapshots of an object show the same state.
+// The resource version changes with every write, so it's not compared.
+func sameState(a, b map[string]any) bool {
+	return reflect.DeepEqual(withoutVersion(a), withoutVersion(b))
 }
 
-func join(path, key string) string {
-	if path == "" {
-		return key
+func withoutVersion(snapshot map[string]any) map[string]any {
+	m, _ := snapshot["metadata"].(map[string]any)
+	if _, ok := m["resourceVersion"]; !ok {
+		return snapshot
 	}
-	return path + "." + key
+	out, metadata := maps.Clone(snapshot), maps.Clone(m)
+	delete(metadata, "resourceVersion")
+	out["metadata"] = metadata
+	return out
+}
+
+// redactedMarker starts the placeholder that replaces redacted values in
+// snapshots.
+const redactedMarker = "[redacted:"
+
+// redactionKey keys the short hash in placeholders. It's random per process:
+// placeholders in the before and after snapshots of an event show whether a
+// value changed, but can't be checked against guessed values or matched across
+// restarts. Events are built once and retries resend the same record, so a
+// retried event keeps its placeholders.
+var redactionKey = func() []byte {
+	key := make([]byte, 32)
+	if _, err := rand.Read(key); err != nil {
+		panic(err)
+	}
+	return key
+}()
+
+var redactionMACs = sync.Pool{New: func() any { return hmac.New(sha256.New, redactionKey) }}
+
+// redacted is the placeholder for value, such as "[redacted:1a2b3c4d]".
+func redacted(value any) string {
+	mac := redactionMACs.Get().(hash.Hash)
+	defer redactionMACs.Put(mac)
+	mac.Reset()
+	// Strings, the common case, skip JSON encoding. The prefix keeps a string
+	// distinct from another value with the same encoding.
+	if s, ok := value.(string); ok {
+		_, _ = mac.Write([]byte{'s'})
+		_, _ = mac.Write([]byte(s))
+	} else {
+		// Unstructured values always encode.
+		encoded, _ := json.Marshal(value)
+		_, _ = mac.Write([]byte{'j'})
+		_, _ = mac.Write(encoded)
+	}
+	var sum [sha256.Size]byte
+	return redactedMarker + hex.EncodeToString(mac.Sum(sum[:0])[:4]) + "]"
 }

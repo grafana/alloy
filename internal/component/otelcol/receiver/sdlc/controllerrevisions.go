@@ -54,46 +54,20 @@ func (c *controller) observeControllerRevision(cr *appsv1.ControllerRevision) {
 	}
 	c.revisions[owner][cr.Name] = controllerRevision{revision: cr.Revision, hash: cr.Labels[controllerRevisionHashLabel]}
 	if obj := c.workloads[owner]; obj != nil {
-		c.observeRollout(c.revisionedWorkload(obj), false)
+		c.observeRollout(c.workload(obj), false)
 	}
 }
 
-func (c *controller) watchRevisioned(informer cache.SharedIndexInformer) error {
-	_, err := informer.AddEventHandler(cache.ResourceEventHandlerDetailedFuncs{
-		AddFunc:    func(obj any, initial bool) { c.observeRevisioned(obj, !initial, initial) },
-		UpdateFunc: func(_, obj any) { c.observeRevisioned(obj, false, false) },
-		DeleteFunc: c.remove,
-	})
-	return err
-}
-
-// observeRevisioned handles StatefulSet and DaemonSet watch events, keeping the
-// latest object for re-evaluation when its ControllerRevisions change. created
-// marks a workload added after the initial listing.
-func (c *controller) observeRevisioned(obj any, created, initial bool) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	w := c.revisionedWorkload(obj)
-	if w == nil {
-		return
-	}
-	tracked, baseline := c.scope(w, initial)
-	if !tracked {
-		return
-	}
-	c.workloads[string(w.GetUID())] = obj
-	if created && !baseline {
-		c.enqueueCreated(w)
-	}
-	c.observeRollout(w, baseline)
-}
-
-func (c *controller) revisionedWorkload(obj any) workload {
+// workload is obj, a Deployment, StatefulSet or DaemonSet, with its revision
+// resolved. Callers hold c.mu.
+func (c *controller) workload(obj runtime.Object) workload {
 	switch value := obj.(type) {
+	case *appsv1.Deployment:
+		return deploymentWorkload{value}
 	case *appsv1.StatefulSet:
-		return statefulSetWorkload{StatefulSet: value, current: c.revisions[string(value.UID)][value.Status.UpdateRevision]}
+		return statefulSetWorkload{StatefulSet: value, revisioned: revisioned{c.revisions[string(value.UID)][value.Status.UpdateRevision]}}
 	case *appsv1.DaemonSet:
-		return daemonSetWorkload{DaemonSet: value, current: newestRevision(c.revisions[string(value.UID)])}
+		return daemonSetWorkload{DaemonSet: value, revisioned: revisioned{newestRevision(c.revisions[string(value.UID)])}}
 	}
 	return nil
 }

@@ -13,7 +13,7 @@ import (
 // The rollout state machine and image resolution are shared across kinds.
 type workload interface {
 	metav1.Object
-	resourceType() string
+	kind() resourceKind
 	template() corev1.PodTemplateSpec
 	selector() *metav1.LabelSelector
 	// revision is the controller-assigned revision, or 0 if not yet known.
@@ -27,18 +27,18 @@ type workload interface {
 	rolloutStatus() string
 	// desiredPods is how many Pods run the revision once it has rolled out.
 	desiredPods() int32
-	// putDiff adds kind-specific keys to a rollout event's change.diff.
-	putDiff(pcommon.Map)
+	// putContext adds kind-specific keys to a rollout event's change.context.
+	putContext(pcommon.Map)
 	copy() workload
 }
 
 type deploymentWorkload struct{ *appsv1.Deployment }
 
-func (d deploymentWorkload) resourceType() string             { return "deployment" }
+func (d deploymentWorkload) kind() resourceKind               { return deploymentKind }
 func (d deploymentWorkload) template() corev1.PodTemplateSpec { return d.Spec.Template }
 func (d deploymentWorkload) selector() *metav1.LabelSelector  { return d.Spec.Selector }
 func (d deploymentWorkload) revisionHash() string             { return "" }
-func (d deploymentWorkload) putDiff(pcommon.Map)              {}
+func (d deploymentWorkload) putContext(pcommon.Map)           {}
 func (d deploymentWorkload) copy() workload                   { return deploymentWorkload{d.DeepCopy()} }
 func (d deploymentWorkload) desiredPods() int32               { return replicas(d.Spec.Replicas) }
 
@@ -71,6 +71,12 @@ func (d deploymentWorkload) rolloutStatus() string {
 	}
 	return rolloutStarted
 }
+
+// revisioned is the ControllerRevision a StatefulSet or DaemonSet rolls out.
+// current.revision is 0 until it's known.
+type revisioned struct{ current controllerRevision }
+
+func (r revisioned) revision() int64 { return r.current.revision }
 
 // replicas defaults an unset replica count to 1, as the API server does.
 func replicas(n *int32) int32 {

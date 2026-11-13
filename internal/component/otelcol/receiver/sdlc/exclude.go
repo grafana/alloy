@@ -25,13 +25,13 @@ const (
 )
 
 // excludeKinds maps the Kinds that field rules accept to resource types.
-var excludeKinds = map[string]string{
-	"Deployment":  "deployment",
-	"StatefulSet": "statefulset",
-	"DaemonSet":   "daemonset",
-	"ConfigMap":   "configmap",
-	"Secret":      "secret",
-}
+var excludeKinds = func() map[string]string {
+	out := make(map[string]string, len(resourceKinds))
+	for _, kind := range resourceKinds {
+		out[kind.kind] = kind.resourceType
+	}
+	return out
+}()
 
 // ExcludeArguments ignores objects that match all of its rules. Rules follow
 // the filter blocks of otelcol.processor.k8sattributes.

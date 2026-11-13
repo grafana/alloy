@@ -167,53 +167,53 @@ func TestDeploymentExclusion(t *testing.T) {
 	c := testController(t)
 	c.opts.exclude = testExcluder(t, ExcludeArguments{Labels: []ExcludeRule{{Key: "sdlc", Value: "off"}}})
 	d := deploymentFixture()
-	c.observe(d, true)
+	c.observe(d, observedInitial)
 	revision(d, 2)
-	c.observe(d, false)
+	c.observe(d, observedUpdated)
 	take(t, c, "started")
 	require.Contains(t, c.collections, string(d.UID))
 
 	// Excluded mid-rollout: the rollout is dropped without superseded or
 	// images_resolved events, and later revisions stay silent.
 	d.Labels = map[string]string{"sdlc": "off"}
-	c.observe(d, false)
+	c.observe(d, observedUpdated)
 	require.Empty(t, c.rollouts)
 	require.Empty(t, c.collections)
 	revision(d, 3)
-	c.observe(d, false)
+	c.observe(d, observedUpdated)
 	succeed(d)
-	c.observe(d, false)
+	c.observe(d, observedUpdated)
 	require.Zero(t, c.queue.Len())
 
 	// Back in scope, the current revision is a baseline.
 	delete(d.Labels, "sdlc")
-	c.observe(d, false)
+	c.observe(d, observedUpdated)
 	require.Zero(t, c.queue.Len())
 	revision(d, 4)
-	c.observe(d, false)
+	c.observe(d, observedUpdated)
 	_, started := take(t, c, "started")
 	require.Equal(t, "3", started.attrs["grafana.sdlc.change.version.before"])
-	require.Equal(t, true, started.diff["changes_known"])
+	require.Equal(t, true, started.diff["before_known"])
 
 	// Removing an annotation bumps the generation; the settled rollout isn't
 	// mistaken for one in flight.
 	c.opts.exclude = testExcluder(t, ExcludeArguments{Annotations: []ExcludeAnnotationRule{{Key: "skip", Op: "exists"}}})
 	succeed(d)
 	d.Annotations["skip"] = "true"
-	c.observe(d, false)
+	c.observe(d, observedUpdated)
 	require.Empty(t, c.rollouts)
 	delete(d.Annotations, "skip")
 	d.Generation++
-	c.observe(d, false)
+	c.observe(d, observedUpdated)
 	require.Empty(t, c.rollouts, "baselined once settled")
 	d.Status.ObservedGeneration = d.Generation
-	c.observe(d, false)
+	c.observe(d, observedUpdated)
 	require.Zero(t, c.queue.Len())
 	require.Equal(t, rolloutSucceeded, c.rollouts[string(d.UID)].status)
 
 	// Deletion forgets the exclusion.
 	d.Annotations["skip"] = "true"
-	c.observe(d, false)
+	c.observe(d, observedUpdated)
 	require.Contains(t, c.excluded, string(d.UID))
 	c.remove(d)
 	require.Empty(t, c.excluded)
@@ -223,18 +223,18 @@ func TestExcludedImagesAreNotReported(t *testing.T) {
 	c := testController(t)
 	c.opts.exclude = testExcluder(t, ExcludeArguments{Labels: []ExcludeRule{{Key: "sdlc", Value: "off"}}})
 	d := deploymentFixture()
-	c.observe(d, true)
+	c.observe(d, observedInitial)
 	revision(d, 2)
-	c.observe(d, false)
+	c.observe(d, observedUpdated)
 	take(t, c, "started")
 	succeed(d)
-	c.observe(d, false)
+	c.observe(d, observedUpdated)
 	take(t, c, "succeeded")
 	require.Equal(t, 1, c.imageQueue.Len())
 
 	// Excluded after the rollout closed, before its images were resolved.
 	d.Labels = map[string]string{"sdlc": "off"}
-	c.observe(d, false)
+	c.observe(d, observedUpdated)
 	collection, _ := c.imageQueue.Get()
 	c.finalizeImages(t.Context(), collection)
 	c.imageQueue.Done(collection)
@@ -246,31 +246,31 @@ func TestStatefulSetExclusion(t *testing.T) {
 	c.opts.exclude = testExcluder(t, ExcludeArguments{Fields: []ExcludeRule{{Key: "metadata.namespace", Value: "demo"}, {Key: "kind", Value: "StatefulSet"}}})
 	s, cr := statefulSetFixture()
 	c.observeControllerRevision(cr)
-	c.observeRevisioned(s, false, true)
+	c.observe(s, observedInitial)
 	require.Empty(t, c.workloads)
 	updateStatefulSet(s, "web-2")
-	c.observeRevisioned(s, false, false)
+	c.observe(s, observedUpdated)
 	c.observeControllerRevision(ownedRevision(s.UID, "StatefulSet", "web-2", 2))
 	completeStatefulSet(s)
-	c.observeRevisioned(s, false, false)
+	c.observe(s, observedUpdated)
 	require.Zero(t, c.queue.Len())
 
 	// Back in scope, revisions indexed while excluded establish the baseline.
 	c.opts.exclude = excluder{}
-	c.observeRevisioned(s, true, false)
+	c.observe(s, observedAdded)
 	require.Zero(t, c.queue.Len(), "a workload returning to scope isn't created")
 	require.Equal(t, int64(2), c.rollouts[string(s.UID)].revision)
 	updateStatefulSet(s, "web-3")
-	c.observeRevisioned(s, false, false)
+	c.observe(s, observedUpdated)
 	c.observeControllerRevision(ownedRevision(s.UID, "StatefulSet", "web-3", 3))
-	started := takeStatefulSet(t, c, rolloutStarted)
+	started := takeWorkload(t, c, "statefulset", rolloutStarted)
 	require.Equal(t, "2", started.attrs["grafana.sdlc.change.version.before"])
 
 	// A new excluded workload isn't reported as created.
 	c.opts.exclude = testExcluder(t, ExcludeArguments{Fields: []ExcludeRule{{Key: "kind", Value: "StatefulSet"}}})
 	added, _ := statefulSetFixture()
 	added.UID = "s-2"
-	c.observeRevisioned(added, true, false)
+	c.observe(added, observedAdded)
 	require.Zero(t, c.queue.Len())
 }
 
@@ -281,7 +281,7 @@ func TestConfigExclusion(t *testing.T) {
 		ExcludeArguments{Fields: []ExcludeRule{{Key: "kind", Value: "Secret"}, {Key: "metadata.name", Value: "creds"}}},
 	)
 	transform := configWatchTransform(false, c.keepAnnotation)
-	kind := newConfigKind("configmap", contentMetadata)
+	kind := newConfigKind(configMapKind, contentMetadata)
 	observe := func(old, next *metav1.ObjectMeta) {
 		t.Helper()
 		var oldObj any
@@ -314,10 +314,11 @@ func TestConfigExclusion(t *testing.T) {
 	next.Labels["team"] = "c"
 	observe(&released, &next)
 	_, got := takeConfig(t, c, "Updated")
-	require.Equal(t, map[string]any{"operation": "modified", "before": "b", "after": "c"}, got.changes()["metadata.labels.team"])
+	require.Equal(t, "b", got.meta("before")["labels"].(map[string]any)["team"])
+	require.Equal(t, "c", got.meta("after")["labels"].(map[string]any)["team"])
 
 	// Rules apply to the kind they name.
-	secrets := newConfigKind("secret", contentMetadata)
+	secrets := newConfigKind(secretKind, contentMetadata)
 	c.observeConfig(secrets, nil, transformed(t, false, secretFixture()), false)
 	require.Zero(t, c.queue.Len())
 	other := secretFixture()

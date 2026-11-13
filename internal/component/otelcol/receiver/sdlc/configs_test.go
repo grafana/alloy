@@ -1,7 +1,6 @@
 package sdlc
 
 import (
-	"context"
 	"strings"
 	"testing"
 	"time"
@@ -45,19 +44,20 @@ func transformed(t *testing.T, values bool, obj any) any {
 
 func takeConfig(t *testing.T, c *controller, summary string) (*eventBatch, decoded) {
 	t.Helper()
-	require.Positive(t, c.queue.Len())
-	event, _ := c.queue.Get()
-	c.queue.Done(event)
-	got := decode(t, event.logs)
+	event, got := nextEvent(t, c)
 	require.Equal(t, summary, got.summary)
 	require.Equal(t, strings.ToLower(summary), got.resource["grafana.sdlc.provider.resource.change.type"])
-	require.Equal(t, "UNSET", got.attrs["grafana.sdlc.status"])
 	require.Equal(t, "effect", got.attrs["grafana.sdlc.type"])
-	require.Equal(t, event.id, got.attrs["grafana.sdlc.event.id"])
 	require.True(t, got.record.TraceID().IsEmpty(), "config changes aren't traced")
-	if got.diff != nil {
-		require.Len(t, got.diff, 1)
-		require.NotEmpty(t, got.changes())
+	require.Nil(t, got.context, "config changes have no context")
+	if summary == "Updated" {
+		require.Equal(t, true, got.diff["before_known"])
+	} else {
+		require.NotContains(t, got.diff, "before_known")
+		require.NotContains(t, got.diff, "before")
+	}
+	if got.diff["snapshots_omitted"] == nil {
+		require.Contains(t, got.diff, "after")
 	}
 	return event, got
 }
@@ -73,12 +73,13 @@ func TestConfigMapChangesByContentMode(t *testing.T) {
 	for _, content := range []string{contentAll, contentKeys, contentMetadata} {
 		t.Run(content, func(t *testing.T) {
 			c := testController(t)
-			kind := newConfigKind("configmap", content)
+			kind := newConfigKind(configMapKind, content)
 			old := configMapFixture()
 			next := old.DeepCopy()
 			next.ResourceVersion = "2"
 			next.Labels["team"] = "b"
 			next.Annotations["kubectl.kubernetes.io/last-applied-configuration"] = `{"data":{"TOKEN":"rotated-` + fakeSecretValue + `"}}`
+			next.Annotations["owner"] = "b"
 			next.Data["LOG_LEVEL"] = "debug"
 			next.Data["TOKEN"] = "rotated-" + fakeSecretValue
 			delete(next.BinaryData, "cert.der")
@@ -100,34 +101,49 @@ func TestConfigMapChangesByContentMode(t *testing.T) {
 			}, got.resource)
 			require.Equal(t, "1", got.attrs["grafana.sdlc.change.version.before"])
 			require.Equal(t, "2", got.attrs["grafana.sdlc.change.version.after"])
-			changes := got.changes()
-			require.Equal(t, map[string]any{"operation": "modified", "before": "a", "after": "b"}, changes["metadata.labels.team"])
-			require.Equal(t, map[string]any{"operation": "modified"}, changes["metadata.annotations.kubectl.kubernetes.io/last-applied-configuration"])
 			wire := encodedRecord(t, event)
+			before, _ := got.diff["before"].(map[string]any)
+			after, _ := got.diff["after"].(map[string]any)
+			require.Equal(t, map[string]any{"team": "a"}, before["metadata"].(map[string]any)["labels"])
+			require.Equal(t, map[string]any{"team": "b"}, after["metadata"].(map[string]any)["labels"])
+			require.Equal(t, map[string]any{"owner": "b"}, after["metadata"].(map[string]any)["annotations"], "ignored annotations are left out")
+			require.NotContains(t, after["metadata"], "managedFields")
+			require.Equal(t, "ConfigMap", after["kind"])
+			require.Equal(t, "v1", after["apiVersion"])
+			for field, want := range map[string]any{"name": "app", "namespace": "demo", "uid": "cm-1", "resourceVersion": "2"} {
+				require.Equal(t, want, after["metadata"].(map[string]any)[field], field)
+			}
+			require.Equal(t, "1", before["metadata"].(map[string]any)["resourceVersion"])
 			switch content {
 			case contentAll:
-				require.Equal(t, map[string]any{"operation": "modified", "before": "info", "after": "debug"}, changes["data.LOG_LEVEL"])
-				require.Equal(t, map[string]any{"operation": "added", "after": "x"}, changes["data.NEW"])
-				require.Equal(t, map[string]any{"operation": "removed", "before": "AQID"}, changes["binaryData.cert.der"])
+				require.Equal(t, map[string]any{"LOG_LEVEL": "info", "TOKEN": fakeSecretValue}, before["data"])
+				require.Equal(t, map[string]any{"LOG_LEVEL": "debug", "TOKEN": "rotated-" + fakeSecretValue, "NEW": "x"}, after["data"])
+				require.Equal(t, map[string]any{"cert.der": "AQID"}, before["binaryData"])
+				require.NotContains(t, after, "binaryData")
 			case contentKeys:
-				require.Equal(t, map[string]any{"operation": "modified"}, changes["data.LOG_LEVEL"])
-				require.Equal(t, map[string]any{"operation": "added"}, changes["data.NEW"])
-				require.Equal(t, map[string]any{"operation": "removed"}, changes["binaryData.cert.der"])
+				requireRedacted(t, before["data"], "LOG_LEVEL", "TOKEN")
+				requireRedacted(t, after["data"], "LOG_LEVEL", "TOKEN", "NEW")
+				requireRedacted(t, before["binaryData"], "cert.der")
+				// Placeholders show which values changed.
+				for _, key := range []string{"LOG_LEVEL", "TOKEN"} {
+					require.NotEqual(t, before["data"].(map[string]any)[key], after["data"].(map[string]any)[key], key)
+				}
+				require.NotContains(t, after, "binaryData")
 				require.NotContains(t, wire, fakeSecretValue)
 				require.NotContains(t, wire, "debug")
-				require.NotContains(t, wire, redactedPrefix)
+				require.NotContains(t, wire, fingerprintPrefix)
 			case contentMetadata:
-				require.NotContains(t, changes, "data.LOG_LEVEL")
+				require.NotContains(t, before, "data")
+				require.NotContains(t, after, "data")
 				require.NotContains(t, wire, fakeSecretValue)
 			}
-			require.Len(t, changes, map[string]int{contentAll: 6, contentKeys: 6, contentMetadata: 2}[content])
 		})
 	}
 }
 
 func TestConfigBaselineCreatedAndUnchanged(t *testing.T) {
 	c := testController(t)
-	kind := newConfigKind("configmap", contentKeys)
+	kind := newConfigKind(configMapKind, contentKeys)
 	cm := transformed(t, false, configMapFixture())
 	c.observeConfig(kind, nil, cm, true)
 	require.Zero(t, c.queue.Len(), "initial listing is a baseline")
@@ -135,13 +151,10 @@ func TestConfigBaselineCreatedAndUnchanged(t *testing.T) {
 	_, created := takeConfig(t, c, "Created")
 	require.NotContains(t, created.attrs, "grafana.sdlc.change.version.before")
 	require.Equal(t, "1", created.attrs["grafana.sdlc.change.version.after"])
-	require.Equal(t, map[string]any{
-		"data.LOG_LEVEL":       map[string]any{"operation": "added"},
-		"data.TOKEN":           map[string]any{"operation": "added"},
-		"binaryData.cert.der":  map[string]any{"operation": "added"},
-		"metadata.labels.team": map[string]any{"operation": "added", "after": "a"},
-		"metadata.annotations.kubectl.kubernetes.io/last-applied-configuration": map[string]any{"operation": "added"},
-	}, created.changes())
+	after := created.diff["after"].(map[string]any)
+	requireRedacted(t, after["data"], "LOG_LEVEL", "TOKEN")
+	requireRedacted(t, after["binaryData"], "cert.der")
+	require.Equal(t, map[string]any{"team": "a"}, created.meta("after")["labels"])
 	// Relists replay unchanged objects as updates.
 	c.observeConfig(kind, cm, cm, false)
 	require.Zero(t, c.queue.Len())
@@ -149,20 +162,25 @@ func TestConfigBaselineCreatedAndUnchanged(t *testing.T) {
 
 func TestSecretMetadataOnlyAndInferredDataChange(t *testing.T) {
 	c := testController(t)
-	kind := newConfigKind("secret", contentMetadata)
+	kind := newConfigKind(secretKind, contentMetadata)
 	bare := secretFixture()
 	bare.Annotations = nil
 	c.observeConfig(kind, nil, transformed(t, false, bare), false)
 	_, created := takeConfig(t, c, "Created")
 	require.Equal(t, "secret", created.resource["grafana.sdlc.provider.resource.type"])
-	require.NotContains(t, created.attrs, "grafana.sdlc.change.diff", "creation is reported without tracked fields")
+	require.Equal(t, map[string]any{"after": map[string]any{"apiVersion": "v1", "kind": "Secret",
+		"metadata": map[string]any{"name": "creds", "namespace": "demo", "uid": "s-1", "resourceVersion": "1"}}},
+		created.diff, "creation is reported without tracked fields")
 
 	old := transformed(t, false, secretFixture())
 	next := secretFixture()
 	next.ResourceVersion = "2"
 	c.observeConfig(kind, old, transformed(t, false, next), false)
+	// A new resource version without a metadata change is reported, although
+	// the snapshots differ only in their version.
 	_, updated := takeConfig(t, c, "Updated")
-	require.Equal(t, map[string]any{"data": map[string]any{"operation": "modified"}}, updated.changes())
+	require.Equal(t, "1", updated.meta("before")["resourceVersion"])
+	require.Equal(t, "2", updated.meta("after")["resourceVersion"])
 
 	labeled := secretFixture()
 	labeled.ResourceVersion = "3"
@@ -170,16 +188,50 @@ func TestSecretMetadataOnlyAndInferredDataChange(t *testing.T) {
 	labeled.Annotations["kubectl.kubernetes.io/last-applied-configuration"] = `{"data":{"password":"new-` + fakeSecretValue + `"}}`
 	c.observeConfig(kind, transformed(t, false, next), transformed(t, false, labeled), false)
 	event, updated := takeConfig(t, c, "Updated")
-	require.Len(t, updated.changes(), 2, "metadata changes suppress the inferred data change")
-	require.Equal(t, map[string]any{"operation": "added", "after": "true"}, updated.changes()["metadata.labels.rotated"])
+	require.NotContains(t, updated.meta("before"), "labels")
+	require.Equal(t, map[string]any{"rotated": "true"}, updated.meta("after")["labels"])
 	require.NotContains(t, encodedRecord(t, event), fakeSecretValue)
+
+	// Client-side kubectl apply changes the data and last-applied-configuration
+	// together.
+	reapplied := labeled.DeepCopy()
+	reapplied.ResourceVersion = "4"
+	reapplied.Annotations["kubectl.kubernetes.io/last-applied-configuration"] = `{"data":{"password":"newer-` + fakeSecretValue + `"}}`
+	c.observeConfig(kind, transformed(t, false, labeled), transformed(t, false, reapplied), false)
+	event, updated = takeConfig(t, c, "Updated")
+	require.Equal(t, "4", updated.meta("after")["resourceVersion"])
+	require.NotContains(t, encodedRecord(t, event), "newer-")
+
+	// Leader election explains a new resource version.
+	leader := reapplied.DeepCopy()
+	leader.ResourceVersion = "5"
+	leader.Annotations[leaderAnnotation] = `{"holderIdentity":"a"}`
+	c.observeConfig(kind, transformed(t, false, reapplied), transformed(t, false, leader), false)
+	renewed := leader.DeepCopy()
+	renewed.ResourceVersion = "6"
+	renewed.Annotations[leaderAnnotation] = `{"holderIdentity":"b"}`
+	c.observeConfig(kind, transformed(t, false, leader), transformed(t, false, renewed), false)
+	require.Zero(t, c.queue.Len())
+}
+
+func TestConfigEmptyValues(t *testing.T) {
+	c := testController(t)
+	kind := newConfigKind(configMapKind, contentAll)
+	old := transformed(t, true, configMapFixture())
+	// Missing and empty values are the same state.
+	empty := configMapFixture()
+	empty.ResourceVersion = "2"
+	empty.Data["EMPTY"] = ""
+	empty.Annotations["owner"] = ""
+	c.observeConfig(kind, old, transformed(t, true, empty), false)
+	require.Zero(t, c.queue.Len())
 }
 
 func TestConfigWatchTransform(t *testing.T) {
 	out := transformed(t, false, configMapFixture()).(*corev1.ConfigMap)
 	require.Empty(t, out.ManagedFields)
-	require.True(t, strings.HasPrefix(out.Data["TOKEN"], redactedPrefix))
-	require.True(t, strings.HasPrefix(string(out.BinaryData["cert.der"]), redactedPrefix))
+	require.True(t, strings.HasPrefix(out.Data["TOKEN"], fingerprintPrefix))
+	require.True(t, strings.HasPrefix(string(out.BinaryData["cert.der"]), fingerprintPrefix))
 	require.NotContains(t, out.Annotations["kubectl.kubernetes.io/last-applied-configuration"], fakeSecretValue)
 	require.Equal(t, out, transformed(t, false, out), "list pages and the informer both transform")
 	kept := transformed(t, true, configMapFixture()).(*corev1.ConfigMap)
@@ -187,9 +239,9 @@ func TestConfigWatchTransform(t *testing.T) {
 	require.Empty(t, kept.ManagedFields)
 }
 
-func TestConfigOversizedValuesAreOmitted(t *testing.T) {
+func TestConfigOversizedSnapshotsAreOmitted(t *testing.T) {
 	c := testController(t)
-	kind := newConfigKind("configmap", contentAll)
+	kind := newConfigKind(configMapKind, contentAll)
 	old := configMapFixture()
 	next := old.DeepCopy()
 	next.ResourceVersion = "2"
@@ -198,8 +250,7 @@ func TestConfigOversizedValuesAreOmitted(t *testing.T) {
 	old.Data["LARGE"] = strings.Repeat("'", maxEventBytes/2)
 	c.observeConfig(kind, transformed(t, true, old), transformed(t, true, next), false)
 	event, got := takeConfig(t, c, "Updated")
-	require.Equal(t, map[string]any{"operation": "modified"}, got.changes()["data.LARGE"])
-	require.Equal(t, map[string]any{"operation": "modified", "before": "a", "after": "b"}, got.changes()["metadata.labels.team"], "label values are kept")
+	require.Equal(t, map[string]any{"before_known": true, "snapshots_omitted": "size"}, got.diff)
 	size, err := wireSize(event.logs)
 	require.NoError(t, err)
 	require.LessOrEqual(t, size, maxEventBytes)
@@ -218,73 +269,44 @@ func TestWatcherTracksConfigMapsAndSecrets(t *testing.T) {
 	scheme := metadatafake.NewTestScheme()
 	require.NoError(t, metav1.AddMetaToScheme(scheme))
 	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, secretFixture())
-	received := make(chan plog.Logs, 8)
-	c := newController(controllerOptions{clusterUID: "explicit-cluster", client: client, metadata: metadataClient, configMapContent: contentKeys, secrets: true,
-		emit: func(_ context.Context, batch func() eventBatch) error { received <- batch().logs; return nil }})
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	done := make(chan error, 1)
-	go func() { done <- c.run(ctx) }()
-	watching := func(actions func() []string, resource string) func() bool {
-		return func() bool {
-			for _, action := range actions() {
-				if action == "watch/"+resource {
-					return true
-				}
-			}
-			return false
-		}
-	}
-	clientActions := func() []string {
-		out := []string{}
-		for _, action := range client.Actions() {
-			out = append(out, action.GetVerb()+"/"+action.GetResource().Resource)
-		}
-		return out
-	}
-	metadataActions := func() []string {
-		out := []string{}
-		for _, action := range metadataClient.Actions() {
-			out = append(out, action.GetVerb()+"/"+action.GetResource().Resource)
-		}
-		return out
-	}
-	require.Eventually(t, watching(clientActions, "configmaps"), time.Second, 10*time.Millisecond)
-	require.Eventually(t, watching(metadataActions, "secrets"), time.Second, 10*time.Millisecond)
+	received := runWatcher(t, controllerOptions{clusterUID: "explicit-cluster", client: client, metadata: metadataClient, configMapContent: contentKeys, secrets: true})
+	requireWatching(t, client.Actions, "configmaps")
+	requireWatching(t, metadataClient.Actions, "secrets")
 	require.Empty(t, received, "baseline objects are silent")
-	next := func() decoded {
-		t.Helper()
-		select {
-		case logs := <-received:
-			return decode(t, logs)
-		case <-time.After(3 * time.Second):
-			t.Fatal("no event")
-			return decoded{}
-		}
-	}
 
 	cm := configMapFixture()
 	cm.ResourceVersion = "2"
 	cm.Data["LOG_LEVEL"] = "debug"
-	_, err := client.CoreV1().ConfigMaps("demo").Update(ctx, cm, metav1.UpdateOptions{})
+	_, err := client.CoreV1().ConfigMaps("demo").Update(t.Context(), cm, metav1.UpdateOptions{})
 	require.NoError(t, err)
-	got := next()
+	got := nextReceived(t, received)
 	require.Equal(t, "configmap", got.resource["grafana.sdlc.provider.resource.type"])
-	require.Equal(t, map[string]any{"data.LOG_LEVEL": map[string]any{"operation": "modified"}}, got.changes())
+	require.Equal(t, "1", got.meta("before")["resourceVersion"])
+	require.Equal(t, "2", got.meta("after")["resourceVersion"])
 
 	secret := secretFixture()
 	secret.Name, secret.UID, secret.ResourceVersion = "new", "s-2", "5"
 	require.NoError(t, metadataClient.Tracker().Create(corev1.SchemeGroupVersion.WithResource("secrets"), secret, "demo"))
-	got = next()
+	got = nextReceived(t, received)
 	require.Equal(t, "demo/new", got.resource["grafana.sdlc.provider.resource.id"])
 	require.Equal(t, "Created", got.summary)
 
-	require.NoError(t, client.CoreV1().ConfigMaps("demo").Delete(ctx, "app", metav1.DeleteOptions{}))
+	require.NoError(t, client.CoreV1().ConfigMaps("demo").Delete(t.Context(), "app", metav1.DeleteOptions{}))
 	select {
 	case logs := <-received:
 		t.Fatalf("unexpected event on delete: %s", decode(t, logs).summary)
 	case <-time.After(200 * time.Millisecond):
 	}
-	cancel()
-	require.NoError(t, <-done)
+}
+
+// requireRedacted asserts that values holds exactly keys, each with a redacted
+// placeholder.
+func requireRedacted(t *testing.T, values any, keys ...string) {
+	t.Helper()
+	m, ok := values.(map[string]any)
+	require.True(t, ok, "%v", values)
+	require.Len(t, m, len(keys))
+	for _, key := range keys {
+		requirePlaceholder(t, m[key], key)
+	}
 }

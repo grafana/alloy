@@ -265,7 +265,7 @@ func TestExtractedLabelsOnEvents(t *testing.T) {
 
 	d := deploymentFixture()
 	labeled(&d.ObjectMeta)
-	c.observe(d, false)
+	c.observe(d, observedUpdated)
 	drain(t, 2)
 	s, _ := statefulSetFixture()
 	labeled(&s.ObjectMeta)
@@ -284,11 +284,11 @@ func TestExtractedLabelsOnEvents(t *testing.T) {
 
 	// Opted-in annotations stay readable in the cache, but the diff still
 	// reports only the operation.
-	for _, kind := range []configKind{newConfigKind("configmap", contentKeys), newConfigKind("secret", contentMetadata)} {
-		t.Run(kind.name, func(t *testing.T) {
+	for _, kind := range []configKind{newConfigKind(configMapKind, contentKeys), newConfigKind(secretKind, contentMetadata)} {
+		t.Run(kind.resourceType, func(t *testing.T) {
 			var obj, old any
 			transform := configWatchTransform(false, c.opts.extract.keepAnnotation)
-			if kind.name == "configmap" {
+			if kind.resourceType == "configmap" {
 				cm := configMapFixture()
 				old, _ = transform(cm.DeepCopy())
 				labeled(&cm.ObjectMeta)
@@ -304,7 +304,7 @@ func TestExtractedLabelsOnEvents(t *testing.T) {
 			c.observeConfig(kind, old, obj, false)
 			event, got := takeConfig(t, c, "Updated")
 			want(t, got)
-			require.Equal(t, map[string]any{"operation": "added"}, got.changes()["metadata.annotations.owner"])
+			require.Equal(t, "alice", got.meta("after")["annotations"].(map[string]any)["owner"])
 			require.NotContains(t, encodedRecord(t, event), fakeSecretValue)
 		})
 	}

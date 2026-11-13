@@ -12,6 +12,7 @@ title: otelcol.receiver.sdlc
 
 `otelcol.receiver.sdlc` emits Kubernetes Deployment, StatefulSet, and DaemonSet rollouts as `grafana.sdlc.change` events, encoded as OpenTelemetry logs.
 It watches workloads across all namespaces and reports their creation and four rollout transitions: `rollout_started`, `rollout_succeeded`, `rollout_stalled`, and `rollout_superseded`.
+It also reports the runtime images of each new rollout as `rollout_images_resolved`.
 Replica-only scaling doesn't start a rollout or open image collection.
 Shared Pod, ReplicaSet, and ControllerRevision watches collect runtime image identities for newly observed rollouts.
 It also watches ConfigMaps and Secrets across all namespaces and reports their creation and updates.
@@ -171,8 +172,8 @@ The `configmaps` block configures ConfigMap change tracking:
 
 `content` accepts the following values:
 
-* `all`: Report changed keys with their `before` and `after` values.
-* `keys`: Report changed keys without values.
+* `all`: Report the keys with their values in the snapshots.
+* `keys`: Report the keys with redacted placeholders as values in the snapshots. The placeholders show which values changed.
 * `metadata`: Don't report `data` or `binaryData`. The component reads ConfigMaps through the metadata API, so their content never reaches {{< param "PRODUCT_NAME" >}}.
 
 ConfigMaps can contain credentials.
@@ -250,8 +251,7 @@ You can specify this block multiple times.
 `value` is required with `equals` and `not-equals`, and you can't set it with `exists` or `does-not-exist`.
 The `kubectl.kubernetes.io/last-applied-configuration` annotation supports only `exists` and `does-not-exist`.
 
-For ConfigMaps and Secrets, {{< param "PRODUCT_NAME" >}} otherwise keeps only hashes of annotation values in memory.
-It keeps the values of annotations that `equals` and `not-equals` rules compare.
+For ConfigMaps and Secrets, {{< param "PRODUCT_NAME" >}} keeps only hashes of the values of [ignored annotations](#change-details) in memory, unless `equals` and `not-equals` rules compare them.
 
 #### `field` exclude
 
@@ -461,6 +461,7 @@ The `secrets` block configures Secret change tracking:
 
 The component reads Secrets through the metadata API, so Secret content never reaches {{< param "PRODUCT_NAME" >}}.
 The API server still requires `list` and `watch` permissions on Secrets.
+Secret snapshots contain label and annotation values, except for [ignored annotations](#change-details).
 
 ### `statefulsets`
 
@@ -538,7 +539,8 @@ Send events to an ingest endpoint that is specific to your Grafana Cloud stack.
 | `change.summary` | A human-readable description of the change. It doesn't include the resource name. |
 | `change.version.before` | The previous workload revision, or the previous ConfigMap or Secret resource version. Omitted when unknown. |
 | `change.version.after` | The workload revision of this rollout, the workload generation for a workload `created` event, or the ConfigMap or Secret resource version. |
-| `change.diff` | A map of change details, described in the following sections. Omitted when it has no entries. |
+| `change.context` | A map of change details, described in the following sections. Omitted when it has no entries. |
+| `change.diff` | The object [snapshots](#snapshots): `before_known`, `before`, and `after`. Omitted when it has no entries. |
 | `labels` | A map of metadata fields, labels, and annotations of the object, and values set by statements, configured by the [`extract`][extract] block. Omitted when it has no entries. |
 
 The component doesn't set `service.ids`, `environment.id`, `owners`, `actor`, `tracing.enabled`, `logging.enabled`, `change.url`, or `change.git.*`.
@@ -548,7 +550,8 @@ Each rollout event is a span in the rollout's trace.
 ### Workload creation events
 
 When the watcher observes a Deployment, StatefulSet, or DaemonSet that didn't exist in its baseline, it emits an event with `provider.resource.change.type` set to `created` and `change.summary` set to `Created`.
-The event is a point in time and has no `change.diff`.
+The event is a point in time.
+It has no `change.context`. Its `change.diff` contains only `after`, a [snapshot](#snapshots) of the workload it was created as.
 Its first rollout is reported separately by a `rollout_started` event.
 The `event.id` is a deterministic hash of the cluster UID, workload UID, and event type.
 
@@ -581,7 +584,7 @@ They remain open until they succeed or are superseded.
 The other events start when the watcher observed the rollout start, so their duration covers the rollout.
 An in-progress rollout found during startup has no recorded start, and its events are points in time.
 
-Every `change.diff` contains `revision`, `rollout_id`, `namespace`, and `containers`.
+Every rollout event's `change.context` contains `revision`, `rollout_id`, `namespace`, and `containers`.
 When configured, it also contains `cluster_name`.
 Container entries contain `name`, `init`, and the configured `image` from that rollout's template.
 Runtime image identities are reported separately by the image collection event.
@@ -604,41 +607,79 @@ A template change while paused starts a rollout only after the controller applie
 
 ### Change details
 
-The `rollout_started` `change.diff` includes `changes_known`, which indicates whether a previous template is available for comparison.
-When a previous template is available, `changes` describes the changed fields.
-`changes` is omitted when no tracked field changed, including when no previous template is available.
-The baseline is the previously observed rollout template; changes aren't reconstructed from historical ReplicaSets.
+The `rollout_started` `change.diff` contains `before_known`, `before`, and `after`, as described in [Snapshots](#snapshots).
+The baseline is the previously observed rollout template; templates aren't reconstructed from historical ReplicaSets.
+The event doesn't list the changed fields; compare `before` and `after` to find them.
 
-`changes` is a map keyed by field path.
-Container fields use `containers.<name>.<field>`, or `initContainers.<name>.<field>` for init containers.
-Each value contains `operation` (`added`, `removed`, or `modified`) and, for fields that are safe to report, `before` and `after`.
-An omitted value indicates absence.
+Every field of the pod template keeps its value in snapshots by default.
+The following fields can hold credentials, so snapshots replace their values with [redacted placeholders](#snapshots):
 
-The following fields report values:
+* Container `command` and `args`.
+* Environment variable `value`. References in `valueFrom` keep their values.
+* The `exec.command` of probes and lifecycle hooks.
+* The HTTP header `value` of probes and lifecycle hooks.
+* The query string of the `httpGet.path` of probes and lifecycle hooks. The path before `?` keeps its value.
+* The `volumeAttributes` of CSI volumes and the `options` of FlexVolume volumes, which some drivers use for credentials.
 
-* Container `image`, `imagePullPolicy`, `ports`, and `resources.requests.*` and `resources.limits.*`.
-* Pod `metadata.labels.<key>`, `spec.serviceAccountName`, and `spec.nodeSelector.<key>`.
+Pod template annotations other than the ignored annotations keep their values.
+Don't store credentials in pod template annotations.
 
-Environment variables report only which variable changed, as `containers.<name>.env.<NAME>`, without values.
-Other configuration changes report enclosing field names without values, such as `args`, `metadata.annotations`, or `spec.volumes`.
-Container additions and removals use the container path, such as `containers.<name>`.
-Reordering uses `spec.containers.order` or `spec.initContainers.order`.
+The following annotations are left out of snapshots, because tools set them and they repeat other data or change without a configuration change:
+
+* `kubectl.kubernetes.io/last-applied-configuration`, which contains the full manifest, including Secret data.
+* `control-plane.alpha.kubernetes.io/leader`, which leader election updates continuously.
+* `deployment.kubernetes.io/revision` and `deprecated.daemonset.template.generation`, which repeat the revision or generation.
 
 For example, an image update and a CPU request increase produce this `change.diff`:
 
 ```json
 {
-  "revision": 2,
-  "rollout_id": "<hash>",
-  "namespace": "shop",
-  "containers": [{"name": "api", "init": false, "image": "api:v2"}],
-  "changes_known": true,
-  "changes": {
-    "containers.api.image": {"operation": "modified", "before": "api:v1", "after": "api:v2"},
-    "containers.api.resources.requests.cpu": {"operation": "modified", "before": "250m", "after": "500m"}
+  "before_known": true,
+  "before": {
+    "apiVersion": "apps/v1",
+    "kind": "Deployment",
+    "metadata": {"name": "api", "namespace": "shop", "uid": "<uid>"},
+    "spec": {"template": {"spec": {"containers": [{"name": "api", "image": "api:v1", "resources": {"requests": {"cpu": "250m"}}}]}}}
+  },
+  "after": {
+    "apiVersion": "apps/v1",
+    "kind": "Deployment",
+    "metadata": {"name": "api", "namespace": "shop", "uid": "<uid>"},
+    "spec": {"template": {"spec": {"containers": [{"name": "api", "image": "api:v2", "resources": {"requests": {"cpu": "500m"}}}]}}}
   }
 }
 ```
+
+### Snapshots
+
+Events that describe a change of an object include redacted snapshots of the object in `change.diff`:
+
+| Event | `before_known` | `before` | `after` |
+| --- | --- | --- | --- |
+| Workload `created` | Omitted | Omitted | The workload. |
+| `rollout_started` | Whether a previous rollout is available. | The workload at the previous rollout, when known. | The workload at this rollout. |
+| ConfigMap or Secret `created` | Omitted | Omitted | The object. |
+| ConfigMap or Secret `updated` | `true` | The previous object. | The object. |
+
+Every snapshot contains `apiVersion` and `kind`.
+A workload snapshot contains the workload's `metadata`, such as `name`, `namespace`, `uid`, `creationTimestamp`, `labels`, and `annotations`, and its pod template as `spec.template`.
+The workload metadata is recorded when the watcher observes each revision.
+Other workload `spec` fields, such as `replicas`, and `status` aren't included.
+ConfigMap and Secret snapshots contain the object's `metadata`, including `name`, `namespace`, `uid`, `resourceVersion`, and `creationTimestamp`.
+An update emits an event when its snapshots differ in more than `resourceVersion`.
+The exception is objects whose content isn't read, as described in [ConfigMap and Secret events](#configmap-and-secret-events).
+
+Each value of a field that can hold credentials, such as an environment variable value or `args`, is replaced with a placeholder such as `"[redacted:1a2b3c4d]"`, and the shape of the field is kept.
+The placeholder contains a short keyed hash of the value.
+Within one event, equal values have the same placeholder and different values have different placeholders, so comparing `before` and `after` shows which redacted values changed.
+The key is random for each {{< param "PRODUCT_NAME" >}} process, so placeholders can't be checked against guessed values and don't match across restarts or between events from different processes.
+Delivery retries resend the same record, so a retried event keeps its placeholders.
+Ignored annotations, `metadata.managedFields`, and empty values are left out.
+For example, a container with an environment variable appears as `{"name": "api", "image": "api:v2", "env": [{"name": "DATABASE_URL", "value": "[redacted:1a2b3c4d]"}]}`.
+
+A snapshot is omitted when the object has no fields to include.
+When an event with its snapshots would exceed 2 MiB, the component omits `before` and `after` and sets `snapshots_omitted` to `size` in `change.diff`.
+An event that still exceeds 2 MiB, for example because of many large extracted labels, is dropped and logged.
 
 ### ConfigMap and Secret events
 
@@ -647,38 +688,51 @@ ConfigMap and Secret events are points in time with the following values:
 | `provider.resource.change.type` | `change.summary` | Meaning |
 | --- | --- | --- |
 | `created` | `Created` | The watcher observes an object that didn't exist in its baseline. |
-| `updated` | `Updated` | A tracked field of the object changes. |
+| `updated` | `Updated` | A compared field of the object changes. |
 
 Deleting a ConfigMap or Secret doesn't emit an event.
 The `event.id` is a deterministic hash of the cluster UID, object UID, resource version, and event type.
 
-`change.diff` contains only `changes`, a map keyed by field path in the same format as rollout changes.
-A `created` event reports every tracked field as `added`.
-A `created` event has no `change.diff` when the object has no tracked fields, such as a Secret without labels or annotations.
-The following fields are tracked:
+`change.diff` contains the object [snapshots](#snapshots). These events have no `change.context`.
+A `created` event is reported even for an object with no compared fields, such as a Secret without labels or annotations.
 
-* `metadata.labels.<key>`: Includes `before` and `after` values.
-* `metadata.annotations.<key>`: Never includes values. Annotations such as `kubectl.kubernetes.io/last-applied-configuration` can contain the full manifest, including Secret data.
-* `data.<key>` and `binaryData.<key>`: Include `before` and `after` values only when the [`configmaps`][configmaps] `content` is `all`. `binaryData` values are base64-encoded.
-* `metadata.ownerReferences`, `metadata.finalizers`, and `metadata.deletionTimestamp`: Never include values.
-* `immutable`: Includes `before` and `after` values.
+Metadata fields are compared and keep their values, such as `metadata.labels`, `metadata.annotations`, `metadata.ownerReferences`, and `metadata.finalizers`, and so does `immutable`.
+The annotations that rollouts ignore are ignored here too.
+`metadata.resourceVersion` isn't compared, and bookkeeping fields such as `metadata.managedFields` and `metadata.deletionTimestamp` are left out.
+
+`data` and `binaryData` depend on the [`configmaps`][configmaps] `content`:
+
+* `all`: Compared, and snapshots keep their values. `binaryData` values are base64-encoded.
+* `keys`: Compared, and snapshots list the keys with [redacted placeholders](#snapshots) as values.
+* `metadata`: Not read. Snapshots contain only metadata.
+
+Secret data is never read, so Secret snapshots contain only metadata.
 
 For example, a label change and a data change with `content` set to `keys` produce this `change.diff`:
 
 ```json
 {
-  "changes": {
-    "metadata.labels.team": {"operation": "modified", "before": "payments", "after": "checkout"},
-    "data.LOG_LEVEL": {"operation": "modified"}
+  "before_known": true,
+  "before": {
+    "apiVersion": "v1",
+    "kind": "ConfigMap",
+    "metadata": {"name": "app", "namespace": "shop", "uid": "<uid>", "resourceVersion": "41", "labels": {"team": "payments"}},
+    "data": {"LOG_LEVEL": "[redacted:5e0f12aa]"}
+  },
+  "after": {
+    "apiVersion": "v1",
+    "kind": "ConfigMap",
+    "metadata": {"name": "app", "namespace": "shop", "uid": "<uid>", "resourceVersion": "42", "labels": {"team": "checkout"}},
+    "data": {"LOG_LEVEL": "[redacted:c41b7d03]"}
   }
 }
 ```
 
 The metadata API doesn't return content.
-For Secrets, and for ConfigMaps with `content` set to `metadata`, a new resource version without a tracked metadata change is reported as a `data` change with operation `modified`.
-This change is inferred: an update that only changes managed fields is also reported this way, and a content change made together with a metadata change reports only the metadata change.
-
-When `content` is `all` and an event would exceed 2 MiB, the component omits the `data` and `binaryData` values and reports only their operations.
+For Secrets, and for ConfigMaps with `content` set to `metadata`, a new resource version without a metadata change is assumed to be a content change and is reported as `updated`, with snapshots that differ only in `resourceVersion`.
+This includes a client-side `kubectl apply` of new content, which also changes the ignored `kubectl.kubernetes.io/last-applied-configuration` annotation.
+A new resource version with a change of the `control-plane.alpha.kubernetes.io/leader` annotation comes from leader election and isn't reported.
+This change is inferred: an update that only changes managed fields is also reported this way.
 
 ### Resolved container images
 
@@ -686,7 +740,7 @@ The component emits one image event when image collection closes for a newly obs
 Its `provider.resource.change.type` is `rollout_images_resolved`.
 Its `change.summary` is `Resolved runtime images: <container>=<image ID>, ...`, or `Partially resolved runtime images: ...` when `complete` is false.
 Init containers are prefixed with `init:`.
-The summary is limited to 1024 bytes; `change.diff` has the complete list.
+The summary is limited to 1024 bytes; `change.context` has the complete list.
 
 Collection opens when a new revision is observed, remains open while stalled, and
 closes on success or supersession. Initial discovery and later replica scaling
@@ -699,7 +753,7 @@ and init container. At closure, bounded API reads collect available identities
 that may not yet have reached the watches. Lifecycle events don't wait for these
 reads. Pods created after the closing observation are excluded.
 
-The `change.diff` contains the common rollout fields, `complete`, and `resolved_containers`.
+The `change.context` contains the common rollout fields, `complete`, and `resolved_containers`.
 Each resolved container has `name`, `init`, `image` (the requested image),
 and `runtime_image_ids` (a sorted array of distinct Kubernetes image IDs).
 `complete` is false on supersession, failed final reads, missing identities,

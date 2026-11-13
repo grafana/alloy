@@ -49,8 +49,8 @@ func finalizeTest(t *testing.T, c *controller) imagesView {
 	require.Equal(t, "effect", got.attrs["grafana.sdlc.type"])
 	require.Equal(t, stableID(got.rolloutID, rolloutImagesResolved), batch.id)
 	view := imagesView{Revision: got.revision, Summary: got.summary}
-	view.Complete, _ = got.diff["complete"].(bool)
-	for _, raw := range got.diff["resolved_containers"].([]any) {
+	view.Complete, _ = got.context["complete"].(bool)
+	for _, raw := range got.context["resolved_containers"].([]any) {
 		var container struct{ RuntimeImageIDs []string }
 		for _, id := range raw.(map[string]any)["runtime_image_ids"].([]any) {
 			container.RuntimeImageIDs = append(container.RuntimeImageIDs, id.(string))
@@ -63,20 +63,20 @@ func TestImagesFinalReadAndScalingSilence(t *testing.T) {
 	d, rs, p := imageFixtures()
 	c := testController(t)
 	c.opts.client = fake.NewClientset(rs, p)
-	c.observe(d, true)
+	c.observe(d, observedInitial)
 	c.observeReplicaSet(rs)
 	c.observePod(p)
 	require.Empty(t, c.collections)
 	require.Zero(t, c.imageQueue.Len())
 	revision(d, 2)
-	c.observe(d, false)
+	c.observe(d, observedUpdated)
 	take(t, c, "started")
 	// Watch update has no image yet, but the final API read does.
 	pending := p.DeepCopy()
 	pending.Status.ContainerStatuses = nil
 	c.observePod(pending)
 	succeed(d)
-	c.observe(d, false)
+	c.observe(d, observedUpdated)
 	take(t, c, "succeeded")
 	event := finalizeTest(t, c)
 	require.True(t, event.Complete)
@@ -85,7 +85,7 @@ func TestImagesFinalReadAndScalingSilence(t *testing.T) {
 	*d.Spec.Replicas = 2
 	d.Generation++
 	d.Status.ObservedGeneration = d.Generation
-	c.observe(d, false)
+	c.observe(d, observedUpdated)
 	p.UID = "scaled-pod"
 	p.Status.ContainerStatuses[0].ImageID = "registry/web@sha256:arm64"
 	c.observePod(p)
@@ -106,9 +106,9 @@ func TestImagesAggregateDistinctIDsAndOwnerReferences(t *testing.T) {
 	foreign.Status.ContainerStatuses[0].ImageID = "wrong"
 	c := testController(t)
 	c.opts.client = fake.NewClientset(rs, p, p2, foreign)
-	c.observe(d, true)
+	c.observe(d, observedInitial)
 	revision(d, 2)
-	c.observe(d, false)
+	c.observe(d, observedUpdated)
 	take(t, c, "started")
 	// Pod discovery before ReplicaSet discovery must still collect it.
 	c.observePod(p)
@@ -117,7 +117,7 @@ func TestImagesAggregateDistinctIDsAndOwnerReferences(t *testing.T) {
 	c.observePod(p)
 	c.observePod(foreign)
 	succeed(d)
-	c.observe(d, false)
+	c.observe(d, observedUpdated)
 	take(t, c, "succeeded")
 	event := finalizeTest(t, c)
 	require.True(t, event.Complete)
@@ -127,19 +127,19 @@ func TestImagesStalledThenSuperseded(t *testing.T) {
 	d, rs, p := imageFixtures()
 	c := testController(t)
 	c.opts.client = fake.NewClientset(rs, p)
-	c.observe(d, true)
+	c.observe(d, observedInitial)
 	revision(d, 2)
-	c.observe(d, false)
+	c.observe(d, observedUpdated)
 	take(t, c, "started")
 	c.observeReplicaSet(rs)
 	c.observePod(p)
 	d.Status.Conditions = []appsv1.DeploymentCondition{{Type: appsv1.DeploymentProgressing, Status: corev1.ConditionFalse, Reason: "ProgressDeadlineExceeded"}}
-	c.observe(d, false)
+	c.observe(d, observedUpdated)
 	take(t, c, "stalled")
 	require.Len(t, c.collections, 1)
 	require.Zero(t, c.imageQueue.Len())
 	revision(d, 3)
-	c.observe(d, false)
+	c.observe(d, observedUpdated)
 	take(t, c, "superseded")
 	take(t, c, "started")
 	event := finalizeTest(t, c)
@@ -163,9 +163,9 @@ func TestImagesPartialResults(t *testing.T) {
 			if mode == "missing init image" {
 				d.Spec.Template.Spec.InitContainers = []corev1.Container{{Name: "init", Image: "setup:v1"}}
 			}
-			c.observe(d, true)
+			c.observe(d, observedInitial)
 			revision(d, 2)
-			c.observe(d, false)
+			c.observe(d, observedUpdated)
 			take(t, c, "started")
 			c.observeReplicaSet(rs)
 			c.observePod(p)
@@ -176,7 +176,7 @@ func TestImagesPartialResults(t *testing.T) {
 				client.PrependReactor("list", "pods", func(ktesting.Action) (bool, runtime.Object, error) { return true, nil, errors.New("unavailable") })
 			}
 			succeed(d)
-			c.observe(d, false)
+			c.observe(d, observedUpdated)
 			take(t, c, "succeeded")
 			event := finalizeTest(t, c)
 			require.False(t, event.Complete)

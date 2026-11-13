@@ -54,44 +54,72 @@ type changeEvent struct {
 	// resourceChangeType is the provider-defined provider.resource.change.type.
 	resourceChangeType string
 	summary            string
-	diff               func(pcommon.Map)
+	// context adds the event's change.context keys.
+	context func(pcommon.Map)
 	// object is the changed object; its labels and annotations are extracted.
-	object metav1.Object
+	object    metav1.Object
+	snapshots snapshots
+}
+
+// snapshots are the change.diff of an event.
+type snapshots struct {
+	// before and after are redacted snapshots of the object, nil when absent.
+	before, after map[string]any
+	// beforeKnown, when set, reports whether a previous state was available.
+	beforeKnown *bool
+}
+
+var rolloutSummaries = map[string]string{
+	rolloutStarted:   "Rollout started",
+	rolloutSucceeded: "Rollout succeeded",
+	rolloutStalled:   "Rollout stalled: ProgressDeadlineExceeded",
 }
 
 func (c *controller) rolloutID(w workload, revision int64) string {
 	return stableID(c.opts.clusterUID, string(w.GetUID()), strconv.FormatInt(revision, 10))
 }
 
-func (c *controller) enqueue(w workload, state rolloutState, status string, replacement int64, changes []fieldChange, known bool) {
-	now := c.now()
+// rolloutChange is a rollout event of state with the common rollout context.
+func (c *controller) rolloutChange(w workload, state rolloutState, status string) changeEvent {
 	rolloutID := c.rolloutID(w, state.revision)
-	event := rolloutEvent(w, state, status, rolloutID, now)
-	switch status {
-	case rolloutStarted:
-		event.changeType = changeTypeIntent
-		event.summary = "Rollout started"
-	case rolloutSucceeded:
-		event.summary = "Rollout succeeded"
-	case rolloutStalled:
-		event.summary = "Rollout stalled: ProgressDeadlineExceeded"
-	case rolloutSuperseded:
-		event.summary = "Rollout superseded by revision " + strconv.FormatInt(replacement, 10)
-	}
+	event := rolloutEvent(w, state, status, rolloutID, c.now())
+	event.summary = rolloutSummaries[status]
 	// Terminal events span the whole rollout; a rollout first seen mid-flight has
 	// no recorded start and is reported as a point in time.
 	if status != rolloutStarted && !state.startedAt.IsZero() {
 		event.start = state.startedAt
 	}
-	event.diff = func(diff pcommon.Map) {
-		c.putRolloutDiff(diff, w, state, rolloutID)
-		switch status {
-		case rolloutStarted:
-			diff.PutBool("changes_known", known)
-			putChanges(diff, changes)
-		case rolloutSuperseded:
-			diff.PutStr("superseded_by", c.rolloutID(w, replacement))
-		}
+	event.context = func(ctx pcommon.Map) { c.putRolloutContext(ctx, w, state, rolloutID) }
+	return event
+}
+
+// enqueueStarted reports a new rollout. previous is the rollout it replaced, or
+// nil when unknown.
+func (c *controller) enqueueStarted(w workload, state rolloutState, previous *rolloutState) {
+	event := c.rolloutChange(w, state, rolloutStarted)
+	event.changeType = changeTypeIntent
+	known := previous != nil
+	event.snapshots = snapshots{beforeKnown: &known, after: workloadSnapshot(w.kind(), &state.metadata, &state.template)}
+	if known {
+		event.snapshots.before = workloadSnapshot(w.kind(), &previous.metadata, &previous.template)
+	}
+	c.enqueueChange(event)
+}
+
+// enqueueOutcome reports that a rollout succeeded or stalled.
+func (c *controller) enqueueOutcome(w workload, state rolloutState, status string) {
+	c.enqueueChange(c.rolloutChange(w, state, status))
+}
+
+// enqueueSuperseded reports that the replacement revision replaced an
+// unfinished rollout.
+func (c *controller) enqueueSuperseded(w workload, state rolloutState, replacement int64) {
+	event := c.rolloutChange(w, state, rolloutSuperseded)
+	event.summary = "Rollout superseded by revision " + strconv.FormatInt(replacement, 10)
+	putContext := event.context
+	event.context = func(ctx pcommon.Map) {
+		putContext(ctx)
+		ctx.PutStr("superseded_by", c.rolloutID(w, replacement))
 	}
 	c.enqueueChange(event)
 }
@@ -100,7 +128,7 @@ func (c *controller) enqueue(w workload, state rolloutState, status string, repl
 // events of one rollout and is part of the event ID.
 func rolloutEvent(w workload, state rolloutState, kind, rolloutID string, at time.Time) changeEvent {
 	event := changeEvent{
-		resourceType: w.resourceType(),
+		resourceType: w.kind().resourceType,
 		resourceID:   w.GetNamespace() + "/" + w.GetName(),
 		id:           stableID(rolloutID, kind),
 		traceKey:     rolloutID,
@@ -122,8 +150,9 @@ func rolloutEvent(w workload, state rolloutState, kind, rolloutID string, at tim
 // rollout is reported separately.
 func (c *controller) enqueueCreated(w workload) {
 	now := c.now()
+	metadata, template := snapshotMetadata(w), w.template()
 	c.enqueueChange(changeEvent{
-		resourceType:       w.resourceType(),
+		resourceType:       w.kind().resourceType,
 		resourceID:         w.GetNamespace() + "/" + w.GetName(),
 		id:                 stableID(c.opts.clusterUID, string(w.GetUID()), changeCreated),
 		versionAfter:       strconv.FormatInt(w.GetGeneration(), 10),
@@ -133,17 +162,18 @@ func (c *controller) enqueueCreated(w workload) {
 		resourceChangeType: changeCreated,
 		summary:            "Created",
 		object:             w,
+		snapshots:          snapshots{after: workloadSnapshot(w.kind(), &metadata, &template)},
 	})
 }
 
-func (c *controller) putRolloutDiff(diff pcommon.Map, w workload, state rolloutState, rolloutID string) {
-	diff.PutInt("revision", state.revision)
-	diff.PutStr("rollout_id", rolloutID)
-	diff.PutStr("namespace", w.GetNamespace())
+func (c *controller) putRolloutContext(ctx pcommon.Map, w workload, state rolloutState, rolloutID string) {
+	ctx.PutInt("revision", state.revision)
+	ctx.PutStr("rollout_id", rolloutID)
+	ctx.PutStr("namespace", w.GetNamespace())
 	if c.opts.clusterName != "" {
-		diff.PutStr("cluster_name", c.opts.clusterName)
+		ctx.PutStr("cluster_name", c.opts.clusterName)
 	}
-	containers := diff.PutEmptySlice("containers")
+	containers := ctx.PutEmptySlice("containers")
 	add := func(name, image string, init bool) {
 		m := containers.AppendEmpty().SetEmptyMap()
 		m.PutStr("name", name)
@@ -156,30 +186,56 @@ func (c *controller) putRolloutDiff(diff pcommon.Map, w workload, state rolloutS
 	for _, container := range state.template.Spec.InitContainers {
 		add(container.Name, container.Image, true)
 	}
-	w.putDiff(diff)
+	w.putContext(ctx)
 }
 
-// putChanges encodes changes as a "changes" map keyed by field path, omitted
-// when empty. Values are present only for fields whose diff rule reports them.
-func putChanges(diff pcommon.Map, changes []fieldChange) {
-	if len(changes) == 0 {
+// putSnapshots adds the before_known, before and after keys of s to diff.
+func (c *controller) putSnapshots(diff pcommon.Map, s snapshots, eventID string) {
+	if s.beforeKnown != nil {
+		diff.PutBool("before_known", *s.beforeKnown)
+	}
+	put := func(key string, value map[string]any) {
+		if value == nil {
+			return
+		}
+		// Unstructured objects hold only types FromRaw accepts.
+		if err := diff.PutEmptyMap(key).FromRaw(value); err != nil {
+			diff.Remove(key)
+			c.opts.logger.Debug("Unable to encode snapshot", "event_id", eventID, "snapshot", key, "err", err)
+		}
+	}
+	put("before", s.before)
+	put("after", s.after)
+}
+
+// enqueueChange encodes e and queues it for delivery. Exporters reject
+// oversized records, which would otherwise retry forever: an event that would
+// exceed maxEventBytes drops its snapshots and sets snapshots_omitted, and one
+// that's still too large is dropped.
+func (c *controller) enqueueChange(e changeEvent) {
+	logs := c.changeLogs(e)
+	if !fitsEvent(logs) && (!omitSnapshots(logs) || !fitsEvent(logs)) {
+		c.opts.logger.Warn("Dropping oversized SDLC change event", "event_id", e.id, "resource_type", e.resourceType, "resource_id", e.resourceID)
 		return
 	}
-	out := diff.PutEmptyMap("changes")
-	for _, change := range changes {
-		entry := out.PutEmptyMap(change.Path)
-		entry.PutStr("operation", change.Operation)
-		if change.Before != nil {
-			entry.PutStr("before", *change.Before)
-		}
-		if change.After != nil {
-			entry.PutStr("after", *change.After)
-		}
-	}
+	c.queue.Add(&eventBatch{logs: logs, id: e.id})
 }
 
-func (c *controller) enqueueChange(e changeEvent) {
-	c.queue.Add(&eventBatch{logs: c.changeLogs(e), id: e.id})
+// omitSnapshots removes the before and after snapshots from the record in
+// logs. It reports whether there were any.
+func omitSnapshots(logs plog.Logs) bool {
+	attrs := logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0).Attributes()
+	value, ok := attrs.Get(attrPrefix + "change.diff")
+	if !ok {
+		return false
+	}
+	diff := value.Map()
+	removedBefore, removedAfter := diff.Remove("before"), diff.Remove("after")
+	if !removedBefore && !removedAfter {
+		return false
+	}
+	diff.PutStr("snapshots_omitted", "size")
+	return true
 }
 
 func (c *controller) changeLogs(e changeEvent) plog.Logs {
@@ -227,12 +283,16 @@ func (c *controller) changeLogs(e changeEvent) plog.Logs {
 			}
 		}
 	}
-	if e.diff != nil {
-		diff := pcommon.NewMap()
-		e.diff(diff)
-		if diff.Len() > 0 {
-			diff.MoveTo(attrs.PutEmptyMap(attrPrefix + "change.diff"))
-		}
+	ctx, diff := pcommon.NewMap(), pcommon.NewMap()
+	if e.context != nil {
+		e.context(ctx)
+	}
+	c.putSnapshots(diff, e.snapshots, e.id)
+	if ctx.Len() > 0 {
+		ctx.MoveTo(attrs.PutEmptyMap(attrPrefix + "change.context"))
+	}
+	if diff.Len() > 0 {
+		diff.MoveTo(attrs.PutEmptyMap(attrPrefix + "change.diff"))
 	}
 	return logs
 }
@@ -243,6 +303,19 @@ const maxEventBytes = 2*1024*1024 - 1024
 func wireSize(logs plog.Logs) (int, error) {
 	wire, err := (&plog.JSONMarshaler{}).MarshalLogs(logs)
 	return len(wire), err
+}
+
+// jsonExpansion bounds how much larger OTLP JSON is than protobuf: about 6
+// times for escaped control characters or tiny attributes.
+const jsonExpansion = 8
+
+func fitsEvent(logs plog.Logs) bool {
+	// Most records are far below the limit and skip JSON encoding.
+	if (&plog.ProtoMarshaler{}).LogsSize(logs)*jsonExpansion <= maxEventBytes {
+		return true
+	}
+	size, err := wireSize(logs)
+	return err == nil && size <= maxEventBytes
 }
 
 func traceID(key string) pcommon.TraceID {

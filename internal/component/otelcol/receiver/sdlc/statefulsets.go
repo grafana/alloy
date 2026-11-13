@@ -18,21 +18,20 @@ func (args *StatefulSetsArguments) SetToDefault() {
 }
 
 // statefulSetWorkload is a StatefulSet with its update revision resolved from
-// the ControllerRevision index; current.revision is 0 until it's known.
+// the ControllerRevision index.
 type statefulSetWorkload struct {
 	*appsv1.StatefulSet
-	current controllerRevision
+	revisioned
 }
 
-func (s statefulSetWorkload) resourceType() string             { return "statefulset" }
+func (s statefulSetWorkload) kind() resourceKind               { return statefulSetKind }
 func (s statefulSetWorkload) template() corev1.PodTemplateSpec { return s.Spec.Template }
 func (s statefulSetWorkload) selector() *metav1.LabelSelector  { return s.Spec.Selector }
-func (s statefulSetWorkload) revision() int64                  { return s.current.revision }
 
 // StatefulSet Pods are labelled with the ControllerRevision name.
 func (s statefulSetWorkload) revisionHash() string { return s.Status.UpdateRevision }
 func (s statefulSetWorkload) copy() workload {
-	return statefulSetWorkload{StatefulSet: s.DeepCopy(), current: s.current}
+	return statefulSetWorkload{StatefulSet: s.DeepCopy(), revisioned: s.revisioned}
 }
 
 func (s statefulSetWorkload) settled() bool {
@@ -73,7 +72,7 @@ func (s statefulSetWorkload) rolloutStatus() string {
 	return rolloutSucceeded
 }
 
-func (s statefulSetWorkload) putDiff(diff pcommon.Map) {
-	diff.PutStr("update_strategy", string(s.strategy()))
-	diff.PutInt("partition", int64(s.partition()))
+func (s statefulSetWorkload) putContext(ctx pcommon.Map) {
+	ctx.PutStr("update_strategy", string(s.strategy()))
+	ctx.PutInt("partition", int64(s.partition()))
 }

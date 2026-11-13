@@ -21,7 +21,7 @@ func (args *DaemonSetsArguments) SetToDefault() {
 // StatefulSets, DaemonSet status doesn't name the update revision.
 type daemonSetWorkload struct {
 	*appsv1.DaemonSet
-	current controllerRevision
+	revisioned
 }
 
 func newestRevision(revisions map[string]controllerRevision) controllerRevision {
@@ -34,14 +34,13 @@ func newestRevision(revisions map[string]controllerRevision) controllerRevision 
 	return newest
 }
 
-func (d daemonSetWorkload) resourceType() string             { return "daemonset" }
+func (d daemonSetWorkload) kind() resourceKind               { return daemonSetKind }
 func (d daemonSetWorkload) template() corev1.PodTemplateSpec { return d.Spec.Template }
 func (d daemonSetWorkload) selector() *metav1.LabelSelector  { return d.Spec.Selector }
-func (d daemonSetWorkload) revision() int64                  { return d.current.revision }
 func (d daemonSetWorkload) revisionHash() string             { return d.current.hash }
 func (d daemonSetWorkload) desiredPods() int32               { return d.Status.DesiredNumberScheduled }
 func (d daemonSetWorkload) copy() workload {
-	return daemonSetWorkload{DaemonSet: d.DeepCopy(), current: d.current}
+	return daemonSetWorkload{DaemonSet: d.DeepCopy(), revisioned: d.revisioned}
 }
 
 // The controller writes the revision before it reports the observed generation.
@@ -66,6 +65,6 @@ func (d daemonSetWorkload) rolloutStatus() string {
 	return rolloutStarted
 }
 
-func (d daemonSetWorkload) putDiff(diff pcommon.Map) {
-	diff.PutStr("update_strategy", string(d.strategy()))
+func (d daemonSetWorkload) putContext(ctx pcommon.Map) {
+	ctx.PutStr("update_strategy", string(d.strategy()))
 }

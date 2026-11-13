@@ -45,8 +45,11 @@ type rolloutState struct {
 	// flight when the component started.
 	startedAt time.Time
 	template  corev1.PodTemplateSpec
-	status    string
-	stalled   bool
+	// metadata is the workload metadata snapshots show, as observed with the
+	// revision.
+	metadata metav1.ObjectMeta
+	status   string
+	stalled  bool
 }
 
 type controller struct {
@@ -60,9 +63,10 @@ type controller struct {
 	opts                    controllerOptions
 	rollouts                map[string]rolloutState
 	// revisions indexes ControllerRevisions by owner UID and name; workloads
-	// holds the latest StatefulSet or DaemonSet to re-evaluate against them.
+	// holds the latest object of each tracked workload, so StatefulSets and
+	// DaemonSets are re-evaluated when their ControllerRevisions change.
 	revisions map[string]map[string]controllerRevision
-	workloads map[string]any
+	workloads map[string]runtime.Object
 	// excluded holds the UIDs of workloads that exclude rules currently match.
 	excluded map[string]bool
 	queue    workqueue.TypedRateLimitingInterface[*eventBatch]
@@ -76,7 +80,7 @@ func newController(opts controllerOptions) *controller {
 	if opts.logger == nil {
 		opts.logger = slog.Default()
 	}
-	return &controller{podsByOwner: map[string]map[string]*corev1.Pod{}, replicaSetsByDeployment: map[string]map[string]*appsv1.ReplicaSet{}, pods: map[string]*corev1.Pod{}, replicaSets: map[string]*appsv1.ReplicaSet{}, collections: map[string]*imageCollection{}, imageQueue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*imageCollection]()), opts: opts, rollouts: map[string]rolloutState{}, revisions: map[string]map[string]controllerRevision{}, workloads: map[string]any{}, excluded: map[string]bool{}, now: opts.now, queue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*eventBatch]())}
+	return &controller{podsByOwner: map[string]map[string]*corev1.Pod{}, replicaSetsByDeployment: map[string]map[string]*appsv1.ReplicaSet{}, pods: map[string]*corev1.Pod{}, replicaSets: map[string]*appsv1.ReplicaSet{}, collections: map[string]*imageCollection{}, imageQueue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*imageCollection]()), opts: opts, rollouts: map[string]rolloutState{}, revisions: map[string]map[string]controllerRevision{}, workloads: map[string]runtime.Object{}, excluded: map[string]bool{}, now: opts.now, queue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[*eventBatch]())}
 }
 
 func (c *controller) run(ctx context.Context) error {
@@ -110,18 +114,7 @@ func (c *controller) run(ctx context.Context) error {
 		return err
 	}
 	deployments := factory.Apps().V1().Deployments().Informer()
-	_, err = deployments.AddEventHandler(cache.ResourceEventHandlerDetailedFuncs{
-		AddFunc: func(obj any, initial bool) {
-			w := deploymentWorkload{obj.(*appsv1.Deployment)}
-			if !initial && !c.opts.exclude.excludes(w.resourceType(), w) {
-				c.enqueueCreated(w)
-			}
-			c.observe(w.Deployment, initial)
-		},
-		UpdateFunc: func(_, obj any) { c.observe(obj.(*appsv1.Deployment), false) },
-		DeleteFunc: c.remove,
-	})
-	if err != nil {
+	if err := c.watchWorkloads(deployments); err != nil {
 		return err
 	}
 	synced := []cache.InformerSynced{deployments.HasSynced, pods.HasSynced, replicaSets.HasSynced}
@@ -146,12 +139,12 @@ func (c *controller) run(ctx context.Context) error {
 		}
 	}
 	if c.opts.statefulSets {
-		if err := c.watchRevisioned(factory.Apps().V1().StatefulSets().Informer()); err != nil {
+		if err := c.watchWorkloads(factory.Apps().V1().StatefulSets().Informer()); err != nil {
 			return err
 		}
 	}
 	if c.opts.daemonSets {
-		if err := c.watchRevisioned(factory.Apps().V1().DaemonSets().Informer()); err != nil {
+		if err := c.watchWorkloads(factory.Apps().V1().DaemonSets().Informer()); err != nil {
 			return err
 		}
 	}
@@ -161,14 +154,14 @@ func (c *controller) run(ctx context.Context) error {
 		runInformer(informer)
 	}
 	if !cache.WaitForCacheSync(ctx.Done(), synced...) {
-		return fmt.Errorf("sync Deployment watch")
+		return fmt.Errorf("sync Kubernetes watches")
 	}
 	go func() { <-ctx.Done(); c.queue.ShutDown(); c.imageQueue.ShutDown() }()
 	var workers sync.WaitGroup
 	workers.Add(1)
 	go func() { defer workers.Done(); c.resolveImages(ctx) }()
 	defer workers.Wait()
-	c.opts.logger.Info("Kubernetes Deployment rollout watcher ready")
+	c.opts.logger.Info("Kubernetes change watcher ready")
 	for {
 		event, shutdown := c.queue.Get()
 		if shutdown {
@@ -183,14 +176,52 @@ func (c *controller) run(ctx context.Context) error {
 	}
 }
 
-// Informer handlers serialize state updates.
-func (c *controller) observe(d *appsv1.Deployment, initial bool) {
+// observation is how an informer delivered a workload.
+type observation int
+
+const (
+	// observedInitial is an object of the initial listing, a baseline.
+	observedInitial observation = iota
+	// observedAdded is an object added after the initial listing.
+	observedAdded
+	observedUpdated
+)
+
+func (c *controller) watchWorkloads(informer cache.SharedIndexInformer) error {
+	_, err := informer.AddEventHandler(cache.ResourceEventHandlerDetailedFuncs{
+		AddFunc: func(obj any, initial bool) {
+			if initial {
+				c.observe(obj.(runtime.Object), observedInitial)
+			} else {
+				c.observe(obj.(runtime.Object), observedAdded)
+			}
+		},
+		UpdateFunc: func(_, obj any) { c.observe(obj.(runtime.Object), observedUpdated) },
+		DeleteFunc: c.remove,
+	})
+	return err
+}
+
+// observe is the single entry point for workload changes. It keeps the latest
+// object for re-evaluation when ControllerRevisions change, and reports a
+// workload added after the initial listing as created. Informer handlers
+// serialize state updates.
+func (c *controller) observe(obj runtime.Object, how observation) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	w := deploymentWorkload{d}
-	if tracked, baseline := c.scope(w, initial); tracked {
-		c.observeRollout(w, baseline)
+	w := c.workload(obj)
+	if w == nil {
+		return
 	}
+	tracked, baseline := c.scope(w, how == observedInitial)
+	if !tracked {
+		return
+	}
+	c.workloads[string(w.GetUID())] = obj
+	if how == observedAdded && !baseline {
+		c.enqueueCreated(w)
+	}
+	c.observeRollout(w, baseline)
 }
 
 // scope reports whether w is tracked, and whether to observe it as a baseline.
@@ -198,7 +229,7 @@ func (c *controller) observe(d *appsv1.Deployment, initial bool) {
 // leaves their scope is baselined like the initial listing. Callers hold c.mu.
 func (c *controller) scope(w workload, initial bool) (tracked, baseline bool) {
 	uid := string(w.GetUID())
-	if c.opts.exclude.excludes(w.resourceType(), w) {
+	if c.opts.exclude.excludes(w.kind().resourceType, w) {
 		c.excluded[uid] = true
 		// ControllerRevisions stay indexed, so a returning workload baselines
 		// on its current revision.
@@ -224,50 +255,52 @@ func (c *controller) scope(w workload, initial bool) (tracked, baseline bool) {
 // Callers hold c.mu.
 func (c *controller) observeRollout(w workload, initial bool) {
 	uid := string(w.GetUID())
-	previous, exists := c.rollouts[uid]
+	state, exists := c.rollouts[uid]
 	revision, template := w.revision(), w.template()
 	if initial {
-		c.rollouts[uid] = rolloutState{revision: revision, template: *template.DeepCopy(), status: w.rolloutStatus(), stalled: w.rolloutStatus() == rolloutStalled}
+		status := w.rolloutStatus()
+		c.rollouts[uid] = rolloutState{revision: revision, template: *template.DeepCopy(), metadata: snapshotMetadata(w), status: status, stalled: status == rolloutStalled}
 		return
 	}
 	if !w.settled() || revision <= 0 {
 		return
 	}
 	// Ignore stale revision observations, including relists after watch reconnects.
-	if exists && revision < previous.revision {
+	if exists && revision < state.revision {
 		return
 	}
-	if !exists || revision != previous.revision {
-		if exists && previous.revision > 0 && previous.status != rolloutSucceeded {
-			c.enqueue(w, previous, rolloutSuperseded, revision, nil, false)
+	if !exists || revision != state.revision {
+		if exists && state.revision > 0 && state.status != rolloutSucceeded {
+			c.enqueueSuperseded(w, state, revision)
 			c.closeImages(w, false)
 		}
-		changes := []fieldChange{}
+		next := rolloutState{revision: revision, previousRevision: state.revision, startedAt: c.now(), template: *template.DeepCopy(), metadata: snapshotMetadata(w), status: rolloutStarted}
+		var replaced *rolloutState
 		if exists {
-			changes = templateChanges(previous.template, template)
+			replaced = &state
 		}
-		previous = rolloutState{revision: revision, previousRevision: previous.revision, startedAt: c.now(), template: *template.DeepCopy(), status: rolloutStarted}
-		c.enqueue(w, previous, rolloutStarted, 0, changes, exists)
-		c.openImages(w, previous)
+		c.enqueueStarted(w, next, replaced)
+		c.openImages(w, next)
+		state = next
 	}
 	status := w.rolloutStatus()
 	// Success closes a rollout permanently; later availability/scaling changes
 	// aren't new rollout outcomes. A stalled rollout can recover or be superseded.
-	if previous.status != rolloutSucceeded {
+	if state.status != rolloutSucceeded {
 		switch status {
 		case rolloutSucceeded:
-			c.enqueue(w, previous, rolloutSucceeded, 0, nil, false)
+			c.enqueueOutcome(w, state, rolloutSucceeded)
 			c.closeImages(w, true)
-			previous.status = status
+			state.status = status
 		case rolloutStalled:
-			if !previous.stalled {
-				c.enqueue(w, previous, rolloutStalled, 0, nil, false)
-				previous.stalled = true
+			if !state.stalled {
+				c.enqueueOutcome(w, state, rolloutStalled)
+				state.stalled = true
 			}
-			previous.status = status
+			state.status = status
 		}
 	}
-	c.rollouts[uid] = previous
+	c.rollouts[uid] = state
 }
 
 // Retry the original event, preserving its ID and timestamp, and give consumers
@@ -279,7 +312,7 @@ func (c *controller) deliver(ctx context.Context, event *eventBatch) bool {
 		return eventBatch{logs: copy, id: event.id}
 	})
 	if err != nil {
-		c.opts.logger.Error("Unable to deliver rollout event; retrying", "event_id", event.id, "err", err)
+		c.opts.logger.Error("Unable to deliver SDLC change event; retrying", "event_id", event.id, "err", err)
 		return false
 	}
 	return true
