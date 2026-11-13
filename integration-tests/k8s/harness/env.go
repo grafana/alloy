@@ -21,6 +21,22 @@ func KindClusterName() string {
 	return os.Getenv(KindClusterEnv)
 }
 
+// PinContext prefixes kubectl and helm arguments with the context of the
+// runner's kind cluster, so a command cannot reach whatever context the
+// kubeconfig has selected. With no cluster set the context does not exist, so
+// the command fails instead of falling back. Other commands are unchanged.
+func PinContext(name string, args []string) []string {
+	kubeContext := "kind-" + KindClusterName()
+	switch name {
+	case "kubectl":
+		return append([]string{"--context", kubeContext}, args...)
+	case "helm":
+		return append([]string{"--kube-context", kubeContext}, args...)
+	default:
+		return args
+	}
+}
+
 func managedClusterEnabled() bool {
 	return os.Getenv(ManagedClusterEnv) == "1"
 }
