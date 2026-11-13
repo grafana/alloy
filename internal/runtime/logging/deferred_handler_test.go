@@ -23,9 +23,10 @@ func TestDefferredSlogTester(t *testing.T) {
 		// This does something a bit ugly where it DEPENDS on the var in slogtest.Run, if the behavior of slogtest.Run
 		// changes this may break the tests.
 		updateErr := l.Update(Options{
-			Level:   "debug",
-			Format:  "json",
-			WriteTo: nil,
+			Level:       "debug",
+			Format:      "json",
+			Destination: LogDestinationStderr,
+			WriteTo:     nil,
 		})
 		require.NoError(t, updateErr)
 		line := buf.Bytes()
@@ -62,9 +63,10 @@ func TestSlogHandle(t *testing.T) {
 	sl, alloy, l := newLoggers(t, bb, bbSl)
 	logInfo(t.Context(), sl, alloy, "simple_test")
 	err := l.Update(Options{
-		Level:   "debug",
-		Format:  "json",
-		WriteTo: nil,
+		Level:       "debug",
+		Format:      "json",
+		Destination: LogDestinationStderr,
+		WriteTo:     nil,
 	})
 	require.NoError(t, err)
 	require.True(t, equal(bb, bbSl))
@@ -76,9 +78,10 @@ func TestSlogHandleWithDifferingLevelDeny(t *testing.T) {
 	sl, alloy, l := newLoggers(t, bb, bbSl)
 	logInfo(t.Context(), sl, alloy, "test_denied")
 	err := l.Update(Options{
-		Level:   "warn",
-		Format:  "json",
-		WriteTo: nil,
+		Level:       "warn",
+		Format:      "json",
+		Destination: LogDestinationStderr,
+		WriteTo:     nil,
 	})
 	require.NoError(t, err)
 	require.True(t, bb.Len() == 0)
@@ -90,9 +93,10 @@ func TestSlogHandleWithDifferingLevelAllow(t *testing.T) {
 	sl, alloy, l := newLoggers(t, bb, bbSl)
 	logError(t.Context(), sl, alloy, "test3")
 	err := l.Update(Options{
-		Level:   "warn",
-		Format:  "json",
-		WriteTo: nil,
+		Level:       "warn",
+		Format:      "json",
+		Destination: LogDestinationStderr,
+		WriteTo:     nil,
 	})
 	require.NoError(t, err)
 	require.True(t, bb.Len() > 0)
@@ -113,9 +117,10 @@ func TestDeferredHandler(t *testing.T) {
 				sl, alloy = withAttrs(sl, alloy, "attr1", "value1")
 				logInfo(t.Context(), sl, alloy, "test_attr")
 				err := l.Update(Options{
-					Level:   "debug",
-					Format:  "json",
-					WriteTo: nil,
+					Level:       "debug",
+					Format:      "json",
+					Destination: LogDestinationStderr,
+					WriteTo:     nil,
 				})
 				require.NoError(t, err)
 			},
@@ -128,9 +133,10 @@ func TestDeferredHandler(t *testing.T) {
 				sl, alloy = withAttrs(sl, alloy, "nestedattr1", "nestedvalue1")
 				logInfo(t.Context(), sl, alloy, "test_nested")
 				err := l.Update(Options{
-					Level:   "debug",
-					Format:  "json",
-					WriteTo: nil,
+					Level:       "debug",
+					Format:      "json",
+					Destination: LogDestinationStderr,
+					WriteTo:     nil,
 				})
 				require.NoError(t, err)
 			},
@@ -143,9 +149,10 @@ func TestDeferredHandler(t *testing.T) {
 				sl, alloy = withAttrs(sl, alloy, "nestedattr1", "nestedvalue1")
 				logInfo(t.Context(), sl, alloy, "test_group")
 				err := l.Update(Options{
-					Level:   "debug",
-					Format:  "json",
-					WriteTo: nil,
+					Level:       "debug",
+					Format:      "json",
+					Destination: LogDestinationStderr,
+					WriteTo:     nil,
 				})
 				require.NoError(t, err)
 			},
@@ -159,9 +166,10 @@ func TestDeferredHandler(t *testing.T) {
 				sl, alloy = withAttrs(sl, alloy, "nestedattr1", "nestedvalue1")
 				logInfo(t.Context(), sl, alloy, "test_nested_group")
 				err := l.Update(Options{
-					Level:   "debug",
-					Format:  "json",
-					WriteTo: nil,
+					Level:       "debug",
+					Format:      "json",
+					Destination: LogDestinationStderr,
+					WriteTo:     nil,
 				})
 				require.NoError(t, err)
 			},
