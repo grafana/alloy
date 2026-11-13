@@ -1,0 +1,32 @@
+clients:
+  - url: http://localhost/loki/api/v1/push
+scrape_configs:
+  - job_name: example
+    pipeline_stages:
+      - multiline:
+          firstline: "^START"
+      - pack:
+          labels: [ "foo" ]
+      - metrics:
+          log_lines_total:
+            type: Counter
+            description: "total number of log lines"
+            config:
+              match_all: true
+              action: inc
+          last_line_size:
+            type: Gauge
+            source: size
+            config:
+              action: set
+          line_size:
+            type: Histogram
+            source: size
+            config:
+              buckets: [ 10, 100, 1000 ]
+    static_configs:
+      - targets: [ localhost ]
+        labels:
+          __path__: /var/log/*.log
+tracing: { enabled: false }
+server: { register_instrumentation: false }

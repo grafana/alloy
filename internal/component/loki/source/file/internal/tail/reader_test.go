@@ -65,3 +65,31 @@ func BenchmarkReader(b *testing.B) {
 		})
 	}
 }
+
+func TestReaderReleasesLargePendingBufferAfterLine(t *testing.T) {
+	large := strings.Repeat("a", maxRetainedBufSize+1) + "\n"
+
+	r, err := newReader(logging.NewSlogNop(), strings.NewReader(large), 0, encoding.Nop, "", false)
+	require.NoError(t, err)
+
+	line, err := r.next()
+	require.NoError(t, err)
+	require.Len(t, line, maxRetainedBufSize+1)
+	require.LessOrEqual(t, cap(r.pending), maxRetainedBufSize)
+}
+
+func TestReaderReleasesLargePendingBufferOnFlush(t *testing.T) {
+	large := strings.Repeat("a", maxRetainedBufSize+1)
+
+	r, err := newReader(logging.NewSlogNop(), strings.NewReader(large), 0, encoding.Nop, "", false)
+	require.NoError(t, err)
+
+	_, err = r.next()
+	require.ErrorIs(t, err, io.EOF)
+	require.Greater(t, cap(r.pending), maxRetainedBufSize)
+
+	line, err := r.flush()
+	require.NoError(t, err)
+	require.Len(t, line, maxRetainedBufSize+1)
+	require.LessOrEqual(t, cap(r.pending), maxRetainedBufSize)
+}
