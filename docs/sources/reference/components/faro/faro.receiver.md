@@ -270,8 +270,31 @@ To look up the sourcemaps for a file hosted at `http://example.com/example.js`, 
 1. Removes the minified path prefix to extract the path to the file `example.js`.
 1. Searches the path for the file with a `.map` extension, for example `example.js.map` in the path `/var/my-app/build/example.js.map`.
 
-Optionally, the value for the `path` argument may contain `{{ .Release }}` as a template value, such as `/var/my-app/{{ .Release }}/build`.
-The template value is replaced with the release value provided by the [Faro Web App SDK][faro-sdk].
+Optionally, the value for the `path` argument may contain the following Go template values:
+
+- `{{ .Release }}`: The release of the app, such as `/var/my-app/{{ .Release }}/build`.
+  The template value is replaced with the release value provided by the [Grafana Faro Web SDK][faro-sdk].
+- `{{ .BundleID }}`: The ID of the build that produced the bundle, such as `/var/my-app/{{ .BundleID }}`.
+  The template value is replaced with the `meta.app.bundleId` value provided by the Faro SDK.
+  The Faro bundler plugins and the Faro React Native SDK set this value.
+
+The component removes path separators and leading dots from template values before it uses them in the path.
+If the Faro SDK doesn't send the value, the template value is empty and the path has no segment for it.
+
+React Native apps report stack frames with the bundle filename, such as `index.android.bundle`, instead of a URL.
+To look up the sourcemaps for these frames, set `minified_path_prefix` to an empty string.
+For example, the following location block looks up the sourcemap for `index.android.bundle` at `/var/my-app/<BUNDLE_ID>/index.android.bundle.map`:
+
+```alloy
+location {
+    path                 = "/var/my-app/{{ .BundleID }}"
+    minified_path_prefix = ""
+}
+```
+
+The component checks local `path` locations first, then remote `http://` or `https://` locations.
+Within each group, it checks `location` blocks in the order you declare them, and it uses the first sourcemap it finds.
+Place `location` blocks with an empty `minified_path_prefix` after the ones for your web apps, because an empty prefix matches every file.
 
 When you specify a remote location, the procedure for retrieving the sourcemaps is the same as for a location block with a local path, except that the component retrieves the sourcemap from a remote HTTP server.
 
