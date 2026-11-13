@@ -51,6 +51,10 @@ jobs:
           cp alloy-scenarios/docs/alloy/*.md docs/sources/shared/scenarios/
           echo "sha=$(git -C alloy-scenarios rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           rm -rf alloy-scenarios
+          removed=$(git ls-files --deleted -- docs/sources/shared/scenarios | sed 's/.*/`&`/' | paste -sd, - | sed 's/,/, /g')
+          if [ -n "$removed" ]; then
+            echo "removed=Removed files: ${removed}. Update the page in \`docs/sources/scenarios/\` that includes each one. If you rename, move, or delete that page, add its old URL to \`aliases\` in the front matter of the page that replaces it." >> "$GITHUB_OUTPUT"
+          fi
 
       # create-pull-request opens nothing when the working tree has no changes,
       # so this is a no-op whenever the tables haven't changed.
@@ -73,3 +77,6 @@ jobs:
             alloy-scenarios validates and generates these files, so review the
             diff for content only. A new file is a new category: add a page in
             `docs/sources/scenarios/` that imports it before you merge.
+
+
+            ${{ steps.copy.outputs.removed }}
