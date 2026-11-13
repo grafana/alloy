@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.22.1](https://github.com/grafana/alloy/compare/v1.22.0...v1.22.1) (2026-11-13)
+
+
+### Bug Fixes 🐛
+
+* **converter:** Use Promtail defaults for unset multiline, metrics and pack stage fields ([#7649](https://github.com/grafana/alloy/issues/7649)) ([ead11a5](https://github.com/grafana/alloy/commit/ead11a58526daefe89f4f6408c68561c2bcf0ccd))
+* **loki.process:** Move structured_metadata to syntax.Validator ([#7517](https://github.com/grafana/alloy/issues/7517)) ([28530d4](https://github.com/grafana/alloy/commit/28530d4056295531fd8c3b4b98ef0a6cbd1fee38))
+* **loki.source.file:** Release pending buffer after long lines ([#7693](https://github.com/grafana/alloy/issues/7693)) ([c3e1ae8](https://github.com/grafana/alloy/commit/c3e1ae85298ba073c112115a692f8f458a5bcb56))
+
 ## [1.22.0](https://github.com/grafana/alloy/compare/v1.21.0...v1.22.0) (2026-11-12)
 
 
