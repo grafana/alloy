@@ -207,11 +207,11 @@ func (c *Component) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	for _, p := range probes {
-		if err := ctlr.EnableProbe(ctx, p); err != nil {
-			return fmt.Errorf("failed to enable probe: %w", err)
-		}
+	if err := enableProbes(ctx, ctlr, probes, c.logger); err != nil {
+		return err
 	}
+	// Keep the probes referenced until Run returns, else the GC closes their BPF links.
+	defer unloadProbes(probes, c.logger)
 
 	var g run.Group
 
