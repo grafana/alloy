@@ -40,4 +40,4 @@ if [ "${CURRENT_DIR_NAME}" == "helm" ]
 then
   HELM_DIR="."
 fi
-  yamllint --config-file=${HELM_DIR}/lintconf.yaml ${HELM_DIR}/tests
+yamllint --config-file="${HELM_DIR}/lintconf.yaml" "${HELM_DIR}/tests"

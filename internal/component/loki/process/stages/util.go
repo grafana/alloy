@@ -182,3 +182,19 @@ func getString(unk any) (string, error) {
 		return "", fmt.Errorf("can't convert %v to string", unk)
 	}
 }
+
+// resolveLabelSources converts a stage's label config into a map of label name
+// to extracted data key. A nil or empty source means the extracted data key
+// has the same name as the label.
+func resolveLabelSources(m map[string]*string) map[string]string {
+	ret := make(map[string]string, len(m))
+	for labelName, labelSrc := range m {
+		// If no label source was specified, use the key name
+		if labelSrc == nil || *labelSrc == "" {
+			ret[labelName] = labelName
+		} else {
+			ret[labelName] = *labelSrc
+		}
+	}
+	return ret
+}

@@ -9,7 +9,8 @@
     "npm": ">=11.13.0"
   },
   "scripts": {
-    "release-please": "node index.js"
+    "release-please": "node index.js",
+    "test": "node --test '**/*.test.js'"
   },
   "dependencies": {
     "release-please": "^17.11.1"
