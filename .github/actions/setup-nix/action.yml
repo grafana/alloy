@@ -1,0 +1,28 @@
+name: Setup Nix devshell
+description: |
+  Install Nix and put the tools of one of the devShells defined in flake.nix on
+  PATH for all following steps. Tool versions are pinned by flake.lock, so CI and
+  local development (`nix develop`) use the same versions.
+
+  Use the smallest devshell that covers the job (see `groups` in flake.nix).
+inputs:
+  devshell:
+    description: Name of the devShell in flake.nix, e.g. `go`, `lint` or `helm`.
+    default: go
+runs:
+  using: composite
+  steps:
+    - name: Install Nix
+      uses: cachix/install-nix-action@3dc140bfc76c49fbd4dd958429132e3746bcb086 # v31.11.5
+
+    - name: Enter devshell
+      shell: bash
+      env:
+        DEVSHELL: ${{ inputs.devshell }}
+      run: |
+        set -euo pipefail
+        # Export only the tools of the devshell, not the shell's standard utilities, so
+        # the runner's own userland and C toolchain (used by cgo) stay untouched.
+        nix develop "${GITHUB_WORKSPACE}#${DEVSHELL}" --command bash -c 'echo "$TOOLS_PATH"' \
+          | tr ':' '\n' >> "${GITHUB_PATH}"
+        echo "GOTOOLCHAIN=local" >> "${GITHUB_ENV}"

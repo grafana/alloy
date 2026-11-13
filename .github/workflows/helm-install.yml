@@ -19,22 +19,10 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Install Helm
-        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
-        with:
-          # renovate: datasource=github-releases packageName=helm/helm
-          version: v3.21.1
-
       - name: Setup tools
-        uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
+        uses: ./.github/actions/setup-nix
         with:
-          install_args: python
-
-      - name: Set chart-testing Python
-        run: echo "UV_PYTHON=$(mise where python)/bin/python" >> "$GITHUB_ENV"
-
-      - name: Install chart-testing
-        uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f # v2.8.0
+          devshell: helm
 
       - name: Download standard image
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1

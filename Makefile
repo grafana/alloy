@@ -201,15 +201,15 @@ lint: lint-go run-alloylint lint-shell
 
 .PHONY: lint-go
 lint-go:
-	mise exec -- task lint:go
+	task lint:go
 
 .PHONY: lint-shell
 lint-shell:
-	mise exec -- task lint:shellcheck
+	task lint:shellcheck
 
 .PHONY: run-alloylint
 run-alloylint: alloylint
-	mise exec -- task lint:alloylint
+	task lint:alloylint
 
 #
 # Targets for running tests

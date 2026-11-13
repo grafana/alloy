@@ -1,7 +1,7 @@
 name: Cache Go modules and build
 description: |
   Restore and save the Go module and build caches. Use after Go is installed
-  (e.g. via mise), since it resolves the cache locations with `go env`.
+  (e.g. via the setup-nix action), since it resolves the cache locations with `go env`.
 runs:
   using: composite
   steps:

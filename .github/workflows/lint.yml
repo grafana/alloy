@@ -17,11 +17,9 @@ jobs:
         persist-credentials: false
 
     - name: Setup tools
-      uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
+      uses: ./.github/actions/setup-nix
       with:
-        version: v2026.5.18
-        sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
-        install_args: go task golangci-lint
+        devshell: lint
 
     - name: Lint Go
       run: task lint:go
@@ -42,11 +40,9 @@ jobs:
         persist-credentials: false
 
     - name: Setup tools
-      uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
+      uses: ./.github/actions/setup-nix
       with:
-        version: v2026.5.18
-        sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
-        install_args: go govulncheck task
+        devshell: lint
 
     - name: Run govulncheck
       run: task lint:govulncheck
@@ -62,11 +58,9 @@ jobs:
         persist-credentials: false
 
     - name: Setup tools
-      uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
+      uses: ./.github/actions/setup-nix
       with:
-        version: v2026.5.18
-        sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
-        install_args: shellcheck task go
+        devshell: lint
 
     - name: Run shellcheck
       run: task lint:shellcheck
@@ -85,11 +79,9 @@ jobs:
         persist-credentials: false
 
     - name: Setup tools
-      uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
+      uses: ./.github/actions/setup-nix
       with:
-        version: v2026.5.18
-        sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
-        install_args: node
+        devshell: ui
 
     - name: Install dependencies
       run: npm ci --no-audit --no-fund

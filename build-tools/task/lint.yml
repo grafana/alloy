@@ -14,13 +14,13 @@ tasks:
     desc: Run golangci-lint.
     dir: "tools"
     cmds:
-      - mise exec -- go run ./cmd lint go 
+      - go run ./cmd lint go
 
   shellcheck:
     desc: Run shellcheck linter.
     dir: "tools"
     cmds:
-      - mise exec -- go run ./cmd lint shell
+      - go run ./cmd lint shell
 
   govulncheck:
     desc: Run govulncheck.
@@ -35,7 +35,7 @@ tasks:
         {{ regexReplaceAll "\\s+" (trim (printf "gore2regex %s" .GO_TAGS)) "," }}
         {{- end -}}
     cmds:
-      - mise exec -- go run ./cmd govulncheck --tags='{{.GOVULNCHECK_TAGS}}'
+      - go run ./cmd govulncheck --tags='{{.GOVULNCHECK_TAGS}}'
 
   alloylint:
     desc: Run the alloylint linter.

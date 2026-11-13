@@ -191,7 +191,8 @@ func (tm *tokenManager) updateLifecycleWatcher(ctx context.Context) {
 				lw.Stop()
 				return
 
-			case <-lw.DoneCh():
+			case err := <-lw.DoneCh():
+				_ = err
 				if ctx.Err() != nil {
 					return
 				}

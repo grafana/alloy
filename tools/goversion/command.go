@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 
@@ -74,10 +73,6 @@ func pr2Command() *cobra.Command {
 			}
 
 			version := args[0]
-
-			if err := updateMiseToml(root, version); err != nil {
-				return fmt.Errorf("error updating mise.toml: %w", err)
-			}
 
 			if err := updateGoModFiles(root, version); err != nil {
 				return fmt.Errorf("error updating go.mod files: %w", err)
@@ -287,37 +282,4 @@ func replaceDockerGoVersion(content []byte, version string) ([]byte, error) {
 	}
 	out.Write(content[last:])
 	return out.Bytes(), nil
-}
-
-// miseGoVersionRE matches the go tool line in mise.toml, e.g. `go = "1.26.3"`.
-var miseGoVersionRE = regexp.MustCompile(`(?m)^go\s*=\s*"[^"]*"`)
-
-// updateMiseToml bumps the go version in mise.toml and refreshes the lockfile
-// so the pinned checksums and URLs match the new version.
-func updateMiseToml(root, version string) error {
-	path := filepath.Join(root, "mise.toml")
-
-	content, err := os.ReadFile(path)
-	if err != nil {
-		return fmt.Errorf("read %s: %w", path, err)
-	}
-
-	if !miseGoVersionRE.Match(content) {
-		return fmt.Errorf("no go version found in %s", path)
-	}
-
-	newContent := miseGoVersionRE.ReplaceAllLiteral(content, []byte(`go = "`+version+`"`))
-	if err := os.WriteFile(path, newContent, 0644); err != nil {
-		return fmt.Errorf("write %s: %w", path, err)
-	}
-
-	cmd := exec.Command("mise", "lock", "go")
-	cmd.Dir = root
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("mise lock: %w", err)
-	}
-	return nil
 }
