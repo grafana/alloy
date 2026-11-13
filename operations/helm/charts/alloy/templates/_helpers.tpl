@@ -55,10 +55,7 @@ helm.sh/chart: {{ include "alloy.chart" . }}
 app.kubernetes.io/version: "vX.Y.Z"
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- else -}}
-{{/* substr trims delimeter prefix char from alloy.imageId output
-    e.g. ':' for tags and '@' for digests.
-    For digests, we crop the string to a 7-char (short) sha. */}}
-app.kubernetes.io/version: {{ (include "alloy.imageId" .) | trimPrefix "@sha256" | trimPrefix ":" | trunc 63 | quote }}
+app.kubernetes.io/version: {{ .Values.image.tag | default .Chart.AppVersion | splitList "@" | first | trunc 63 | trimSuffix "-" | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 app.kubernetes.io/part-of: alloy
 {{- end }}
