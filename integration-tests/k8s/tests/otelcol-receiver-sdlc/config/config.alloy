@@ -1,0 +1,36 @@
+otelcol.exporter.file "rollouts" {
+	path           = "/tmp/sdlc.json"
+	append         = true
+	flush_interval = "100ms"
+}
+
+otelcol.receiver.sdlc "test" {
+	cluster_name = "kind-integration-test"
+	cluster_uid  = "kind-integration-test-uid"
+
+	clustering {
+		enabled = true
+	}
+
+	extract {
+		field {
+			key = "namespace"
+		}
+		label {
+			key = "team"
+		}
+		// Also matches last-applied-configuration, which is never extracted.
+		annotation {
+			key_regex = "(kubectl\\.kubernetes\\.io|sdlc\\.test)/(.*)"
+			tag_name  = "$2"
+		}
+		statements = [
+			`set(log.attributes["env"], "integration")`,
+			`set(log.attributes["object"], Concat([log.attributes["namespace"], resource.attributes["name"]], "/"))`,
+		]
+	}
+
+	output {
+		logs = [otelcol.exporter.file.rollouts.input]
+	}
+}
