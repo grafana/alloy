@@ -10,7 +10,6 @@ import (
 	"maps"
 	"reflect"
 	"slices"
-	"strings"
 	"sync"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,18 +27,14 @@ const (
 	// redactValue keeps the shape of the value and replaces every scalar with
 	// a redacted placeholder.
 	redactValue
-	// redactQuery keeps a URL path and replaces its query string, which can
-	// hold tokens, with a redacted placeholder.
-	redactQuery
 	// omitField leaves the field out.
 	omitField
 )
 
 var (
-	keepRule        = &snapshotRule{mode: keepValue}
-	redactRule      = &snapshotRule{mode: redactValue}
-	redactQueryRule = &snapshotRule{mode: redactQuery}
-	omitRule        = &snapshotRule{mode: omitField}
+	keepRule   = &snapshotRule{mode: keepValue}
+	redactRule = &snapshotRule{mode: redactValue}
+	omitRule   = &snapshotRule{mode: omitField}
 )
 
 // leaderAnnotation is updated by leader election, without a change of the
@@ -142,18 +137,8 @@ func snapshotNode(rule *snapshotRule, value any) any {
 		}
 		return nonEmpty(out)
 	}
-	switch rule.mode {
-	case redactValue:
+	if rule.mode == redactValue {
 		return redactShape(value)
-	case redactQuery:
-		path, ok := value.(string)
-		if !ok {
-			return redactShape(value)
-		}
-		if i := strings.IndexByte(path, '?'); i >= 0 {
-			return path[:i+1] + redacted(path[i+1:])
-		}
-		return path
 	}
 	return value
 }

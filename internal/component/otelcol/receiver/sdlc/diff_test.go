@@ -30,14 +30,12 @@ func TestSnapshotModes(t *testing.T) {
 		"kept":    keepRule,
 		"secret":  redactRule,
 		"omitted": omitRule,
-		"url":     redactQueryRule,
-		"plain":   redactQueryRule,
 		"items":   {items: &snapshotRule{fields: map[string]*snapshotRule{"value": redactRule}}},
 		"tags":    {each: redactRule},
 	}}
 	got := snapshotNode(rule, map[string]any{
 		"kept": "a", "secret": []any{"x", map[string]any{"k": "y"}}, "omitted": "z",
-		"url": "/ready?token=t", "plain": "/ready", "empty": "", "unknown": map[string]any{"n": int64(1)},
+		"empty": "", "unknown": map[string]any{"n": int64(1)},
 		// A list element that isn't an object keeps only its shape.
 		"items": []any{map[string]any{"name": "one", "value": "v"}, "bare"},
 		"tags":  map[string]any{"a": "1"},
@@ -45,8 +43,6 @@ func TestSnapshotModes(t *testing.T) {
 	require.Equal(t, map[string]any{
 		"kept":    "a",
 		"secret":  []any{redacted("x"), map[string]any{"k": redacted("y")}},
-		"url":     "/ready?" + redacted("token=t"),
-		"plain":   "/ready",
 		"unknown": map[string]any{"n": int64(1)},
 		"items":   []any{map[string]any{"name": "one", "value": redacted("v")}, redacted("bare")},
 		"tags":    map[string]any{"a": redacted("1")},

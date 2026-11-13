@@ -611,18 +611,12 @@ The `rollout_started` `change.diff` contains `before_known`, `before`, and `afte
 The baseline is the previously observed rollout template; templates aren't reconstructed from historical ReplicaSets.
 The event doesn't list the changed fields; compare `before` and `after` to find them.
 
-Every field of the pod template keeps its value in snapshots by default.
-The following fields can hold credentials, so snapshots replace their values with [redacted placeholders](#snapshots):
+Every field of the pod template keeps its value in snapshots, including container `command` and `args`, environment variable values, probes, lifecycle hooks, and volume options.
 
-* Container `command` and `args`.
-* Environment variable `value`. References in `valueFrom` keep their values.
-* The `exec.command` of probes and lifecycle hooks.
-* The HTTP header `value` of probes and lifecycle hooks.
-* The query string of the `httpGet.path` of probes and lifecycle hooks. The path before `?` keeps its value.
-* The `volumeAttributes` of CSI volumes and the `options` of FlexVolume volumes, which some drivers use for credentials.
-
-Pod template annotations other than the ignored annotations keep their values.
-Don't store credentials in pod template annotations.
+{{< admonition type="caution" >}}
+Values set directly in the pod template, such as an environment variable `value`, are exported as they are.
+Store credentials in Secrets and reference them with `valueFrom` or volumes, so that snapshots contain only the reference.
+{{< /admonition >}}
 
 The following annotations are left out of snapshots, because tools set them and they repeat other data or change without a configuration change:
 
@@ -652,7 +646,7 @@ For example, an image update and a CPU request increase produce this `change.dif
 
 ### Snapshots
 
-Events that describe a change of an object include redacted snapshots of the object in `change.diff`:
+Events that describe a change of an object include snapshots of the object in `change.diff`:
 
 | Event | `before_known` | `before` | `after` |
 | --- | --- | --- | --- |
@@ -669,13 +663,12 @@ ConfigMap and Secret snapshots contain the object's `metadata`, including `name`
 An update emits an event when its snapshots differ in more than `resourceVersion`.
 The exception is objects whose content isn't read, as described in [ConfigMap and Secret events](#configmap-and-secret-events).
 
-Each value of a field that can hold credentials, such as an environment variable value or `args`, is replaced with a placeholder such as `"[redacted:1a2b3c4d]"`, and the shape of the field is kept.
+ConfigMap data in `keys` mode is replaced with placeholders such as `"[redacted:1a2b3c4d]"`.
 The placeholder contains a short keyed hash of the value.
-Within one event, equal values have the same placeholder and different values have different placeholders, so comparing `before` and `after` shows which redacted values changed.
+Within one event, equal values have the same placeholder and different values have different placeholders, so comparing `before` and `after` shows which values changed.
 The key is random for each {{< param "PRODUCT_NAME" >}} process, so placeholders can't be checked against guessed values and don't match across restarts or between events from different processes.
 Delivery retries resend the same record, so a retried event keeps its placeholders.
 Ignored annotations, `metadata.managedFields`, and empty values are left out.
-For example, a container with an environment variable appears as `{"name": "api", "image": "api:v2", "env": [{"name": "DATABASE_URL", "value": "[redacted:1a2b3c4d]"}]}`.
 
 A snapshot is omitted when the object has no fields to include.
 When an event with its snapshots would exceed 2 MiB, the component omits `before` and `after` and sets `snapshots_omitted` to `size` in `change.diff`.
