@@ -1,0 +1,45 @@
+otelcol.receiver.otlp "default" {
+	grpc {
+		endpoint = "localhost:4317"
+	}
+
+	http {
+		endpoint = "localhost:4318"
+	}
+
+	output {
+		metrics = [otelcol.processor.filter.default_ottl.input]
+		logs    = [otelcol.processor.filter.default_ottl.input]
+		traces  = [otelcol.processor.filter.default_ottl.input]
+	}
+}
+
+otelcol.processor.filter "default_ottl" {
+	error_mode = "ignore"
+
+	traces {
+		span      = ["attributes[\"container.name\"] == \"app_container_1\"", "resource.attributes[\"host.name\"] == \"localhost\"", "name == \"app_3\""]
+		spanevent = ["attributes[\"grpc\"] == true", "IsMatch(name, \".*grpc.*\")"]
+	}
+
+	metrics {
+		metric    = ["name == \"my.metric\" and resource.attributes[\"my_label\"] == \"abc123\"", "type == METRIC_DATA_TYPE_HISTOGRAM"]
+		datapoint = ["metric.type == METRIC_DATA_TYPE_SUMMARY", "resource.attributes[\"service.name\"] == \"my_service_name\""]
+	}
+
+	logs {
+		log_record = ["IsMatch(body, \".*password.*\")", "severity_number < SEVERITY_NUMBER_WARN"]
+	}
+
+	output {
+		metrics = [otelcol.exporter.otlp.default.input]
+		logs    = [otelcol.exporter.otlp.default.input]
+		traces  = [otelcol.exporter.otlp.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+	}
+}

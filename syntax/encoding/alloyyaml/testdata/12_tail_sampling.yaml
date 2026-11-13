@@ -1,0 +1,166 @@
+- otelcol.exporter.otlp/default:
+    - client:
+        - endpoint: database:4317
+- otelcol.processor.tail_sampling/default:
+    - decision_wait: 10s
+    - expected_new_traces_per_sec: 10
+    - num_traces: 100
+    - output:
+        - traces:
+            - expr(otelcol.exporter.otlp.default.input)
+    - policy:
+        - name: test-policy-1
+        - type: always_sample
+    - policy:
+        - latency:
+            - threshold_ms: 5000
+        - name: test-policy-2
+        - type: latency
+    - policy:
+        - name: test-policy-3
+        - numeric_attribute:
+            - key: key1
+            - max_value: 100
+            - min_value: 50
+        - type: numeric_attribute
+    - policy:
+        - name: test-policy-4
+        - probabilistic:
+            - sampling_percentage: 10
+        - type: probabilistic
+    - policy:
+        - name: test-policy-5
+        - status_code:
+            - status_codes:
+                - ERROR
+                - UNSET
+        - type: status_code
+    - policy:
+        - name: test-policy-6
+        - string_attribute:
+            - key: key2
+            - values:
+                - value1
+                - value2
+        - type: string_attribute
+    - policy:
+        - name: test-policy-7
+        - string_attribute:
+            - cache_max_size: 10
+            - enabled_regex_matching: true
+            - key: key2
+            - values:
+                - value1
+                - val*
+        - type: string_attribute
+    - policy:
+        - name: test-policy-8
+        - rate_limiting:
+            - spans_per_second: 35
+        - type: rate_limiting
+    - policy:
+        - name: test-policy-9
+        - string_attribute:
+            - enabled_regex_matching: true
+            - invert_match: true
+            - key: http.url
+            - values:
+                - \/health
+                - \/metrics
+        - type: string_attribute
+    - policy:
+        - name: test-policy-10
+        - span_count:
+            - max_spans: 20
+            - min_spans: 2
+        - type: span_count
+    - policy:
+        - name: test-policy-11
+        - trace_state:
+            - key: key3
+            - values:
+                - value1
+                - value2
+        - type: trace_state
+    - policy:
+        - boolean_attribute:
+            - invert_match: true
+            - key: key4
+            - value: true
+        - name: test-policy-12
+        - type: boolean_attribute
+    - policy:
+        - name: test-policy-13
+        - ottl_condition:
+            - error_mode: ignore
+            - span:
+                - attributes["test_attr_key_1"] == "test_attr_val_1"
+                - attributes["test_attr_key_2"] != "test_attr_val_1"
+            - spanevent:
+                - name != "test_span_event_name"
+                - attributes["test_event_attr_key_2"] != "test_event_attr_val_1"
+        - type: ottl_condition
+    - policy:
+        - and:
+            - and_sub_policy:
+                - name: test-and-policy-1
+                - numeric_attribute:
+                    - key: key1
+                    - max_value: 100
+                    - min_value: 50
+                - type: numeric_attribute
+            - and_sub_policy:
+                - name: test-and-policy-2
+                - string_attribute:
+                    - key: key2
+                    - values:
+                        - value1
+                        - value2
+                - type: string_attribute
+        - name: and-policy-1
+        - type: and
+    - policy:
+        - composite:
+            - composite_sub_policy:
+                - name: test-composite-policy-1
+                - numeric_attribute:
+                    - key: key1
+                    - max_value: 100
+                    - min_value: 50
+                - type: numeric_attribute
+            - composite_sub_policy:
+                - name: test-composite-policy-2
+                - string_attribute:
+                    - key: key2
+                    - values:
+                        - value1
+                        - value2
+                - type: string_attribute
+            - composite_sub_policy:
+                - name: test-composite-policy-3
+                - type: always_sample
+            - max_total_spans_per_second: 1000
+            - policy_order:
+                - test-composite-policy-1
+                - test-composite-policy-2
+                - test-composite-policy-3
+            - rate_allocation:
+                - percent: 50
+                - policy: test-composite-policy-1
+            - rate_allocation:
+                - percent: 25
+                - policy: test-composite-policy-2
+        - name: composite-policy-1
+        - type: composite
+- otelcol.receiver.otlp/default:
+    - grpc:
+        - endpoint: localhost:4317
+    - http:
+        - endpoint: localhost:4318
+    - output:
+        - logs:
+            - expr(otelcol.processor.tail_sampling.default.input)
+        - metrics:
+            - expr(otelcol.processor.tail_sampling.default.input)
+        - traces:
+            - expr(otelcol.processor.tail_sampling.default.input)
