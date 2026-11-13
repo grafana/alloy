@@ -79,6 +79,9 @@ RUN groupadd --gid $UID $USERNAME \
     && chown -R $USERNAME:$USERNAME /var/lib/alloy \
     && chmod -R 770 /var/lib/alloy
 
-ENTRYPOINT ["/bin/alloy"]
+# Copy the entrypoint script into the image
+COPY --chmod=755 --chown=${UID}:${UID} packaging/docker/entrypoint.sh /usr/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/bin/entrypoint.sh", "/bin/alloy"]
 ENV ALLOY_DEPLOY_MODE=docker
 CMD ["run", "/etc/alloy/config.alloy", "--storage.path=/var/lib/alloy/data"]
