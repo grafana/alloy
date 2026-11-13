@@ -5,6 +5,7 @@ package beyla
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"golang.org/x/sync/errgroup" //nolint:depguard
 
@@ -25,13 +26,14 @@ func (c *Component) handleSubprocessStart(ctx context.Context) {
 
 	newCtx, cancelFunc := context.WithCancel(ctx)
 
-	if err := c.setupSubprocess(); err != nil {
+	controlSocket, configFile, err := c.setupSubprocess()
+	if err != nil {
 		cancelFunc()
 		return
 	}
 
 	g, launchCtx := errgroup.WithContext(newCtx)
-	g.Go(func() error { return c.runSubprocess(launchCtx) })
+	g.Go(func() error { return c.runSubprocess(launchCtx, controlSocket, configFile) })
 	g.Go(func() error { return c.watchdogLoop(launchCtx) })
 
 	go c.monitorSubprocess(newCtx, g)
@@ -63,13 +65,13 @@ func (c *Component) handleSubprocessExit(err error) {
 	c.scheduleRestart()
 }
 
-func (c *Component) setupSubprocess() error {
+func (c *Component) setupSubprocess() (controlSocket, configFile *os.File, err error) {
 	if err := c.startOTLPReceiver(); err != nil {
 		c.opts.Logger.Error("failed to start OTLP receiver", "err", err)
 		c.health.SetUnhealthy(err)
 		c.cleanup()
 		c.scheduleRestart()
-		return err
+		return nil, nil, err
 	}
 
 	port, err := findFreePort()
@@ -79,7 +81,7 @@ func (c *Component) setupSubprocess() error {
 		c.health.SetUnhealthy(err)
 		c.cleanup()
 		c.scheduleRestart()
-		return err
+		return nil, nil, err
 	}
 
 	c.subprocess.SetListen(port, fmt.Sprintf("http://127.0.0.1:%d", port))
@@ -89,24 +91,47 @@ func (c *Component) setupSubprocess() error {
 		c.health.SetUnhealthy(err)
 		c.cleanup()
 		c.scheduleRestart()
-		return err
+		return nil, nil, err
 	}
 
 	c.subprocess.SetHealthAddr(abstractSocketAddr("health", c.opts.ID))
 
-	configPath, cleanupConfig, err := c.writeConfigFile()
+	configData, err := c.buildConfig(c.args)
+
+	if err != nil {
+		c.opts.Logger.Error("failed to build config", "err", err)
+		c.health.SetUnhealthy(err)
+		c.cleanup()
+		c.scheduleRestart()
+		return nil, nil, err
+	}
+
+	configFile, err = writeConfigFile(configData)
 
 	if err != nil {
 		c.opts.Logger.Error("failed to write config", "err", err)
 		c.health.SetUnhealthy(err)
 		c.cleanup()
 		c.scheduleRestart()
-		return err
+		return nil, nil, err
 	}
 
-	c.subprocess.SetConfig(configPath, cleanupConfig)
+	c.configData = configData
 
-	return nil
+	control, controlSocket, err := newConfigControl()
+
+	if err != nil {
+		configFile.Close()
+		c.opts.Logger.Error("failed to create config control socket", "err", err)
+		c.health.SetUnhealthy(err)
+		c.cleanup()
+		c.scheduleRestart()
+		return nil, nil, err
+	}
+
+	c.configControl = control
+
+	return controlSocket, configFile, nil
 }
 
 func (c *Component) allocateProfilePort() error {
@@ -164,5 +189,10 @@ func (c *Component) stopSubprocess() {
 func (c *Component) cleanup() {
 	c.stopOTLPReceiver()
 	c.otlpReceiverAddr = ""
+	if c.configControl != nil {
+		c.configControl.Close()
+		c.configControl = nil
+	}
+	c.configData = nil
 	c.subprocess.Reset()
 }

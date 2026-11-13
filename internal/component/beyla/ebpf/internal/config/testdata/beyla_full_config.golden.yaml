@@ -27,6 +27,7 @@ attributes:
     rename_unresolved_hosts: x
     rename_unresolved_hosts_incoming: x
     rename_unresolved_hosts_outgoing: x
+    sanitize_sql_query_text: true
     select:
         x:
             exclude:
@@ -325,6 +326,8 @@ ebpf:
                     enabled: true
                 bedrock:
                     enabled: true
+                cohere:
+                    enabled: true
                 embedding:
                     enabled: true
                 gemini:
@@ -527,6 +530,29 @@ otel_traces_export:
     sampler:
         arg: x
         name: x
+peer_metadata:
+    cache_ttl: 1s
+    caller_ttl: 1s
+    enabled: true
+    listen_address: x
+    max_cache_bytes: 1
+    max_caller_entries: 1
+    max_concurrent: 1
+    max_peers: 1
+    max_response_bytes: 1
+    mode: x
+    peer_cidrs:
+        - x
+    port: 1
+    refresh_interval: 1s
+    request_timeout: 1s
+    tls:
+        ca_file: x
+        cert_file: x
+        enabled: true
+        key_file: x
+        server_name: x
+    token: x
 prometheus_export:
     allow_service_graph_self_references: true
     buckets:

@@ -14,12 +14,20 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// FirstExtraFD is the descriptor of the first of Spec.ExtraFiles in the subprocess, after its
+// standard input, output and error.
+const FirstExtraFD = 3
+
 // Spec is the contract between Alloy and a subprocess: everything needed to launch it.
 type Spec struct {
 	Name   string   // memfd label, shown in /proc
 	Binary []byte   // executable image, run from an anonymous in-memory file
 	Args   []string // command-line arguments
 	Env    []string // extra environment, appended to the parent's
+
+	// ExtraFiles are inherited by the subprocess as file descriptors FirstExtraFD,
+	// FirstExtraFD+1, ... Start closes the parent's copies once the child holds them.
+	ExtraFiles []*os.File
 
 	// PreExec runs on the locked OS thread immediately before exec, e.g. to raise
 	// capabilities the fork must inherit. The returned func restores the parent's state.
@@ -38,9 +46,22 @@ type Process struct {
 // and execs it with Pdeathsig=SIGKILL so the child dies with Alloy. The parent's copy
 // of the memfd is closed once the child holds its own reference.
 func Start(ctx context.Context, spec Spec) (*Process, error) {
+	defer func() {
+		for _, f := range spec.ExtraFiles {
+			f.Close()
+		}
+	}()
+
 	fd, err := createExecMemfd(spec.Name)
 	if err != nil {
 		return nil, fmt.Errorf("create in-memory executable: %w", err)
+	}
+
+	// The child opens the binary by descriptor number after its descriptors from FirstExtraFD
+	// became spec.ExtraFiles, so the binary's descriptor must come after them.
+	fd, err = fdAtOrAbove(fd, FirstExtraFD+len(spec.ExtraFiles))
+	if err != nil {
+		return nil, fmt.Errorf("move in-memory executable: %w", err)
 	}
 
 	if err := WriteAll(fd, spec.Binary); err != nil {
@@ -51,6 +72,7 @@ func Start(ctx context.Context, spec Spec) (*Process, error) {
 	cmd := exec.CommandContext(ctx, fmt.Sprintf("/proc/self/fd/%d", fd), spec.Args...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGKILL}
 	cmd.Env = append(os.Environ(), spec.Env...)
+	cmd.ExtraFiles = spec.ExtraFiles
 	cmd.Stdout = spec.Stdout
 	cmd.Stderr = spec.Stderr
 
