@@ -1,0 +1,24 @@
+{{- if and .Values.gateway.enabled .Values.gateway.serviceMonitor.enabled -}}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "alloy.fullname" . }}-gateway
+  namespace: {{ include "alloy.namespace" . }}
+  labels:
+    {{- include "alloy.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gateway
+    {{- with .Values.gateway.serviceMonitor.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "alloy.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: gateway
+  endpoints:
+  - port: {{ .Values.gateway.serviceMonitor.port }}
+    {{- if .Values.gateway.serviceMonitor.interval }}
+    interval: {{ .Values.gateway.serviceMonitor.interval }}
+    {{- end }}
+    path: {{ .Values.gateway.serviceMonitor.path }}
+{{- end }}
