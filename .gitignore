@@ -55,3 +55,6 @@ CLAUDE.local.md
 internal/component/beyla/ebpf/binaries/amd64/beyla
 internal/component/beyla/ebpf/binaries/arm64/beyla
 internal/component/beyla/ebpf/.beyla-binary-version
+
+# direnv / nix
+/.direnv
