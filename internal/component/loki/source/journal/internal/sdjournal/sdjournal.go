@@ -323,6 +323,9 @@ type Options struct {
 	Cursor  string
 	MaxAge  time.Duration
 	Matches []string
+	// Since, when set, positions the read pointer at the first entry received
+	// at or after Since instead of resuming from Cursor; MaxAge is not applied.
+	Since time.Time
 }
 
 // New loads libsystemd, opens the journal (the local journal, or the directory
@@ -359,7 +362,12 @@ func New(opts Options) (*Journal, error) {
 		}
 	}
 
-	if err := j.seekToStart(opts.Cursor, opts.MaxAge); err != nil {
+	if opts.Since.IsZero() {
+		err = j.seekToStart(opts.Cursor, opts.MaxAge)
+	} else {
+		err = j.seekRealtime(opts.Since)
+	}
+	if err != nil {
 		j.Close()
 		return nil, err
 	}
