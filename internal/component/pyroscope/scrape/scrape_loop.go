@@ -3,6 +3,7 @@ package scrape
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -34,7 +35,14 @@ type scrapePool struct {
 
 	mtx           sync.RWMutex
 	activeTargets map[uint64]*scrapeLoop
+	// retired loops finish an in-flight capture and push before leaving.
+	retired map[*scrapeLoop]struct{}
 }
+
+// shutdownPushGrace bounds how long collector shutdown waits for a completed
+// profile to be accepted by the writer before cancelling the push. It must
+// stay well inside the existing 20-second unit stop budget.
+const shutdownPushGrace = 5 * time.Second
 
 func newScrapePool(hco []commonconfig.HTTPClientOption, cfg Arguments, appendable pyroscope.Appendable, logger *slog.Logger) (*scrapePool, error) {
 	scrapeClient, err := commonconfig.NewClientFromConfig(*cfg.HTTPClientConfig.Convert(), cfg.JobName, hco...)
@@ -48,6 +56,7 @@ func newScrapePool(hco []commonconfig.HTTPClientOption, cfg Arguments, appendabl
 		scrapeClient:  scrapeClient,
 		appendable:    appendable,
 		activeTargets: map[uint64]*scrapeLoop{},
+		retired:       map[*scrapeLoop]struct{}{},
 	}, nil
 }
 
@@ -86,9 +95,24 @@ Outer:
 				continue Outer
 			}
 		}
-		t.stop(false)
+		tg.retire(t)
 		delete(tg.activeTargets, h)
 	}
+}
+
+// retire stops scheduling for a replaced or removed target only. A capture
+// that is already running completes and its profile is pushed exactly as on
+// an unchanged target; the pool keeps the loop until then so that collector
+// shutdown still cancels and bounds it. The caller holds tg.mtx.
+func (tg *scrapePool) retire(t *scrapeLoop) {
+	t.stop(false)
+	tg.retired[t] = struct{}{}
+	go func() {
+		t.wg.Wait()
+		tg.mtx.Lock()
+		delete(tg.retired, t)
+		tg.mtx.Unlock()
+	}()
 }
 
 func (tg *scrapePool) reload(cfg Arguments) error {
@@ -111,7 +135,7 @@ func (tg *scrapePool) reload(cfg Arguments) error {
 	tg.scrapeClient = scrapeClient
 	for hash, t := range tg.activeTargets {
 		// restart the loop with the new configuration
-		t.stop(false)
+		tg.retire(t)
 		loop := newScrapeLoop(t.Target, tg.scrapeClient, tg.appendable, tg.config.ScrapeInterval, tg.config.ScrapeTimeout, tg.logger)
 		tg.activeTargets[hash] = loop
 		loop.start()
@@ -124,7 +148,14 @@ func (tg *scrapePool) stop() {
 	defer tg.mtx.Unlock()
 
 	wg := sync.WaitGroup{}
+	loops := make([]*scrapeLoop, 0, len(tg.activeTargets)+len(tg.retired))
 	for _, t := range tg.activeTargets {
+		loops = append(loops, t)
+	}
+	for t := range tg.retired {
+		loops = append(loops, t)
+	}
+	for _, t := range loops {
 		wg.Add(1)
 		go func(t *scrapeLoop) {
 			defer wg.Done()
@@ -156,7 +187,13 @@ type scrapeLoop struct {
 	logger            *slog.Logger
 	interval, timeout time.Duration
 	graceShut         chan struct{}
+	captureContext    context.Context
+	cancelCapture     context.CancelFunc
+	pushContext       context.Context
+	cancelPush        context.CancelFunc
+	pushGrace         time.Duration
 	once              sync.Once
+	shutdownOnce      sync.Once
 	wg                sync.WaitGroup
 }
 
@@ -172,19 +209,27 @@ func newScrapeLoop(t *Target, scrapeClient *http.Client, appendable pyroscope.Ap
 	if !t.godeltaprof {
 		appender = NewDeltaAppender(appender, t.allLabels)
 	}
+	captureContext, cancelCapture := context.WithCancel(context.Background())
+	pushContext, cancelPush := context.WithCancel(context.Background())
 	return &scrapeLoop{
-		Target:       t,
-		logger:       logger,
-		scrapeClient: scrapeClient,
-		appender:     appender,
-		interval:     interval,
-		timeout:      timeout,
+		captureContext: captureContext,
+		cancelCapture:  cancelCapture,
+		pushContext:    pushContext,
+		cancelPush:     cancelPush,
+		pushGrace:      shutdownPushGrace,
+		Target:         t,
+		logger:         logger,
+		scrapeClient:   scrapeClient,
+		appender:       appender,
+		interval:       interval,
+		timeout:        timeout,
 	}
 }
 
 func (t *scrapeLoop) start() {
 	t.graceShut = make(chan struct{})
 	t.once = sync.Once{}
+	t.shutdownOnce = sync.Once{}
 	t.wg.Add(1)
 
 	go func() {
@@ -215,14 +260,18 @@ func (t *scrapeLoop) scrape() {
 		b                 = payloadBuffers.Get(t.lastScrapeSize).([]byte)
 		buf               = bytes.NewBuffer(b)
 		profileType       string
-		scrapeCtx, cancel = context.WithTimeout(context.Background(), t.timeout)
+		scrapeCtx, cancel = context.WithTimeout(t.captureContext, t.timeout)
 	)
 	defer cancel()
 
 	profileType = t.allLabels.Get(ProfileName)
 
 	if err := t.fetchProfile(scrapeCtx, profileType, buf); err != nil {
-		t.logger.Error("fetch profile failed", "target", t, "err", err)
+		if errors.Is(err, context.Canceled) && t.captureContext.Err() != nil {
+			t.logCancellation(start, profileType, "capture", true)
+		} else {
+			t.logger.Error("fetch profile failed", "target", t, "err", err)
+		}
 		t.updateTargetStatus(start, err)
 		return
 	}
@@ -232,12 +281,32 @@ func (t *scrapeLoop) scrape() {
 		t.lastScrapeSize = len(b)
 	}
 	lbs := pyroscope.LabelsWithScope(t.allLabels, pyroscope.ScopeNameScrape)
-	if err := t.appender.Append(context.Background(), lbs, []*pyroscope.RawSample{{RawProfile: b}}); err != nil {
-		t.logger.Error("push failed", "target", t, "err", err)
+	// A completed capture is pushed on the push context: target retirement
+	// never cancels it, and collector shutdown grants it shutdownPushGrace.
+	if err := t.appender.Append(t.pushContext, lbs, []*pyroscope.RawSample{{RawProfile: b}}); err != nil {
+		if t.pushContext.Err() != nil {
+			t.logCancellation(start, profileType, "push", false)
+		} else {
+			t.logger.Error("push failed", "target", t, "err", err)
+		}
 		t.updateTargetStatus(start, err)
 		return
 	}
 	t.updateTargetStatus(start, nil)
+}
+
+// Cancellation evidence must survive a warn threshold and journal replay after
+// restart. Avoid targets, URLs, errors and raw profiles, which may contain secrets.
+// Only collector shutdown cancels; target removal or replacement never does.
+func (t *scrapeLoop) logCancellation(start time.Time, profileType, stage string, incomplete bool) {
+	end := time.Now()
+	t.logger.Warn("profile discarded during lifecycle cancellation",
+		"event", "profile_discarded", "reason", "collector_shutdown",
+		"profile_type", profileType, "stage", stage,
+		"capture_start", start.UTC().Format(time.RFC3339Nano),
+		"observed_end", end.UTC().Format(time.RFC3339Nano),
+		"elapsed_ms", end.Sub(start).Milliseconds(),
+		"incomplete", incomplete, "discarded", true)
 }
 
 func (t *scrapeLoop) updateTargetStatus(start time.Time, err error) {
@@ -294,11 +363,31 @@ func (t *scrapeLoop) fetchProfile(ctx context.Context, profileType string, buf i
 	return nil
 }
 
+// stop(false) retires the loop: no further captures are scheduled, while a
+// running capture and its push complete. stop(true) is collector shutdown: the
+// running capture is cancelled at once, a completed profile keeps pushGrace to
+// be accepted by the writer, then the push is cancelled and the loop is joined.
 func (t *scrapeLoop) stop(wait bool) {
 	t.once.Do(func() {
 		close(t.graceShut)
 	})
-	if wait {
-		t.wg.Wait()
+	if !wait {
+		return
 	}
+	t.shutdownOnce.Do(func() {
+		t.cancelCapture()
+		done := make(chan struct{})
+		go func() {
+			t.wg.Wait()
+			close(done)
+		}()
+		timer := time.NewTimer(t.pushGrace)
+		defer timer.Stop()
+		select {
+		case <-done:
+		case <-timer.C:
+			t.cancelPush()
+		}
+	})
+	t.wg.Wait()
 }
