@@ -5,6 +5,8 @@ package file
 // implementations of the reader interface.
 
 import (
+	"sync"
+
 	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -19,6 +21,11 @@ type metrics struct {
 	totalBytes  *prometheus.GaugeVec
 	readLines   *prometheus.CounterVec
 	filesActive prometheus.Gauge
+
+	// Reconciliation starts a replacement before the retired source has stopped. Several label sets can also read
+	// the same path. Keep path-series until the last successful reader stops, including across a retry of a source.
+	activePathsMu sync.Mutex
+	activePaths   map[string]int
 }
 
 // newMetrics creates a new set of file metrics. If reg is non-nil, the metrics
@@ -26,6 +33,7 @@ type metrics struct {
 func newMetrics(reg prometheus.Registerer) *metrics {
 	var m metrics
 	m.reg = reg
+	m.activePaths = make(map[string]int)
 
 	m.readBytes = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "loki_source_file_read_bytes_total",
@@ -52,4 +60,26 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	}
 
 	return &m
+}
+
+// startFileMetrics publishes a reader only after its file has been opened. An idle file needs a path-series on every
+// successful run: a previous run's cleanup removes it, and a retry does not call the component's source factory again.
+func (m *metrics) startFileMetrics(path string, size int64) {
+	m.activePathsMu.Lock()
+	defer m.activePathsMu.Unlock()
+	m.activePaths[path]++
+	m.totalBytes.WithLabelValues(path).Set(float64(size))
+}
+
+func (m *metrics) stopFileMetrics(path string) {
+	m.activePathsMu.Lock()
+	defer m.activePathsMu.Unlock()
+	m.activePaths[path]--
+	if m.activePaths[path] > 0 {
+		return
+	}
+	delete(m.activePaths, path)
+	m.readLines.DeleteLabelValues(path)
+	m.readBytes.DeleteLabelValues(path)
+	m.totalBytes.DeleteLabelValues(path)
 }

@@ -343,16 +343,12 @@ func (c *Component) scheduleSources() {
 		func(_ positions.Entry, target resolvedTarget) (source.Source[positions.Entry], error) {
 			fi, err := os.Stat(target.Path)
 			if err != nil {
-				c.metrics.totalBytes.DeleteLabelValues(target.Path)
 				return nil, fmt.Errorf("failed to tail file, stat failed: %w", err)
 			}
 
 			if fi.IsDir() {
-				c.metrics.totalBytes.DeleteLabelValues(target.Path)
 				return nil, errors.New("failed to tail file, is directory")
 			}
-
-			c.metrics.totalBytes.WithLabelValues(target.Path).Set(float64(fi.Size()))
 
 			return c.newSource(sourceOptions{
 				path:                 target.Path,

@@ -162,6 +162,8 @@ func (t *tailer) initRun() (int64, error) {
 func (t *tailer) tail(ctx, stop context.Context, pos int64) {
 	t.running.Store(true)
 	t.metrics.filesActive.Add(1.)
+	size, _ := t.file.Size()
+	t.metrics.startFileMetrics(t.key.Path, size)
 	t.logger.Info("start tailing file")
 
 	if t.decompression.Enabled && t.decompression.InitialDelay > 0 {
@@ -324,9 +326,7 @@ func (t *tailer) updateMetrics(f *tail.File, offset int64) {
 func (t *tailer) cleanupMetrics() {
 	// When we stop tailing the file, also un-export metrics related to the file
 	t.metrics.filesActive.Add(-1.)
-	t.metrics.readLines.DeleteLabelValues(t.key.Path)
-	t.metrics.readBytes.DeleteLabelValues(t.key.Path)
-	t.metrics.totalBytes.DeleteLabelValues(t.key.Path)
+	t.metrics.stopFileMetrics(t.key.Path)
 }
 
 func (t *tailer) DebugInfo() any {
