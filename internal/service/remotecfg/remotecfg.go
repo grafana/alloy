@@ -48,7 +48,8 @@ type Service struct {
 	cm          *configManager
 
 	// runCtx is the context from Run method, used for service lifecycle operations
-	runCtx context.Context
+	runCtx     context.Context
+	registered bool
 }
 
 // ServiceName defines the name used for the remotecfg service.
@@ -153,17 +154,31 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	err = s.registerCollector()
 	if err != nil && !errors.Is(err, errNoopClient) {
 		s.opts.Logger.Error("failed to register collector during service startup", "err", err)
-		return err
+		if !retryableRegistrationError(err) {
+			return err
+		}
 	}
 
-	// Run the service's own controller.
+	// Join the remote controller before returning to the parent runtime. Its
+	// components must finish flushing positions and WAL state before process exit.
+	controllerDone := make(chan struct{})
 	go func() {
-		s.cm.getController().Run(ctx)
+		defer close(controllerDone)
+		c.Run(ctx)
 	}()
+	defer func() { <-controllerDone }()
 
 	for {
 		select {
 		case <-s.cm.getTickerC():
+			s.mut.RLock()
+			needsRegistration := s.args.URL != "" && !s.registered
+			s.mut.RUnlock()
+			if needsRegistration {
+				if err := s.registerCollector(); err != nil && !errors.Is(err, errNoopClient) {
+					s.opts.Logger.Error("failed to retry collector registration", "err", err)
+				}
+			}
 			s.fetchLoadConfig(false) // Don't reload cache during periodic polling
 		case <-s.cm.getUpdateTickerChan():
 			s.cm.getTicker().Reset(s.cm.getPollFrequency())
@@ -198,7 +213,9 @@ func (s *Service) Update(newConfig any) error {
 	err = s.registerCollector()
 	if err != nil {
 		s.opts.Logger.Error("failed to register collector during configuration update", "err", err)
-		return err
+		if !retryableRegistrationError(err) {
+			return err
+		}
 	}
 
 	// If we've already called Run, then immediately trigger an API call with
@@ -215,6 +232,7 @@ func (s *Service) updateHandleEmptyUrl(args Arguments) {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 
+	s.registered = false
 	s.apiClient = newNoopClient()
 	s.args.HTTPClientConfig = config.CloneDefaultHTTPClientConfig()
 	s.args = args
@@ -290,10 +308,11 @@ func (s *Service) fetchLoadConfig(allowCacheFallback bool) {
 }
 
 func (s *Service) getConfig() (*collectorv1.GetConfigResponse, error) {
+	ctx := s.getContext()
 	s.mut.RLock()
 	defer s.mut.RUnlock()
 
-	response, err := s.apiClient.GetConfig(s.getContext(), &connect.Request[collectorv1.GetConfigRequest]{
+	response, err := s.apiClient.GetConfig(ctx, &connect.Request[collectorv1.GetConfigRequest]{
 		Msg: &collectorv1.GetConfigRequest{
 			Id:                 s.args.ID,
 			LocalAttributes:    s.attrs,
@@ -317,11 +336,24 @@ func (s *Service) getConfig() (*collectorv1.GetConfigResponse, error) {
 	return response.Msg, nil
 }
 
-func (s *Service) registerCollector() error {
-	s.mut.RLock()
-	defer s.mut.RUnlock()
+// Transient registration failures must not prevent loading the last valid cache.
+// Configuration, authentication and authorization errors retain their existing behavior.
+func retryableRegistrationError(err error) bool {
+	switch connect.CodeOf(err) {
+	case connect.CodeUnavailable, connect.CodeDeadlineExceeded, connect.CodeResourceExhausted:
+		return true
+	default:
+		return false
+	}
+}
 
-	_, err := s.apiClient.RegisterCollector(s.getContext(), &connect.Request[collectorv1.RegisterCollectorRequest]{
+func (s *Service) registerCollector() error {
+	ctx := s.getContext()
+	s.mut.Lock()
+	defer s.mut.Unlock()
+	s.registered = false
+
+	_, err := s.apiClient.RegisterCollector(ctx, &connect.Request[collectorv1.RegisterCollectorRequest]{
 		Msg: &collectorv1.RegisterCollectorRequest{
 			Id:              s.args.ID,
 			LocalAttributes: s.attrs,
@@ -333,6 +365,7 @@ func (s *Service) registerCollector() error {
 		s.opts.Logger.Error("failed to register collector with remote server", "id", s.args.ID, "name", s.args.Name, "err", err)
 		return err
 	}
+	s.registered = true
 	return nil
 }
 
