@@ -49,8 +49,12 @@ type Arguments struct {
 	TextFile           *TextFileConfig          `alloy:"textfile,block,optional"`
 	TCP                TCPConfig                `alloy:"tcp,block,optional"`
 	Update             UpdateConfig             `alloy:"update,block,optional"`
+	File               FileConfig               `alloy:"file,block,optional"`
 	Filetime           FiletimeConfig           `alloy:"filetime,block,optional"`
 	PerformanceCounter PerformanceCounterConfig `alloy:"performancecounter,block,optional"`
+	Container          ContainerConfig          `alloy:"container,block,optional"`
+	Registry           RegistryConfig           `alloy:"registry,block,optional"`
+	WMI                WMIConfig                `alloy:"wmi,block,optional"`
 	MSCluster          MSClusterConfig          `alloy:"mscluster,block,optional"`
 	NetFramework       NetFrameworkConfig       `alloy:"netframework,block,optional"`
 	DNS                DNSConfig                `alloy:"dns,block,optional"`
@@ -84,8 +88,12 @@ func (a *Arguments) Convert(logger *slog.Logger) *windows_integration.Config {
 		SMTP:               a.SMTP.Convert(),
 		TextFile:           CombineAndConvert(a.TextFile, a.TextFileDeprecated),
 		TCP:                a.TCP.Convert(),
+		File:               a.File.Convert(),
 		Filetime:           a.Filetime.Convert(),
 		PerformanceCounter: a.PerformanceCounter.Convert(),
+		Container:          a.Container.Convert(),
+		Registry:           a.Registry.Convert(),
+		WMI:                a.WMI.Convert(),
 		MSCluster:          a.MSCluster.Convert(),
 		NetFramework:       a.NetFramework.Convert(),
 		Update:             a.Update.Convert(),
@@ -130,6 +138,15 @@ func (a *Arguments) logDeprecatedFields(logger *slog.Logger) {
 	}
 	if slices.Contains(a.EnabledCollectors, "logon") {
 		logger.Warn("the `logon` collector is removed - its metrics are in the `terminal_services` collector")
+	}
+	if slices.Contains(a.EnabledCollectors, "filetime") || len(a.Filetime.FilePatterns) > 0 {
+		logger.Warn("the `filetime` collector and block are deprecated - Alloy runs the `file` collector instead, which also exports file size. Use the `file` collector and block")
+	}
+	if slices.Contains(a.EnabledCollectors, "thermalzone") {
+		logger.Warn("the `thermalzone` collector is removed in windows_exporter v0.32 - Alloy ignores it. Use the `performancecounter` block to read the `Thermal Zone Information` counters")
+	}
+	if a.Process.CounterVersion != 0 {
+		logger.Warn("the `counter_version` attribute inside the `process` block is deprecated - its usage is a no-op and it will be removed in the future")
 	}
 	if a.MSMQ != nil {
 		logger.Warn("the `msmq` block is deprecated - its usage is a no-op and it will be removed in the future")
@@ -260,7 +277,8 @@ type ProcessConfig struct {
 	Exclude                string `alloy:"exclude,attr,optional"`
 	Include                string `alloy:"include,attr,optional"`
 	EnableIISWorkerProcess bool   `alloy:"enable_iis_worker_process,attr,optional"`
-	CounterVersion         uint8  `alloy:"counter_version,attr,optional"`
+	// CounterVersion is deprecated. It has no effect.
+	CounterVersion uint8 `alloy:"counter_version,attr,optional"`
 }
 
 // Convert converts the component's ProcessConfig to the integration's ProcessConfig.
@@ -277,15 +295,17 @@ func (t ProcessConfig) Convert() windows_integration.ProcessConfig {
 
 // ScheduledTaskConfig handles settings for the windows_exporter process collector
 type ScheduledTaskConfig struct {
-	Exclude string `alloy:"exclude,attr,optional"`
-	Include string `alloy:"include,attr,optional"`
+	Exclude    string `alloy:"exclude,attr,optional"`
+	Include    string `alloy:"include,attr,optional"`
+	MissedRuns bool   `alloy:"missed_runs,attr,optional"`
 }
 
 // Convert converts the component's ScheduledTaskConfig to the integration's ScheduledTaskConfig.
 func (t ScheduledTaskConfig) Convert() windows_integration.ScheduledTaskConfig {
 	return windows_integration.ScheduledTaskConfig{
-		Exclude: wrapRegex(t.Exclude),
-		Include: wrapRegex(t.Include),
+		Exclude:    wrapRegex(t.Exclude),
+		Include:    wrapRegex(t.Include),
+		MissedRuns: t.MissedRuns,
 	}
 }
 
@@ -437,7 +457,21 @@ func (t UpdateConfig) Convert() windows_integration.UpdateConfig {
 	}
 }
 
-// FiletimeConfig handles settings for the windows_exporter filetime collector
+// FileConfig handles settings for the windows_exporter file collector
+type FileConfig struct {
+	FilePatterns []string `alloy:"file_patterns,attr,optional"`
+}
+
+// Convert converts the component's FileConfig to the integration's FileConfig.
+func (t FileConfig) Convert() windows_integration.FileConfig {
+	return windows_integration.FileConfig{
+		FilePatterns: t.FilePatterns,
+	}
+}
+
+// FiletimeConfig handles settings for the filetime collector.
+// Deprecated: windows_exporter v0.32 replaced the filetime collector with the file collector.
+// Use FileConfig instead.
 type FiletimeConfig struct {
 	FilePatterns []string `alloy:"file_patterns,attr,optional"`
 }
@@ -446,6 +480,42 @@ type FiletimeConfig struct {
 func (t FiletimeConfig) Convert() windows_integration.FiletimeConfig {
 	return windows_integration.FiletimeConfig{
 		FilePatterns: t.FilePatterns,
+	}
+}
+
+// ContainerConfig handles settings for the windows_exporter container collector
+type ContainerConfig struct {
+	CRIEndpoint string `alloy:"cri_endpoint,attr,optional"`
+}
+
+// Convert converts the component's ContainerConfig to the integration's ContainerConfig.
+func (t ContainerConfig) Convert() windows_integration.ContainerConfig {
+	return windows_integration.ContainerConfig{
+		CRIEndpoint: t.CRIEndpoint,
+	}
+}
+
+// RegistryConfig handles settings for the windows_exporter registry collector
+type RegistryConfig struct {
+	Keys string `alloy:"keys,attr,optional"`
+}
+
+// Convert converts the component's RegistryConfig to the integration's RegistryConfig.
+func (t RegistryConfig) Convert() windows_integration.RegistryConfig {
+	return windows_integration.RegistryConfig{
+		Keys: t.Keys,
+	}
+}
+
+// WMIConfig handles settings for the windows_exporter wmi collector
+type WMIConfig struct {
+	Queries string `alloy:"queries,attr,optional"`
+}
+
+// Convert converts the component's WMIConfig to the integration's WMIConfig.
+func (t WMIConfig) Convert() windows_integration.WMIConfig {
+	return windows_integration.WMIConfig{
+		Queries: t.Queries,
 	}
 }
 
