@@ -172,16 +172,7 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 			}
 		}
 
-		var tables []string
-		var parserErr, lexerErr error
-		if tables, parserErr = c.tryParseTableNames(sampleText.String, digestText); parserErr != nil {
-			if tables, lexerErr = c.tryTokenizeTableNames(sampleText.String, digestText); lexerErr != nil {
-				c.logger.Warn("failed to extract tables from sql text", "schema", schema, "digest", digest, "parser_err", parserErr, "lexer_err", lexerErr)
-				c.lastEmittedAt[key] = now
-				delete(c.unvalidated, key)
-				continue
-			}
-		}
+		tables, parserErr := c.tryParseTableNames(sampleText.String, digestText)
 
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
@@ -190,6 +181,15 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 		)
 		c.lastEmittedAt[key] = now
 		delete(c.unvalidated, key)
+
+		if parserErr != nil {
+			var lexerErr error
+			tables, lexerErr = c.tryTokenizeTableNames(sampleText.String, digestText)
+			if lexerErr != nil {
+				c.logger.Warn("failed to extract tables from sql text", "schema", schema, "digest", digest, "parser_err", parserErr, "lexer_err", lexerErr)
+				continue
+			}
+		}
 
 		if len(tables) == 0 {
 			continue
