@@ -8,19 +8,10 @@ import (
 	"slices"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/model/labels"
 
+	"github.com/grafana/alloy/internal/component/common/logql"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/loki/logql"
-)
-
-var (
-	errSelectorRequired    = errors.New("selector statement required for match stage")
-	errMatchRequiresStages = errors.New("match stage requires at least one additional stage to be defined in '- stages'")
-	errSelectorSyntax      = errors.New("invalid selector syntax for match stage")
-	errStagesWithDropLine  = errors.New("match stage configured to drop entries cannot contains stages")
-	errUnknownMatchAction  = errors.New("match stage action should be 'keep' or 'drop'")
+	"github.com/grafana/alloy/syntax"
 )
 
 const (
@@ -30,53 +21,36 @@ const (
 
 // MatchConfig contains the configuration for a matcherStage
 type MatchConfig struct {
-	Selector string        `alloy:"selector,attr"`
-	Stages   []StageConfig `alloy:"stage,enum,optional"`
-	Action   string        `alloy:"action,attr,optional"`
+	Selector logql.Selector `alloy:"selector,attr"`
+	Stages   []StageConfig  `alloy:"stage,enum,optional"`
+	Action   string         `alloy:"action,attr,optional"`
 	// PipelineName is unused but we need to keep it to not break configs.
 	PipelineName string `alloy:"pipeline_name,attr,optional"`
 	DropReason   string `alloy:"drop_counter_reason,attr,optional"`
 }
 
-// validateMatchConfig validates the MatcherConfig for the matcherStage
-func validateMatchConfig(cfg MatchConfig) ([]*labels.Matcher, logql.Filter, error) {
-	if cfg.Selector == "" {
-		return nil, nil, errSelectorRequired
-	}
+var _ syntax.Validator = (*MatchConfig)(nil)
 
+// Validate implements syntax.Validator.
+func (cfg *MatchConfig) Validate() error {
 	switch cfg.Action {
 	case matchActionKeep, "":
 		if len(cfg.Stages) == 0 {
-			return nil, nil, errMatchRequiresStages
+			return errors.New(`stage.match requires at least one nested stage when action is "keep"`)
 		}
 	case matchActionDrop:
 		if len(cfg.Stages) != 0 {
-			return nil, nil, errStagesWithDropLine
+			return errors.New(`stage.match cannot have nested stages when action is "drop"`)
 		}
 	default:
-		return nil, nil, errUnknownMatchAction
+		return fmt.Errorf(`stage.match action must be "keep" or "drop", got %q`, cfg.Action)
 	}
 
-	selector, err := logql.ParseExpr(cfg.Selector)
-	if err != nil {
-		return nil, nil, fmt.Errorf("%w: %w", errSelectorSyntax, err)
-	}
-
-	filter, err := selector.Filter()
-	if err != nil {
-		return nil, nil, fmt.Errorf("%w: %w", errSelectorSyntax, err)
-	}
-
-	return selector.Matchers(), filter, nil
+	return nil
 }
 
 // newMatchStage creates a new matcherStage from config
 func newMatchStage(config MatchConfig, opts stageOpts) (entryProcessor, error) {
-	matchers, filter, err := validateMatchConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
 	switch config.Action {
 	case matchActionDrop:
 		dropReason := "match_stage"
@@ -89,9 +63,9 @@ func newMatchStage(config MatchConfig, opts stageOpts) (entryProcessor, error) {
 			return nil, err
 		}
 
-		return newMatchDropStage(filter, matchers, dropCount.WithLabelValues(dropReason), opts.next), nil
+		return newMatchDropStage(config.Selector, dropCount.WithLabelValues(dropReason), opts.next), nil
 	default:
-		return newMatchKeepStage(opts.slogger, opts.registerer, opts.minStability, config.Stages, filter, matchers, opts.next)
+		return newMatchKeepStage(opts.slogger, opts.registerer, opts.minStability, config.Stages, config.Selector, opts.next)
 	}
 }
 
@@ -99,19 +73,17 @@ var (
 	_ entryProcessor = (*matchDropStage)(nil)
 )
 
-func newMatchDropStage(filter logql.Filter, matchers []*labels.Matcher, dropCount prometheus.Counter, next nextFn) *matchDropStage {
+func newMatchDropStage(selector logql.Selector, dropCount prometheus.Counter, next nextFn) *matchDropStage {
 	return &matchDropStage{
 		next:      next,
-		filter:    filter,
-		matchers:  matchers,
+		selector:  selector,
 		dropCount: dropCount,
 	}
 }
 
 type matchDropStage struct {
 	next     nextFn
-	filter   logql.Filter
-	matchers []*labels.Matcher
+	selector logql.Selector
 
 	dropCount prometheus.Counter
 }
@@ -120,7 +92,7 @@ type matchDropStage struct {
 func (m *matchDropStage) process(ctx context.Context, entries []Entry) error {
 	var dst int
 	for _, e := range entries {
-		if matchLogQL(e, m.matchers, m.filter) {
+		if m.selector.Matches(e.Labels, e.Line) {
 			m.dropCount.Inc()
 			continue
 		}
@@ -145,15 +117,13 @@ func newMatchKeepStage(
 	reg prometheus.Registerer,
 	minStability featuregate.Stability,
 	stages []StageConfig,
-	filter logql.Filter,
-	matchers []*labels.Matcher,
+	selector logql.Selector,
 	next nextFn,
 ) (*matchKeepStage, error) {
 
 	s := &matchKeepStage{
 		next:     next,
-		filter:   filter,
-		matchers: matchers,
+		selector: selector,
 	}
 
 	p, err := newPipeline(logger, reg, minStability, stages, s.collect)
@@ -171,8 +141,7 @@ type matchKeepStage struct {
 
 	pipeline *pipeline
 
-	filter   logql.Filter
-	matchers []*labels.Matcher
+	selector logql.Selector
 }
 
 type matchMergeKey struct{}
@@ -206,7 +175,7 @@ func (m *matchKeepStage) process(ctx context.Context, entries []Entry) error {
 	)
 
 	for i, e := range entries {
-		match := matchLogQL(e, m.matchers, m.filter)
+		match := m.selector.Matches(e.Labels, e.Line)
 		if match {
 			// There is at least one match so entries are collected into merged.
 			if merged == nil {
@@ -264,19 +233,6 @@ func (m *matchKeepStage) collect(ctx context.Context, entries []Entry) error {
 // stop implements stopper.
 func (m *matchKeepStage) stop() {
 	m.pipeline.stop()
-}
-
-func matchLogQL(e Entry, matchers []*labels.Matcher, filter logql.Filter) bool {
-	for _, m := range matchers {
-		if !m.Matches(string(e.Labels[model.LabelName(m.Name)])) {
-			return false
-		}
-	}
-
-	if filter == nil || filter(e.Line) {
-		return true
-	}
-	return false
 }
 
 func getDropCountMetric(registerer prometheus.Registerer) (*prometheus.CounterVec, error) {
