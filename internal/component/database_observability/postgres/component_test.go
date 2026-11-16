@@ -1868,9 +1868,10 @@ func TestPostgres_ExportedReceiversStableAcrossUpdates(t *testing.T) {
 // fakeCluster is a cluster.Cluster implementation with controllable
 // readiness and per-key ownership.
 type fakeCluster struct {
-	ready bool
-	owned map[shard.Key]bool
-	err   error
+	ready    bool
+	disabled bool
+	owned    map[shard.Key]bool
+	err      error
 }
 
 func (f *fakeCluster) Lookup(key shard.Key, _ int, _ shard.Op) ([]peer.Peer, error) {
@@ -1884,7 +1885,7 @@ func (f *fakeCluster) Peers() []peer.Peer { return nil }
 
 func (f *fakeCluster) Ready() bool { return f.ready }
 
-func (f *fakeCluster) Enabled() bool { return true }
+func (f *fakeCluster) Enabled() bool { return !f.disabled }
 
 var (
 	clusterKeyDB1 = shard.StringKey("postgresql://127.0.0.1:5432/db1")
@@ -2134,10 +2135,63 @@ func TestPostgres_Clustering_UpdateRecomputesOwnership(t *testing.T) {
 		[]string{instances[0].instanceKey, instances[1].instanceKey})
 }
 
-func TestPostgres_Clustering_LookupErrorFailsOpen(t *testing.T) {
-	// Ownership lookup errors fail open to local ownership, so a broken
-	// cluster degrades to collecting everything rather than nothing.
+func TestPostgres_Clustering_LookupErrorOwnsNothing(t *testing.T) {
+	// A lookup only errors while no peer is eligible to own a key, as on a
+	// node that hasn't joined as a participant yet. Failing open there would
+	// make every node of a freshly started cluster connect to every database.
 	fake := &fakeCluster{ready: true, err: assert.AnError}
+	var gotExports cmp.Exports
+
+	c, err := new(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, _ string) (*sql.DB, error) {
+		t.Error("unexpected database connection while no peer is eligible to own databases")
+		return nil, assert.AnError
+	})
+	require.NoError(t, err)
+
+	assert.Empty(t, c.loadInstances())
+
+	h := c.CurrentHealth()
+	assert.Equal(t, cmp.HealthTypeHealthy, h.Health)
+	assert.Contains(t, h.Message, "no databases are currently owned")
+
+	exported, ok := gotExports.(Exports)
+	require.True(t, ok)
+	assert.Empty(t, exported.Targets)
+	// Every database still exports its logs receiver.
+	assert.Len(t, exported.LogsReceivers, 2)
+}
+
+func TestPostgres_Clustering_ReconcilePicksUpDatabasesAfterLookupError(t *testing.T) {
+	fake := &fakeCluster{ready: true, err: assert.AnError}
+	var gotExports cmp.Exports
+
+	c, err := new(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, dsn string) (*sql.DB, error) {
+		switch {
+		case strings.Contains(dsn, "/db1"):
+			return multiDatabaseTestMockDB(t, "system-a"), nil
+		default:
+			return multiDatabaseTestMockDB(t, "system-b"), nil
+		}
+	})
+	require.NoError(t, err)
+	require.Empty(t, c.loadInstances())
+
+	// The node becomes a participant: lookups succeed and it owns db1.
+	fake.err = nil
+	fake.owned = map[shard.Key]bool{clusterKeyDB1: true, clusterKeyDB2: false}
+	c.reconcileCluster()
+
+	instances := c.loadInstances()
+	require.Len(t, instances, 1)
+	assert.Equal(t, "postgresql://127.0.0.1:5432/db1", instances[0].instanceKey)
+	assert.NotEmpty(t, instances[0].collectors)
+}
+
+func TestPostgres_Clustering_ClusterServiceDisabledOwnsEverything(t *testing.T) {
+	// With the cluster service disabled, the component's clustering block must
+	// be ignored. Lookups error until the node has joined as a participant after
+	// its initial load, and that must not leave every database unowned.
+	fake := &fakeCluster{ready: true, disabled: true, err: assert.AnError}
 	var gotExports cmp.Exports
 
 	c, err := new(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, dsn string) (*sql.DB, error) {
