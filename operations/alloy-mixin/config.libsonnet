@@ -5,6 +5,7 @@
         enableLokiLogs: true, 
         filterSelector: '', #use it to filter specific metric label values, ie: job=~"integrations/alloy"
         clusterLabel: 'cluster', # Label that identifies the Kubernetes cluster, used by the cluster template variable
+        clusterVariableLabel: '', # Display name of the cluster template variable, ie: Environment. Empty keeps the default
         k8sClusterSelector: '%s=~"$cluster", namespace=~"$namespace"' % self.clusterLabel,
         groupSelector: if self.enableK8sCluster then self.k8sClusterSelector + ', job=~"$job"' else 'job=~"$job"',
         instanceSelector: self.groupSelector + ', instance=~"$instance"',        

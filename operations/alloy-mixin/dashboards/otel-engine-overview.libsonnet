@@ -17,7 +17,7 @@ local filename = 'alloy-otel-engine-overview.json';
       'label_values(otelcol_process_uptime_seconds_total{%s}, %s)' % [addFilterSelector(''), $._config.clusterLabel],
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels,
       defaultToAll=false,
-    ),
+    ) + (if std.isEmpty($._config.clusterVariableLabel) then {} else { label: $._config.clusterVariableLabel }),
     dashboard.newMultiTemplateVariable(
       'namespace',
       'label_values(otelcol_process_uptime_seconds_total{%s}, namespace)' % addFilterSelector('%s=~"$cluster"' % $._config.clusterLabel),

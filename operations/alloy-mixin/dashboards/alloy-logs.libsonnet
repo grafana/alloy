@@ -27,7 +27,7 @@ local filename = 'alloy-logs.json';
     if $._config.enableK8sCluster then ([
       {
         name: 'cluster',
-        label: 'Cluster',
+        label: if std.isEmpty($._config.clusterVariableLabel) then 'Cluster' else $._config.clusterVariableLabel,
         type: 'query',
         datasource: '${datasource}',
         query: 'label_values(alloy_build_info{%s}, %s)' % [addLogsFilter(''), $._config.clusterLabel],

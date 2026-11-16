@@ -1,7 +1,7 @@
 local dashboard = import './dashboard.jsonnet';
 
 {
-    newTemplateVariablesList(filterSelector='', enableK8sCluster=true, includeInstance=true, setenceCaseLabels=false, clusterLabel='cluster'):: (     
+    newTemplateVariablesList(filterSelector='', enableK8sCluster=true, includeInstance=true, setenceCaseLabels=false, clusterLabel='cluster', clusterVariableLabel=''):: (     
 
         local clusterTemplateQuery = 
             if std.isEmpty(filterSelector) then
@@ -79,7 +79,8 @@ local dashboard = import './dashboard.jsonnet';
                     name='cluster', 
                     query=clusterTemplateQuery,
                     setenceCaseLabels=setenceCaseLabels,
-                    defaultToAll=false),
+                    defaultToAll=false) + (
+                    if std.isEmpty(clusterVariableLabel) then {} else { label: clusterVariableLabel }),
                     dashboard.newMultiTemplateVariable(
                     name='namespace', 
                     query=namespaceTemplateQuery,

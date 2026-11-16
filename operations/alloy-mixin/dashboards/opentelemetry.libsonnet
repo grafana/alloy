@@ -21,6 +21,7 @@ local stackedPanelMixin = {
       filterSelector=$._config.filterSelector, 
       enableK8sCluster=$._config.enableK8sCluster, 
       clusterLabel=$._config.clusterLabel,
+      clusterVariableLabel=$._config.clusterVariableLabel,
       includeInstance=true,
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels
     ) + [

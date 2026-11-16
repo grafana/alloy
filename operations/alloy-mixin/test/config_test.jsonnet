@@ -140,6 +140,16 @@ local tests =
     for variable in ['cluster', 'namespace', 'job', 'instance', 'level']
     if std.member([v.name for v in labelMixin.grafanaDashboards[name + '.json'].templating.list], variable)
   ] +
+  // Test: clusterVariableLabel sets the display name of every cluster template variable
+  local variableLabelMixin = mixin { _config+:: { clusterVariableLabel: 'Environment' } };
+  [
+    check(
+      templateVariable(variableLabelMixin.grafanaDashboards[name], 'cluster').label == 'Environment',
+      'clusterVariableLabel should set the cluster variable label in %s' % name
+    )
+    for name in std.objectFields(variableLabelMixin.grafanaDashboards)
+    if std.member([v.name for v in variableLabelMixin.grafanaDashboards[name].templating.list], 'cluster')
+  ] +
   // Test: rendered non-row panels do not overlap
   local lokiPanels = nonRowPanels(mixin.grafanaDashboards['alloy-loki.json']);
   [
