@@ -63,10 +63,18 @@ func newReader(logger *slog.Logger, f io.ReadSeeker, offset int64, maxLineSize i
 		return nil, err
 	}
 
+	// Long lines are split every maxLineSize bytes. If that is not a multiple
+	// of the encoding's code unit size, a cut lands inside a code unit and
+	// shifts the remaining bytes. The newline width equals the code unit size,
+	// so rounding down to a multiple of it keeps cuts aligned.
+	if maxLineSize > 0 {
+		maxLineSize = max(len(nl), maxLineSize-maxLineSize%len(nl))
+	}
+
 	return &reader{
 		pos:         offset,
 		br:          bufio.NewReader(rr),
-		maxLineSize: max(0, maxLineSize),
+		maxLineSize: maxLineSize,
 		decoder:     decoder,
 		nl:          nl,
 		lastNl:      nl[len(nl)-1],
@@ -143,8 +151,9 @@ func (r *reader) decode(line []byte) (string, error) {
 	return unsafe.String(unsafe.SliceData(converted), len(converted)), nil
 }
 
-// consumeLine checks if pending ends with the delimiter; if so, it returns
-// the line without the delimiter and resets pending.
+// consumeLine returns the next line from pending, without the delimiter. If
+// pending holds more than maxLineSize bytes, it returns the first maxLineSize
+// bytes instead and keeps the rest. It returns false when neither applies.
 func (r *reader) consumeLine() ([]byte, bool) {
 	// We never buffer beyond a newline, so if pending ends with one it holds
 	// exactly one line.

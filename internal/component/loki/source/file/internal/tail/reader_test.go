@@ -57,6 +57,28 @@ func TestReader(t *testing.T) {
 		_, err = r.next()
 		require.ErrorIs(t, err, io.EOF)
 	})
+
+	t.Run("max line size does not split utf16 code units", func(t *testing.T) {
+		enc := unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM)
+		content, err := enc.NewEncoder().String("aaaaa\n")
+		require.NoError(t, err)
+
+		// An odd max line size lands inside a 2-byte UTF-16 code unit.
+		r, err := newReader(logging.NewSlogNop(), strings.NewReader(content), 0, 5, enc, "", false)
+		require.NoError(t, err)
+
+		var lines []string
+		for {
+			line, err := r.next()
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			require.NoError(t, err)
+			lines = append(lines, line)
+		}
+
+		require.Equal(t, "aaaaa", strings.Join(lines, ""))
+	})
 }
 
 var benchText string

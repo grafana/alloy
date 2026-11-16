@@ -165,6 +165,7 @@ The following arguments are supported:
 
 The `max_size` argument limits the size of a single emitted log line. Set to `0` to disable.
 If a line grows beyond this limit before a newline is encountered, {{< param "PRODUCT_NAME" >}} emits the first `max_size` bytes and continues reading the remainder on subsequent reads.
+{{< param "PRODUCT_NAME" >}} rounds `max_size` down to a multiple of the encoding's code unit size, for example 2 bytes for UTF-16, so a split doesn't corrupt the rest of the line.
 
 ## Exported fields
 
