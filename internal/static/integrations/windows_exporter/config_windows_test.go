@@ -143,3 +143,12 @@ func TestConfig_ToWindowsExporterConfigIsIdempotent(t *testing.T) {
 	require.ElementsMatch(t, first.NetFramework.CollectorsEnabled, second.NetFramework.CollectorsEnabled)
 	require.Equal(t, "netframework_clrmemory,netframework_clrjit,cpu", c.EnabledCollectors)
 }
+
+func TestConfig_RegistryAndWMIAcceptEmptyDocuments(t *testing.T) {
+	for _, doc := range []string{" \n  \n", "# - name: example\n", "---\n# nothing\n"} {
+		cfg, err := (&Config{Registry: RegistryConfig{Keys: doc}, WMI: WMIConfig{Queries: doc}}).ToWindowsExporterConfig()
+		require.NoError(t, err, "document %q", doc)
+		require.Empty(t, cfg.Registry.Keys)
+		require.Empty(t, cfg.WMI.Queries)
+	}
+}
