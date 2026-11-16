@@ -11,6 +11,7 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -283,6 +284,50 @@ func TestUpdate_NoLeak(t *testing.T) {
 			err := ctrl.Update(args)
 			require.NoError(t, err)
 		}
+	})
+}
+
+func TestIgnoreOlderThanStopsExistingSources(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	lokitest.Test(t, func(t *testing.T, env lokitest.Env) {
+		dir := t.TempDir()
+		recent := filepath.Join(dir, "recent.log")
+		old := filepath.Join(dir, "old.log")
+		require.NoError(t, os.WriteFile(recent, []byte("recent\n"), 0o644))
+		require.NoError(t, os.WriteFile(old, []byte("old\n"), 0o644))
+
+		oldTime := time.Now().Add(-2 * time.Hour)
+		require.NoError(t, os.Chtimes(old, oldTime, oldTime))
+
+		recv := env.NewReceiver(t)
+		ctrl, _ := env.Run(t, "loki.source.file", Arguments{
+			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
+				"__path__": filepath.Join(dir, "*.log"),
+			})},
+			ForwardTo: []loki.LogsReceiver{recv},
+			FileMatch: FileMatch{
+				Enabled:         true,
+				SyncPeriod:      20 * time.Millisecond,
+				IgnoreOlderThan: time.Hour,
+			},
+		})
+
+		comp, err := ctrl.GetComponent()
+		require.NoError(t, err)
+		c := comp.(*Component)
+
+		// Only the recent file is tailed; the old file is filtered out.
+		require.Eventually(t, func() bool {
+			return testutil.ToFloat64(c.metrics.filesActive) == 1
+		}, 5*time.Second, 10*time.Millisecond)
+
+		// Age out the remaining file. The next sync must stop its source.
+		require.NoError(t, os.Chtimes(recent, oldTime, oldTime))
+
+		require.Eventually(t, func() bool {
+			return testutil.ToFloat64(c.metrics.filesActive) == 0
+		}, 5*time.Second, 10*time.Millisecond)
 	})
 }
 

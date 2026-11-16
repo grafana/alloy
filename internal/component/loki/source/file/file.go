@@ -319,7 +319,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	// Choose resolver on FileMatch.
 	if newArgs.FileMatch.Enabled {
-		c.resolver = newGlobResolver(c.opts.Logger)
+		c.resolver = newGlobResolver(c.opts.Logger, newArgs.FileMatch.IgnoreOlderThan)
 	} else {
 		c.resolver = newStaticResolver()
 	}
@@ -355,10 +355,6 @@ func (c *Component) scheduleSources() {
 			if fi.IsDir() {
 				c.metrics.totalBytes.DeleteLabelValues(target.Path)
 				return nil, errors.New("failed to tail file, is directory")
-			}
-
-			if c.args.FileMatch.Enabled && c.args.FileMatch.IgnoreOlderThan != 0 && fi.ModTime().Before(time.Now().Add(-c.args.FileMatch.IgnoreOlderThan)) {
-				return nil, source.ErrSkip
 			}
 
 			c.metrics.totalBytes.WithLabelValues(target.Path).Set(float64(fi.Size()))
