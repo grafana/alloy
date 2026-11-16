@@ -2,6 +2,7 @@ package windows_exporter
 
 import (
 	"errors"
+	"io"
 	"maps"
 	"regexp"
 	"slices"
@@ -204,10 +205,14 @@ func splitNonEmpty(list string) []string {
 }
 
 // decodeStrict decodes a YAML document and rejects unknown keys, like windows_exporter does.
+// An empty document, or one with only comments, is valid and leaves out unchanged.
 func decodeStrict(doc string, out any) error {
 	dec := yaml.NewDecoder(strings.NewReader(doc))
 	dec.KnownFields(true)
-	return dec.Decode(out)
+	if err := dec.Decode(out); err != nil && !errors.Is(err, io.EOF) {
+		return err
+	}
+	return nil
 }
 
 func coalesceString(v ...string) string {
