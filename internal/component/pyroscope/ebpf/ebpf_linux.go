@@ -7,9 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path"
 	"path/filepath"
-	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -24,7 +22,6 @@ import (
 	"go.opentelemetry.io/ebpf-profiler/interpreter/python"
 	"go.opentelemetry.io/ebpf-profiler/libpf"
 	ebpfmetrics "go.opentelemetry.io/ebpf-profiler/metrics"
-	"go.opentelemetry.io/ebpf-profiler/process"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/dynamicprofiling"
 	"go.opentelemetry.io/ebpf-profiler/pyroscope/internalshim/controller"
 
@@ -37,7 +34,6 @@ import (
 	alloydiscovery "github.com/grafana/alloy/internal/component/pyroscope/ebpf/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
 	rargs "github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/args"
-	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 	"github.com/grafana/alloy/internal/featuregate"
 )
 
@@ -94,20 +90,17 @@ func New(logger *slog.Logger, reg prometheus.Registerer, id string, args Argumen
 
 	appendable := pyroscope.NewFanout(args.ForwardTo, id, reg)
 
-	var nfs *irsymcache.Resolver
-	if args.DebugInfoArguments.OnTargetSymbolizationEnabled {
-		nfs, err = irsymcache.NewFSCache(logger, irsymcache.TableTableFactory{
-			Options: []lidia.Option{
-				lidia.WithFiles(),
-				lidia.WithLines(),
-			},
-		}, irsymcache.Options{
-			SizeEntries: uint32(args.SymbCacheSizeEntries),
-			Path:        args.SymbCachePath,
-		})
-		if err != nil {
-			return nil, err
-		}
+	nfs, err := irsymcache.NewFSCache(logger, irsymcache.TableTableFactory{
+		Options: []lidia.Option{
+			lidia.WithFiles(),
+			lidia.WithLines(),
+		},
+	}, irsymcache.Options{
+		SizeEntries: uint32(args.SymbCacheSizeEntries),
+		Path:        args.SymbCachePath,
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	if dynamicProfilingPolicy {
@@ -130,10 +123,6 @@ func New(logger *slog.Logger, reg prometheus.Registerer, id string, args Argumen
 		symbols:                nfs,
 	}
 
-	var symbols irsymcache.NativeSymbolResolver
-	if nfs != nil {
-		symbols = nfs
-	}
 	r := reporter.NewPPROF(logger, &reporter.Config{
 		ReportInterval:            cfg.ReporterInterval,
 		SamplesPerSecond:          int64(cfg.SamplesPerSecond),
@@ -143,7 +132,7 @@ func New(logger *slog.Logger, reg prometheus.Registerer, id string, args Argumen
 		CommMode:                  rargs.CommMode(args.Comm),
 		KernelFrames:              args.KernelFrames,
 	}, discovery,
-		symbols,
+		nfs,
 		func(ctx context.Context, ps []reporter.PPROF) {
 			res.sendProfiles(ctx, ps)
 		})
@@ -326,35 +315,6 @@ func (c *Component) ReportExecutable(md *reporter2.ExecutableMetadata) {
 	if c.symbols != nil {
 		c.symbols.ReportExecutable(md)
 	}
-	if c.args.DebugInfoArguments.UploadEnabled {
-		c.reportExecutableForDebugInfoUpload(md)
-	}
-}
-
-func (c *Component) reportExecutableForDebugInfoUpload(args *reporter2.ExecutableMetadata) {
-	extractAsFile := func(pid libpf.PID, file string) string {
-		return path.Join("/proc", strconv.Itoa(int(pid)), "root", file)
-	}
-	mf := args.MappingFile.Value()
-	open := func() (process.ReadAtCloser, error) {
-		fallback := func() (process.ReadAtCloser, error) {
-			return args.Process.OpenMappingFile(args.Mapping)
-		}
-		if args.DebuglinkFileName == "" {
-			return fallback()
-		}
-		file := extractAsFile(args.Process.PID(), args.DebuglinkFileName)
-		if f, err := os.Open(file); err != nil {
-			return fallback()
-		} else {
-			return f, nil
-		}
-	}
-	c.appendable.Upload(debuginfo.UploadJob{
-		FrameMappingFileData: mf,
-		Open:                 open,
-		InitArguments:        c.args.DebugInfoArguments,
-	})
 }
 
 // NewDefaultArguments create the default settings for a scrape job.
@@ -387,13 +347,6 @@ func NewDefaultArguments() Arguments {
 		PyroscopeDynamicProfilingPolicy: true,
 		SymbCachePath:                   "/tmp/symb-cache",
 		SymbCacheSizeEntries:            2048,
-		DebugInfoArguments: debuginfo.Arguments{
-			UploadEnabled:                false,
-			OnTargetSymbolizationEnabled: true,
-			CacheSize:                    262144,
-			QueueSize:                    256,
-			WorkerNum:                    16,
-		},
 	}
 }
 

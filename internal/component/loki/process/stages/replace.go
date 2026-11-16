@@ -3,69 +3,51 @@ package stages
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"log/slog"
 	"reflect"
-	"regexp"
 	"text/template"
+
+	"github.com/grafana/alloy/internal/component/common/regexp"
+	"github.com/grafana/alloy/syntax"
 )
 
-func init() {
-	for k, v := range extraFunctionMap {
-		functionMap[k] = v
-	}
-}
-
-// ReplaceConfig contains a regexStage configuration
+// ReplaceConfig contains a replaceStage configuration
 type ReplaceConfig struct {
-	Expression string `alloy:"expression,attr"`
-	Source     string `alloy:"source,attr,optional"`
-	Replace    string `alloy:"replace,attr,optional"`
+	Expression regexp.Regexp `alloy:"expression,attr"`
+	Source     string        `alloy:"source,attr,optional"`
+	Replace    Template      `alloy:"replace,attr,optional"`
 }
 
-func validateReplaceConfig(c ReplaceConfig) (*regexp.Regexp, *template.Template, error) {
-	if c.Expression == "" {
-		return nil, nil, errExpressionRequired
-	}
+var _ syntax.Validator = (*ReplaceConfig)(nil)
 
-	expr, err := regexp.Compile(c.Expression)
-	if err != nil {
-		return nil, nil, fmt.Errorf("%v: %w", errCouldNotCompileRegex, err)
+func (c *ReplaceConfig) Validate() error {
+	if c.Expression.IsEmpty() {
+		return errExpressionRequired
 	}
-
-	templ, err := template.New("pipeline_template").Funcs(functionMap).Parse(c.Replace)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to compile template: %w", err)
-	}
-
-	return expr, templ, nil
+	return nil
 }
 
 var _ entryProcessor = (*replaceStage)(nil)
 
 // newReplaceStage creates a replaceStage
-func newReplaceStage(config ReplaceConfig, opts stageOpts) (*replaceStage, error) {
-	expression, templ, err := validateReplaceConfig(config)
-	if err != nil {
-		return nil, err
-	}
+func newReplaceStage(config ReplaceConfig, opts stageOpts) *replaceStage {
+	// Template is validated during unmarshal.
+	templ, _ := config.Replace.parse()
 
 	return &replaceStage{
-		next:       opts.next,
-		cfg:        config,
-		expression: expression,
-		template:   templ,
-		logger:     opts.slogger.With("stage", "replace"),
-	}, nil
+		next:     opts.next,
+		cfg:      config,
+		template: templ,
+		logger:   opts.slogger.With("stage", "replace"),
+	}
 }
 
 // replaceStage sets extracted data using regular expressions
 type replaceStage struct {
-	next       nextFn
-	cfg        ReplaceConfig
-	expression *regexp.Regexp
-	logger     *slog.Logger
-	template   *template.Template
+	next     nextFn
+	cfg      ReplaceConfig
+	logger   *slog.Logger
+	template *template.Template
 }
 
 func (r *replaceStage) process(ctx context.Context, entries []Entry) error {
@@ -96,11 +78,11 @@ func (r *replaceStage) processEntry(e Entry) Entry {
 	}
 
 	// Get string of matched captured groups. We will use this to extract all named captured groups
-	match := r.expression.FindStringSubmatch(input)
-	matchAllIndex := r.expression.FindAllStringSubmatchIndex(input, -1)
+	match := r.cfg.Expression.FindStringSubmatch(input)
+	matchAllIndex := r.cfg.Expression.FindAllStringSubmatchIndex(input, -1)
 
 	if matchAllIndex == nil {
-		r.logger.Debug("regex did not match", "input", input, "regex", r.expression)
+		r.logger.Debug("regex did not match", "input", input, "regex", r.cfg.Expression)
 		return e
 	}
 
@@ -120,7 +102,7 @@ func (r *replaceStage) processEntry(e Entry) Entry {
 	}
 
 	// All the named captured group will be extracted
-	for i, name := range r.expression.SubexpNames() {
+	for i, name := range r.cfg.Expression.SubexpNames() {
 		if i != 0 && name != "" {
 			if v, ok := capturedMap[match[i]]; ok {
 				e.Extracted[name] = v

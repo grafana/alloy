@@ -36,9 +36,18 @@ type xmlBatch struct {
 
 type xmlStatements struct {
 	StmtSimple []xmlStmtSimple `xml:"StmtSimple"`
+	StmtCond   []xmlStmtCond   `xml:"StmtCond"`
 }
 
 type xmlStmtSimple struct {
+	QueryPlan xmlQueryPlan `xml:"QueryPlan"`
+}
+
+type xmlStmtCond struct {
+	Condition xmlCondition `xml:"Condition"`
+}
+
+type xmlCondition struct {
 	QueryPlan xmlQueryPlan `xml:"QueryPlan"`
 }
 
@@ -167,7 +176,7 @@ type xmlWarnings struct {
 	SpillToTempDb           *struct{} `xml:"SpillToTempDb"`
 }
 
-// newExplainPlanOutputFromShowPlanXML parses a single StmtSimple's showplan
+// newExplainPlanOutputFromShowPlanXML parses a single statement's showplan
 // XML (as captured by sys.query_store_plan.query_plan) into the shared
 // ExplainPlanNode model. It does not execute or re-plan anything - this is
 // the plan SQL Server already compiled and cached in Query Store.
@@ -177,11 +186,20 @@ func newExplainPlanOutputFromShowPlanXML(showPlanXML []byte) (*database_observab
 		return nil, fmt.Errorf("failed to parse showplan xml: %w", err)
 	}
 
-	if len(plan.BatchSequence.Batch) == 0 || len(plan.BatchSequence.Batch[0].Statements.StmtSimple) == 0 {
+	if len(plan.BatchSequence.Batch) == 0 {
 		return nil, fmt.Errorf("showplan xml has no statements")
 	}
 
-	rootRelOp := plan.BatchSequence.Batch[0].Statements.StmtSimple[0].QueryPlan.RelOp
+	stmts := plan.BatchSequence.Batch[0].Statements
+	var rootRelOp *xmlRelOp
+	switch {
+	case len(stmts.StmtSimple) > 0:
+		rootRelOp = stmts.StmtSimple[0].QueryPlan.RelOp
+	case len(stmts.StmtCond) > 0:
+		rootRelOp = stmts.StmtCond[0].Condition.QueryPlan.RelOp
+	default:
+		return nil, fmt.Errorf("showplan xml has no statements")
+	}
 	if rootRelOp == nil {
 		return nil, fmt.Errorf("showplan xml has no root RelOp")
 	}

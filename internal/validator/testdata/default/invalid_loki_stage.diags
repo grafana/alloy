@@ -1,13 +1,55 @@
-Error: main.alloy:17:11: error parsing regexp: missing closing ]: `[unclosed`
+Error: main.alloy:21:11: error parsing regexp: missing closing ]: `[unclosed`
 
-16 |     stage.logfmt {
-17 |         regex = "[unclosed"
+20 |     stage.logfmt {
+21 |         regex = "[unclosed"
    |                 ^^^^^^^^^^^
-18 |     }
-
-Error: main.alloy:21:15: error parsing regexp: missing closing ]: `[unclosed`
-
-20 |     stage.multiline {
-21 |         firstline = "[unclosed"
-   |                     ^^^^^^^^^^^
 22 |     }
+
+Error: main.alloy:25:15: error parsing regexp: missing closing ]: `[unclosed`
+
+24 |     stage.multiline {
+25 |         firstline = "[unclosed"
+   |                     ^^^^^^^^^^^
+26 |     }
+
+Error: main.alloy:29:11: error parsing regexp: missing closing ]: `[unclosed`
+
+28 |     stage.structured_metadata {
+29 |         regex = "[unclosed"
+   |                 ^^^^^^^^^^^
+30 |     }
+
+Error: main.alloy:37:14: selector cannot be empty
+
+36 |     stage.match {
+37 |         selector = ""
+   |                    ^^
+38 | 
+
+Error: main.alloy:45:14: selector must contain at least one matcher
+
+44 |     stage.match {
+45 |         selector = "{}"
+   |                    ^^^^
+46 | 
+
+Error: main.alloy:53:14: parse error at line 1, col 11: syntax error: unexpected $end, expecting } or ,
+
+52 |     stage.match {
+53 |         selector = "{app=\"foo\""
+   |                    ^^^^^^^^^^^^^^
+54 | 
+
+Error: main.alloy:61:14: unsupported stage in selector: | json
+
+60 |     stage.match {
+61 |         selector = "{app=\"foo\"} | json"
+   |                    ^^^^^^^^^^^^^^^^^^^^^^
+62 | 
+
+Error: main.alloy:69:14: unsupported line filter in selector: |> "<_>"
+
+68 |     stage.match {
+69 |         selector = "{app=\"foo\"} |> \"<_>\""
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+70 | 

@@ -159,8 +159,7 @@ func (f *File) Wait(ctx context.Context) error {
 		return nil
 	case eventTruncated:
 		f.logger.Debug("file truncated")
-		// We need to reopen the file when it was truncated.
-		return f.reopen(ctx, true)
+		return f.handleTruncation()
 	case eventDeleted:
 		f.logger.Debug("file deleted")
 		// If a file is deleted we want to make sure we drain what's remaining in the open file.
@@ -173,10 +172,22 @@ func (f *File) Wait(ctx context.Context) error {
 		}
 		// In polling mode we could miss events when a file is deleted, so before we give up
 		// we try to reopen the file.
-		return f.reopen(ctx, false)
+		return f.reopen(ctx)
 	default:
 		return err
 	}
+}
+
+// handleTruncation resets tailing to the start of the file after an in-place
+// truncate.
+func (f *File) handleTruncation() error {
+	sig, err := newSignatureFromFile(f.file)
+	if err != nil {
+		return err
+	}
+
+	f.signature = sig
+	return f.reader.reset(f.file, 0)
 }
 
 // offset returns the current byte offset in the file where the next read will occur.
@@ -224,23 +235,9 @@ func (f *File) drain() {
 	}
 }
 
-// reopen closes the current file handle and opens a new one for the same file path.
-// If truncated is true, it indicates the file was truncated and we should reopen immediately.
-// If truncated is false, it indicates the file was deleted or moved, and we should wait
-// for it to be recreated before reopening.
-//
-// reopen handles the case where a file is reopened so quickly it's still the same file,
-// which could cause the poller to hang on an open file handle to a file no longer being
-// written to. It saves the current file handle info to ensure we only start tailing a
-// different file instance.
-func (f *File) reopen(ctx context.Context, truncated bool) error {
-	cf, err := f.file.Stat()
-	if !truncated && err != nil {
-		// We don't action on this error but are logging it, not expecting to see it happen and not sure if we
-		// need to action on it, cf is checked for nil later on to accommodate this
-		f.logger.Debug("stat of old file returned, this is not expected and may result in unexpected behavior")
-	}
-
+// reopen closes the current file handle and opens a new one at the same path after
+// a delete, rename, or pending-delete event. It waits until the path exists again.
+func (f *File) reopen(ctx context.Context) error {
 	f.file.Close()
 
 	backoff := backoff.New(ctx, backoff.Config{
@@ -271,28 +268,18 @@ func (f *File) reopen(ctx context.Context, truncated bool) error {
 			continue
 		}
 
-		// Check to see if we are trying to reopen and tail the exact same file (and it was not truncated).
-		if !truncated && cf != nil && os.SameFile(cf, nf) {
-			file.Close()
-			backoff.Wait()
-			continue
-		}
-
-		// Compute a new signature and compare it with the previous one to detect atomic writes.
-		// When a file is replaced atomically, the file handle changes but the
-		// initial content may be the same. If signatures match, it's the same file content,
-		// so we continue from the previous offset. If they differ, it's a different
-		// file, so we start from the beginning.
 		sig, err := newSignatureFromFile(file)
 		if err != nil {
 			file.Close()
 			return err
 		}
 
-		var offset int64
-		if !f.signature.equal(sig) {
-			offset = 0
-		} else {
+		// A file recreated at this path starts from the beginning, unless its signature
+		// matches the previous file's. Atomic rename-over (for example mv tempfile) is
+		// reported as a delete, so a matching signature is treated as the same file and
+		// resumes at the previous offset.
+		offset := int64(0)
+		if f.signature.equal(sig) {
 			offset = min(f.reader.position(), nf.Size())
 		}
 

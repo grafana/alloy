@@ -1,0 +1,52 @@
+loki.process "example" {
+	forward_to = [loki.write.default.receiver]
+
+	stage.multiline {
+		firstline = "^START"
+	}
+
+	stage.pack {
+		labels = ["foo"]
+	}
+
+	stage.metrics {
+		metric.gauge {
+			name   = "last_line_size"
+			source = "size"
+			action = "set"
+		}
+
+		metric.histogram {
+			name    = "line_size"
+			source  = "size"
+			buckets = [10, 100, 1000]
+		}
+
+		metric.counter {
+			name        = "log_lines_total"
+			description = "total number of log lines"
+			action      = "inc"
+			match_all   = true
+		}
+	}
+}
+
+loki.source.file "example" {
+	targets = [{
+		__address__ = "localhost",
+		__path__    = "/var/log/*.log",
+	}]
+	forward_to = [loki.process.example.receiver]
+
+	file_match {
+		enabled = true
+	}
+	legacy_positions_file = "/var/log/positions.yaml"
+}
+
+loki.write "default" {
+	endpoint {
+		url = "http://localhost/loki/api/v1/push"
+	}
+	external_labels = {}
+}
