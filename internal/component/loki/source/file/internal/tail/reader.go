@@ -151,9 +151,8 @@ func (r *reader) consumeLine() ([]byte, bool) {
 	if bytes.HasSuffix(r.pending, r.nl) {
 		line := r.pending[:len(r.pending)-len(r.nl)]
 
-		// If the line fits within maxLineSize plus the optional carriage return,
-		// emit it whole instead of splitting it into a boundary chunk.
-		if r.fitsMaxLineSize(line, true) {
+		// If the line fits within maxLineSize, emit it whole instead of splitting it into a boundary chunk.
+		if r.fitsMaxLineSize(line) {
 			r.pending = r.pending[:0]
 			r.trimPending()
 
@@ -164,9 +163,7 @@ func (r *reader) consumeLine() ([]byte, bool) {
 	}
 
 	// If we have buffered over maxLineSize we emit it as a line and advance position.
-	// Do not include trailing CR bytes here, without a confirmed newline they are
-	// still part of the buffered data and may be followed by more content.
-	if !r.fitsMaxLineSize(r.pending, false) {
+	if !r.fitsMaxLineSize(r.pending) {
 		// Here we need to copy the bytes because we reuse pending between calls.
 		partial := make([]byte, r.maxLineSize)
 		copy(partial, r.pending[:r.maxLineSize])
@@ -183,13 +180,15 @@ func (r *reader) consumeLine() ([]byte, bool) {
 	return nil, false
 }
 
-func (r *reader) fitsMaxLineSize(line []byte, includeCr bool) bool {
+// fitsMaxLineSize reports whether line is within maxLineSize. A trailing CR is
+// not counted, so a CRLF is never split between two lines.
+func (r *reader) fitsMaxLineSize(line []byte) bool {
 	if r.maxLineSize <= 0 {
 		return true
 	}
 
 	maxLineSize := r.maxLineSize
-	if includeCr && bytes.HasSuffix(line, r.cr) {
+	if bytes.HasSuffix(line, r.cr) {
 		maxLineSize += len(r.cr)
 	}
 
