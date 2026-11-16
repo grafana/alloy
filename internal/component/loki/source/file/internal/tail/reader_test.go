@@ -79,6 +79,22 @@ func TestReader(t *testing.T) {
 
 		require.Equal(t, "aaaaa", strings.Join(lines, ""))
 	})
+
+	t.Run("max line size keeps CR at split point", func(t *testing.T) {
+		r, err := newReader(logging.NewSlogNop(), strings.NewReader("aaaa\rbbbb\n"), 0, 5, encoding.Nop, "", false)
+		require.NoError(t, err)
+
+		line, err := r.next()
+		require.NoError(t, err)
+		require.Equal(t, "aaaa\r", line)
+
+		line, err = r.next()
+		require.NoError(t, err)
+		require.Equal(t, "bbbb", line)
+
+		_, err = r.next()
+		require.ErrorIs(t, err, io.EOF)
+	})
 }
 
 var benchText string

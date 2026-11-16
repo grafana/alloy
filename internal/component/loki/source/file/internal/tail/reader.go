@@ -136,12 +136,12 @@ func (r *reader) flush() (string, error) {
 	r.pos += int64(len(line))
 	r.pending = r.pending[:0]
 	r.trimPending()
-	return r.decode(bytes.TrimSuffix(line, r.nl))
+	return r.decode(bytes.TrimSuffix(bytes.TrimSuffix(line, r.nl), r.cr))
 }
 
 func (r *reader) decode(line []byte) (string, error) {
 	// Decode the line we have consumed.
-	converted, err := r.decoder.Bytes(bytes.TrimSuffix(line, r.cr))
+	converted, err := r.decoder.Bytes(line)
 	if err != nil {
 		return "", err
 	}
@@ -167,7 +167,7 @@ func (r *reader) consumeLine() ([]byte, bool) {
 
 			// Advance the position on bytes we have consumed.
 			r.pos += int64(len(line) + len(r.nl))
-			return line, true
+			return bytes.TrimSuffix(line, r.cr), true
 		}
 	}
 
