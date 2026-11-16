@@ -343,9 +343,11 @@ func TestQueryTables(t *testing.T) {
 			}},
 			logsLabels: []model.LabelSet{
 				{"op": database_observability.OP_QUERY_ASSOCIATION},
+				{"op": database_observability.OP_QUERY_ASSOCIATION},
 				{"op": database_observability.OP_QUERY_PARSED_TABLE_NAMES_V2},
 			},
 			logsLines: []string{
+				"level=\"info\" schema=\"some_schema\" parseable=\"false\" digest=\"xyz456\" digest_text=\"not valid sql\"",
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"",
 				`level="info" schema="some_schema" digest="abc123" tables="[{\"table\":\"some_table\",\"validated\":false}]"`,
 			},
