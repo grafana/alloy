@@ -518,10 +518,84 @@ func TestCustomNamespaceSeparator(t *testing.T) {
 	}
 
 	require.Equal(t, "alloy_namespace_name_64aab764-c95e-4ee9-a932-cd63ba57e6cf", mimirNamespaceForRuleCRD("alloy", "_", rule))
-	require.True(t, isManagedMimirNamespace("alloy", "alloy_namespace_name_64aab764-c95e-4ee9-a932-cd63ba57e6cf"))
+	require.True(t, isManagedMimirNamespace("alloy", "_", "alloy_namespace_name_64aab764-c95e-4ee9-a932-cd63ba57e6cf"))
 	// Old slash-separated format is still recognised (enables automatic cleanup on separator change).
-	require.True(t, isManagedMimirNamespace("alloy", "alloy/namespace/name/64aab764-c95e-4ee9-a932-cd63ba57e6cf"))
-	require.False(t, isManagedMimirNamespace("alloy", "other/namespace/name/64aab764-c95e-4ee9-a932-cd63ba57e6cf"))
+	require.True(t, isManagedMimirNamespace("alloy", "_", "alloy/namespace/name/64aab764-c95e-4ee9-a932-cd63ba57e6cf"))
+	require.False(t, isManagedMimirNamespace("alloy", "_", "other/namespace/name/64aab764-c95e-4ee9-a932-cd63ba57e6cf"))
+}
+
+func TestIsManagedMimirNamespace(t *testing.T) {
+	const uid = "64aab764-c95e-4ee9-a932-cd63ba57e6cf"
+
+	tests := []struct {
+		name      string
+		prefix    string
+		separator string
+		namespace string
+		expected  bool
+	}{
+		{
+			name:      "own namespace with default separator",
+			prefix:    "team",
+			separator: "/",
+			namespace: "team/namespace/rule/" + uid,
+			expected:  true,
+		},
+		{
+			name:      "own namespace with custom separator",
+			prefix:    "team",
+			separator: "_",
+			namespace: "team_namespace_rule_" + uid,
+			expected:  true,
+		},
+		{
+			name:      "own namespace with legacy separator after separator change",
+			prefix:    "team",
+			separator: "_",
+			namespace: "team/namespace/rule/" + uid,
+			expected:  true,
+		},
+		{
+			name:      "different prefix",
+			prefix:    "team",
+			separator: "/",
+			namespace: "other/namespace/rule/" + uid,
+			expected:  false,
+		},
+		{
+			name:      "longer prefix starting with the same string, default separator",
+			prefix:    "team",
+			separator: "/",
+			namespace: "team-b/namespace/rule/" + uid,
+			expected:  false,
+		},
+		{
+			name:      "longer prefix starting with the same string, custom separator",
+			prefix:    "team",
+			separator: "_",
+			namespace: "team-b_namespace_rule_" + uid,
+			expected:  false,
+		},
+		{
+			name:      "longer prefix starting with the same string, legacy separator",
+			prefix:    "team",
+			separator: "_",
+			namespace: "team-b/namespace/rule/" + uid,
+			expected:  false,
+		},
+		{
+			name:      "not created by alloy",
+			prefix:    "team",
+			separator: "/",
+			namespace: "team/manually-created",
+			expected:  false,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.expected, isManagedMimirNamespace(tc.prefix, tc.separator, tc.namespace))
+		})
+	}
 }
 
 func testRuleIndexer() cache.Indexer {
