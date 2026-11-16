@@ -14,19 +14,19 @@ local filename = 'alloy-otel-engine-overview.json';
   local templateVariables = [
     dashboard.newMultiTemplateVariable(
       'cluster',
-      'label_values(otelcol_process_uptime_seconds_total{%s}, cluster)' % addFilterSelector(''),
+      'label_values(otelcol_process_uptime_seconds_total{%s}, %s)' % [addFilterSelector(''), $._config.clusterLabel],
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels,
       defaultToAll=false,
     ),
     dashboard.newMultiTemplateVariable(
       'namespace',
-      'label_values(otelcol_process_uptime_seconds_total{%s}, namespace)' % addFilterSelector('cluster=~"$cluster"'),
+      'label_values(otelcol_process_uptime_seconds_total{%s}, namespace)' % addFilterSelector('%s=~"$cluster"' % $._config.clusterLabel),
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels,
       defaultToAll=false,
     ),
     dashboard.newMultiTemplateVariable(
       'job',
-      'label_values(otelcol_process_uptime_seconds_total{%s}, job)' % addFilterSelector('cluster=~"$cluster", namespace=~"$namespace"'),
+      'label_values(otelcol_process_uptime_seconds_total{%s}, job)' % addFilterSelector('%s=~"$cluster", namespace=~"$namespace"' % $._config.clusterLabel),
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels,
     ),
     dashboard.newGroupByTemplateVariable(

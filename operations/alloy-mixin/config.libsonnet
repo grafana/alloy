@@ -4,7 +4,8 @@
         enableAlloyCluster: true, # Whether to add Alloy clustering dashboards
         enableLokiLogs: true, 
         filterSelector: '', #use it to filter specific metric label values, ie: job=~"integrations/alloy"
-        k8sClusterSelector: 'cluster=~"$cluster", namespace=~"$namespace"',
+        clusterLabel: 'cluster', # Label that identifies the Kubernetes cluster, used by the cluster template variable
+        k8sClusterSelector: '%s=~"$cluster", namespace=~"$namespace"' % self.clusterLabel,
         groupSelector: if self.enableK8sCluster then self.k8sClusterSelector + ', job=~"$job"' else 'job=~"$job"',
         instanceSelector: self.groupSelector + ', instance=~"$instance"',        
         logsFilterSelector: '', #use to filter logs originated from alloy, and avoid picking up other platform logs, ie: service_name="alloy"

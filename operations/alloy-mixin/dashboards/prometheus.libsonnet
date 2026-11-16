@@ -511,6 +511,7 @@ local filename = 'alloy-prometheus-remote-write.json';
     templates.newTemplateVariablesList(
       filterSelector=$._config.filterSelector,
       enableK8sCluster=$._config.enableK8sCluster,
+      clusterLabel=$._config.clusterLabel,
       includeInstance=true,
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels
     )

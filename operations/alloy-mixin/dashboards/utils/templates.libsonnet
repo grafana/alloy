@@ -1,47 +1,47 @@
 local dashboard = import './dashboard.jsonnet';
 
 {
-    newTemplateVariablesList(filterSelector='', enableK8sCluster=true, includeInstance=true, setenceCaseLabels=false):: (     
+    newTemplateVariablesList(filterSelector='', enableK8sCluster=true, includeInstance=true, setenceCaseLabels=false, clusterLabel='cluster'):: (     
 
         local clusterTemplateQuery = 
             if std.isEmpty(filterSelector) then
             |||
-                label_values(alloy_component_controller_running_components, cluster)
-            |||
+                label_values(alloy_component_controller_running_components, %(clusterLabel)s)
+            ||| % { clusterLabel: clusterLabel }
             else
             |||
-                label_values(alloy_component_controller_running_components{%s}, cluster)
-            ||| % filterSelector;
+                label_values(alloy_component_controller_running_components{%(filterSelector)s}, %(clusterLabel)s)
+            ||| % { filterSelector: filterSelector, clusterLabel: clusterLabel };
 
         local namespaceTemplateQuery =
             if std.isEmpty(filterSelector) then
             |||
-                label_values(alloy_component_controller_running_components{cluster=~"$cluster"}, namespace)
-            |||
+                label_values(alloy_component_controller_running_components{%(clusterLabel)s=~"$cluster"}, namespace)
+            ||| % { clusterLabel: clusterLabel }
             else
             |||
-                label_values(alloy_component_controller_running_components{%s, cluster=~"$cluster"}, namespace)
-            ||| % filterSelector;
+                label_values(alloy_component_controller_running_components{%(filterSelector)s, %(clusterLabel)s=~"$cluster"}, namespace)
+            ||| % { filterSelector: filterSelector, clusterLabel: clusterLabel };
         
         local k8sJobTemplateQuery = 
             if std.isEmpty(filterSelector) then
             |||
-                label_values(alloy_component_controller_running_components{cluster=~"$cluster", namespace=~"$namespace"}, job)
-            |||
+                label_values(alloy_component_controller_running_components{%(clusterLabel)s=~"$cluster", namespace=~"$namespace"}, job)
+            ||| % { clusterLabel: clusterLabel }
             else
             |||
-                label_values(alloy_component_controller_running_components{%s, cluster=~"$cluster", namespace=~"$namespace"}, job)
-            ||| % filterSelector;
+                label_values(alloy_component_controller_running_components{%(filterSelector)s, %(clusterLabel)s=~"$cluster", namespace=~"$namespace"}, job)
+            ||| % { filterSelector: filterSelector, clusterLabel: clusterLabel };
         
         local k8sInstanceTemplateQuery = 
             if std.isEmpty(filterSelector) then
             |||
-                label_values(alloy_component_controller_running_components{cluster=~"$cluster", namespace=~"$namespace", job=~"$job"}, instance)
-            ||| 
+                label_values(alloy_component_controller_running_components{%(clusterLabel)s=~"$cluster", namespace=~"$namespace", job=~"$job"}, instance)
+            ||| % { clusterLabel: clusterLabel }
             else
             |||
-                label_values(alloy_component_controller_running_components{%s, cluster=~"$cluster", namespace=~"$namespace", job=~"$job"}, instance)
-            ||| % filterSelector;
+                label_values(alloy_component_controller_running_components{%(filterSelector)s, %(clusterLabel)s=~"$cluster", namespace=~"$namespace", job=~"$job"}, instance)
+            ||| % { filterSelector: filterSelector, clusterLabel: clusterLabel };
 
         local jobTemplateQuery = 
             if std.isEmpty(filterSelector) then
