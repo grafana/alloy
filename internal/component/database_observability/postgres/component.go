@@ -1038,7 +1038,7 @@ func (c *Component) ownedDatabases(cfgs []databaseConfig, clusteringEnabled bool
 		}
 	}
 	if lookupErr != nil {
-		c.opts.Logger.Info("failed to look up database owners in the cluster, not collecting from the affected databases", "err", lookupErr)
+		c.opts.Logger.Warn("failed to look up database owners in the cluster, not collecting from the affected databases", "err", lookupErr)
 	}
 	return owned
 }
