@@ -2,9 +2,12 @@ package savepoint
 
 import (
 	"log/slog"
+	"math"
 	"sort"
 	"sync"
 	"time"
+
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 )
@@ -24,6 +27,11 @@ type Tracker interface {
 	// segment, has been delivered, or the sender has given up on it.
 	UpdateSentData(segmentId, dataCount int) // Data which was sent or given up on sending
 
+	// MarkWALDrained tells the tracker that nothing is written to the WAL anymore and that the watcher has read all of
+	// it. It must be called before Stop. The segment that was last written to is then complete and Stop saves it as
+	// consumed too, once its data is delivered, so that a restart does not replay it.
+	MarkWALDrained()
+
 	// Stop stops the tracker, and its async processing of receive/send dataUpdate updates.
 	Stop()
 }
@@ -40,6 +48,7 @@ type SegmentTracker struct {
 	metrics          *Metrics
 	quit             chan struct{}
 	runFindTicker    *time.Ticker
+	walDrained       atomic.Bool
 	wg               sync.WaitGroup
 }
 
@@ -47,6 +56,8 @@ type SegmentTracker struct {
 type dataUpdate struct {
 	segmentId int
 	dataCount int
+	// received is true for data that was read out of the WAL, false for data that was delivered or given up on.
+	received bool
 }
 
 var _ Tracker = (*SegmentTracker)(nil)
@@ -85,6 +96,7 @@ func (t *SegmentTracker) UpdateReceivedData(segmentId, dataCount int) {
 	t.dataIOUpdate <- dataUpdate{
 		segmentId: segmentId,
 		dataCount: dataCount,
+		received:  true,
 	}
 }
 
@@ -93,6 +105,10 @@ func (t *SegmentTracker) UpdateSentData(segmentId, dataCount int) {
 		segmentId: segmentId,
 		dataCount: -1 * dataCount,
 	}
+}
+
+func (t *SegmentTracker) MarkWALDrained() {
+	t.walDrained.Store(true)
 }
 
 func (t *SegmentTracker) Stop() {
@@ -119,8 +135,36 @@ type processDataItem struct {
 // and a procedure is triggered to find the "last consumed segment", implemented by FindMarkableSegment. Since this
 // last procedure could be expensive, it's execution is run at most if a segment has reached count zero, of when a timer
 // is fired (once per second).
+//
+// The highest segment that data has been read from is never marked, since it may be the segment the WAL is still
+// writing to. Entries appended to a segment after it was marked would be skipped by a restart, which continues with
+// the segment after the marked one. Once the WAL is drained nothing is written anymore and that segment is marked too.
 func (t *SegmentTracker) runUpdatePendingData() {
-	segmentDataCount := make(map[int]*countDataItem)
+	var (
+		segmentDataCount = make(map[int]*countDataItem)
+		// openSegment is the highest segment that data has been read from.
+		openSegment = noSegment
+	)
+
+	// update applies an update and returns true if a segment reached a count of zero.
+	update := func(u dataUpdate) bool {
+		if u.received && u.segmentId > openSegment {
+			openSegment = u.segmentId
+		}
+
+		di, ok := segmentDataCount[u.segmentId]
+		if !ok {
+			segmentDataCount[u.segmentId] = &countDataItem{
+				count:      u.dataCount,
+				lastUpdate: time.Now(),
+			}
+			return false
+		}
+
+		di.lastUpdate = time.Now()
+		di.count += u.dataCount
+		return di.count == 0
+	}
 
 	for {
 		// shouldRunFind will be true if a markable segment should be found after the update, that is if one reached a count
@@ -128,20 +172,11 @@ func (t *SegmentTracker) runUpdatePendingData() {
 		shouldRunFind := false
 		select {
 		case <-t.quit:
+			t.finish(segmentDataCount, update)
 			return
-		case update := <-t.dataIOUpdate:
-			if di, ok := segmentDataCount[update.segmentId]; ok {
-				di.lastUpdate = time.Now()
-				resultingCount := di.count + update.dataCount
-				di.count = resultingCount
-				// if a segment reached zero, run find routine because a segment might be ready to be marked
-				shouldRunFind = resultingCount == 0
-			} else {
-				segmentDataCount[update.segmentId] = &countDataItem{
-					count:      update.dataCount,
-					lastUpdate: time.Now(),
-				}
-			}
+		case u := <-t.dataIOUpdate:
+			// if a segment reached zero, run find routine because a segment might be ready to be marked
+			shouldRunFind = update(u)
 		}
 
 		// if ticker fired, force run find
@@ -155,13 +190,35 @@ func (t *SegmentTracker) runUpdatePendingData() {
 			continue
 		}
 
-		segment := findMarkableSegment(segmentDataCount, t.maxSegmentAge)
-		t.logger.Debug("found markable segment", "segment", segment)
-		if segment > t.lastSavedSegment {
-			t.file.StoreSegment(t.key, segment)
-			t.lastSavedSegment = segment
-			t.metrics.lastSavedSegment.WithLabelValues().Set(float64(segment))
+		t.mark(findMarkableSegment(segmentDataCount, t.maxSegmentAge, openSegment))
+	}
+}
+
+// finish saves the last segment once the WAL is drained. By then every update an endpoint reported while it stopped is
+// waiting in the channel, so those are applied first.
+func (t *SegmentTracker) finish(segmentDataCount map[int]*countDataItem, update func(dataUpdate) bool) {
+	if !t.walDrained.Load() {
+		return
+	}
+
+	for {
+		select {
+		case u := <-t.dataIOUpdate:
+			update(u)
+		default:
+			t.mark(findMarkableSegment(segmentDataCount, t.maxSegmentAge, math.MaxInt))
+			return
 		}
+	}
+}
+
+// mark saves segment as the last consumed one, unless it is not newer than the one that is already saved.
+func (t *SegmentTracker) mark(segment int) {
+	t.logger.Debug("found markable segment", "segment", segment)
+	if segment > t.lastSavedSegment {
+		t.file.StoreSegment(t.key, segment)
+		t.lastSavedSegment = segment
+		t.metrics.lastSavedSegment.WithLabelValues().Set(float64(segment))
 	}
 }
 
@@ -173,10 +230,12 @@ func (t *SegmentTracker) runUpdatePendingData() {
 // A consumed segment is one with data count of zero, meaning that there's no data left in flight for it, or it hasn't
 // received any updates for tooOldThreshold time.
 //
+// openSegment and every segment after it are never consumed, since the WAL may still write to them.
+//
 // Also, while reviewing the data items in segmentDataCount, those who are consumed will be deleted to clean up space.
 //
 // This algorithm runs in O(N log N), being N the size of segmentDataCount, and allocates O(N) memory.
-func findMarkableSegment(segmentDataCount map[int]*countDataItem, tooOldThreshold time.Duration) int {
+func findMarkableSegment(segmentDataCount map[int]*countDataItem, tooOldThreshold time.Duration, openSegment int) int {
 	// N = len(segmentDataCount)
 	// alloc slice, N
 	orderedSegmentCounts := make([]processDataItem, 0, len(segmentDataCount))
@@ -197,6 +256,11 @@ func findMarkableSegment(segmentDataCount map[int]*countDataItem, tooOldThreshol
 
 	var lastZero = -1
 	for _, item := range orderedSegmentCounts {
+		// the segment may still receive data
+		if item.segment >= openSegment {
+			break
+		}
+
 		// we consider a segment as "consumed if it's data count is zero, or the lastUpdate is too old
 		if item.count == 0 || time.Since(item.lastUpdate) > tooOldThreshold {
 			lastZero = item.segment
@@ -230,6 +294,8 @@ func (n *NopTracker) LastStoredSegment() int { return noSegment }
 func (n *NopTracker) UpdateReceivedData(segmentId int, dataCount int) {}
 
 func (n *NopTracker) UpdateSentData(segmentId int, dataCount int) {}
+
+func (n *NopTracker) MarkWALDrained() {}
 
 func (n *NopTracker) Start() {}
 

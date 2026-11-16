@@ -111,3 +111,47 @@ func TestFile(t *testing.T) {
 		require.Equal(t, noSegment, reloaded.LastStoredSegment("endpoint-a"))
 	})
 }
+
+func TestFile_StoreStart(t *testing.T) {
+	logger := slog.New(slog.DiscardHandler)
+
+	t.Run("start at a later segment resumes with that segment", func(t *testing.T) {
+		f, err := NewFile(logger, t.TempDir())
+		require.NoError(t, err)
+
+		f.StoreStart("endpoint-a", 5)
+		require.Equal(t, 4, f.LastStoredSegment("endpoint-a"))
+	})
+
+	t.Run("start at the first segment is not reported as no savepoint", func(t *testing.T) {
+		dir := t.TempDir()
+		f, err := NewFile(logger, dir)
+		require.NoError(t, err)
+
+		f.StoreStart("endpoint-a", 0)
+		require.Equal(t, beforeFirstSegment, f.LastStoredSegment("endpoint-a"))
+		require.NotEqual(t, noSegment, f.LastStoredSegment("endpoint-a"))
+
+		// and it survives a restart
+		reloaded, err := NewFile(logger, dir)
+		require.NoError(t, err)
+		require.Equal(t, beforeFirstSegment, reloaded.LastStoredSegment("endpoint-a"))
+	})
+
+	t.Run("existing savepoint is kept", func(t *testing.T) {
+		f, err := NewFile(logger, t.TempDir())
+		require.NoError(t, err)
+		f.StoreSegment("endpoint-a", 7)
+
+		f.StoreStart("endpoint-a", 20)
+		require.Equal(t, 7, f.LastStoredSegment("endpoint-a"))
+	})
+
+	t.Run("other endpoints are not touched", func(t *testing.T) {
+		f, err := NewFile(logger, t.TempDir())
+		require.NoError(t, err)
+
+		f.StoreStart("endpoint-a", 3)
+		require.Equal(t, noSegment, f.LastStoredSegment("endpoint-b"))
+	})
+}

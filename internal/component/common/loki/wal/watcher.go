@@ -13,6 +13,7 @@ import (
 
 	"github.com/prometheus/prometheus/tsdb/record"
 	"github.com/prometheus/prometheus/tsdb/wlog"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki/wal/internal"
 )
@@ -86,6 +87,9 @@ type Watcher struct {
 	drainTimeout time.Duration
 	savepoint    Savepoint
 	savedSegment int
+
+	// drained is true once the Watcher has read to the end of the WAL while draining.
+	drained atomic.Bool
 }
 
 // NewWatcher creates a new Watcher.
@@ -171,6 +175,11 @@ func (w *Watcher) run() error {
 		// On start, we have a pointer to what is the latest segment. On subsequent calls to this function,
 		// currentSegment will have been incremented, and we should open that segment.
 		if err := w.watch(currentSegment, currentSegment >= lastSegment); err != nil {
+			// Having read every segment up to the newest one that existed when this run started, a segment that does
+			// not exist is the end of the WAL. A missing segment before that one was deleted, which is not the end.
+			if w.state.IsDraining() && errors.Is(err, os.ErrNotExist) && currentSegment > lastSegment {
+				w.drained.Store(true)
+			}
 			return err
 		}
 
@@ -375,6 +384,12 @@ func (w *Watcher) Drain() {
 	}
 }
 
+// Drained reports whether the Watcher read to the end of the WAL while draining, as opposed to giving up when the
+// drain timed out. It is only meaningful after the Watcher is stopped.
+func (w *Watcher) Drained() bool {
+	return w.drained.Load()
+}
+
 // Stop stops the Watcher, shutting down the main routine.
 func (w *Watcher) Stop() {
 	// Transitioning cancels the state's context, which releases a WriteTo blocked in
@@ -442,6 +457,20 @@ func (w *Watcher) findNextSegmentFor(index int) (int, error) {
 	}
 
 	return -1, errors.New("failed to find segment for index")
+}
+
+// LastSegment returns the number of the newest segment in the WAL directory dir, or -1 if there is none.
+func LastSegment(dir string) (int, error) {
+	segs, err := readSegmentNumbers(dir)
+	if err != nil {
+		return -1, err
+	}
+
+	last := -1
+	for _, s := range segs {
+		last = max(last, s)
+	}
+	return last, nil
 }
 
 // readSegmentNumbers reads the given directory and returns all segment identifiers, that is, the index of each segment

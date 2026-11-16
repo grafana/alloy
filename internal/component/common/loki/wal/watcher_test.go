@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"hash/crc32"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -795,5 +797,29 @@ func TestLiveReaderRecordSpanningPage(t *testing.T) {
 	require.NotPanics(t, func() {
 		for reader.Next() {
 		}
+	})
+}
+
+func TestLastSegment(t *testing.T) {
+	t.Run("empty directory has no segment", func(t *testing.T) {
+		last, err := LastSegment(t.TempDir())
+		require.NoError(t, err)
+		require.Equal(t, -1, last)
+	})
+
+	t.Run("newest segment is returned, other files are ignored", func(t *testing.T) {
+		dir := t.TempDir()
+		for _, name := range []string{"00000000", "00000002", "00000001", "checkpoint.00000001"} {
+			require.NoError(t, os.WriteFile(filepath.Join(dir, name), nil, 0o600))
+		}
+
+		last, err := LastSegment(dir)
+		require.NoError(t, err)
+		require.Equal(t, 2, last)
+	})
+
+	t.Run("missing directory is an error", func(t *testing.T) {
+		_, err := LastSegment(filepath.Join(t.TempDir(), "missing"))
+		require.Error(t, err)
 	})
 }

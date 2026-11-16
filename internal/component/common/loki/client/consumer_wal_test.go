@@ -3,6 +3,9 @@ package client
 import (
 	"context"
 	"fmt"
+	"math"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"testing"
 	"time"
@@ -698,4 +701,232 @@ func TestWALConsumer_NoLeakOnFailedEndpoint(t *testing.T) {
 	// Using two different configs but endpoint cannot be created by the second one.
 	_, err = NewWALConsumer(logger, reg, wl, walConfig, cfg, invalidClientCfg)
 	require.Error(t, err)
+}
+
+// TestWALConsumer_ReplayAfterCrashKeepsEntriesAppendedToMarkedSegment makes sure entries that are appended to the segment
+// still being written are replayed after a crash, even though everything that was read from that segment before has been
+// delivered. The write head must never be saved as consumed while it can still receive entries, because on restart the
+// watcher continues with the segment after the saved one.
+func TestWALConsumer_ReplayAfterCrashKeepsEntriesAppendedToMarkedSegment(t *testing.T) {
+	var (
+		dir       = t.TempDir()
+		logger    = logging.NewSlogNop()
+		walConfig = wal.Config{
+			MaxSegmentAge: time.Hour,
+			WatchConfig:   wal.DefaultWatchConfig,
+		}
+		reject    atomic.Bool
+		delivered = util.NewSyncSlice[string]()
+	)
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if reject.Load() {
+			rw.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		var pushReq push.PushRequest
+		if err := util.ParseProtoReader(req.Context(), req.Body, int(req.ContentLength), math.MaxInt32, &pushReq, util.RawSnappy); err != nil {
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		for _, stream := range pushReq.Streams {
+			for _, e := range stream.Entries {
+				delivered.Append(e.Line)
+			}
+		}
+		rw.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL)
+	require.NoError(t, err)
+
+	cfg := Config{
+		Name:      "test-client",
+		URL:       flagext.URLValue{URL: serverURL},
+		Timeout:   time.Second,
+		BatchSize: 1,
+		BackoffConfig: backoff.Config{
+			MinBackoff: 50 * time.Millisecond,
+			MaxBackoff: 100 * time.Millisecond,
+			MaxRetries: 1000,
+		},
+		QueueConfig: QueueConfig{
+			Capacity:        10,
+			DrainTimeout:    time.Second,
+			BlockOnOverflow: true,
+		},
+	}
+
+	labels := model.LabelSet{"wal_enabled": "true"}
+	consume := func(consumer *WALConsumer, lines ...string) {
+		for _, line := range lines {
+			require.NoError(t, consumer.ConsumeEntry(t.Context(), loki.Entry{
+				Labels: labels,
+				Entry:  push.Entry{Timestamp: time.Now(), Line: line},
+			}))
+		}
+	}
+	has := func(line string) bool {
+		var found bool
+		for _, l := range delivered.StartIterate() {
+			found = found || l == line
+		}
+		delivered.DoneIterate()
+		return found
+	}
+
+	// First run: the endpoint acknowledges the first lines, then goes away and more lines are appended to the same segment.
+	reg := prometheus.NewRegistry()
+	wl, err := wal.New(logger, reg, dir)
+	require.NoError(t, err)
+	consumer, err := NewWALConsumer(logger, reg, wl, walConfig, cfg)
+	require.NoError(t, err)
+	consumer.Start()
+
+	consume(consumer, "acknowledged-0", "acknowledged-1")
+	require.Eventually(t, func() bool { return has("acknowledged-1") }, 5*time.Second, 50*time.Millisecond)
+
+	// Give the tracker time to save a savepoint for what has been delivered.
+	time.Sleep(1500 * time.Millisecond)
+
+	reject.Store(true)
+	consume(consumer, "unsent-0", "unsent-1")
+	time.Sleep(500 * time.Millisecond)
+
+	// Crash: no drain, and the WAL is closed as it would be by the process dying.
+	consumer.Stop()
+	wl.Close()
+
+	// Second run on the same directory, the endpoint is back.
+	reject.Store(false)
+	reg = prometheus.NewRegistry()
+	wl, err = wal.New(logger, reg, dir)
+	require.NoError(t, err)
+	defer wl.Close()
+	consumer, err = NewWALConsumer(logger, reg, wl, walConfig, cfg)
+	require.NoError(t, err)
+	consumer.Start()
+	defer consumer.Stop()
+
+	require.Eventually(t, func() bool {
+		return has("unsent-0") && has("unsent-1")
+	}, 10*time.Second, 100*time.Millisecond, "entries appended after the savepoint was saved must be replayed")
+}
+
+// TestWALConsumer_NoReplayAfterCleanDrain makes sure a restart after a drain does not send again what was delivered
+// before, even though everything was written to a single segment.
+func TestWALConsumer_NoReplayAfterCleanDrain(t *testing.T) {
+	var (
+		dir       = t.TempDir()
+		logger    = logging.NewSlogNop()
+		walConfig = wal.Config{
+			MaxSegmentAge: time.Hour,
+			WatchConfig:   wal.DefaultWatchConfig,
+		}
+		counts = util.NewSyncSlice[string]()
+	)
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		var pushReq push.PushRequest
+		if err := util.ParseProtoReader(req.Context(), req.Body, int(req.ContentLength), math.MaxInt32, &pushReq, util.RawSnappy); err != nil {
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		for _, stream := range pushReq.Streams {
+			for _, e := range stream.Entries {
+				counts.Append(e.Line)
+			}
+		}
+		rw.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	serverURL, err := url.Parse(server.URL)
+	require.NoError(t, err)
+
+	cfg := Config{
+		Name:      "test-client",
+		URL:       flagext.URLValue{URL: serverURL},
+		Timeout:   time.Second,
+		BatchSize: 1,
+		BackoffConfig: backoff.Config{
+			MinBackoff: 50 * time.Millisecond,
+			MaxBackoff: 100 * time.Millisecond,
+			MaxRetries: 10,
+		},
+		QueueConfig: QueueConfig{
+			Capacity:        10,
+			DrainTimeout:    5 * time.Second,
+			BlockOnOverflow: true,
+		},
+	}
+
+	run := func(lines ...string) {
+		reg := prometheus.NewRegistry()
+		wl, err := wal.New(logger, reg, dir)
+		require.NoError(t, err)
+		defer wl.Close()
+
+		consumer, err := NewWALConsumer(logger, reg, wl, walConfig, cfg)
+		require.NoError(t, err)
+		consumer.Start()
+
+		for _, line := range lines {
+			require.NoError(t, consumer.ConsumeEntry(t.Context(), loki.Entry{
+				Labels: model.LabelSet{"wal_enabled": "true"},
+				Entry:  push.Entry{Timestamp: time.Now(), Line: line},
+			}))
+		}
+		consumer.StopAndDrain()
+	}
+
+	run("first-0", "first-1", "first-2")
+	run("second-0")
+
+	got := map[string]int{}
+	for _, l := range counts.StartIterate() {
+		got[l]++
+	}
+	counts.DoneIterate()
+
+	require.Equal(t, map[string]int{"first-0": 1, "first-1": 1, "first-2": 1, "second-0": 1}, got)
+}
+
+// TestWALConsumer_NewEndpointStartsAtNewestSegment makes sure an endpoint without a savepoint, such as one added to a
+// WAL that already holds segments, records a start at the newest segment and so does not receive the history.
+func TestWALConsumer_NewEndpointStartsAtNewestSegment(t *testing.T) {
+	var (
+		dir       = t.TempDir()
+		logger    = logging.NewSlogNop()
+		reg       = prometheus.NewRegistry()
+		walConfig = wal.Config{
+			MaxSegmentAge: time.Hour,
+			WatchConfig:   wal.DefaultWatchConfig,
+		}
+	)
+
+	cfg, _, closeServer := newServerAndEndpointConfig(t)
+	defer closeServer()
+
+	wl, err := wal.New(logger, reg, dir)
+	require.NoError(t, err)
+	defer wl.Close()
+
+	// history from an earlier run, the segment that is written to now is 3
+	for range 3 {
+		_, err := wl.NextSegment()
+		require.NoError(t, err)
+	}
+	head, err := wal.LastSegment(wl.Dir())
+	require.NoError(t, err)
+	require.Equal(t, 3, head)
+
+	// The consumer is never started: construction alone must record where the endpoint starts, so there is nothing to stop.
+	_, err = NewWALConsumer(logger, reg, wl, walConfig, cfg)
+	require.NoError(t, err)
+
+	f, err := savepoint.NewFile(logger, wl.Dir())
+	require.NoError(t, err)
+	require.Equal(t, head-1, f.LastStoredSegment(getStableEndpointName(cfg)))
 }

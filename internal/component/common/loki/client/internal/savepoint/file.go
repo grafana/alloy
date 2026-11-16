@@ -17,6 +17,10 @@ const (
 	fileName   = "savepoint.json"
 
 	folderMode os.FileMode = 0o700
+
+	// beforeFirstSegment is the saved segment of an endpoint that starts with the first segment of the WAL. It can not
+	// be -1, which is reported for an endpoint without a savepoint.
+	beforeFirstSegment = -2
 )
 
 // File holds the savepoints of every endpoint of a single loki.write component in one file.
@@ -56,6 +60,30 @@ func (f *File) LastStoredSegment(key string) int {
 		return noSegment
 	}
 	return e.Segment
+}
+
+// StoreStart records that key starts reading the WAL at segment, unless key already has a savepoint. Without it an
+// endpoint that was never marked has no savepoint and a restart would start at the newest segment, skipping what was
+// written before the crash. A start at the first segment is stored as beforeFirstSegment, since -1 means no savepoint.
+func (f *File) StoreStart(key string, segment int) {
+	f.mut.Lock()
+	defer f.mut.Unlock()
+
+	f.ensureLoaded()
+
+	if _, ok := f.entries[key]; ok {
+		return
+	}
+
+	last := segment - 1
+	if last < 0 {
+		last = beforeFirstSegment
+	}
+	f.entries[key] = entry{Segment: last}
+
+	if err := f.write(); err != nil {
+		f.logger.Error("could not update savepoint file", "file", f.path, "err", err)
+	}
 }
 
 // StoreSegment stores segment as key's last consumed segment.

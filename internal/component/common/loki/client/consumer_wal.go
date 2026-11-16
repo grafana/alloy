@@ -59,6 +59,16 @@ func NewWALConsumer(logger *slog.Logger, reg prometheus.Registerer, wl wal.WAL, 
 		return nil, err
 	}
 
+	// An endpoint without a savepoint starts at the newest segment. Record that start, otherwise a crash before the first
+	// segment is saved makes the next run skip everything written since.
+	if head, err := wal.LastSegment(wl.Dir()); err != nil {
+		logger.Error("could not find the newest WAL segment, entries written before a crash may be skipped", "err", err)
+	} else if head >= 0 {
+		for _, name := range names {
+			savepointFile.StoreStart(name, head)
+		}
+	}
+
 	for i, cfg := range cfgs {
 		pair, err := newEndpointWatcherPair(
 			names[i],
@@ -155,6 +165,11 @@ func (p endpointWatcherPair) stop(drain bool) {
 	// Watcher is stopped before the endpoint so it is not handed more entries
 	// while the endpoint drains its queues.
 	p.watcher.Stop()
+
+	// The writer is stopped before the pairs, so a watcher that read to the end of the WAL has seen everything there is.
+	if drain && p.watcher.Drained() {
+		p.endpoint.tracker.MarkWALDrained()
+	}
 
 	p.endpoint.stop()
 }
