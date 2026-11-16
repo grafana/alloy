@@ -1,3 +1,8 @@
+// The CI runner runs as a Windows service, so Alloy would log to the Event Log by default.
+logging {
+  destination = "stderr"
+}
+
 // Settings that windows_exporter v0.32 removed or renamed. Alloy must still start.
 prometheus.exporter.windows "test" {
   enabled_collectors = ["cpu", "filetime", "thermalzone"]
