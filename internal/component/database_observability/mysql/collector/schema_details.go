@@ -647,6 +647,14 @@ func (tr *TableRegistry) SetTables(tables []*tableInfo) {
 	}
 }
 
+// HasSchema reports whether tables have been collected for a schema.
+func (tr *TableRegistry) HasSchema(schema string) bool {
+	tr.mu.RLock()
+	defer tr.mu.RUnlock()
+	_, ok := tr.exact[schema]
+	return ok
+}
+
 // IsValid resolves a query-parsed table name — optionally schema-qualified as
 // "schema.table" — against the source-of-truth table registry. It returns the resolved
 // name and whether a match was found.

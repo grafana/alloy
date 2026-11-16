@@ -3,6 +3,7 @@ package collector
 import (
 	"database/sql/driver"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -18,6 +19,145 @@ import (
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/util"
 )
+
+func TestQueryDetails_Throttling(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		schemas     [][]string
+		elapsed     []time.Duration
+		wantEntries int
+	}{
+		{
+			name:        "throttled until the interval expires",
+			schemas:     [][]string{{"shop"}, {"shop"}, {"shop"}},
+			elapsed:     []time.Duration{0, database_observability.EmitInterval - time.Second, database_observability.EmitInterval},
+			wantEntries: 4,
+		},
+		{
+			name:        "same digest in different schemas is independent",
+			schemas:     [][]string{{"shop"}, {"shop", "other_shop"}},
+			elapsed:     []time.Duration{0, time.Minute},
+			wantEntries: 4,
+		},
+		{
+			name:        "queries that disappear are pruned",
+			schemas:     [][]string{{"shop"}, {}, {"shop"}},
+			elapsed:     []time.Duration{0, time.Minute, 2 * time.Minute},
+			wantEntries: 4,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c, mock, logs := newQueryDetailsThrottleTest(t)
+			base := time.Now()
+			for i, schemas := range tc.schemas {
+				c.now = func() time.Time { return base.Add(tc.elapsed[i]) }
+				rows := queryDetailsThrottleRows()
+				for _, schema := range schemas {
+					rows.AddRow("abc123", "SELECT * FROM books", schema, "SELECT * FROM books")
+				}
+				mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, exclusionClause, 250)).WillReturnRows(rows)
+				require.NoError(t, c.tablesFromEventsStatements(t.Context()))
+				if len(schemas) == 0 {
+					require.Empty(t, c.lastEmittedAt)
+					require.Empty(t, c.unvalidated)
+				}
+			}
+			logs.Stop()
+			require.Len(t, logs.Received(), tc.wantEntries)
+		})
+	}
+}
+
+func TestQueryDetails_ReemitsWhenSchemaBecomesAvailable(t *testing.T) {
+	c, mock, logs := newQueryDetailsThrottleTest(t)
+	c.tableRegistry = NewTableRegistry()
+	now := time.Now()
+	c.now = func() time.Time { return now }
+	poll := func() {
+		t.Helper()
+		mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, exclusionClause, 250)).WillReturnRows(
+			queryDetailsThrottleRows().AddRow("abc123", "SELECT * FROM books", "shop", "SELECT * FROM books"))
+		require.NoError(t, c.tablesFromEventsStatements(t.Context()))
+		now = now.Add(time.Minute)
+	}
+
+	poll() // Emit unvalidated tables immediately.
+	poll() // Still no schema data: remain throttled.
+	c.tableRegistry.SetTables([]*tableInfo{{schema: "other_shop", tableName: "books"}})
+	poll() // Another schema becoming available must not bypass the throttle.
+	c.tableRegistry.SetTables([]*tableInfo{{schema: "shop", tableName: "books"}})
+	poll() // Emit again with validated tables.
+	poll() // Resume normal throttling.
+
+	logs.Stop()
+	entries := logs.Received()
+	require.Len(t, entries, 4)
+	require.Contains(t, entries[1].Line, `validated\":false`)
+	require.Contains(t, entries[3].Line, `validated\":true`)
+	require.Empty(t, c.unvalidated)
+}
+
+func TestQueryDetails_ErrorsPreserveThrottle(t *testing.T) {
+	for _, failure := range []string{"query", "scan", "iteration"} {
+		t.Run(failure, func(t *testing.T) {
+			c, mock, logs := newQueryDetailsThrottleTest(t)
+			c.tableRegistry = NewTableRegistry()
+			now := time.Now()
+			c.now = func() time.Time { return now }
+			query := fmt.Sprintf(selectQueryTablesSamples, exclusionClause, 250)
+			rows := func() *sqlmock.Rows {
+				return queryDetailsThrottleRows().AddRow("abc123", "SELECT * FROM books", "shop", "SELECT * FROM books")
+			}
+			mock.ExpectQuery(query).WillReturnRows(rows())
+			require.NoError(t, c.tablesFromEventsStatements(t.Context()))
+
+			expected := mock.ExpectQuery(query)
+			switch failure {
+			case "query":
+				expected.WillReturnError(errors.New("query failed"))
+			case "scan":
+				expected.WillReturnRows(queryDetailsThrottleRows().AddRow(nil, nil, nil, nil))
+			case "iteration":
+				expected.WillReturnRows(rows().RowError(0, errors.New("iteration failed")))
+			}
+			err := c.tablesFromEventsStatements(t.Context())
+			if failure == "scan" {
+				require.NoError(t, err) // Scan errors are logged and skipped.
+			} else {
+				require.Error(t, err)
+			}
+			require.Len(t, c.lastEmittedAt, 1)
+			require.Len(t, c.unvalidated, 1)
+
+			mock.ExpectQuery(query).WillReturnRows(rows())
+			require.NoError(t, c.tablesFromEventsStatements(t.Context()))
+			logs.Stop()
+			require.Len(t, logs.Received(), 2)
+		})
+	}
+}
+
+func newQueryDetailsThrottleTest(t *testing.T) (*QueryDetails, sqlmock.Sqlmock, *loki.CollectingHandler) {
+	t.Helper()
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		mock.ExpectClose()
+		require.NoError(t, db.Close())
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+	logs := loki.NewCollectingHandler()
+	t.Cleanup(logs.Stop)
+	c, err := NewQueryDetails(QueryDetailsArguments{
+		DB: db, StatementsLimit: 250, EntryHandler: logs, Logger: util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+	return c, mock, logs
+}
+
+func queryDetailsThrottleRows() *sqlmock.Rows {
+	return sqlmock.NewRows([]string{"digest", "digest_text", "schema_name", "query_sample_text"})
+}
 
 func TestQueryTables(t *testing.T) {
 	defer goleak.VerifyNone(t)

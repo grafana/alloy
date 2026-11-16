@@ -46,6 +46,11 @@ type QueryDetailsArguments struct {
 	Logger *slog.Logger
 }
 
+type queryDetailsKey struct {
+	schema string
+	digest string
+}
+
 type QueryDetails struct {
 	dbConnection    *sql.DB
 	collectInterval time.Duration
@@ -56,6 +61,12 @@ type QueryDetails struct {
 	sqlParser       parser.Parser
 	normalizer      *sqllexer.Normalizer
 	tableRegistry   *TableRegistry
+
+	// Throttle both query logs per (schema, digest).
+	lastEmittedAt map[queryDetailsKey]time.Time
+	// Re-emit once when schema data becomes available after the first emission.
+	unvalidated map[queryDetailsKey]struct{}
+	now         func() time.Time
 
 	logger  *slog.Logger
 	running *atomic.Bool
@@ -75,6 +86,9 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 		sqlParser:       parser.NewTiDBSqlParser(),
 		normalizer:      sqllexer.NewNormalizer(sqllexer.WithCollectTables(true)),
 		tableRegistry:   args.TableRegistry,
+		lastEmittedAt:   map[queryDetailsKey]time.Time{},
+		unvalidated:     map[queryDetailsKey]struct{}{},
+		now:             time.Now,
 		logger:          args.Logger.With("collector", QueryDetailsCollector),
 		running:         &atomic.Bool{},
 	}
@@ -137,21 +151,31 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 	}
 	defer rs.Close()
 
+	now := c.now()
+	seen := map[queryDetailsKey]struct{}{}
+	scanComplete := true
 	for rs.Next() {
 		var digest, digestText, schema string
 		var sampleText sql.NullString
 		if err := rs.Scan(&digest, &digestText, &schema, &sampleText); err != nil {
 			c.logger.Error("failed to scan result set from summary table samples", "schema", schema, "err", err)
+			scanComplete = false
 			continue
+		}
+
+		key := queryDetailsKey{schema: schema, digest: digest}
+		seen[key] = struct{}{}
+		hasSchema := c.tableRegistry != nil && c.tableRegistry.HasSchema(schema)
+		if last, ok := c.lastEmittedAt[key]; ok && now.Sub(last) < database_observability.EmitInterval {
+			if _, pending := c.unvalidated[key]; !pending || !hasSchema {
+				continue
+			}
 		}
 
 		var tables []string
 		var parserErr, lexerErr error
 		if tables, parserErr = c.tryParseTableNames(sampleText.String, digestText); parserErr != nil {
-			if tables, lexerErr = c.tryTokenizeTableNames(sampleText.String, digestText); lexerErr != nil {
-				c.logger.Warn("failed to extract tables from sql text", "schema", schema, "digest", digest, "parser_err", parserErr, "lexer_err", lexerErr)
-				continue
-			}
+			tables, lexerErr = c.tryTokenizeTableNames(sampleText.String, digestText)
 		}
 
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
@@ -159,6 +183,13 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 			database_observability.OP_QUERY_ASSOCIATION,
 			fmt.Sprintf(`schema=%q parseable="%t" digest=%q digest_text=%q`, schema, parserErr == nil, digest, digestText),
 		)
+		c.lastEmittedAt[key] = now
+		delete(c.unvalidated, key)
+
+		if lexerErr != nil {
+			c.logger.Warn("failed to extract tables from sql text", "schema", schema, "digest", digest, "parser_err", parserErr, "lexer_err", lexerErr)
+			continue
+		}
 
 		if len(tables) == 0 {
 			continue
@@ -182,10 +213,23 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 			database_observability.OP_QUERY_PARSED_TABLE_NAMES_V2,
 			fmt.Sprintf(`schema=%q digest=%q tables=%q`, schema, digest, tablesJSON),
 		)
+		if c.tableRegistry != nil && !hasSchema {
+			c.unvalidated[key] = struct{}{}
+		}
 	}
 
 	if err := rs.Err(); err != nil {
 		return fmt.Errorf("failed to iterate over samples result set: %w", err)
+	}
+
+	// Only prune after a complete scan, so transient errors preserve throttling.
+	if scanComplete {
+		for key := range c.lastEmittedAt {
+			if _, ok := seen[key]; !ok {
+				delete(c.lastEmittedAt, key)
+				delete(c.unvalidated, key)
+			}
+		}
 	}
 
 	return nil
