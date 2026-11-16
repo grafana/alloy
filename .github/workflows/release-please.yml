@@ -33,7 +33,7 @@ jobs:
           github_app: ${{ env.ALLOYBOT_APP_NAME }}
 
       - name: Checkout repository 🛎️
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: ${{ github.ref_name }}
           token: ${{ steps.app-token.outputs.token }}
@@ -41,10 +41,10 @@ jobs:
           persist-credentials: true # Required for fetching release-please branches
 
       - name: Setup tools 🛠️ # zizmor: ignore[cache-poisoning] Workflow does not directly create artifacts.
-        uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
-          version: v2026.5.18
-          sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
+          version: v2026.11.7
+          sha256: 8f5426d9971eaf713b37509749174ca69cf2f08b8b25e389168dcfcab9cd1a4d
           install_args: go node
 
       - name: Install dependencies 📦
@@ -89,7 +89,7 @@ jobs:
           github_app: ${{ env.ALLOYBOT_APP_NAME }}
 
       - name: Checkout repository 🛎️
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: ${{ github.ref_name }}
           token: ${{ steps.app-token.outputs.token }}
@@ -97,10 +97,10 @@ jobs:
           persist-credentials: true # Required for fetching release-please branches
 
       - name: Setup tools 🛠️ # zizmor: ignore[cache-poisoning] Workflow does not directly create artifacts.
-        uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
-          version: v2026.10.17
-          sha256: fe6dd17e68e09682b31d2e7bb7bb755d22636ac1af5d94621e300f2ca9e9fe8a
+          version: v2026.11.7
+          sha256: 8f5426d9971eaf713b37509749174ca69cf2f08b8b25e389168dcfcab9cd1a4d
           install_args: go helm helm-docs python uv yamllint
 
       - name: Find release-please branch 🔎
@@ -154,7 +154,7 @@ jobs:
 
       - name: Update release-please pull request 📝
         if: steps.release-branch.outputs.exists == 'true'
-        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        uses: peter-evans/create-pull-request@3ffccacd46053766916f087ce41d627c0b8cf2d1 # v8.1.3
         with:
           token: ${{ steps.app-token.outputs.token }}
           sign-commits: true
