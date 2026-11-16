@@ -44,6 +44,34 @@ func TestDecode_Numbers(t *testing.T) {
 	}
 }
 
+func TestDecode_StringToNumber(t *testing.T) {
+	tt := []struct {
+		input  string
+		expect any
+	}{
+		{"15", int(15)},
+		{"-15", int(-15)},
+		{"1.5", float64(1.5)},
+		{"-1.5", float64(-1.5)},
+		{"-.5", float64(-0.5)},
+		{"1e3", float64(1000)},
+		{"-1e3", float64(-1000)},
+		{"-2.5e2", float64(-250)},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.input, func(t *testing.T) {
+			val := value.Encode(tc.input)
+
+			vPtr := reflect.New(reflect.TypeOf(tc.expect)).Interface()
+			require.NoError(t, value.Decode(val, vPtr))
+
+			actual := reflect.ValueOf(vPtr).Elem().Interface()
+			require.Equal(t, tc.expect, actual)
+		})
+	}
+}
+
 func TestDecode(t *testing.T) {
 	// Declare some types to use for testing. Person2 is used as a struct
 	// equivalent to Person, but with a different Go type to force casting.
