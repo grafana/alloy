@@ -172,3 +172,38 @@ func TestConvert(t *testing.T) {
 	require.Equal(t, []string{"example"}, conf.Filetime.FilePatterns)
 	require.Equal(t, "example", conf.Time.EnabledList)
 }
+
+func TestAlloyUnmarshalV032Blocks(t *testing.T) {
+	cfg := `
+		enabled_collectors = ["filetime", "registry", "wmi"]
+
+		container {
+			cri_endpoint = "npipe:////./pipe/custom"
+		}
+
+		scheduled_task {
+			missed_runs = true
+		}
+
+		registry {
+			keys = "- name: example"
+		}
+
+		wmi {
+			queries = "- name: example"
+		}
+
+		file {
+			file_patterns = ["C:\\logs\\*.log"]
+		}
+	`
+	var args Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+	conf := args.Convert(slog.New(slog.DiscardHandler))
+	require.Equal(t, "npipe:////./pipe/custom", conf.Container.CRIEndpoint)
+	require.True(t, conf.ScheduledTask.MissedRuns)
+	require.Equal(t, "- name: example", conf.Registry.Keys)
+	require.Equal(t, "- name: example", conf.WMI.Queries)
+	require.Equal(t, []string{`C:\logs\*.log`}, conf.File.FilePatterns)
+}

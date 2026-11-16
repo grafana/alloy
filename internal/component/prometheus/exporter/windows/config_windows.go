@@ -58,11 +58,11 @@ func (a *Arguments) SetToDefault() {
 			Include:                col.ConfigDefaults.Process.ProcessInclude.String(),
 			Exclude:                col.ConfigDefaults.Process.ProcessExclude.String(),
 			EnableIISWorkerProcess: col.ConfigDefaults.Process.EnableWorkerProcess,
-			CounterVersion:         col.ConfigDefaults.Process.CounterVersion,
 		},
 		ScheduledTask: ScheduledTaskConfig{
-			Include: col.ConfigDefaults.ScheduledTask.TaskInclude.String(),
-			Exclude: col.ConfigDefaults.ScheduledTask.TaskExclude.String(),
+			Include:    col.ConfigDefaults.ScheduledTask.TaskInclude.String(),
+			Exclude:    col.ConfigDefaults.ScheduledTask.TaskExclude.String(),
+			MissedRuns: col.ConfigDefaults.ScheduledTask.MissedRuns,
 		},
 		Service: ServiceConfig{
 			Include: col.ConfigDefaults.Service.ServiceInclude.String(),
@@ -86,9 +86,10 @@ func (a *Arguments) SetToDefault() {
 		TCP: TCPConfig{
 			EnabledList: slices.Clone(col.ConfigDefaults.TCP.CollectorsEnabled),
 		},
-		Filetime: FiletimeConfig{
-			FilePatterns: slices.Clone(col.ConfigDefaults.Filetime.FilePatterns),
+		File: FileConfig{
+			FilePatterns: slices.Clone(col.ConfigDefaults.File.FilePatterns),
 		},
+
 		MSCluster: MSClusterConfig{
 			EnabledList: slices.Clone(col.ConfigDefaults.MSCluster.CollectorsEnabled),
 		},
@@ -106,6 +107,9 @@ func (a *Arguments) SetToDefault() {
 			EnabledList: slices.Clone(col.ConfigDefaults.Net.CollectorsEnabled),
 			Exclude:     col.ConfigDefaults.Net.NicExclude.String(),
 			Include:     col.ConfigDefaults.Net.NicInclude.String(),
+		},
+		Container: ContainerConfig{
+			CRIEndpoint: col.ConfigDefaults.Container.CRIEndpoint,
 		},
 		Time: TimeConfig{
 			EnabledList: slices.Clone(col.ConfigDefaults.Time.CollectorsEnabled),

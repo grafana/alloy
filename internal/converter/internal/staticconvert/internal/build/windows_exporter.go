@@ -4,14 +4,19 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/windows"
+	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/static/integrations/windows_exporter"
 )
 
 func (b *ConfigBuilder) appendWindowsExporter(config *windows_exporter.Config, instanceKey *string) discovery.Exports {
+	if config.Process.CounterVersion != 0 {
+		b.diags.Add(diag.SeverityLevelWarn, "The windows_exporter process counter_version option was removed in windows_exporter v0.32 and is not converted.")
+	}
 	args := toWindowsExporter(config)
 	return b.appendExporterBlock(args, config.Name(), instanceKey, "windows")
 }
@@ -23,6 +28,38 @@ func split(collectorList string) []string {
 		return []string{}
 	}
 	return strings.Split(collectorList, ",")
+}
+
+// translateCollectors renames filetime to file, drops thermalzone, and removes duplicates.
+// windows_exporter v0.32 removed both of the old collector names.
+func translateCollectors(collectors []string) []string {
+	result := make([]string, 0, len(collectors))
+	for _, name := range collectors {
+		switch name {
+		case "filetime":
+			name = "file"
+		case "thermalzone":
+			continue
+		}
+		if !slices.Contains(result, name) {
+			result = append(result, name)
+		}
+	}
+	return result
+}
+
+// mergePatterns joins the file patterns without duplicates.
+// It never returns nil, to match the default of the component.
+func mergePatterns(lists ...[]string) []string {
+	result := []string{}
+	for _, list := range lists {
+		for _, pattern := range list {
+			if !slices.Contains(result, pattern) {
+				result = append(result, pattern)
+			}
+		}
+	}
+	return result
 }
 
 // This behavior is copied from getDefaultPath() function in:
@@ -46,15 +83,25 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 	}
 
 	return &windows.Arguments{
-		EnabledCollectors: split(config.EnabledCollectors),
+		EnabledCollectors: translateCollectors(split(config.EnabledCollectors)),
 		Dfsr: windows.DfsrConfig{
 			SourcesEnabled: split(config.Dfsr.SourcesEnabled),
 		},
 		Exchange: windows.ExchangeConfig{
 			EnabledList: split(config.Exchange.EnabledList),
 		},
-		Filetime: windows.FiletimeConfig{
-			FilePatterns: config.Filetime.FilePatterns,
+		File: windows.FileConfig{
+			// The deprecated filetime patterns move to the file collector.
+			FilePatterns: mergePatterns(config.File.FilePatterns, config.Filetime.FilePatterns),
+		},
+		Container: windows.ContainerConfig{
+			CRIEndpoint: config.Container.CRIEndpoint,
+		},
+		Registry: windows.RegistryConfig{
+			Keys: config.Registry.Keys,
+		},
+		WMI: windows.WMIConfig{
+			Queries: config.WMI.Queries,
 		},
 		IIS: windows.IISConfig{
 			AppBlackList:  config.IIS.AppBlackList,
@@ -105,11 +152,11 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 			Exclude:                config.Process.Exclude,
 			Include:                config.Process.Include,
 			EnableIISWorkerProcess: config.Process.EnableIISWorkerProcess,
-			CounterVersion:         config.Process.CounterVersion,
 		},
 		ScheduledTask: windows.ScheduledTaskConfig{
-			Exclude: config.ScheduledTask.Exclude,
-			Include: config.ScheduledTask.Include,
+			Exclude:    config.ScheduledTask.Exclude,
+			Include:    config.ScheduledTask.Include,
+			MissedRuns: config.ScheduledTask.MissedRuns,
 		},
 		Service: windows.ServiceConfig{
 			Include: config.Service.Include,
