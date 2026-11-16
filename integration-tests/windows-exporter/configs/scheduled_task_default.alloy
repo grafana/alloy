@@ -1,0 +1,3 @@
+prometheus.exporter.windows "test" {
+  enabled_collectors = ["scheduled_task"]
+}

@@ -1,0 +1,7 @@
+prometheus.exporter.windows "test" {
+  enabled_collectors = ["cpu", "file"]
+
+  file {
+    file_patterns = ["{{PROBE_GLOB}}"]
+  }
+}
