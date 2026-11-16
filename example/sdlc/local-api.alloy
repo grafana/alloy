@@ -1,0 +1,28 @@
+otelcol.receiver.sdlc "default" {
+	cluster_name = sys.env("K8S_CLUSTER_NAME")
+
+	output {
+		logs = [otelcol.exporter.otlphttp.rollout_api.input]
+	}
+}
+
+otelcol.exporter.otlphttp "rollout_api" {
+	client {
+		// For the SDLC ingester, use http://localhost:4318/workloads locally.
+		endpoint = sys.env("ROLLOUT_OTLP_ENDPOINT")
+		headers  = {
+			"Authorization" = "Bearer " + sys.env("SDLC_CAP_TOKEN"),
+		}
+	}
+
+	retry_on_failure {
+		max_elapsed_time = "0s"
+	}
+}
+
+otelcol.auth.basic "rollout_api" {
+	client_auth {
+		username = sys.env("SDLC_STACK_ID")
+		password = sys.env("SDLC_CAP_TOKEN")
+	}
+}
