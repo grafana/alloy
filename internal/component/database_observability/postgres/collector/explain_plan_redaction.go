@@ -52,20 +52,32 @@ var explainPlanExpressionKeys = map[string]struct{}{
 // explainPlanIdentifierKeys are the keys whose values are names that PostgreSQL
 // writes into the plan as they are stored, not deparsed expressions. They are
 // kept as they are so that names which don't look like plain words, such as
-// "2024_orders", aren't changed by the SQL obfuscator.
+// "2024_orders" or "InitPlan 1 (returns $0)", aren't changed by the SQL
+// obfuscator.
+//
+// A name is not a literal, but it is not always PostgreSQL's own text either:
+// "Alias" is whatever the query author wrote, and relation, schema, index, and
+// function names are chosen by whoever designed the schema. The structured
+// explain plan output already carries the alias unredacted.
 var explainPlanIdentifierKeys = map[string]struct{}{
-	"Relation Name": {},
-	"Schema":        {},
-	"Alias":         {},
-	"Index Name":    {},
-	"CTE Name":      {},
-	"Subplan Name":  {},
+	"Relation Name":            {},
+	"Schema":                   {},
+	"Alias":                    {},
+	"Index Name":               {},
+	"CTE Name":                 {},
+	"Subplan Name":             {},
+	"Function Name":            {},
+	"Table Function Name":      {},
+	"Tuplestore Name":          {},
+	"Conflict Arbiter Indexes": {},
 }
 
-// plainWordsPattern matches strings made only of words, such as "Seq Scan",
-// "orders", or "SubPlan 2". A string that can carry a literal needs a quote, an
-// operator, a parenthesis, or a leading digit, none of which match.
-var plainWordsPattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_ ]*$`)
+// plainWordsPattern matches strings made only of letters, underscores, and
+// spaces, such as "Seq Scan" or "orders". Such a string cannot carry a literal:
+// a string literal needs a quote and a numeric literal needs a digit, so a
+// value like "LIMIT 5" does not match and is redacted. Digits are not allowed
+// anywhere for that reason.
+var plainWordsPattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z_ ]*$`)
 
 // redactExplainPlanJSON returns the EXPLAIN (FORMAT JSON) plan with the SQL
 // expressions in it redacted and everything else left as PostgreSQL returned it:
@@ -78,6 +90,8 @@ func redactExplainPlanJSON(plan []byte) ([]byte, error) {
 	dec.UseNumber()
 
 	r := &planRedactor{dec: dec}
+	r.enc = json.NewEncoder(&r.str)
+	r.enc.SetEscapeHTML(false)
 	if err := r.value(""); err != nil {
 		return nil, err
 	}
@@ -90,6 +104,10 @@ func redactExplainPlanJSON(plan []byte) ([]byte, error) {
 type planRedactor struct {
 	dec *json.Decoder
 	buf bytes.Buffer
+
+	// str and enc encode one string at a time. They are reused for the whole plan.
+	str bytes.Buffer
+	enc *json.Encoder
 }
 
 // value copies the next JSON value to the output. key is the object key the
@@ -177,13 +195,11 @@ func (r *planRedactor) array(key string) error {
 // writeString writes s as a JSON string without escaping <, >, and &, so that
 // expressions stay readable in the log.
 func (r *planRedactor) writeString(s string) error {
-	var b bytes.Buffer
-	enc := json.NewEncoder(&b)
-	enc.SetEscapeHTML(false)
-	if err := enc.Encode(s); err != nil {
+	r.str.Reset()
+	if err := r.enc.Encode(s); err != nil {
 		return err
 	}
-	r.buf.Write(bytes.TrimRight(b.Bytes(), "\n"))
+	r.buf.Write(bytes.TrimRight(r.str.Bytes(), "\n"))
 	return nil
 }
 

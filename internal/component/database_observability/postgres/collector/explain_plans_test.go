@@ -3342,6 +3342,54 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 			require.NotContains(t, string(logged), "9999-01-01")
 		})
 
+		t.Run("logs an error and no plan when the plan cannot be redacted", func(t *testing.T) {
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+			require.NoError(t, err)
+			defer db.Close()
+
+			lokiClient.Clear()
+			logBuffer.Reset()
+			dbConnFactory := &mockDbConnectionFactory{
+				db:                 db,
+				Mock:               &mock,
+				InstantiationCount: 0,
+			}
+			explainPlan = &ExplainPlans{
+				dbConnection:        db,
+				dbDSN:               "postgres://user:pass@host:1234/database",
+				dbConnectionFactory: dbConnFactory.NewDBConnection,
+				dbVersion:           post17ver,
+				queryCache: map[string]*queryInfo{
+					explainPlanQueryKey("testdb", "123456"): {
+						datname:    "testdb",
+						queryId:    "123456",
+						queryText:  "select * from some_table where id = $1",
+						calls:      int64(10),
+						callsReset: time.Now(),
+					},
+				},
+				queryDenylist:      map[string]struct{}{},
+				finishedQueryCache: map[string]processedQueryInfo{},
+				excludeDatabases:   []string{},
+				perScrapeRatio:     1.0,
+				logger:             slogger,
+				currentBatchSize:   1,
+				entryHandler:       lokiClient,
+			}
+
+			mock.ExpectExec("SET SESSION search_path TO \"public\"").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("PREPARE explain_plan_123456 AS select * from some_table where id = $1").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null)").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow([]byte("not json")))
+			mock.ExpectExec("DEALLOCATE explain_plan_123456").WillReturnResult(sqlmock.NewResult(0, 1))
+
+			require.NoError(t, explainPlan.fetchExplainPlans(t.Context()))
+			assert.NoError(t, mock.ExpectationsWereMet())
+
+			require.Contains(t, logBuffer.String(), "failed to redact explain plan json for the debug log")
+			require.NotContains(t, logBuffer.String(), "db_native_explain_plan")
+		})
+
 		t.Run("does not redact or log the plan when debug logging is off", func(t *testing.T) {
 			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 			require.NoError(t, err)

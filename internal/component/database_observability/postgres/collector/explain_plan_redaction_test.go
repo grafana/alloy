@@ -52,8 +52,13 @@ func TestRedactExplainPlanJSON(t *testing.T) {
 		},
 		{
 			name:  "keeps plain words under a key it does not know",
-			input: `[{"Plan":{"Some New Label":"Seq Scan 2"}}]`,
-			want:  `[{"Plan":{"Some New Label":"Seq Scan 2"}}]`,
+			input: `[{"Plan":{"Some New Label":"Seq Scan"}}]`,
+			want:  `[{"Plan":{"Some New Label":"Seq Scan"}}]`,
+		},
+		{
+			name:  "redacts a number that follows a word under a key it does not know",
+			input: `[{"Plan":{"Remote SQL":"SELECT id FROM t LIMIT 5","Some New Label":"count 4242"}}]`,
+			want:  `[{"Plan":{"Remote SQL":"SELECT id FROM t LIMIT ?","Some New Label":"count ?"}}]`,
 		},
 		{
 			name: "keeps names and labels",
@@ -70,9 +75,14 @@ func TestRedactExplainPlanJSON(t *testing.T) {
 		{
 			name: "keeps names that start with a digit",
 			input: `[{"Plan":{"Relation Name":"1tbl","Alias":"2024_orders","Index Name":"3idx","Schema":"9schema","CTE Name":"1cte",` +
-				`"Subplan Name":"1sub","Filter":"((\"1tbl\".id = 5) AND (\"2024_orders\".x = 'a'::text))"}}]`,
+				`"Subplan Name":"1sub","Function Name":"1fn","Filter":"((\"1tbl\".id = 5) AND (\"2024_orders\".x = 'a'::text))"}}]`,
 			want: `[{"Plan":{"Relation Name":"1tbl","Alias":"2024_orders","Index Name":"3idx","Schema":"9schema","CTE Name":"1cte",` +
-				`"Subplan Name":"1sub","Filter":"((\"1tbl\".id = ?) AND (\"2024_orders\".x = ?::text))"}}]`,
+				`"Subplan Name":"1sub","Function Name":"1fn","Filter":"((\"1tbl\".id = ?) AND (\"2024_orders\".x = ?::text))"}}]`,
+		},
+		{
+			name:  "keeps an InitPlan name as PostgreSQL writes it",
+			input: `[{"Plan":{"Parent Relationship":"InitPlan","Subplan Name":"InitPlan 1 (returns $0)"}}]`,
+			want:  `[{"Plan":{"Parent Relationship":"InitPlan","Subplan Name":"InitPlan 1 (returns $0)"}}]`,
 		},
 		{
 			name:  "still redacts a digit-leading value under an unknown key",
@@ -156,6 +166,12 @@ func TestRedactExplainPlanJSON_Fixtures(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, files)
 
+	// Plans with labels that core PostgreSQL does not emit.
+	extra, err := filepath.Glob("./testdata/explain_plan_redaction/*.txtar")
+	require.NoError(t, err)
+	require.NotEmpty(t, extra)
+	files = append(files, extra...)
+
 	for _, file := range files {
 		t.Run(filepath.Base(file), func(t *testing.T) {
 			archive, err := txtar.ParseFile(file)
@@ -207,7 +223,10 @@ func assertOnlyExpressionsRedacted(t *testing.T, key string, before, after any, 
 		if _, ok := identifierKeys[key]; ok {
 			require.Equal(t, b, a, "value of %q must not change", key)
 		}
-		require.False(t, strings.Contains(a, "'"), "value of %q still has a quoted literal: %s", key, a)
+		// Names are kept as they are, and a name may legitimately contain a quote.
+		if _, ok := explainPlanIdentifierKeys[key]; !ok {
+			require.False(t, strings.Contains(a, "'"), "value of %q still has a quoted literal: %s", key, a)
+		}
 		if _, ok := explainPlanExpressionKeys[key]; ok {
 			require.Equal(t, database_observability.RedactSql(b), a, "value of %q must be redacted as SQL", key)
 		}
@@ -215,4 +234,22 @@ func assertOnlyExpressionsRedacted(t *testing.T, key string, before, after any, 
 		// Numbers and booleans.
 		require.Equal(t, before, after, "value of %q must not change", key)
 	}
+}
+
+// TestRedactExplainPlanJSON_ForeignScanRemoteSQL checks that the query a foreign
+// data wrapper puts in the plan is redacted, even though "Remote SQL" is not a
+// key this package knows.
+func TestRedactExplainPlanJSON_ForeignScanRemoteSQL(t *testing.T) {
+	archive, err := txtar.ParseFile("./testdata/explain_plan_redaction/foreign_scan_remote_sql.txtar")
+	require.NoError(t, err)
+	require.Len(t, archive.Files, 1)
+
+	got, err := redactExplainPlanJSON(archive.Files[0].Data)
+	require.NoError(t, err)
+
+	require.NotContains(t, string(got), "active")
+	require.NotContains(t, string(got), "1000")
+	require.NotContains(t, string(got), "LIMIT 5")
+	require.Contains(t, string(got), `"Remote SQL":"SELECT id, name FROM public.accounts WHERE ((status = ?)) AND ((balance > ?)) LIMIT ?"`)
+	require.Contains(t, string(got), `"Total Cost":125.50`)
 }
