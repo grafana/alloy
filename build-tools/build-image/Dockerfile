@@ -15,18 +15,18 @@ ARG GO_RUNTIME=mustoverride
 #
 
 # Dependency: docker (for building images)
-FROM alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11 as docker
+FROM alpine:3.23@sha256:469c9ea410b9215eaee7976ba6c0639039b444be8e5d638f7abbada189971eb2 as docker
 RUN apk add --no-cache docker-cli docker-cli-buildx
 
 # Dependency: helm
-FROM alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11 as helm
+FROM alpine:3.23@sha256:469c9ea410b9215eaee7976ba6c0639039b444be8e5d638f7abbada189971eb2 as helm
 RUN apk add --no-cache helm
 
 # Dependency: nsis (for building Windows installers)
 # TODO: Use nsis with conda so that we don't have to pull those packages from the internet.
 # https://nsis.sourceforge.io/Conda
 # TODO: Why do we use i386? Is it correct?
-FROM alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11 as nsis
+FROM alpine:3.23@sha256:469c9ea410b9215eaee7976ba6c0639039b444be8e5d638f7abbada189971eb2 as nsis
 # Guard against supply chain attacks.
 # sha256sum -c fails the build on mismatch, before the archive is unpacked.
 # NOTE: This same hash is also pinned in .github/workflows/integration-test-windows-service.yml; update both.
