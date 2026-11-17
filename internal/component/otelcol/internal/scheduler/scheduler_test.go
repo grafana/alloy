@@ -2,6 +2,7 @@ package scheduler_test
 
 import (
 	"context"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -11,7 +12,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	otelcomponent "go.opentelemetry.io/collector/component"
+	otelconsumer "go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/pdata/ptrace"
 
+	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
@@ -179,10 +183,9 @@ func TestScheduler(t *testing.T) {
 			require.NoError(t, err)
 		}()
 
-		started := util.NewWaitTrigger()
 		component := &fakeComponent{
 			StartFunc: func(_ context.Context, _ otelcomponent.Host) error {
-				started.Trigger()
+				record("start")
 				return nil
 			},
 			ShutdownFunc: func(_ context.Context) error {
@@ -191,7 +194,14 @@ func TestScheduler(t *testing.T) {
 			},
 		}
 		cs.Schedule(ctx, func() {}, h, component)
-		require.NoError(t, started.Wait(5*time.Second), "component did not start")
+
+		// Wait for the resume that follows the start, which Run or Schedule makes depending on which goes first.
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			mut.Lock()
+			defer mut.Unlock()
+			i := slices.Index(events, "start")
+			assert.True(c, i >= 0 && slices.Contains(events[i:], "resume"))
+		}, 5*time.Second, 10*time.Millisecond, "component did not start and resume")
 
 		// Only look at what the shutdown does.
 		mut.Lock()
@@ -209,6 +219,120 @@ func TestScheduler(t *testing.T) {
 		defer mut.Unlock()
 		require.Equal(t, []string{"pause", "shutdown"}, events, "shutdown should pause, then stop the components, and not resume")
 	})
+}
+
+// TestSchedulerWithLazyConsumer runs the scheduler with a lazy consumer's Pause and Resume as its callbacks, as the
+// otelcol processor, exporter and connector components do, and checks that no call reaches a stopped component.
+func TestSchedulerWithLazyConsumer(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		// stop replaces or removes the first component.
+		stop func(cancelRun context.CancelFunc, schedule func(id string))
+	}{
+		{
+			name: "Reload",
+			stop: func(_ context.CancelFunc, schedule func(id string)) { schedule("second") },
+		},
+		{
+			name: "Shutdown",
+			stop: func(cancelRun context.CancelFunc, _ func(id string)) { cancelRun() },
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var (
+				l        = util.TestAlloyLogger(t)
+				ctx      = componenttest.TestContext(t)
+				consumer = lazyconsumer.NewPaused(ctx, "test_component", l.Slog())
+				cs       = scheduler.NewWithPauseCallbacks(l.Slog(), consumer.Pause, consumer.Resume)
+				h        = scheduler.NewHost()
+
+				mut     sync.Mutex
+				stopped = map[string]bool{}
+				entered = make(chan string, 1)
+				release = make(chan struct{})
+			)
+
+			// schedule runs a component whose consumer blocks the first call until release is closed.
+			schedule := func(id string) {
+				traces, err := otelconsumer.NewTraces(func(context.Context, ptrace.Traces) error {
+					mut.Lock()
+					isStopped := stopped[id]
+					mut.Unlock()
+					if isStopped {
+						t.Errorf("data reached component %q after it was stopped", id)
+					}
+					select {
+					case entered <- id:
+						<-release
+					default:
+					}
+					return nil
+				})
+				require.NoError(t, err)
+				component := &fakeComponent{ShutdownFunc: func(context.Context) error {
+					mut.Lock()
+					defer mut.Unlock()
+					stopped[id] = true
+					return nil
+				}}
+				cs.Schedule(ctx, func() { consumer.SetConsumers(traces, nil, nil) }, h, component)
+			}
+
+			runCtx, cancelRun := context.WithCancel(ctx)
+			defer cancelRun()
+			runDone := make(chan struct{})
+			go func() {
+				defer close(runDone)
+				assert.NoError(t, cs.Run(runCtx))
+			}()
+			schedule("first")
+			require.Eventually(t, func() bool { return !consumer.IsPaused() }, 5*time.Second, time.Millisecond)
+
+			// A call is in flight to the first component.
+			consumeErr := make(chan error, 1)
+			go func() {
+				consumeErr <- consumer.ConsumeTraces(ctx, ptrace.NewTraces())
+			}()
+			select {
+			case id := <-entered:
+				require.Equal(t, "first", id)
+			case <-time.After(5 * time.Second):
+				t.Fatal("the call did not reach the first component")
+			}
+
+			stopDone := make(chan struct{})
+			go func() {
+				tc.stop(cancelRun, schedule)
+				close(stopDone)
+			}()
+
+			// The first component isn't stopped while the call is in flight.
+			time.Sleep(100 * time.Millisecond)
+			mut.Lock()
+			require.False(t, stopped["first"], "the component was stopped while a call was in flight")
+			mut.Unlock()
+
+			close(release)
+			require.NoError(t, <-consumeErr)
+			require.EventuallyWithT(t, func(c *assert.CollectT) {
+				mut.Lock()
+				defer mut.Unlock()
+				assert.True(c, stopped["first"])
+			}, 5*time.Second, time.Millisecond, "the first component was not stopped")
+
+			select {
+			case <-stopDone:
+			case <-time.After(5 * time.Second):
+				t.Fatal("stopping the first component did not finish")
+			}
+			cancelRun()
+			select {
+			case <-runDone:
+			case <-time.After(5 * time.Second):
+				t.Fatal("Run did not return")
+			}
+		})
+	}
 }
 
 func newTriggerComponent() (component otelcomponent.Component, started, stopped *util.WaitTrigger) {

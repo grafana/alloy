@@ -113,7 +113,7 @@ var (
 func New(opts component.Options, f otelexporter.Factory, args Arguments, supportedSignals TypeSignalFunc) (*Exporter, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	consumer := lazyconsumer.NewPaused(ctx, opts.ID)
+	consumer := lazyconsumer.NewPaused(ctx, opts.ID, opts.Logger)
 
 	// Create a lazy collector where metrics from the upstream component will be
 	// forwarded.

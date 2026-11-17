@@ -5,6 +5,7 @@ package lazyconsumer
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -16,8 +17,12 @@ import (
 	"go.opentelemetry.io/collector/pipeline"
 )
 
-// defaultDrainTimeout is how long Pause waits for in-flight Consume* calls, before and after cancelling them.
-const defaultDrainTimeout = 5 * time.Second
+const (
+	// defaultDrainTimeout is how long Pause waits for in-flight Consume* calls before cancelling them.
+	defaultDrainTimeout = 5 * time.Second
+	// defaultMaxDrainWait is how long Pause waits for in-flight Consume* calls in total before giving up.
+	defaultMaxDrainWait = time.Minute
+)
 
 // errPaused is the cancellation cause of in-flight Consume* calls that outlast drainTimeout.
 var errPaused = errors.New("consumer paused while the request was in flight")
@@ -28,8 +33,12 @@ type Consumer struct {
 
 	componentID string
 
-	// drainTimeout bounds each of the two waits in Pause.
+	logger *slog.Logger
+
+	// drainTimeout is how long Pause waits before cancelling in-flight calls, and between warnings after that.
 	drainTimeout time.Duration
+	// maxDrainWait is how long Pause waits in total before giving up on in-flight calls.
+	maxDrainWait time.Duration
 
 	// mut guards everything below.
 	mut sync.Mutex
@@ -37,17 +46,31 @@ type Consumer struct {
 	// resumed is set while the consumer is paused and closed by Resume. See Pause method for more info.
 	resumed chan struct{}
 
-	// inflight counts the Consume* calls in progress. drained is closed when it drops to zero while Pause waits.
-	inflight int
-	drained  chan struct{}
-
-	// Cancelling inflightCtx cancels the contexts of the Consume* calls in progress.
-	inflightCtx    context.Context
-	cancelInflight context.CancelCauseFunc
+	// gen tracks the Consume* calls admitted since the last Resume.
+	gen *generation
 
 	metricsConsumer otelconsumer.Metrics
 	logsConsumer    otelconsumer.Logs
 	tracesConsumer  otelconsumer.Traces
+}
+
+// generation tracks the Consume* calls admitted between a Resume and the next Pause.
+type generation struct {
+	// Cancelling ctx cancels the contexts of the generation's calls.
+	ctx    context.Context
+	cancel context.CancelCauseFunc
+
+	// drained is closed once the generation is paused and has no calls in progress.
+	drained chan struct{}
+
+	// inflight and paused are guarded by Consumer.mut.
+	inflight int
+	paused   bool
+}
+
+func newGeneration() *generation {
+	ctx, cancel := context.WithCancelCause(context.Background())
+	return &generation{ctx: ctx, cancel: cancel, drained: make(chan struct{})}
 }
 
 var (
@@ -61,14 +84,21 @@ var (
 // Consumer should stop accepting data; if the ctx is closed, no further data
 // will be accepted.
 func New(ctx context.Context, componentID string) *Consumer {
-	c := &Consumer{ctx: ctx, componentID: componentID, drainTimeout: defaultDrainTimeout}
-	c.inflightCtx, c.cancelInflight = context.WithCancelCause(context.Background())
-	return c
+	return &Consumer{
+		ctx:          ctx,
+		componentID:  componentID,
+		logger:       slog.New(slog.DiscardHandler),
+		drainTimeout: defaultDrainTimeout,
+		maxDrainWait: defaultMaxDrainWait,
+		gen:          newGeneration(),
+	}
 }
 
 // NewPaused is like New, but returns a Consumer that is paused by calling Pause method.
-func NewPaused(ctx context.Context, componentID string) *Consumer {
+// logger receives the warnings Pause logs while it waits for in-flight calls.
+func NewPaused(ctx context.Context, componentID string, logger *slog.Logger) *Consumer {
 	c := New(ctx, componentID)
+	c.logger = logger
 	c.Pause()
 	return c
 }
@@ -178,17 +208,19 @@ func (c *Consumer) begin(ctx context.Context, snapshot func()) (context.Context,
 		case <-resumed:
 		case <-c.ctx.Done():
 			return nil, nil, c.ctx.Err()
+		case <-ctx.Done():
+			return nil, nil, ctx.Err()
 		}
 	}
 	defer c.mut.Unlock()
 
-	c.inflight++
-	inflightCtx := c.inflightCtx
+	gen := c.gen
+	gen.inflight++
 	snapshot()
 
 	ctx, cancel := context.WithCancelCause(ctx)
-	stop := context.AfterFunc(inflightCtx, func() {
-		cancel(context.Cause(inflightCtx))
+	stop := context.AfterFunc(gen.ctx, func() {
+		cancel(context.Cause(gen.ctx))
 	})
 	done := func() {
 		stop()
@@ -196,10 +228,9 @@ func (c *Consumer) begin(ctx context.Context, snapshot func()) (context.Context,
 
 		c.mut.Lock()
 		defer c.mut.Unlock()
-		c.inflight--
-		if c.inflight == 0 && c.drained != nil {
-			close(c.drained)
-			c.drained = nil
+		gen.inflight--
+		if gen.inflight == 0 && gen.paused {
+			close(gen.drained)
 		}
 	}
 	return ctx, done, nil
@@ -217,40 +248,62 @@ func (c *Consumer) SetConsumers(t otelconsumer.Traces, m otelconsumer.Metrics, l
 }
 
 // Pause will stop the consumer until Resume is called. While paused, the calls to Consume* methods will block.
-// It waits up to drainTimeout for in-flight Consume* calls, then cancels them and waits up to drainTimeout again.
+// Pause returns once no Consume* call admitted before it is still in progress. After drainTimeout it cancels the
+// contexts of those calls, then keeps waiting for the ones that ignore cancellation, logging a warning every
+// drainTimeout: shutting a component down under such a call can crash it. After maxDrainWait it logs an error and
+// returns anyway, since the caller holding up a config reload indefinitely is worse than that crash.
 // Pause can be called multiple times, but a single call to Resume will un-pause this consumer. Thread-safe.
 func (c *Consumer) Pause() {
 	c.mut.Lock()
-	if c.resumed != nil {
-		c.mut.Unlock()
-		return // already paused
+	gen := c.gen
+	if c.resumed == nil {
+		c.resumed = make(chan struct{})
+		gen.paused = true
+		if gen.inflight == 0 {
+			close(gen.drained)
+		}
 	}
-
-	c.resumed = make(chan struct{})
-
-	if c.inflight == 0 {
-		c.mut.Unlock()
-		return
-	}
-	drained := make(chan struct{})
-	c.drained = drained
-	cancelInflight := c.cancelInflight
 	c.mut.Unlock()
 
+	c.drain(gen)
+}
+
+// drain waits until gen has no Consume* calls in progress. See Pause for details.
+func (c *Consumer) drain(gen *generation) {
+	// Calls can't join gen once it is paused, so cancelling it afterwards affects nobody.
+	defer gen.cancel(errPaused)
+
+	deadline := time.NewTimer(c.maxDrainWait)
+	defer deadline.Stop()
 	timer := time.NewTimer(c.drainTimeout)
 	defer timer.Stop()
 	select {
-	case <-drained:
+	case <-gen.drained:
 		return
 	case <-timer.C:
 	}
 
-	cancelInflight(errPaused)
-	timer.Reset(c.drainTimeout)
-	select {
-	case <-drained:
-	case <-timer.C:
+	gen.cancel(errPaused)
+	for {
+		timer.Reset(c.drainTimeout)
+		select {
+		case <-gen.drained:
+			return
+		case <-timer.C:
+			c.logger.Warn("pausing the consumer is waiting for in-flight requests that ignored cancellation",
+				"component", c.componentID, "in_flight", c.inflight(gen))
+		case <-deadline.C:
+			c.logger.Error("gave up waiting for in-flight requests while pausing the consumer; the component may crash when it is stopped",
+				"component", c.componentID, "in_flight", c.inflight(gen), "waited", c.maxDrainWait)
+			return
+		}
 	}
+}
+
+func (c *Consumer) inflight(gen *generation) int {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+	return gen.inflight
 }
 
 // Resume will revert the Pause call and the consumer will continue to work. See Pause for more details.
@@ -262,10 +315,8 @@ func (c *Consumer) Resume() {
 		return // already resumed
 	}
 
-	// Calls started after this must not inherit a cancellation from the last Pause.
-	if c.inflightCtx.Err() != nil {
-		c.inflightCtx, c.cancelInflight = context.WithCancelCause(context.Background())
-	}
+	// Calls admitted from now on belong to a new generation, which a Pause still draining the old one can't cancel.
+	c.gen = newGeneration()
 
 	close(c.resumed) // release all waiting
 	c.resumed = nil

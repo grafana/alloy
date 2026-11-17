@@ -1,7 +1,9 @@
 package lazyconsumer
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
 	"sync"
 	"testing"
 	"time"
@@ -27,7 +29,7 @@ func Test_PauseAndResume(t *testing.T) {
 }
 
 func Test_NewPaused(t *testing.T) {
-	c := NewPaused(componenttest.TestContext(t), "test_component")
+	c := NewPaused(componenttest.TestContext(t), "test_component", discardLogger)
 	require.True(t, c.IsPaused())
 	c.Resume()
 	require.False(t, c.IsPaused())
@@ -48,7 +50,7 @@ func Test_PauseResume_MultipleCalls(t *testing.T) {
 
 func Test_ConsumeWaitsForResume(t *testing.T) {
 	goleak.VerifyNone(t, goleak.IgnoreCurrent())
-	c := NewPaused(componenttest.TestContext(t), "test_component")
+	c := NewPaused(componenttest.TestContext(t), "test_component", discardLogger)
 	require.True(t, c.IsPaused())
 
 	method := map[string]func(){
@@ -110,7 +112,7 @@ func Test_PauseResume_Multithreaded(t *testing.T) {
 	routines := 5
 	allDone := sync.WaitGroup{}
 
-	c := NewPaused(componenttest.TestContext(t), "test_component")
+	c := NewPaused(componenttest.TestContext(t), "test_component", discardLogger)
 	require.True(t, c.IsPaused())
 
 	// Run goroutines that constantly try to call Consume* methods
@@ -299,15 +301,64 @@ func Test_PauseCancelsStuckConsume(t *testing.T) {
 	require.NoError(t, c.ConsumeTraces(componenttest.TestContext(t), ptrace.NewTraces()))
 }
 
-// Test_PauseDoesNotWaitForeverOnCallsIgnoringContext covers a downstream that
-// ignores its context: Pause returns after twice drainTimeout regardless.
-func Test_PauseDoesNotWaitForeverOnCallsIgnoringContext(t *testing.T) {
+// Test_PauseWaitsForCallsIgnoringContext stands in for otelcol.processor.tail_sampling, whose ConsumeTraces sends
+// to a shard channel without watching its context and whose Shutdown closes that channel. Pause must keep waiting
+// for such a send after cancelling it, so that shutting the component down afterwards doesn't panic.
+func Test_PauseWaitsForCallsIgnoringContext(t *testing.T) {
 	goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	var logs syncBuffer
+	c := New(componenttest.TestContext(t), "test_component")
+	c.logger = slog.New(slog.NewTextHandler(&logs, nil))
+	c.drainTimeout = 20 * time.Millisecond
+
+	workChan := make(chan struct{})
+	entered := make(chan struct{})
+	setConsumersFunc(t, c, func(ctx context.Context) error {
+		close(entered)
+		workChan <- struct{}{}
+		return ctx.Err()
+	})
+
+	consumeErr := make(chan error, 1)
+	go func() {
+		consumeErr <- c.ConsumeTraces(componenttest.TestContext(t), ptrace.NewTraces())
+	}()
+	waitFor(t, entered, "the Consume* call to reach the consumer")
+
+	pauseDone := make(chan struct{})
+	go func() {
+		c.Pause()
+		close(pauseDone)
+	}()
+	select {
+	case <-pauseDone:
+		t.Fatal("Pause returned while a Consume* call was still sending to the component")
+	case <-time.After(10 * c.drainTimeout):
+	}
+	require.Contains(t, logs.String(), "in_flight=1", "Pause should warn while it waits")
+
+	// The shard worker takes the batch, then the component shuts down.
+	<-workChan
+	waitFor(t, pauseDone, "Pause to return")
+	close(workChan)
+	require.ErrorIs(t, <-consumeErr, context.Canceled)
+	c.Resume()
+}
+
+// Test_PauseGivesUpAfterMaxDrainWait covers a call that never returns: Pause logs an error and returns after
+// maxDrainWait instead of holding up the config reload that called it.
+func Test_PauseGivesUpAfterMaxDrainWait(t *testing.T) {
+	goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	var logs syncBuffer
+	c := New(componenttest.TestContext(t), "test_component")
+	c.logger = slog.New(slog.NewTextHandler(&logs, nil))
+	c.drainTimeout = 10 * time.Millisecond
+	c.maxDrainWait = 100 * time.Millisecond
 
 	entered := make(chan struct{})
 	release := make(chan struct{})
-	c := New(componenttest.TestContext(t), "test_component")
-	c.drainTimeout = 50 * time.Millisecond
 	setConsumers(t, c, func() {
 		close(entered)
 		<-release
@@ -320,17 +371,107 @@ func Test_PauseDoesNotWaitForeverOnCallsIgnoringContext(t *testing.T) {
 	}()
 	waitFor(t, entered, "the Consume* call to reach the consumer")
 
-	pauseDone := make(chan struct{})
-	go func() {
-		c.Pause()
-		close(pauseDone)
-	}()
-	waitFor(t, pauseDone, "Pause to give up on the call")
+	start := time.Now()
+	c.Pause()
+	require.GreaterOrEqual(t, time.Since(start), c.maxDrainWait, "Pause should wait maxDrainWait before giving up")
+	require.Contains(t, logs.String(), "level=ERROR")
 	require.True(t, c.IsPaused())
 
 	close(release)
 	waitFor(t, consumeDone, "the Consume* call to return")
 	c.Resume()
+}
+
+// Test_ResumeWhilePauseDrains covers a Resume that overlaps a Pause still waiting for a call: the calls admitted
+// after the Resume must neither be cancelled by that Pause nor hold it up.
+func Test_ResumeWhilePauseDrains(t *testing.T) {
+	goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	c := New(componenttest.TestContext(t), "test_component")
+	c.drainTimeout = 100 * time.Millisecond
+
+	type call struct {
+		ctx     context.Context
+		release chan struct{}
+	}
+	calls := make(chan call)
+	setConsumersFunc(t, c, func(ctx context.Context) error {
+		release := make(chan struct{})
+		calls <- call{ctx: ctx, release: release}
+		select {
+		case <-release:
+			return nil
+		case <-ctx.Done():
+			return context.Cause(ctx)
+		}
+	})
+	consume := func() <-chan error {
+		errc := make(chan error, 1)
+		go func() {
+			errc <- c.ConsumeTraces(componenttest.TestContext(t), ptrace.NewTraces())
+		}()
+		return errc
+	}
+
+	// A call is in flight when Pause starts draining.
+	oldErr := consume()
+	<-calls
+	pauseDone := make(chan struct{})
+	go func() {
+		c.Pause()
+		close(pauseDone)
+	}()
+	require.Eventually(t, c.IsPaused, 5*time.Second, time.Millisecond)
+
+	// Resume before Pause cancels the old call, and start a new one.
+	c.Resume()
+	newErr := consume()
+	newCall := <-calls
+
+	// Pause cancels the old call and returns without waiting for the new one.
+	require.ErrorIs(t, <-oldErr, errPaused)
+	waitFor(t, pauseDone, "Pause to return")
+	require.NoError(t, newCall.ctx.Err(), "Pause cancelled a call admitted after Resume")
+
+	close(newCall.release)
+	require.NoError(t, <-newErr)
+
+	// Later calls aren't cancelled either.
+	laterErr := consume()
+	laterCall := <-calls
+	require.NoError(t, laterCall.ctx.Err())
+	close(laterCall.release)
+	require.NoError(t, <-laterErr)
+}
+
+// Test_PausedConsumeReturnsWhenCallerContextEnds covers a caller that gives up while the consumer is paused.
+func Test_PausedConsumeReturnsWhenCallerContextEnds(t *testing.T) {
+	goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	c := NewPaused(componenttest.TestContext(t), "test_component", discardLogger)
+	setConsumers(t, c, func() {
+		t.Error("data reached the consumer while it was paused")
+	})
+
+	ctx, cancel := context.WithCancel(componenttest.TestContext(t))
+	consumeErr := make(chan error, 1)
+	go func() {
+		consumeErr <- c.ConsumeLogs(ctx, plog.NewLogs())
+	}()
+	select {
+	case err := <-consumeErr:
+		t.Fatalf("Consume* returned while paused: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	cancel()
+	select {
+	case err := <-consumeErr:
+		require.ErrorIs(t, err, context.Canceled)
+	case <-time.After(5 * time.Second):
+		t.Fatal("Consume* did not return after the caller's context ended")
+	}
+	require.True(t, c.IsPaused())
 }
 
 // Test_PausedConsumeReturnsWhenContextEnds covers a consumer that stays paused
@@ -340,7 +481,7 @@ func Test_PausedConsumeReturnsWhenContextEnds(t *testing.T) {
 	goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
 	ctx, cancel := context.WithCancel(componenttest.TestContext(t))
-	c := NewPaused(ctx, "test_component")
+	c := NewPaused(ctx, "test_component", discardLogger)
 	setConsumers(t, c, func() {
 		t.Error("data reached the consumer of a stopped component")
 	})
@@ -399,4 +540,24 @@ func waitFor(t *testing.T, ch <-chan struct{}, what string) {
 	case <-time.After(5 * time.Second):
 		t.Fatalf("timed out waiting for %s", what)
 	}
+}
+
+var discardLogger = slog.New(slog.DiscardHandler)
+
+// syncBuffer is a bytes.Buffer that is safe to write and read concurrently.
+type syncBuffer struct {
+	mut sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mut.Lock()
+	defer b.mut.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mut.Lock()
+	defer b.mut.Unlock()
+	return b.buf.String()
 }
