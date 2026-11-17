@@ -1,3 +1,13 @@
+// Compatibility with the v0.19.1-based postgres_exporter fork used before
+// upgrading to v0.20.1. That upgrade moved legacy metric groups into standalone
+// collectors, changing how collector selection, settings flags, custom queries,
+// and server labels affect their output. The adapters below preserve those
+// behaviors for database_observability.postgres independently of the Prometheus
+// exporter component. They retain upstream metric names and the combined
+// replication_slots collector; they do not reproduce the old output exactly.
+// Removing an adapter requires an explicit migration decision for the behavior
+// documented below, rather than just another dependency bump.
+
 package postgres
 
 import (
@@ -15,11 +25,13 @@ import (
 	exporter_postgres "github.com/grafana/alloy/internal/component/prometheus/exporter/postgres"
 )
 
-// newEmbeddedExporterCollector preserves database observability's effective
-// collector coverage when legacy exporter groups move into standalone collectors.
+// newEmbeddedExporterCollector configures the standalone collectors needed to
+// retain the legacy exporter's implicit metric groups and settings flag behavior.
 func newEmbeddedExporterCollector(logger *slog.Logger, args exporter_postgres.Arguments, dsn string) (prometheus.Collector, error) {
 	names := embeddedExporterCollectorNames(args)
 	if len(names) == 0 {
+		// An empty list means "enable defaults" to NewPostgresCollector. Skip
+		// construction so disabling all groups does not re-enable them.
 		return nil, nil
 	}
 	opts := []pg_collector.Option{pg_collector.WithCollectionTimeout("10s")}
@@ -37,25 +49,33 @@ func newEmbeddedExporterCollector(logger *slog.Logger, args exporter_postgres.Ar
 	if err != nil {
 		return nil, err
 	}
-	// Keep the server identity previously supplied by the legacy exporter.
+	// The legacy groups included server="host:port"; their standalone
+	// replacements omit it. Keep that identity for existing metric consumers.
+	// This currently also adds server to previously standalone metrics, such as
+	// stat_statements and scrape diagnostics; that side effect remains to resolve.
 	return prometheus.WrapCollectorWith(prometheus.Labels{"server": server}, col), nil
 }
 
-// embeddedExporterCollectorNames preserves the groups collected implicitly by
-// the legacy exporter, independently of the standalone collector allowlist.
+// embeddedExporterCollectorNames preserves the distinction between the old
+// standalone allowlist and the legacy groups that ran independently of it.
 func embeddedExporterCollectorNames(args exporter_postgres.Arguments) []string {
 	var names []string
 	if !args.DisableDefaultMetrics {
 		names = append(names, args.EnabledCollectors...)
+		// Before v0.20.1 these groups ran even when enabled_collectors selected
+		// only stat_statements. The slot group supplied the active/lag metrics;
+		// its replacement also includes the formerly optional slot metrics.
 		names = append(names, "stat_activity", "stat_archiver", "stat_replication", "replication_slots")
 	}
-	// Settings were controlled independently, even with default metrics disabled.
+	// The old DisableSettingsMetrics option was independent of
+	// DisableDefaultMetrics. Keep settings enabled when only defaults are disabled.
 	if !args.DisableSettingsMetrics {
 		names = append(names, "settings")
 	}
 
-	// The legacy exporter lets a custom namespace replace its corresponding
-	// default query. Avoid collecting the migrated default alongside that query.
+	// The legacy exporter let a custom pg_* namespace replace its default
+	// query. Since v0.20.1 standalone collectors do not read that file, suppress
+	// a migrated group when its namespace is present to avoid overlapping metrics.
 	var overrides pg_exporter.UserQueries
 	if args.CustomQueriesConfigPath != "" {
 		if data, err := os.ReadFile(args.CustomQueriesConfigPath); err == nil {
@@ -84,6 +104,8 @@ func embeddedExporterCollectorNames(args exporter_postgres.Arguments) []string {
 	return result
 }
 
+// embeddedExporterServerLabel follows the legacy exporter's host:port identity,
+// including its localhost and 5432 defaults, without including credentials.
 func embeddedExporterServerLabel(dsn string) (string, error) {
 	fields, err := collector.ParseURL(dsn)
 	if err != nil {
