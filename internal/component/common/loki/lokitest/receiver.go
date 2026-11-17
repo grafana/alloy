@@ -31,6 +31,10 @@ type Receiver struct {
 
 	// stopFn stops the receiver from accepting entries.
 	stopFn func()
+
+	// pauseFn and resumeFn pause and resume the receiver.
+	pauseFn  func()
+	resumeFn func()
 }
 
 func (r *Receiver) Chan() chan loki.Entry {
@@ -93,6 +97,17 @@ func (r *Receiver) Stop() {
 	r.stopFn()
 }
 
+// Pause makes the receiver hold back entries until Resume is called.
+// A sender blocks until then, or until its context is canceled.
+func (r *Receiver) Pause() {
+	r.pauseFn()
+}
+
+// Resume makes a paused receiver accept entries again.
+func (r *Receiver) Resume() {
+	r.resumeFn()
+}
+
 var _ loki.LogsReceiver = (*CollectingReceiver)(nil)
 
 // NewCollectingReceiver returns a CollectingReceiver that is already collecting.
@@ -101,14 +116,24 @@ func NewCollectingReceiver() *CollectingReceiver {
 	r := &CollectingReceiver{
 		ch:      make(chan loki.Entry),
 		stopped: make(chan struct{}),
+		wake:    make(chan struct{}, 1),
 	}
 
 	r.wg.Go(func() {
 		for {
+			// A nil channel is never ready, so while paused nothing is received.
+			in := r.ch
+			r.mut.Lock()
+			if r.paused {
+				in = nil
+			}
+			r.mut.Unlock()
+
 			select {
 			case <-r.stopped:
 				return
-			case e := <-r.ch:
+			case <-r.wake:
+			case e := <-in:
 				r.mut.Lock()
 				r.entries = append(r.entries, e)
 				r.mut.Unlock()
@@ -125,11 +150,37 @@ func NewCollectingReceiver() *CollectingReceiver {
 type CollectingReceiver struct {
 	ch      chan loki.Entry
 	stopped chan struct{}
-	once    sync.Once
-	wg      sync.WaitGroup
+	// wake makes the collecting goroutine check if it is paused.
+	wake chan struct{}
+	once sync.Once
+	wg   sync.WaitGroup
 
 	mut     sync.Mutex
+	paused  bool
 	entries []loki.Entry
+}
+
+// Pause stops reading from the channel until Resume is called, so senders block.
+func (r *CollectingReceiver) Pause() {
+	r.mut.Lock()
+	r.paused = true
+	r.mut.Unlock()
+	r.wakeUp()
+}
+
+// Resume makes a paused receiver read from the channel again.
+func (r *CollectingReceiver) Resume() {
+	r.mut.Lock()
+	r.paused = false
+	r.mut.Unlock()
+	r.wakeUp()
+}
+
+func (r *CollectingReceiver) wakeUp() {
+	select {
+	case r.wake <- struct{}{}:
+	default:
+	}
 }
 
 func (r *CollectingReceiver) Chan() chan loki.Entry {
@@ -164,9 +215,44 @@ type CollectingConsumer struct {
 	calls    int
 	failNext error
 	batches  []loki.Batch
+	// paused is non-nil while paused and is closed on Resume.
+	paused chan struct{}
 }
 
-func (c *CollectingConsumer) Consume(_ context.Context, batch loki.Batch) error {
+// Pause makes Consume block until Resume is called.
+func (c *CollectingConsumer) Pause() {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	if c.paused == nil {
+		c.paused = make(chan struct{})
+	}
+}
+
+// Resume unblocks Consume calls waiting on Pause.
+func (c *CollectingConsumer) Resume() {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	if c.paused != nil {
+		close(c.paused)
+		c.paused = nil
+	}
+}
+
+func (c *CollectingConsumer) Consume(ctx context.Context, batch loki.Batch) error {
+	c.mut.Lock()
+	paused := c.paused
+	c.mut.Unlock()
+
+	if paused != nil {
+		select {
+		case <-paused:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+
 	c.mut.Lock()
 	defer c.mut.Unlock()
 

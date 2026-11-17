@@ -119,10 +119,7 @@ func newStageWithOpts(
 	case cfg.WindowsEventConfig != nil:
 		s = newWindowsEventStage(cfg.WindowsEventConfig, opts)
 	case cfg.PatternConfig != nil:
-		s, err = newPatternStage(*cfg.PatternConfig, opts)
-		if err != nil {
-			return nil, err
-		}
+		s = newPatternStage(*cfg.PatternConfig, opts)
 	case cfg.TruncateConfig != nil:
 		s = newTruncateStage(*cfg.TruncateConfig, opts)
 	case cfg.SplitJSONConfig != nil:
