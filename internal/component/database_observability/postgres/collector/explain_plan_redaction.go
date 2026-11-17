@@ -49,6 +49,19 @@ var explainPlanExpressionKeys = map[string]struct{}{
 	"Query Parameters":    {},
 }
 
+// explainPlanIdentifierKeys are the keys whose values are names that PostgreSQL
+// writes into the plan as they are stored, not deparsed expressions. They are
+// kept as they are so that names which don't look like plain words, such as
+// "2024_orders", aren't changed by the SQL obfuscator.
+var explainPlanIdentifierKeys = map[string]struct{}{
+	"Relation Name": {},
+	"Schema":        {},
+	"Alias":         {},
+	"Index Name":    {},
+	"CTE Name":      {},
+	"Subplan Name":  {},
+}
+
 // plainWordsPattern matches strings made only of words, such as "Seq Scan",
 // "orders", or "SubPlan 2". A string that can carry a literal needs a quote, an
 // operator, a parenthesis, or a leading digit, none of which match.
@@ -175,12 +188,16 @@ func (r *planRedactor) writeString(s string) error {
 }
 
 // redactPlanString redacts a string value found under key. Strings under a
-// known expression key are always redacted. Any other string is kept only when
-// it is plain words, so labels this package doesn't know about, such as
-// "Remote SQL", are redacted instead of leaked.
+// known expression key are always redacted, and strings under a known
+// identifier key are kept. Any other string is kept only when it is plain
+// words, so labels this package doesn't know about, such as "Remote SQL", are
+// redacted instead of leaked.
 func redactPlanString(key, value string) string {
 	if _, ok := explainPlanExpressionKeys[key]; ok {
 		return database_observability.RedactSql(value)
+	}
+	if _, ok := explainPlanIdentifierKeys[key]; ok {
+		return value
 	}
 	if plainWordsPattern.MatchString(value) {
 		return value

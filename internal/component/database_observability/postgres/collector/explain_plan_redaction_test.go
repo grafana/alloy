@@ -68,6 +68,18 @@ func TestRedactExplainPlanJSON(t *testing.T) {
 			want:  `[{"Plan":{"Index Name":"idx_orders_cust-id","Relation Name":"\"Weird Table\"","Alias":"café"}}]`,
 		},
 		{
+			name: "keeps names that start with a digit",
+			input: `[{"Plan":{"Relation Name":"1tbl","Alias":"2024_orders","Index Name":"3idx","Schema":"9schema","CTE Name":"1cte",` +
+				`"Subplan Name":"1sub","Filter":"((\"1tbl\".id = 5) AND (\"2024_orders\".x = 'a'::text))"}}]`,
+			want: `[{"Plan":{"Relation Name":"1tbl","Alias":"2024_orders","Index Name":"3idx","Schema":"9schema","CTE Name":"1cte",` +
+				`"Subplan Name":"1sub","Filter":"((\"1tbl\".id = ?) AND (\"2024_orders\".x = ?::text))"}}]`,
+		},
+		{
+			name:  "still redacts a digit-leading value under an unknown key",
+			input: `[{"Plan":{"Some New Label":"1tbl"}}]`,
+			want:  `[{"Plan":{"Some New Label":"?tbl"}}]`,
+		},
+		{
 			name:  "does not escape HTML characters",
 			input: `[{"Plan":{"Filter":"((a < b) AND (c > d) AND (e & f))"}}]`,
 			want:  `[{"Plan":{"Filter":"((a < b) AND (c > d) AND (e & f))"}}]`,
