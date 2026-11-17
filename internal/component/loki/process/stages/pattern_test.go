@@ -1,7 +1,6 @@
 package stages
 
 import (
-	"errors"
 	"testing"
 	"time"
 
@@ -10,64 +9,72 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/syntax"
 )
 
 func TestValidatePatternConfig(t *testing.T) {
 	t.Parallel()
 
-	type testCase struct {
-		name string
-		cfg  PatternConfig
-		err  error
-	}
-
-	tests := []testCase{
+	tests := []struct {
+		name      string
+		config    string
+		expectErr bool
+	}{
 		{
-			name: "empty config",
-			cfg:  PatternConfig{},
-			err:  errPatternRequired,
+			name:      "missing pattern",
+			config:    ``,
+			expectErr: true,
 		},
 		{
-			name: "missing pattern_expression",
-			cfg:  PatternConfig{},
-			err:  errPatternRequired,
+			name:      "empty pattern",
+			config:    `pattern = ""`,
+			expectErr: true,
 		},
 		{
-			name: "invalid pattern_expression",
-			cfg:  PatternConfig{Pattern: "<_> <_>"},
-			err:  errors.New("failed to parse pattern: at least one capture is required"),
+			name:      "no named capture",
+			config:    `pattern = "<_> <_>"`,
+			expectErr: true,
+		},
+		{
+			name:      "consecutive captures",
+			config:    `pattern = "<ip><user>"`,
+			expectErr: true,
+		},
+		{
+			name:      "duplicate capture name",
+			config:    `pattern = "<ip> <ip>"`,
+			expectErr: true,
 		},
 		{
 			name: "empty source",
-			cfg: PatternConfig{
-				Pattern: "(?P<ts>[0-9]+).*",
-				Source:  ptr(""),
-			},
-			err: errEmptyPatternStageSource,
+			config: `
+				pattern = "<ip> - <user> <_>"
+				source  = ""
+			`,
+			expectErr: true,
 		},
 		{
-			name: "valid without source",
-			cfg: PatternConfig{
-				Pattern: "(?P<ts>[0-9]+).*",
-			},
+			name:   "valid without source",
+			config: `pattern = "<ip> - <user> <_>"`,
 		},
 		{
 			name: "valid with source",
-			cfg: PatternConfig{
-				Pattern: "(?P<ts>[0-9]+).*",
-				Source:  ptr("log"),
-			},
+			config: `
+				pattern = "<ip> - <user> <_>"
+				source  = "log"
+			`,
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validatePatternConfig(tt.cfg)
-			if tt.err == nil {
+			var cfg PatternConfig
+			err := syntax.Unmarshal([]byte(tt.config), &cfg)
+			if tt.expectErr {
+				require.Error(t, err)
+			} else {
 				require.NoError(t, err)
-				return
 			}
-			require.Error(t, err)
-			require.Equal(t, tt.err.Error(), err.Error())
 		})
 	}
 }

@@ -11,6 +11,7 @@ import (
 )
 
 func TestStaticLabelsTest(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 
 	type testCase struct {
@@ -70,6 +71,8 @@ func TestStaticLabelsTest(t *testing.T) {
 }
 
 func TestValidateStaticLabelsConfig(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		config    string
