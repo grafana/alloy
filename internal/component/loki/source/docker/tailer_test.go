@@ -49,8 +49,7 @@ func TestTailer(t *testing.T) {
 	require.NoError(t, err)
 
 	ps, err := positions.New(logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
-		PositionsFile: t.TempDir() + "/positions.yml",
+		Path: t.TempDir() + "/positions.yml",
 	})
 	require.NoError(t, err)
 
@@ -71,7 +70,7 @@ func TestTailer(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	wg := sync.WaitGroup{}
 	wg.Go(func() {
-		tailer.Run(ctx)
+		tailer.Run(ctx, ctx)
 	})
 
 	expectedLines := []string{
@@ -94,7 +93,7 @@ func TestTailer(t *testing.T) {
 	ctx, cancel = context.WithCancel(t.Context())
 	defer cancel()
 	wg.Go(func() {
-		tailer.Run(ctx)
+		tailer.Run(ctx, ctx)
 	})
 	expectedLinesAfterRestart := []string{
 		"243.115.12.215 - - [09/Dec/2023:09:16:57 +0000] \"DELETE /morph/exploit/granular HTTP/1.0\" 500 26468",
@@ -118,8 +117,7 @@ func TestTailerStartStopStressTest(t *testing.T) {
 	)
 
 	ps, err := positions.New(logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
-		PositionsFile: t.TempDir() + "/positions.yml",
+		Path: t.TempDir() + "/positions.yml",
 	})
 	require.NoError(t, err)
 
@@ -140,7 +138,7 @@ func TestTailerStartStopStressTest(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	tgt.startIfNotRunning()
+	tgt.startIfNotRunning(t.Context())
 
 	// Stress test the concurrency of StartIfNotRunning and Stop
 	wg := sync.WaitGroup{}
@@ -148,7 +146,7 @@ func TestTailerStartStopStressTest(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			tgt.startIfNotRunning()
+			tgt.startIfNotRunning(t.Context())
 		}()
 
 		wg.Add(1)
@@ -172,7 +170,7 @@ func TestTailerRestart(t *testing.T) {
 	expectedLogLine := "caller=module_service.go:114 msg=\"module stopped\" module=distributor"
 
 	tailer, entryHandler := setupTailer(t, client)
-	go tailer.Run(t.Context())
+	go tailer.Run(t.Context(), t.Context())
 
 	// The container is already running, expect log lines.
 	assert.EventuallyWithT(t, func(c *assert.CollectT) {
@@ -212,7 +210,7 @@ func TestTailerNeverStarted(t *testing.T) {
 	tailer, entryHandler := setupTailer(t, client)
 
 	ctx, cancel := context.WithCancel(t.Context())
-	go tailer.Run(ctx)
+	go tailer.Run(ctx, ctx)
 
 	assert.EventuallyWithT(t, func(c *assert.CollectT) {
 		logLines := entryHandler.Received()
@@ -244,7 +242,7 @@ func TestTailerStopsWhenContainerNotFound(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		tailer.Run(t.Context())
+		tailer.Run(t.Context(), t.Context())
 		close(done)
 	}()
 
@@ -493,8 +491,7 @@ func setupTailer(t *testing.T, client clientMock) (*tailer, *loki.CollectingHand
 	)
 
 	ps, err := positions.New(logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
-		PositionsFile: t.TempDir() + "/positions.yml",
+		Path: t.TempDir() + "/positions.yml",
 	})
 	require.NoError(t, err)
 
@@ -564,4 +561,89 @@ func (sw *stdWriter) Write(p []byte) (int, error) {
 		return 0, err
 	}
 	return sw.Writer.Write(p)
+}
+
+// newStallingDockerServer returns a Docker API server whose log stream and
+// container inspect responses only complete once release is closed.
+func newStallingDockerServer(release <-chan struct{}) *httptest.Server {
+	h := func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/logs"):
+			w.WriteHeader(http.StatusOK)
+			w.(http.Flusher).Flush()
+			select {
+			case <-release:
+				_, _ = w.Write([]byte("done"))
+			case <-r.Context().Done():
+			}
+		case strings.HasSuffix(r.URL.Path, "/json"):
+			select {
+			case <-release:
+			case <-r.Context().Done():
+			}
+		default:
+			_, _ = w.Write([]byte("OK"))
+		}
+	}
+	return httptest.NewServer(http.HandlerFunc(h))
+}
+
+func TestNewClientDoesNotTimeOutLogStreams(t *testing.T) {
+	release := make(chan struct{})
+	server := newStallingDockerServer(release)
+	defer server.Close()
+
+	args := GetDefaultArguments()
+	args.Host = server.URL
+
+	cli, err := newClient(args)
+	require.NoError(t, err)
+
+	logs, err := cli.ContainerLogs(t.Context(), "flog", client.ContainerLogsOptions{ShowStdout: true, Follow: true})
+	require.NoError(t, err)
+	defer logs.Close()
+
+	// Keep the stream open for a while before ending it.
+	time.AfterFunc(500*time.Millisecond, func() { close(release) })
+
+	body, err := io.ReadAll(logs)
+	require.NoError(t, err)
+	require.Equal(t, "done", string(body))
+}
+
+func TestTailerStartStopsWhenContextIsCanceled(t *testing.T) {
+	release := make(chan struct{})
+	server := newStallingDockerServer(release)
+	defer server.Close()
+	defer close(release)
+
+	args := GetDefaultArguments()
+	args.Host = server.URL
+
+	cli, err := newClient(args)
+	require.NoError(t, err)
+
+	tailer, _ := setupTailer(t, clientMock{})
+	tailer.client = cli
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	time.AfterFunc(100*time.Millisecond, cancel)
+
+	done := make(chan struct{})
+	go func() {
+		tailer.startIfNotRunning(ctx)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("startIfNotRunning did not return after its context was canceled")
+	}
+
+	tailer.mu.Lock()
+	defer tailer.mu.Unlock()
+	require.False(t, tailer.running)
+	require.NoError(t, tailer.err, "a canceled start is a normal stop, not an error")
 }

@@ -170,6 +170,11 @@ func (f *FakeInformer) AddEventHandlerWithResyncPeriod(handler toolscache.Resour
 	return f.AddEventHandler(handler)
 }
 
+// AddEventHandlerWithOptions implements cache.Informer.
+func (f *FakeInformer) AddEventHandlerWithOptions(handler toolscache.ResourceEventHandler, options toolscache.HandlerOptions) (toolscache.ResourceEventHandlerRegistration, error) {
+	return f.AddEventHandler(handler)
+}
+
 // RemoveEventHandler implements cache.Informer.
 func (f *FakeInformer) RemoveEventHandler(handle toolscache.ResourceEventHandlerRegistration) error {
 	return nil
@@ -185,9 +190,32 @@ func (f *FakeInformer) HasSynced() bool {
 	return f.Synced
 }
 
+// HasSyncedChecker implements cache.Informer.
+func (f *FakeInformer) HasSyncedChecker() toolscache.DoneChecker {
+	return fakeDoneChecker{synced: f.Synced}
+}
+
 // IsStopped implements cache.Informer.
 func (f *FakeInformer) IsStopped() bool {
 	return false
+}
+
+// fakeDoneChecker is a toolscache.DoneChecker that's immediately done when synced is true,
+// and never done otherwise, matching FakeInformer's static Synced flag.
+type fakeDoneChecker struct {
+	synced bool
+}
+
+func (c fakeDoneChecker) Name() string {
+	return "fakeDoneChecker"
+}
+
+func (c fakeDoneChecker) Done() <-chan struct{} {
+	ch := make(chan struct{})
+	if c.synced {
+		close(ch)
+	}
+	return ch
 }
 
 // Add triggers an Add event for the given object.

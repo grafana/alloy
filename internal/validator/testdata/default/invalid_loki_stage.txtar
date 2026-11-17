@@ -1,0 +1,86 @@
+invalid loki stages
+-- main.alloy --
+loki.process "valid" {
+	forward_to = []
+
+	stage.multiline {
+		firstline = "^START"
+	}
+
+	stage.logfmt {
+		regex = "^pod_"
+	}
+
+	stage.structured_metadata {
+		regex = "^label_"
+	}
+}
+
+loki.process "invalid_regex" {
+	forward_to = []
+
+	stage.logfmt {
+		regex = "[unclosed"
+	}
+
+	stage.multiline {
+		firstline = "[unclosed"
+	}
+
+	stage.structured_metadata {
+		regex = "[unclosed"
+	}
+}
+
+loki.process "invalid_selector" {
+	forward_to = []
+
+	stage.match {
+		selector = ""
+
+		stage.label_drop {
+			values = ["unused"]
+		}
+	}
+
+	stage.match {
+		selector = "{}"
+
+		stage.label_drop {
+			values = ["unused"]
+		}
+	}
+
+	stage.match {
+		selector = "{app=\"foo\""
+
+		stage.label_drop {
+			values = ["unused"]
+		}
+	}
+
+	stage.match {
+		selector = "{app=\"foo\"} | json"
+
+		stage.label_drop {
+			values = ["unused"]
+		}
+	}
+
+	stage.match {
+		selector = "{app=\"foo\"} |> \"<_>\""
+
+		stage.label_drop {
+			values = ["unused"]
+		}
+	}
+
+	stage.match {
+		selector = "{app=\"foo\"}"
+		action   = "drop"
+
+		stage.label_drop {
+			values = ["unused"]
+		}
+	}
+}

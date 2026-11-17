@@ -38,7 +38,7 @@ func TestEnricher(t *testing.T) {
 
 	tests := []testCase{
 		{
-			name: "label enrichment with target_labels and logs_match_label",
+			name: "label enrichment with target_labels and differing label names",
 			args: Arguments{
 				Targets: []discovery.Target{
 					discovery.NewTargetFromMap(map[string]string{
@@ -48,8 +48,7 @@ func TestEnricher(t *testing.T) {
 						"foo":     "bar",
 					}),
 				},
-				TargetMatchLabel: "service",
-				LogsMatchLabel:   "service_name",
+				TargetToLogMatch: map[string]string{"service": "service_name"},
 				LabelsToCopy:     []string{"env", "owner"},
 			},
 			input: loki.Entry{
@@ -77,8 +76,7 @@ func TestEnricher(t *testing.T) {
 						"env":     "prod",
 					}),
 				},
-				TargetMatchLabel: "service",
-				LogsMatchLabel:   "service_name",
+				TargetToLogMatch: map[string]string{"service": "service_name"},
 				LabelsToCopy:     []string{"env"},
 			},
 			input: loki.Entry{
@@ -107,8 +105,7 @@ func TestEnricher(t *testing.T) {
 						"region":  "us-west",
 					}),
 				},
-				TargetMatchLabel: "service",
-				// LogsMatchLabel intentionally omitted as 'service' label exists in both.
+				TargetToLogMatch: map[string]string{"service": "service"},
 			},
 			input: loki.Entry{
 				Labels: model.LabelSet{
@@ -127,7 +124,7 @@ func TestEnricher(t *testing.T) {
 			},
 		},
 		{
-			name: "match using target_match_label when logs_match_label is not specified",
+			name: "match when the label name is the same in targets and logs",
 			args: Arguments{
 				Targets: []discovery.Target{
 					discovery.NewTargetFromMap(map[string]string{
@@ -136,13 +133,12 @@ func TestEnricher(t *testing.T) {
 						"owner":   "team-c",
 					}),
 				},
-				TargetMatchLabel: "service",
-				// LogsMatchLabel intentionally omitted as 'service' label exists in both.
-				LabelsToCopy: []string{"env", "owner"},
+				TargetToLogMatch: map[string]string{"service": "service"},
+				LabelsToCopy:     []string{"env", "owner"},
 			},
 			input: loki.Entry{
 				Labels: model.LabelSet{
-					"service":  "test-service", // matches target_match_label
+					"service":  "test-service", // matches the target_to_log_match label
 					"original": "label",
 				},
 				Entry: inputEntry,
@@ -153,6 +149,72 @@ func TestEnricher(t *testing.T) {
 					"original": "label",
 					"env":      "prod",
 					"owner":    "team-c",
+				},
+				Entry: expectedEntry,
+			},
+		},
+		{
+			name: "multi-label match selects the target using all labels",
+			args: Arguments{
+				Targets: []discovery.Target{
+					discovery.NewTargetFromMap(map[string]string{
+						"__meta_kubernetes_namespace": "production",
+						"__meta_kubernetes_pod_name":  "api-0",
+						"environment":                 "prod",
+					}),
+					discovery.NewTargetFromMap(map[string]string{
+						"__meta_kubernetes_namespace": "staging",
+						"__meta_kubernetes_pod_name":  "api-0",
+						"environment":                 "stage",
+					}),
+				},
+				TargetToLogMatch: map[string]string{
+					"__meta_kubernetes_namespace": "namespace",
+					"__meta_kubernetes_pod_name":  "pod",
+				},
+				LabelsToCopy: []string{"environment"},
+			},
+			input: loki.Entry{
+				Labels: model.LabelSet{
+					"namespace": "staging",
+					"pod":       "api-0",
+				},
+				Entry: inputEntry,
+			},
+			expected: loki.Entry{
+				Labels: model.LabelSet{
+					"namespace":   "staging",
+					"pod":         "api-0",
+					"environment": "stage",
+				},
+				Entry: expectedEntry,
+			},
+		},
+		{
+			name: "multi-label match requires every log label",
+			args: Arguments{
+				Targets: []discovery.Target{
+					discovery.NewTargetFromMap(map[string]string{
+						"__meta_kubernetes_namespace": "staging",
+						"__meta_kubernetes_pod_name":  "api-0",
+						"environment":                 "stage",
+					}),
+				},
+				TargetToLogMatch: map[string]string{
+					"__meta_kubernetes_namespace": "namespace",
+					"__meta_kubernetes_pod_name":  "pod",
+				},
+				LabelsToCopy: []string{"environment"},
+			},
+			input: loki.Entry{
+				Labels: model.LabelSet{
+					"namespace": "staging",
+				},
+				Entry: inputEntry,
+			},
+			expected: loki.Entry{
+				Labels: model.LabelSet{
+					"namespace": "staging",
 				},
 				Entry: expectedEntry,
 			},
@@ -202,6 +264,51 @@ func TestEnricher(t *testing.T) {
 	}
 }
 
+func TestValidate(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    Arguments
+		wantErr string
+	}{
+		{
+			name: "valid multi-label match",
+			args: Arguments{
+				TargetToLogMatch: map[string]string{"namespace": "namespace", "pod_name": "pod"},
+			},
+		},
+		{
+			name:    "missing match mechanism",
+			args:    Arguments{},
+			wantErr: "target_to_log_match must contain at least one label pair",
+		},
+		{
+			name: "empty target label in target_to_log_match",
+			args: Arguments{
+				TargetToLogMatch: map[string]string{"": "namespace"},
+			},
+			wantErr: "target_to_log_match must not contain empty label names",
+		},
+		{
+			name: "empty log label in target_to_log_match",
+			args: Arguments{
+				TargetToLogMatch: map[string]string{"namespace": ""},
+			},
+			wantErr: "target_to_log_match must not contain empty label names",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.args.Validate()
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestUpdate(t *testing.T) {
 	comp, err := New(component.Options{
 		Logger:        logging.NewSlogNop(),
@@ -219,8 +326,7 @@ func TestUpdate(t *testing.T) {
 
 	err = comp.Update(Arguments{
 		Targets:          newTargets,
-		TargetMatchLabel: "service",
-		LogsMatchLabel:   "service_name",
+		TargetToLogMatch: map[string]string{"service": "service_name"},
 		LabelsToCopy:     []string{"env"},
 	})
 	require.NoError(t, err)

@@ -11,6 +11,16 @@ import (
 	"github.com/grafana/alloy/syntax"
 )
 
+// expectedConfig returns the upstream factory defaults with override applied,
+// so a case only spells out what it actually overrides.
+func expectedConfig(override func(logs *cloudflarereceiver.LogsConfig)) cloudflarereceiver.Config {
+	cfg := cloudflarereceiver.NewFactory().CreateDefaultConfig().(*cloudflarereceiver.Config)
+	// See cloudflare.DefaultMaxRequestBodySize for context on why this is hard coded here
+	cfg.Logs.MaxRequestBodySize = int64(cloudflare.DefaultMaxRequestBodySize)
+	override(&cfg.Logs)
+	return *cfg
+}
+
 func TestArguments_UnmarshalAlloy(t *testing.T) {
 	cases := []struct {
 		testName string
@@ -18,14 +28,20 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		expected cloudflarereceiver.Config
 	}{
 		{
-			testName: "minimal configuration",
+			// Canary for the upstream defaults our docs table promises. If this fails,
+			// a contrib bump changed one: update the docs table, then these values.
+			testName: "minimal configuration applies documented upstream defaults",
 			cfg: `
 				endpoint = "localhost:8080/webhook"
 				output {}
 			`,
 			expected: cloudflarereceiver.Config{
 				Logs: cloudflarereceiver.LogsConfig{
-					Endpoint: "localhost:8080/webhook",
+					Endpoint:           "localhost:8080/webhook",
+					TimestampField:     "EdgeStartTimestamp",
+					TimestampFormat:    "rfc3339",
+					Separator:          ".",
+					MaxRequestBodySize: 20 * 1024 * 1024,
 				},
 			},
 		},
@@ -43,19 +59,17 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				separator = "_"
 				output {}
 			`,
-			expected: cloudflarereceiver.Config{
-				Logs: cloudflarereceiver.LogsConfig{
-					Secret:   "my-secret",
-					Endpoint: "localhost:8080/cloudflare-webhook",
-					Attributes: map[string]string{
-						"service.name": "cloudflare-logs",
-						"environment":  "production",
-					},
-					TimestampField:  "EdgeStartTimestamp",
-					TimestampFormat: "unix",
-					Separator:       "_",
-				},
-			},
+			expected: expectedConfig(func(logs *cloudflarereceiver.LogsConfig) {
+				logs.Secret = "my-secret"
+				logs.Endpoint = "localhost:8080/cloudflare-webhook"
+				logs.Attributes = map[string]string{
+					"service.name": "cloudflare-logs",
+					"environment":  "production",
+				}
+				logs.TimestampField = "EdgeStartTimestamp"
+				logs.TimestampFormat = "unix"
+				logs.Separator = "_"
+			}),
 		},
 		{
 			testName: "configuration with TLS",
@@ -69,19 +83,29 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				timestamp_format = "unixnano"
 				output {}
 			`,
-			expected: cloudflarereceiver.Config{
-				Logs: cloudflarereceiver.LogsConfig{
-					Secret:   "my-secret",
-					Endpoint: "localhost:8443/secure-webhook",
-					TLS: &configtls.ServerConfig{
-						Config: configtls.Config{
-							CertFile: "/path/to/cert.pem",
-							KeyFile:  "/path/to/key.pem",
-						},
+			expected: expectedConfig(func(logs *cloudflarereceiver.LogsConfig) {
+				logs.Secret = "my-secret"
+				logs.Endpoint = "localhost:8443/secure-webhook"
+				logs.TLS = &configtls.ServerConfig{
+					Config: configtls.Config{
+						CertFile: "/path/to/cert.pem",
+						KeyFile:  "/path/to/key.pem",
 					},
-					TimestampFormat: "unixnano",
-				},
-			},
+				}
+				logs.TimestampFormat = "unixnano"
+			}),
+		},
+		{
+			testName: "configuration with custom max request body size",
+			cfg: `
+				endpoint = "localhost:8080/webhook"
+				max_request_body_size = "5MiB"
+				output {}
+			`,
+			expected: expectedConfig(func(logs *cloudflarereceiver.LogsConfig) {
+				logs.Endpoint = "localhost:8080/webhook"
+				logs.MaxRequestBodySize = 5 * 1024 * 1024
+			}),
 		},
 		{
 			testName: "configuration with custom timestamp field",
@@ -92,14 +116,12 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				timestamp_format = "rfc3339"
 				output {}
 			`,
-			expected: cloudflarereceiver.Config{
-				Logs: cloudflarereceiver.LogsConfig{
-					Secret:          "my-secret",
-					Endpoint:        "localhost:8080/webhook",
-					TimestampField:  "RequestTimestamp",
-					TimestampFormat: "rfc3339",
-				},
-			},
+			expected: expectedConfig(func(logs *cloudflarereceiver.LogsConfig) {
+				logs.Secret = "my-secret"
+				logs.Endpoint = "localhost:8080/webhook"
+				logs.TimestampField = "RequestTimestamp"
+				logs.TimestampFormat = "rfc3339"
+			}),
 		},
 	}
 
@@ -157,6 +179,15 @@ func TestArguments_Validate(t *testing.T) {
 				output {}
 			`,
 			expectedError: "tls was configured, but no key file was specified",
+		},
+		{
+			testName: "zero max request body size",
+			cfg: `
+				endpoint = "localhost:8080/webhook"
+				max_request_body_size = "0"
+				output {}
+			`,
+			expectedError: "max_request_body_size must be greater than 0",
 		},
 		{
 			testName: "missing output",

@@ -19,15 +19,14 @@ import (
 
 const (
 	HealthCheckCollector = "health_check"
-	OP_HEALTH_STATUS     = "health_status"
 )
 
 const showGrantsQuery = `SHOW GRANTS`
 
-func performanceSchemaHasRowsQuery(excludeSchemas []string) string {
+func performanceSchemaHasRowsQuery(excludeSchemas, includeSchemas []string) string {
 	return fmt.Sprintf(
 		`SELECT COUNT(*) FROM performance_schema.events_statements_summary_by_digest WHERE schema_name NOT IN %s`,
-		buildExcludedSchemasClause(excludeSchemas),
+		buildSchemaFilterClause(excludeSchemas, includeSchemas, "schema_name"),
 	)
 }
 
@@ -35,6 +34,7 @@ type HealthCheckArguments struct {
 	DB              *sql.DB
 	CollectInterval time.Duration
 	ExcludeSchemas  []string
+	IncludeSchemas  []string
 	EntryHandler    loki.EntryHandler
 
 	Logger *slog.Logger
@@ -44,6 +44,7 @@ type HealthCheck struct {
 	dbConnection    *sql.DB
 	collectInterval time.Duration
 	excludeSchemas  []string
+	includeSchemas  []string
 	entryHandler    loki.EntryHandler
 	logger          *slog.Logger
 
@@ -58,6 +59,7 @@ func NewHealthCheck(args HealthCheckArguments) (*HealthCheck, error) {
 		dbConnection:    args.DB,
 		collectInterval: args.CollectInterval,
 		excludeSchemas:  args.ExcludeSchemas,
+		includeSchemas:  args.IncludeSchemas,
 		entryHandler:    args.EntryHandler,
 		logger:          args.Logger.With("collector", HealthCheckCollector),
 		running:         &atomic.Bool{},
@@ -128,10 +130,10 @@ func (c *HealthCheck) fetchHealthChecks(ctx context.Context) {
 			c.logger.Error("health check failed", "check", result.name, "err", result.err)
 			continue
 		}
-		msg := fmt.Sprintf(`check="%s" result="%v" value="%s"`, result.name, result.result, result.value)
+		msg := fmt.Sprintf(`check=%q result="%v" value=%q`, result.name, result.result, result.value)
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
-			OP_HEALTH_STATUS,
+			database_observability.OP_HEALTH_STATUS,
 			msg,
 		)
 	}
@@ -236,7 +238,7 @@ func checkRequiredGrants(ctx context.Context, db *sql.DB) healthCheckResult {
 // excluding system schemas.
 func (c *HealthCheck) checkEventsStatementsDigestHasRows(ctx context.Context, db *sql.DB) healthCheckResult {
 	r := healthCheckResult{name: "PerformanceSchemaHasRows"}
-	q := performanceSchemaHasRowsQuery(c.excludeSchemas)
+	q := performanceSchemaHasRowsQuery(c.excludeSchemas, c.includeSchemas)
 	var rowCount int64
 	if err := db.QueryRowContext(ctx, q).Scan(&rowCount); err != nil {
 		r.err = err

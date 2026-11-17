@@ -126,6 +126,9 @@ func (r *Receiver) Run(ctx context.Context) error {
 // the underlying OpenTelemetry Collector receiver.
 func (r *Receiver) Update(args component.Arguments) error {
 	r.args = args.(Arguments)
+	if dl, ok := r.args.(otelcol.DeprecationLogger); ok {
+		dl.LogDeprecations(r.opts.Logger)
+	}
 	host := scheduler.NewHost(
 		scheduler.WithHostExtensions(r.args.Extensions()),
 		scheduler.WithHostExporters(r.args.Exporters()),

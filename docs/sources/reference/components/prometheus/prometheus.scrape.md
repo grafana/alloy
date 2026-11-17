@@ -197,19 +197,47 @@ You can use the following blocks with `prometheus.scrape`:
 
 ### `clustering`
 
-| Name      | Type   | Description                                       | Default | Required |
-| --------- | ------ | ------------------------------------------------- | ------- | -------- |
-| `enabled` | `bool` | Enables sharing targets with other cluster nodes. | `false` | yes      |
+| Name              | Type           | Description                                        | Default | Required |
+| ----------------- | -------------- | -------------------------------------------------- | ------- | -------- |
+| `enabled`         | `bool`         | Enables sharing targets with other cluster nodes.   | `false` | yes      |
+| `excluded_labels` | `list(string)` | Label names to exclude from the ownership hash.     | `[]`    | no       |
 
 When {{< param "PRODUCT_NAME" >}} is [using clustering][], and `enabled` is set to true, then this `prometheus.scrape` component instance opts-in to participating in the cluster to distribute scrape load between all cluster nodes.
 
-Clustering assumes that all cluster nodes are running with the same configuration file, have access to the same service discovery APIs, and that all `prometheus.scrape` components that have opted-in to using clustering, over the course of a scrape interval, are converging on the same target set from
-upstream components in their `targets` argument.
+Clustering assumes that all cluster nodes run the same configuration and have access to the same service discovery APIs.
+Over a scrape interval, the `prometheus.scrape` components in the cluster must converge on the same target set in their `targets` argument.
+The convergence compares only the labels used for ownership.
+Labels whose names start with `__meta_` and labels listed in `excluded_labels` can differ between peers without affecting ownership.
 
 All `prometheus.scrape` components instances opting in to clustering use target labels and a consistent hashing algorithm to determine ownership for each of the targets between the cluster peers.
 Then, each peer only scrapes the subset of targets that it's responsible for, so that the scrape load is distributed.
+
+By default, the ownership hash includes all target labels except those whose names start with `__meta_`.
+The `excluded_labels` argument excludes additional labels from this hash by exact name.
+Names that aren't present on a target have no effect.
+
+Exclusions don't modify the labels or parameters used to scrape targets and don't change target deduplication.
+Distinct targets with the same ownership hash remain separate targets assigned to the same cluster node.
+All peers must use the same exclusions and agree on the remaining target labels.
+
+For example, if service discovery returns scrape targets with signatures and expiry times that differ between peers, exclude those unstable labels from the ownership hash:
+
+```alloy
+clustering {
+  enabled         = true
+  excluded_labels = ["__param_sig", "__param_exp"]
+}
+```
+
+The scraper still uses `__param_sig` and `__param_exp` as query parameters in the scrape requests.
+
 When a node joins or leaves the cluster, every peer recalculates ownership and continues scraping with the new target set.
+The previous owner suppresses stale markers for targets whose ownership hash moves to another node, even if excluded labels change.
 This performs better than hashmod sharding where _all_ nodes have to be re-distributed, as only 1/N of the targets ownership is transferred, but is eventually consistent (rather than fully consistent like hashmod sharding is).
+
+If a target disappears while another target with the same ownership hash moves to another node, the previous owner also suppresses stale markers for the disappeared target.
+This avoids marking potentially active series as stale, but series that no longer receive samples can remain visible in queries until the lookback period of the metrics backend expires.
+If the entire group disappears, normal stale-marker behavior applies.
 
 If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the block is a no-op and `prometheus.scrape` scrapes every target it receives in its arguments.
 

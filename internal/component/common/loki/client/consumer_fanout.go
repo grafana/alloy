@@ -1,6 +1,9 @@
 package client
 
 import (
+	"context"
+	"crypto/sha256"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -8,7 +11,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/client/internal/marker"
+	"github.com/grafana/alloy/internal/component/common/loki/client/internal/savepoint"
 )
 
 func NewFanoutConsumer(logger *slog.Logger, reg prometheus.Registerer, cfgs ...Config) (*FanoutConsumer, error) {
@@ -16,9 +19,8 @@ func NewFanoutConsumer(logger *slog.Logger, reg prometheus.Registerer, cfgs ...C
 		return nil, fmt.Errorf("at least one endpoint config must be provided")
 	}
 
-	m := &FanoutConsumer{
+	c := &FanoutConsumer{
 		endpoints: make([]*endpoint, 0, len(cfgs)),
-		recv:      make(chan loki.Entry),
 	}
 
 	var (
@@ -34,45 +36,47 @@ func NewFanoutConsumer(logger *slog.Logger, reg prometheus.Registerer, cfgs ...C
 		}
 
 		endpointsCheck[name] = struct{}{}
-		endpoint, err := newEndpoint(metrics, cfg, logger, marker.NewNopTracker())
+		endpoint, err := newEndpoint(metrics, cfg, logger, savepoint.NewNopTracker())
 		if err != nil {
-			return nil, fmt.Errorf("error starting endpoint: %w", err)
+			return nil, fmt.Errorf("failed to create endpoint %s: %w", name, err)
 		}
 
-		m.endpoints = append(m.endpoints, endpoint)
+		c.endpoints = append(c.endpoints, endpoint)
 	}
 
-	m.wg.Go(m.run)
-	return m, nil
+	return c, nil
 }
 
 var _ Consumer = (*FanoutConsumer)(nil)
 
 type FanoutConsumer struct {
 	endpoints []*endpoint
-	wg        sync.WaitGroup
-	once      sync.Once
-	recv      chan loki.Entry
 }
 
-func (c *FanoutConsumer) run() {
-	for e := range c.recv {
-		for _, c := range c.endpoints {
-			// NOTE: For now it's fine to ignore error because we can't act on it.
-			_ = c.enqueue(e, 0)
-		}
+func (c *FanoutConsumer) Start() {
+	for _, e := range c.endpoints {
+		e.start()
 	}
 }
 
-func (c *FanoutConsumer) Chan() chan<- loki.Entry {
-	return c.recv
+func (c *FanoutConsumer) ConsumeEntry(ctx context.Context, entry loki.Entry) error {
+	for _, e := range c.endpoints {
+		err := e.enqueue(ctx, entry, 0)
+
+		if err != nil {
+			// If we get errQueueIsFull we skipped the entry for this endpoints
+			// and should try next.
+			if errors.Is(err, errQueueIsFull) {
+				continue
+			}
+			// For any other error we assume it's not useful to send to the next endpoint
+			return err
+		}
+	}
+	return nil
 }
 
 func (c *FanoutConsumer) Stop() {
-	// First stop the receiving channel.
-	c.once.Do(func() { close(c.recv) })
-	c.wg.Wait()
-
 	var stopWG sync.WaitGroup
 	// Stop all endpoints.
 	for _, c := range c.endpoints {
@@ -83,4 +87,16 @@ func (c *FanoutConsumer) Stop() {
 
 	// Wait for all endpoints to stop.
 	stopWG.Wait()
+}
+
+// getEndpointName computes the specific name for each endpoint config. The name is either the configured Name setting in Config,
+// or a hash of the config as whole, this allows us to detect repeated configs.
+func getEndpointName(cfg Config) string {
+	if cfg.Name != "" {
+		return cfg.Name
+	}
+
+	h := sha256.New()
+	_, _ = fmt.Fprintf(h, "%v", cfg)
+	return fmt.Sprintf("%x", h.Sum(nil))[:6]
 }

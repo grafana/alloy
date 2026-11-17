@@ -86,7 +86,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		}
 	}
 
-	var result attributesprocessor.Config
+	result := *attributesprocessor.NewFactory().CreateDefaultConfig().(*attributesprocessor.Config)
 	err := mapstructure.Decode(input, &result)
 
 	if err != nil {

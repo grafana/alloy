@@ -2,7 +2,7 @@
 canonical: https://grafana.com/docs/alloy/latest/reference/cli/otel/
 description: Learn about the otel command
 labels:
-  stage: experimental
+  stage: public-preview
   products:
     - oss
 title: otel
@@ -11,10 +11,7 @@ weight: 350
 
 # `otel`
 
-> **EXPERIMENTAL**: This is an [experimental][] feature.
-> Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
-
-[experimental]: https://grafana.com/docs/release-life-cycle/
+{{< docs/shared lookup="stability/public_preview_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `otel` command runs {{< param "PRODUCT_NAME" >}} with the {{< param "OTEL_ENGINE" >}}.
 This command accepts OpenTelemetry Collector YAML configuration files.
@@ -69,6 +66,11 @@ The {{< param "OTEL_ENGINE" >}} includes:
 {{< param "PRODUCT_NAME" >}} {{< param "ALLOY_RELEASE" >}} bundles OpenTelemetry Collector components from version {{< param "OTEL_VERSION" >}}.
 You can find more information about the bundled version in both the [OpenTelemetry Collector](https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}) and [OpenTelemetry Collector Contrib](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}) repositories.
 
+The {{< param "OTEL_ENGINE" >}} bundles a curated subset of these components rather than mirroring all of the OpenTelemetry Collector Contrib repository.
+The bundled component set is based on demand, maturity, maintenance cost, dependency footprint, security risk, and license compatibility.
+Because the {{< param "OTEL_ENGINE" >}} is the Grafana distribution of the OpenTelemetry Collector, it always includes the components you need for a smooth integration with Grafana products.
+Refer to the [OpenTelemetry component contributor guide](https://github.com/grafana/alloy/blob/main/docs/developer/add-otel-component.md#inclusion-criteria) for information about the bundle criteria.
+
 The following sections list all included components:
 
 {{< collapse title="Extensions" >}}
@@ -110,11 +112,11 @@ The following sections list all included components:
 - [filelog](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/filelogreceiver/README.md)
 - [filestats](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/filestatsreceiver/README.md)
 - [fluentforward](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/fluentforwardreceiver/README.md)
-- [googlecloudpubsub](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/googlecloudpubsubreceiver/README.md)
 - [hostmetrics](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/hostmetricsreceiver/README.md)
 - [influxdb](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/influxdbreceiver/README.md)
 - [jaeger](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/jaegerreceiver/README.md)
 - [k8sclusterreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/k8sclusterreceiver/README.md)
+- [k8seventsreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/k8seventsreceiver/README.md)
 - [k8sobjectsreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/k8sobjectsreceiver/README.md)
 - [kafka](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/kafkareceiver/README.md)
 - [kubeletstatsreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/kubeletstatsreceiver/README.md)
@@ -133,6 +135,7 @@ The following sections list all included components:
 
 {{< collapse title="Connectors" >}}
 - [count](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/connector/countconnector/README.md)
+- [exceptions](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/connector/exceptionsconnector/README.md)
 - [grafanacloud](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/connector/grafanacloudconnector/README.md)
 - [servicegraph](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/connector/servicegraphconnector/README.md)
 - [signaltometrics](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/connector/signaltometricsconnector/README.md)
@@ -168,13 +171,10 @@ The following sections list all included components:
 - [awss3](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/awss3exporter/README.md)
 - [faro](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/faroexporter/README.md)
 - [file](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/fileexporter/README.md)
-- [googlecloud](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/googlecloudexporter/README.md)
-- [googlecloudpubsub](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/googlecloudpubsubexporter/README.md)
 - [kafka](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/kafkaexporter/README.md)
 - [loadbalancing](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/loadbalancingexporter/README.md)
 - [prometheus](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/prometheusexporter/README.md)
 - [prometheusremotewrite](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/prometheusremotewriteexporter/README.md)
-- [splunkhec](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/splunkhecexporter/README.md)
 - [syslog](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/syslogexporter/README.md)
 - [zipkin](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/zipkinexporter/README.md)
 - [debug](https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/exporter/debugexporter/README.md)
@@ -185,6 +185,16 @@ The following sections list all included components:
 {{< /collapse >}}
 
 To view the full list of components and their versions, refer to the [OpenTelemetry Collector Builder manifest](https://github.com/grafana/alloy/blob/main/collector/builder-config.yaml).
+
+## Component lifecycle
+
+Bundled components follow the upstream OpenTelemetry Collector [Stability Levels and versioning][OTel stability] policy.
+When the OpenTelemetry project marks a component deprecated, the component remains in the {{< param "OTEL_ENGINE" >}} for at least two more minor releases.
+When the OpenTelemetry project marks a component unmaintained, the component remains in the {{< param "OTEL_ENGINE" >}} for three months.
+If you need a component that the {{< param "OTEL_ENGINE" >}} no longer includes, you can create a [custom build with the OpenTelemetry Collector Builder (OCB)][custom build] that includes the component.
+
+[OTel stability]: https://github.com/open-telemetry/opentelemetry-collector/blob/main/docs/component-stability.md
+[custom build]: ../../../set-up/otel_engine/custom-builds/
 
 ## Related documentation
 

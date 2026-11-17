@@ -1,0 +1,23 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+
+exporters:
+  loadbalancing:
+    routing_key: "attributes"
+    routing_attributes: ["service.name", "span.kind"]
+    protocol:
+      otlp:
+    resolver:
+      static:
+        hostnames:
+          - backend-1:4317
+          - backend-2:4317
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: []
+      exporters: [loadbalancing]

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sys/unix"
 )
 
 // unixPathMax is the size of sun_path in the Linux kernel's sockaddr_un.
@@ -40,4 +41,8 @@ func TestAbstractSocketAddr(t *testing.T) {
 			require.NoError(t, lis.Close())
 		})
 	}
+}
+
+func TestBeylaSubprocessCapsIncludesDACOverride(t *testing.T) {
+	require.Contains(t, beylaSubprocessCaps, uintptr(unix.CAP_DAC_OVERRIDE))
 }

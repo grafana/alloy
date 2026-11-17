@@ -1,0 +1,36 @@
+SQL Server showplan XML generated from a query shaped like:
+
+```
+UPDATE Orders SET Total = Total * 1.1 WHERE OrderId = 1
+```
+
+The Predicate sits directly on <Update> (no separate Filter/Seek beneath
+it), which happens when the query processor evaluates the WHERE clause as
+part of the update itself rather than pushing it into a child scan.
+
+-- update_operator.xml --
+<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan">
+  <BatchSequence>
+    <Batch>
+      <Statements>
+        <StmtSimple>
+          <QueryPlan>
+            <RelOp PhysicalOp="Table Update" LogicalOp="Update" EstimateRows="1" EstimatedTotalSubtreeCost="0.15">
+              <Update>
+                <Object Database="[MyDb]" Schema="[dbo]" Table="[Orders]" />
+                <Predicate>
+                  <ScalarOperator ScalarString="[dbo].[Orders].[OrderId]=(1)" />
+                </Predicate>
+                <RelOp PhysicalOp="Table Scan" LogicalOp="Table Scan" EstimateRows="2000" EstimatedTotalSubtreeCost="0.1">
+                  <TableScan>
+                    <Object Database="[MyDb]" Schema="[dbo]" Table="[Orders]" />
+                  </TableScan>
+                </RelOp>
+              </Update>
+            </RelOp>
+          </QueryPlan>
+        </StmtSimple>
+      </Statements>
+    </Batch>
+  </BatchSequence>
+</ShowPlanXML>

@@ -38,10 +38,10 @@ func (remoteWriteExporterConverter) ConvertAndAppend(state *otelcolconvert.State
 
 	// We overloaded the ServerConfig.Endpoint field to be the prometheus.remote_write label
 	rwLabel := "metrics_" + cfg.(*remotewriteexporter.Config).PromInstance
-	forwardTo := []storage.Appendable{common.ConvertAppendable{Expr: fmt.Sprintf("prometheus.remote_write.%s.receiver", rwLabel)}}
+	forwardTo := []storage.AppendableV2{common.ConvertAppendable{Expr: fmt.Sprintf("prometheus.remote_write.%s.receiver", rwLabel)}}
 	if len(cfg.(*remotewriteexporter.Config).ConstLabels) > 0 {
 		exports := includeRelabelConfig(label, cfg, state, forwardTo)
-		forwardTo = []storage.Appendable{exports.Receiver}
+		forwardTo = []storage.AppendableV2{exports.Receiver}
 	}
 
 	args := toremotewriteexporterConfig(cfg.(*remotewriteexporter.Config), forwardTo)
@@ -57,7 +57,7 @@ func (remoteWriteExporterConverter) ConvertAndAppend(state *otelcolconvert.State
 	return diags
 }
 
-func includeRelabelConfig(label string, cfg component.Config, state *otelcolconvert.State, forwardTo []storage.Appendable) *relabel.Exports {
+func includeRelabelConfig(label string, cfg component.Config, state *otelcolconvert.State, forwardTo []storage.AppendableV2) *relabel.Exports {
 	pb := build.NewPrometheusBlocks()
 
 	defaultRelabelConfigs := &alloy_relabel.Config{}
@@ -87,7 +87,7 @@ func includeRelabelConfig(label string, cfg component.Config, state *otelcolconv
 	return exports
 }
 
-func toremotewriteexporterConfig(cfg *remotewriteexporter.Config, forwardTo []storage.Appendable) *prometheus.Arguments {
+func toremotewriteexporterConfig(cfg *remotewriteexporter.Config, forwardTo []storage.AppendableV2) *prometheus.Arguments {
 	defaultArgs := &prometheus.Arguments{}
 	defaultArgs.SetToDefault()
 

@@ -1,0 +1,93 @@
+config: |
+  prometheus.exporter.self "default" {}
+
+  prometheus.scrape "default" {
+    targets    = prometheus.exporter.self.default.targets
+    forward_to = [prometheus.remote_write.default.receiver]
+
+    scrape_interval = "1s"
+    scrape_timeout  = "500ms"
+    honor_metadata  = true
+
+    scrape_native_histograms  = true
+    scrape_classic_histograms = true
+  }
+
+  prometheus.remote_write "default" {
+    endpoint {
+      url                    = pipelinetest.prometheus.url
+      protobuf_message       = "io.prometheus.write.v2.Request"
+      send_native_histograms = true
+
+      queue_config {
+        batch_send_deadline = "500ms"
+      }
+    }
+  }
+
+assert:
+  prometheus:
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            __name__: prometheus_scrape_targets_moved_total
+            component_id: prometheus.scrape.default
+        value: 0
+        metadata:
+          type: counter
+          help: Number of targets that have moved from this cluster node to another one
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            __name__: prometheus_scrape_targets_gauge
+            component_id: prometheus.scrape.default
+        value: 1
+        metadata:
+          type: gauge
+          help: Number of targets this component is configured to scrape
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            __name__: alloy_component_evaluation_seconds
+        histogram: true
+        metadata:
+          type: histogram
+          help: Time spent performing component evaluation
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            __name__: alloy_component_evaluation_seconds_bucket
+            le: "+Inf"
+        histogram: false
+        metadata:
+          type: histogram
+          help: Time spent performing component evaluation
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            __name__: prometheus_remote_write_wal_truncate_duration_seconds_count
+            component_id: prometheus.remote_write.default
+        value: 0
+        metadata:
+          type: summary
+          help: Duration of WAL truncation.
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            __name__: up
+        value: 1
+        metadata:
+          type: gauge
+          unit: targets

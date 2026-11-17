@@ -46,6 +46,11 @@ collector/otel_engine.exe
 CLAUDE.local.md
 .codex/
 
+# Skills installed with `npx skills add` (see skills/README.md)
+/.agents/skills/
+/.claude/skills/
+/skills-lock.json
+
 # Beyla embedded binaries (downloaded at build time)
 internal/component/beyla/ebpf/binaries/amd64/beyla
 internal/component/beyla/ebpf/binaries/arm64/beyla

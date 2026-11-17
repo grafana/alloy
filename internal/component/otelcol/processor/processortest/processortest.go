@@ -169,6 +169,99 @@ func (s traceToMetricSignal) CheckOutput(t *testing.T) {
 }
 
 //
+// Multiple output signals
+//
+
+// multiOutputSignal sends one input signal into a component whose output block
+// sets both logs and metrics, so a single input is fanned out to one connector
+// instance per output signal.
+type multiOutputSignal struct {
+	logCh    chan plog.Logs
+	metricCh chan pmetric.Metrics
+
+	consumeInput func(ctx context.Context, consumer otelcol.Consumer) error
+
+	expectedOutputLog    plog.Logs
+	expectedOutputMetric pmetric.Metrics
+}
+
+// Any timestamps inside expectedOutputMetricJson should be set to 0.
+func NewTraceToLogAndMetricSignal(inputJson string, expectedOutputLogJson string, expectedOutputMetricJson string) Signal {
+	inputTrace := CreateTestTraces(inputJson)
+
+	return &multiOutputSignal{
+		logCh:    make(chan plog.Logs),
+		metricCh: make(chan pmetric.Metrics),
+		consumeInput: func(ctx context.Context, consumer otelcol.Consumer) error {
+			return consumer.ConsumeTraces(ctx, inputTrace)
+		},
+		expectedOutputLog:    CreateTestLogs(expectedOutputLogJson),
+		expectedOutputMetric: CreateTestMetrics(expectedOutputMetricJson),
+	}
+}
+
+// Any timestamps inside expectedOutputMetricJson should be set to 0.
+func NewLogToLogAndMetricSignal(inputJson string, expectedOutputLogJson string, expectedOutputMetricJson string) Signal {
+	inputLog := CreateTestLogs(inputJson)
+
+	return &multiOutputSignal{
+		logCh:    make(chan plog.Logs),
+		metricCh: make(chan pmetric.Metrics),
+		consumeInput: func(ctx context.Context, consumer otelcol.Consumer) error {
+			return consumer.ConsumeLogs(ctx, inputLog)
+		},
+		expectedOutputLog:    CreateTestLogs(expectedOutputLogJson),
+		expectedOutputMetric: CreateTestMetrics(expectedOutputMetricJson),
+	}
+}
+
+func (s multiOutputSignal) MakeOutput() *otelcol.ConsumerArguments {
+	logs := makeLogsOutput(s.logCh)
+	metrics := makeMetricsOutput(s.metricCh)
+
+	return &otelcol.ConsumerArguments{
+		Logs:    logs.Logs,
+		Metrics: metrics.Metrics,
+	}
+}
+
+func (s multiOutputSignal) ConsumeInput(ctx context.Context, consumer otelcol.Consumer) error {
+	return s.consumeInput(ctx, consumer)
+}
+
+// CheckOutput waits for both output signals. Selecting on both channels keeps
+// the component unblocked, since it emits to one output and waits for the test
+// to read it before emitting to the next.
+func (s multiOutputSignal) CheckOutput(t *testing.T) {
+	timeoutCh := time.After(signalOutputTimeout)
+
+	var gotLog, gotMetric bool
+	for !gotLog || !gotMetric {
+		select {
+		case <-timeoutCh:
+			require.FailNow(t, "failed waiting for the required output",
+				"log received: %t, metric received: %t", gotLog, gotMetric)
+			return
+		case actualLog := <-s.logCh:
+			if gotLog {
+				continue
+			}
+			CompareLogs(t, s.expectedOutputLog, actualLog)
+			gotLog = true
+		case actualMetric := <-s.metricCh:
+			if gotMetric {
+				continue
+			}
+			// A cumulative metric which arrives after a resend holds a higher
+			// count, so keep reading until a batch matches.
+			if err := CompareMetrics(t, s.expectedOutputMetric, actualMetric); err == nil {
+				gotMetric = true
+			}
+		}
+	}
+}
+
+//
 // Traces
 //
 

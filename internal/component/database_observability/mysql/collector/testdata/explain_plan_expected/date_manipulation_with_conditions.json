@@ -1,0 +1,10 @@
+{
+  "operation": "Full Table Scan",
+  "details": {
+    "estimatedRows": 99842,
+    "estimatedCost": 30884.6,
+    "alias": "e",
+    "accessType": "all",
+    "condition": "( ( month ( `employees` . `e` . `hire_date` ) = \u003c cache \u003e ( month ( curdate ( ) ) ) ) and ( `employees` . `e` . `hire_date` \u003c date ? ) )"
+  }
+}

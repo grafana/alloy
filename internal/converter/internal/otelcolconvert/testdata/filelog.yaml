@@ -52,6 +52,9 @@ receivers:
         - regex_key: 'severity'
           sort_type: 'numeric'
           ascending: true
+        - regex_key: 'severity'
+          sort_type: 'alphabetical'
+          ascending: true
     storage: file_storage
 
 exporters:

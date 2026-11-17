@@ -7,6 +7,7 @@ import (
 
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/loki/pkg/push"
@@ -54,27 +55,6 @@ func mustParseTime(layout, value string) time.Time {
 		panic(err)
 	}
 	return t
-}
-
-func toLabelSet(lbs map[string]string) model.LabelSet {
-	res := model.LabelSet{}
-	for k, v := range lbs {
-		res[model.LabelName(k)] = model.LabelValue(v)
-	}
-	return res
-}
-
-func assertLabels(t *testing.T, expect map[string]string, got model.LabelSet) {
-	if len(expect) != len(got) {
-		t.Fatalf("labels are not equal in size want: %s got: %s", expect, got)
-	}
-	for k, v := range expect {
-		gotV, ok := got[model.LabelName(k)]
-		if !ok {
-			t.Fatalf("missing expected label key: %s", k)
-		}
-		assert.Equal(t, model.LabelValue(v), gotV, "mismatch label value")
-	}
 }
 
 // Verify the formatting of float conversion to make sure there are not any trailing zeros,
@@ -253,6 +233,49 @@ func TestParseTimestampWithoutYear(t *testing.T) {
 			}
 
 			assert.Equal(t, testData.expected, parsed)
+		})
+	}
+}
+
+func TestResolveLabelSources(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		values   map[string]*string
+		expected map[string]string
+	}{
+		{
+			name:     "nil values",
+			values:   nil,
+			expected: map[string]string{},
+		},
+		{
+			name:     "source is used as given",
+			values:   map[string]*string{"pod_name": new("pod")},
+			expected: map[string]string{"pod_name": "pod"},
+		},
+		{
+			name:     "empty source falls back to the label name",
+			values:   map[string]*string{"app": new("")},
+			expected: map[string]string{"app": "app"},
+		},
+		{
+			name:     "nil source falls back to the label name",
+			values:   map[string]*string{"app": nil},
+			expected: map[string]string{"app": "app"},
+		},
+		{
+			name:     "mixed values",
+			values:   map[string]*string{"pod_name": new("pod"), "app": new(""), "stream": nil},
+			expected: map[string]string{"pod_name": "pod", "app": "app", "stream": "stream"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, tt.expected, resolveLabelSources(tt.values))
 		})
 	}
 }

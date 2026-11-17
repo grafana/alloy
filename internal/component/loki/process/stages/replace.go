@@ -2,131 +2,118 @@ package stages
 
 import (
 	"bytes"
-	"fmt"
+	"context"
 	"log/slog"
 	"reflect"
-	"regexp"
 	"text/template"
-	"time"
 
-	"github.com/prometheus/common/model"
+	"github.com/grafana/alloy/internal/component/common/regexp"
+	"github.com/grafana/alloy/syntax"
 )
 
-func init() {
-	for k, v := range extraFunctionMap {
-		functionMap[k] = v
-	}
-}
-
-// ReplaceConfig contains a regexStage configuration
+// ReplaceConfig contains a replaceStage configuration
 type ReplaceConfig struct {
-	Expression string `alloy:"expression,attr"`
-	Source     string `alloy:"source,attr,optional"`
-	Replace    string `alloy:"replace,attr,optional"`
+	Expression regexp.Regexp `alloy:"expression,attr"`
+	Source     string        `alloy:"source,attr,optional"`
+	Replace    Template      `alloy:"replace,attr,optional"`
 }
 
-func validateReplaceConfig(c ReplaceConfig) (*regexp.Regexp, *template.Template, error) {
-	if c.Expression == "" {
-		return nil, nil, ErrExpressionRequired
-	}
+var _ syntax.Validator = (*ReplaceConfig)(nil)
 
-	expr, err := regexp.Compile(c.Expression)
-	if err != nil {
-		return nil, nil, fmt.Errorf("%v: %w", ErrCouldNotCompileRegex, err)
+func (c *ReplaceConfig) Validate() error {
+	if c.Expression.IsEmpty() {
+		return errExpressionRequired
 	}
+	return nil
+}
 
-	templ, err := template.New("pipeline_template").Funcs(functionMap).Parse(c.Replace)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to compile template: %w", err)
+var _ entryProcessor = (*replaceStage)(nil)
+
+// newReplaceStage creates a replaceStage
+func newReplaceStage(config ReplaceConfig, opts stageOpts) *replaceStage {
+	// Template is validated during unmarshal.
+	templ, _ := config.Replace.parse()
+
+	return &replaceStage{
+		next:     opts.next,
+		cfg:      config,
+		template: templ,
+		logger:   opts.slogger.With("stage", "replace"),
 	}
-
-	return expr, templ, nil
 }
 
 // replaceStage sets extracted data using regular expressions
 type replaceStage struct {
-	cfg        ReplaceConfig
-	expression *regexp.Regexp
-	logger     *slog.Logger
-	template   *template.Template
+	next     nextFn
+	cfg      ReplaceConfig
+	logger   *slog.Logger
+	template *template.Template
 }
 
-// newReplaceStage creates a newReplaceStage
-func newReplaceStage(logger *slog.Logger, config ReplaceConfig) (Stage, error) {
-	expression, templ, err := validateReplaceConfig(config)
-	if err != nil {
-		return nil, err
+func (r *replaceStage) process(ctx context.Context, entries []Entry) error {
+	for i := range entries {
+		entries[i] = r.processEntry(entries[i])
 	}
-
-	return toStage(&replaceStage{
-		cfg:        config,
-		expression: expression,
-		template:   templ,
-		logger:     logger.With("stage", "replace"),
-	}), nil
+	return r.next(ctx, entries)
 }
 
-// Process implements Stage
-func (r *replaceStage) Process(labels model.LabelSet, extracted map[string]any, t *time.Time, entry *string) {
+func (r *replaceStage) processEntry(e Entry) Entry {
 	// If a source key is provided, the replace stage should process it
-	// from the extracted map, otherwise should fall back to the entry
-	input := entry
+	// from the extracted map, otherwise should fall back to the line.
+	input := e.Line
 
 	if r.cfg.Source != "" {
-		if _, ok := extracted[r.cfg.Source]; !ok {
+		if _, ok := e.Extracted[r.cfg.Source]; !ok {
 			r.logger.Debug("source does not exist in the set of extracted values", "source", r.cfg.Source)
-			return
+			return e
 		}
 
-		value, err := getString(extracted[r.cfg.Source])
+		value, err := getString(e.Extracted[r.cfg.Source])
 		if err != nil {
-			r.logger.Debug("failed to convert source value to string", "source", r.cfg.Source, "err", err, "type", reflect.TypeOf(extracted[r.cfg.Source]))
-			return
+			r.logger.Debug("failed to convert source value to string", "source", r.cfg.Source, "err", err, "type", reflect.TypeOf(e.Extracted[r.cfg.Source]))
+			return e
 		}
 
-		input = &value
-	}
-
-	if input == nil {
-		r.logger.Debug("cannot parse a nil entry")
-		return
+		input = value
 	}
 
 	// Get string of matched captured groups. We will use this to extract all named captured groups
-	match := r.expression.FindStringSubmatch(*input)
-	matchAllIndex := r.expression.FindAllStringSubmatchIndex(*input, -1)
+	match := r.cfg.Expression.FindStringSubmatch(input)
+	matchAllIndex := r.cfg.Expression.FindAllStringSubmatchIndex(input, -1)
 
 	if matchAllIndex == nil {
-		r.logger.Debug("regex did not match", "input", *input, "regex", r.expression)
-		return
+		r.logger.Debug("regex did not match", "input", input, "regex", r.cfg.Expression)
+		return e
 	}
 
 	// All extracted values will be available for templating
-	td := r.getTemplateData(extracted)
+	td := r.getTemplateData(e.Extracted)
 
-	result, capturedMap, err := r.getReplacedEntry(matchAllIndex, *input, td)
+	result, capturedMap, err := r.getReplacedEntry(matchAllIndex, input, td)
 	if err != nil {
 		r.logger.Debug("failed to execute template on extracted value", "err", err)
-		return
+		return e
 	}
 
 	if r.cfg.Source != "" {
-		extracted[r.cfg.Source] = result
+		e.Extracted[r.cfg.Source] = result
 	} else {
-		*entry = result
+		e.Line = result
 	}
 
 	// All the named captured group will be extracted
-	for i, name := range r.expression.SubexpNames() {
+	for i, name := range r.cfg.Expression.SubexpNames() {
 		if i != 0 && name != "" {
 			if v, ok := capturedMap[match[i]]; ok {
-				extracted[name] = v
+				e.Extracted[name] = v
 			}
 		}
 	}
 	if debugEnabled(r.logger) {
-		r.logger.Debug("extracted data debug in replace stage", "extracted_data", extracted)
+		r.logger.Debug("extracted data debug in replace stage", "extracted_data", e.Extracted)
 	}
+
+	return e
 }
 
 func (r *replaceStage) getReplacedEntry(matchAllIndex [][]int, input string, td map[string]string) (string, map[string]string, error) {

@@ -16,6 +16,8 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/grafana/ckit/shard"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/common/model"
 	mysqld_collector "github.com/prometheus/mysqld_exporter/collector"
 	"go.uber.org/atomic"
@@ -64,6 +66,7 @@ type Arguments struct {
 	EnableCollectors              []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors             []string            `alloy:"disable_collectors,attr,optional"`
 	ExcludeSchemas                []string            `alloy:"exclude_schemas,attr,optional"`
+	IncludeSchemas                []string            `alloy:"include_schemas,attr,optional"`
 	AllowUpdatePerfSchemaSettings bool                `alloy:"allow_update_performance_schema_settings,attr,optional"`
 
 	Databases []DatabaseArguments `alloy:"database_instance,block,optional"`
@@ -89,6 +92,10 @@ type DatabaseArguments struct {
 	Name           string            `alloy:",label"`
 	DataSourceName alloytypes.Secret `alloy:"data_source_name,attr"`
 	CloudProvider  *CloudProvider    `alloy:"cloud_provider,block,optional"`
+	// Rules holds relabel rules applied to the metrics and the logs of this
+	// database only. They run after the labels the component sets itself, so a
+	// rule can use those as `source_labels`.
+	Rules []*relabel.Config `alloy:"rule,block,optional"`
 }
 
 type CloudProvider struct {
@@ -166,7 +173,12 @@ type HealthCheckArguments struct {
 type PrometheusExporterArguments exporter_mysql.Arguments
 
 func (a *PrometheusExporterArguments) SetToDefault() {
-	*a = PrometheusExporterArguments(exporter_mysql.DefaultArguments)
+	args := exporter_mysql.DefaultArguments
+	args.PerfSchemaEventsStatements.Limit = 100
+	// The query_details collector already sends the statement text as logs, so
+	// a digest_text label would only add cardinality to the statement metrics.
+	args.PerfSchemaEventsStatements.TextLimit = 0
+	*a = PrometheusExporterArguments(args)
 }
 
 func (a *PrometheusExporterArguments) Validate() error {
@@ -174,14 +186,22 @@ func (a *PrometheusExporterArguments) Validate() error {
 	return args.Validate()
 }
 
+const eventsStatementsCollector = "perf_schema.eventsstatements"
+
+// defaultEnabledCollectors is a replacement allowlist, not additive. Besides
+// events statements, it holds the collectors that Database Observability reads:
+// global_status (connections), global_variables (server settings) and
+// slave_status (replication).
+var defaultEnabledCollectors = []string{eventsStatementsCollector, "global_status", "global_variables", "slave_status"}
+
 func defaultArguments() Arguments {
 	return Arguments{
-		ExcludeSchemas:                database_observability.DefaultExcludedSchemas(),
+		ExcludeSchemas:                defaultExcludedSchemas(),
 		AllowUpdatePerfSchemaSettings: false,
 
 		QueryDetailsArguments: QueryDetailsArguments{
 			CollectInterval: 1 * time.Minute,
-			StatementsLimit: 250,
+			StatementsLimit: 100,
 		},
 
 		SchemaDetailsArguments: SchemaDetailsArguments{
@@ -209,12 +229,13 @@ func defaultArguments() Arguments {
 		},
 
 		QuerySamplesArguments: QuerySamplesArguments{
-			CollectInterval:             10 * time.Second,
-			DisableQueryRedaction:       false,
-			AutoEnableSetupConsumers:    false,
-			SetupConsumersCheckInterval: 1 * time.Hour,
-			SampleMinDuration:           0 * time.Millisecond,
-			WaitEventMinDuration:        1 * time.Microsecond,
+			CollectInterval:               10 * time.Second,
+			DisableQueryRedaction:         false,
+			AutoEnableSetupConsumers:      false,
+			SetupConsumersCheckInterval:   1 * time.Hour,
+			SampleMinDuration:             0 * time.Millisecond,
+			WaitEventMinDuration:          1 * time.Microsecond,
+			EnablePreClassifiedWaitEvents: true,
 		},
 		HealthCheckArguments: HealthCheckArguments{
 			CollectInterval: 1 * time.Hour,
@@ -233,6 +254,10 @@ func (a *Arguments) SetToDefault() {
 var databaseNameRegex = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 func (a *Arguments) Validate() error {
+	if err := database_observability.ValidateInclusions(a.IncludeSchemas, collector.AlwaysExcludedSchemas(), a.ExcludeSchemas, defaultExcludedSchemas(), "include_schemas", "exclude_schemas", false); err != nil {
+		return err
+	}
+
 	if len(a.Databases) == 0 {
 		_, err := mysql.ParseDSN(string(a.DataSourceName))
 		if err != nil {
@@ -258,6 +283,9 @@ func (a *Arguments) Validate() error {
 
 	names := make(map[string]struct{}, len(a.Databases))
 	servers := make(map[string]string, len(a.Databases))
+	// instances tracks the instance label each block rewrites to, where a rule
+	// fixes it at load time, so that two blocks can't collapse onto one series.
+	instances := make(map[string]string, len(a.Databases))
 	for _, db := range a.Databases {
 		if !databaseNameRegex.MatchString(db.Name) {
 			return fmt.Errorf("database_instance block label %q must be a valid identifier (letters, digits, and underscores, not starting with a digit)", db.Name)
@@ -278,6 +306,17 @@ func (a *Arguments) Validate() error {
 
 		if err := validateCloudProvider(db.CloudProvider); err != nil {
 			return fmt.Errorf("database_instance %q: %w", db.Name, err)
+		}
+
+		if err := database_observability.ValidateRelabelRules(db.Rules); err != nil {
+			return fmt.Errorf("database_instance %q: %w", db.Name, err)
+		}
+
+		if value, known := database_observability.StaticInstanceLabel(db.Rules); known {
+			if other, ok := instances[value]; ok {
+				return fmt.Errorf("database_instance blocks %q and %q both set the instance label to %q, which would collapse them onto one series", other, db.Name, value)
+			}
+			instances[value] = db.Name
 		}
 	}
 	return nil
@@ -354,7 +393,7 @@ func (c *Component) loadInstances() []*dbInstance {
 func (c *Component) storeInstances(instances []*dbInstance) {
 	mux := http.NewServeMux()
 	for _, inst := range instances {
-		mux.Handle(metricsPath(inst.cfg.name), promhttp.HandlerFor(inst.registry, promhttp.HandlerOpts{}))
+		mux.Handle(metricsPath(inst.cfg.name), util.PromHTTPHandlerFor(inst.registry, c.opts.Logger, promhttp.HandlerOpts{}))
 	}
 	c.instances.Store(&instances)
 	c.handlerMux.Store(mux)
@@ -474,10 +513,68 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 
 	c.args = newArgs
+	c.warnOnStatementLimitMismatch()
+	c.warnOnExclusionsMismatch()
 	c.fanout.UpdateChildren(c.args.ForwardTo)
 
 	c.replaceInstances(instances)
 	return nil
+}
+
+func (c *Component) eventsStatementsExporterArgs() (exporter_mysql.Arguments, bool) {
+	if len(c.args.Targets) > 0 {
+		return exporter_mysql.Arguments{}, false
+	}
+
+	exporterArgs := resolveExporterArgs(c.args.PrometheusExporter, c.args.ExcludeSchemas, c.args.IncludeSchemas)
+	for _, scraper := range mysqld_exporter.GetScrapers(exporterArgs.Convert()) {
+		if scraper.Name() == eventsStatementsCollector {
+			return exporterArgs, true
+		}
+	}
+
+	return exporter_mysql.Arguments{}, false
+}
+
+func (c *Component) warnOnStatementLimitMismatch() {
+	queryDetailsEnabled := enableOrDisableCollectors(c.args)[collector.QueryDetailsCollector]
+	if !queryDetailsEnabled {
+		return
+	}
+
+	exporterArgs, ok := c.eventsStatementsExporterArgs()
+	if !ok {
+		return
+	}
+
+	queryDetailsLimit := c.args.QueryDetailsArguments.StatementsLimit
+	eventsStatementsLimit := exporterArgs.PerfSchemaEventsStatements.Limit
+	if queryDetailsLimit != eventsStatementsLimit {
+		c.opts.Logger.Warn(
+			"query_details and prometheus_exporter perf_schema.eventsstatements limits differ",
+			"query_details_limit", queryDetailsLimit,
+			"eventsstatements_limit", eventsStatementsLimit,
+		)
+	}
+}
+
+func (c *Component) warnOnExclusionsMismatch() {
+	exporterArgs, ok := c.eventsStatementsExporterArgs()
+	if !ok {
+		return
+	}
+
+	topLevelSchemas := database_observability.MergeExclusions(
+		collector.AlwaysExcludedSchemas(),
+		database_observability.EffectiveExclusions(defaultExcludedSchemas(), c.args.ExcludeSchemas, c.args.IncludeSchemas, false),
+	)
+	if !database_observability.SameExclusions(topLevelSchemas, exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas) {
+		c.opts.Logger.Warn(
+			"exclude_schemas and prometheus_exporter perf_schema.eventsstatements exclude_schemas differ; prefer setting top-level exclude_schemas only",
+			"exclude_schemas", topLevelSchemas,
+			"eventsstatements_exclude_schemas", exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas,
+		)
+	}
 }
 
 // buildInstances constructs, but doesn't connect, one dbInstance per config.
@@ -511,13 +608,17 @@ func (c *Component) replaceInstances(instances []*dbInstance) {
 }
 
 // ownedDatabases returns the subset of configs this node is responsible for
-// collecting. With clustering disabled, all databases are owned locally.
-// While the cluster isn't ready to admit traffic, no databases are owned, so
-// that nodes don't collect duplicates while the cluster is still forming.
-// Ownership lookup errors fail open to local ownership, matching the
-// semantics of discovery.DistributedTargets.
+// collecting. With clustering disabled, either on the component or for the
+// whole cluster service, all databases are owned locally. While the cluster
+// isn't ready to admit traffic, no databases are owned, so that nodes don't
+// collect duplicates while the cluster is still forming.
+//
+// Ownership lookup errors fail closed. A single-owner lookup only errors while
+// no peer is a participant, which is every node's state during a new cluster's
+// initial load; failing open would make each node connect to every database.
+// reconcileCluster picks the databases up once the node becomes a participant.
 func (c *Component) ownedDatabases(cfgs []databaseConfig, clusteringEnabled bool) []databaseConfig {
-	if !clusteringEnabled {
+	if !clusteringEnabled || !c.cluster.Enabled() {
 		return cfgs
 	}
 	if !c.cluster.Ready() {
@@ -525,18 +626,27 @@ func (c *Component) ownedDatabases(cfgs []databaseConfig, clusteringEnabled bool
 		return nil
 	}
 
+	var lookupErr error
 	owned := make([]databaseConfig, 0, len(cfgs))
 	for _, cfg := range cfgs {
 		key, err := instanceKey(string(cfg.dsn))
 		if err != nil {
-			// Validate guarantees the DSN parses; fail open to local ownership.
+			// There's no key to look an owner up with. Keep the database so that
+			// building its instance reports the DSN error.
 			owned = append(owned, cfg)
 			continue
 		}
 		peers, err := c.cluster.Lookup(shard.StringKey(key), 1, shard.OpReadWrite)
-		if err != nil || len(peers) == 0 || peers[0].Self {
+		if err != nil {
+			lookupErr = err
+			continue
+		}
+		if len(peers) > 0 && peers[0].Self {
 			owned = append(owned, cfg)
 		}
+	}
+	if lookupErr != nil {
+		c.opts.Logger.Warn("failed to look up database owners in the cluster, not collecting from the affected databases", "err", lookupErr)
 	}
 	return owned
 }
@@ -761,10 +871,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	}
 
 	if len(inst.cfg.targets) == 0 {
-		exporterArgs := exporter_mysql.DefaultArguments
-		if c.args.PrometheusExporter != nil {
-			exporterArgs = exporter_mysql.Arguments(*c.args.PrometheusExporter)
-		}
+		exporterArgs := resolveExporterArgs(c.args.PrometheusExporter, c.args.ExcludeSchemas, c.args.IncludeSchemas)
 		exporterCfg := exporterArgs.Convert()
 		scrapers := mysqld_exporter.GetScrapers(exporterCfg)
 		exporter := mysqld_collector.New(context.Background(), string(inst.cfg.dsn), scrapers, c.opts.Logger,
@@ -778,13 +885,21 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 		inst.exporterCollector = exporter
 	}
 
+	builtinRules := database_observability.GetRelabelingRules(generatedServerID, cp)
+
 	allTargets := append([]discovery.Target{inst.baseTarget}, inst.cfg.targets...)
 	targets := make([]discovery.Target, 0, len(allTargets))
 	for _, t := range allTargets {
 		builder := discovery.NewTargetBuilderFrom(t)
-		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(generatedServerID, cp)...) {
-			targets = append(targets, builder.Target())
+		if !relabel.ProcessBuilder(builder, builtinRules...) {
+			continue
 		}
+		// The per-database rules run second, so that a rule can use the labels
+		// the component's own rules set, such as server_id, as source_labels.
+		if !database_observability.ApplyRules(builder, inst.cfg.rules) {
+			continue
+		}
+		targets = append(targets, builder.Target())
 	}
 	inst.exportedTargets = targets
 
@@ -798,6 +913,42 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	}
 
 	return nil
+}
+
+func resolveExporterArgs(userBlock *PrometheusExporterArguments, excludeSchemas, includeSchemas []string) exporter_mysql.Arguments {
+	exporterArgs := exporter_mysql.DefaultArguments
+	exporterArgs.PerfSchemaEventsStatements.Limit = 100
+	exporterArgs.PerfSchemaEventsStatements.TextLimit = 0
+	if userBlock != nil {
+		exporterArgs = exporter_mysql.Arguments(*userBlock)
+	}
+	if len(exporterArgs.SetCollectors) == 0 {
+		exporterArgs.SetCollectors = defaultEnabledCollectors
+	}
+	if exporterArgs.PerfSchemaEventsStatements.Limit == 0 {
+		exporterArgs.PerfSchemaEventsStatements.Limit = 100
+	}
+	alwaysExcludedSchemas := database_observability.MergeExclusions(
+		collector.AlwaysExcludedSchemas(),
+		database_observability.EffectiveDefaultExclusions(defaultExcludedSchemas(), includeSchemas, false),
+	)
+	exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas = database_observability.ResolveExclusions(
+		alwaysExcludedSchemas,
+		database_observability.UserConfiguredExclusions(excludeSchemas, defaultExcludedSchemas()),
+		exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas,
+	)
+	return exporterArgs
+}
+
+func defaultExcludedSchemas() []string {
+	return []string{
+		"alloydbadmin",
+		"alloydbmetadata",
+		"azure_maintenance",
+		"azure_sys",
+		"cloudsqladmin",
+		"rdsadmin",
+	}
 }
 
 func enableOrDisableCollectors(a Arguments) map[string]bool {
@@ -836,28 +987,14 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 		c.opts.Logger.Error(errorString)
 		startErrors = append(startErrors, errorString)
 	}
-	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), inst.instanceKey, serverID)
+	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), inst.instanceKey, serverID, inst.cfg.rules)
+
+	excludeSchemas := database_observability.EffectiveExclusions(defaultExcludedSchemas(), c.args.ExcludeSchemas, c.args.IncludeSchemas, false)
+	includeSchemas := database_observability.MergeExclusions(c.args.IncludeSchemas)
 
 	collectors := enableOrDisableCollectors(c.args)
 
-	if collectors[collector.QueryDetailsCollector] {
-		qtCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
-			DB:              inst.dbConnection,
-			CollectInterval: c.args.QueryDetailsArguments.CollectInterval,
-			StatementsLimit: c.args.QueryDetailsArguments.StatementsLimit,
-			ExcludeSchemas:  c.args.ExcludeSchemas,
-			EntryHandler:    entryHandler,
-			Logger:          c.opts.Logger,
-		})
-		if err != nil {
-			logStartError(collector.QueryDetailsCollector, "create", err)
-		} else {
-			if err := qtCollector.Start(context.Background()); err != nil {
-				logStartError(collector.QueryDetailsCollector, "start", err)
-			}
-			inst.collectors = append(inst.collectors, qtCollector)
-		}
-	}
+	var tableRegistry *collector.TableRegistry
 
 	if collectors[collector.SchemaDetailsCollector] {
 		if c.args.SchemaDetailsArguments.CacheEnabled != nil {
@@ -873,17 +1010,40 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
 			DB:              inst.dbConnection,
 			CollectInterval: c.args.SchemaDetailsArguments.CollectInterval,
-			ExcludeSchemas:  c.args.ExcludeSchemas,
+			ExcludeSchemas:  excludeSchemas,
+			IncludeSchemas:  includeSchemas,
 			EntryHandler:    entryHandler,
 			Logger:          c.opts.Logger,
 		})
 		if err != nil {
 			logStartError(collector.SchemaDetailsCollector, "create", err)
 		} else {
+			tableRegistry = stCollector.GetTableRegistry()
 			if err := stCollector.Start(context.Background()); err != nil {
 				logStartError(collector.SchemaDetailsCollector, "start", err)
 			}
 			inst.collectors = append(inst.collectors, stCollector)
+		}
+	}
+
+	if collectors[collector.QueryDetailsCollector] {
+		qtCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
+			DB:              inst.dbConnection,
+			CollectInterval: c.args.QueryDetailsArguments.CollectInterval,
+			StatementsLimit: c.args.QueryDetailsArguments.StatementsLimit,
+			ExcludeSchemas:  excludeSchemas,
+			IncludeSchemas:  includeSchemas,
+			EntryHandler:    entryHandler,
+			TableRegistry:   tableRegistry,
+			Logger:          c.opts.Logger,
+		})
+		if err != nil {
+			logStartError(collector.QueryDetailsCollector, "create", err)
+		} else {
+			if err := qtCollector.Start(context.Background()); err != nil {
+				logStartError(collector.QueryDetailsCollector, "start", err)
+			}
+			inst.collectors = append(inst.collectors, qtCollector)
 		}
 	}
 
@@ -899,7 +1059,8 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 			DB:                            inst.dbConnection,
 			EngineVersion:                 parsedEngineVersion,
 			CollectInterval:               c.args.QuerySamplesArguments.CollectInterval,
-			ExcludeSchemas:                c.args.ExcludeSchemas,
+			ExcludeSchemas:                excludeSchemas,
+			IncludeSchemas:                includeSchemas,
 			EntryHandler:                  entryHandler,
 			Registry:                      inst.registry,
 			Logger:                        c.opts.Logger,
@@ -981,10 +1142,10 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 			DB:              inst.dbConnection,
 			ScrapeInterval:  c.args.ExplainPlansArguments.CollectInterval,
 			PerScrapeRatio:  c.args.ExplainPlansArguments.PerCollectRatio,
-			ExcludeSchemas:  c.args.ExcludeSchemas,
+			ExcludeSchemas:  excludeSchemas,
+			IncludeSchemas:  includeSchemas,
 			InitialLookback: time.Now().Add(-c.args.ExplainPlansArguments.InitialLookback),
 			Logger:          c.opts.Logger,
-			DBVersion:       engineVersion,
 			EntryHandler:    entryHandler,
 		})
 		if err != nil {
@@ -1018,7 +1179,8 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 	hcCollector, err := collector.NewHealthCheck(collector.HealthCheckArguments{
 		DB:              inst.dbConnection,
 		CollectInterval: c.args.HealthCheckArguments.CollectInterval,
-		ExcludeSchemas:  c.args.ExcludeSchemas,
+		ExcludeSchemas:  excludeSchemas,
+		IncludeSchemas:  includeSchemas,
 		EntryHandler:    entryHandler,
 		Logger:          c.opts.Logger,
 	})
@@ -1115,12 +1277,15 @@ func formatDSN(dsn string, params ...string) string {
 	return dsn + strings.Join(params, "&")
 }
 
-func addLokiLabels(entryHandler loki.EntryHandler, instanceKey string, serverID string) loki.EntryHandler {
-	entryHandler = loki.AddLabelsMiddleware(model.LabelSet{
+func addLokiLabels(entryHandler loki.EntryHandler, instanceKey string, serverID string, rules []*relabel.Config) loki.EntryHandler {
+	// One middleware adds the labels and applies the per-database rules, in
+	// that order, so the rules can read these labels as source_labels.
+	entryHandler = database_observability.AddLabelsAndRelabelMiddleware(model.LabelSet{
 		"job":       database_observability.JobName,
 		"instance":  model.LabelValue(instanceKey),
 		"server_id": model.LabelValue(serverID),
-	}).Wrap(entryHandler)
+		"engine":    model.LabelValue(collector.EngineName),
+	}, rules).Wrap(entryHandler)
 
 	return entryHandler
 }

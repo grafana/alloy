@@ -6,6 +6,7 @@ metadata:
   labels:
     alloy-integration-test: "true"
 spec:
+  scrapeClass: test-class
   selector:
     matchLabels:
       app: prom-gen

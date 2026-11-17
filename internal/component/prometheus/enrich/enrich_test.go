@@ -11,7 +11,9 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/testappender"
 	prom "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/assert"
@@ -26,7 +28,7 @@ func TestEnricher(t *testing.T) {
 		expectedLabels map[string]string
 	}{
 		{
-			name: "label enrichment with target_labels and metrics_match_label",
+			name: "label enrichment with target_labels and differing label names",
 			args: Arguments{
 				Targets: []discovery.Target{
 					discovery.NewTargetFromMap(map[string]string{
@@ -36,9 +38,8 @@ func TestEnricher(t *testing.T) {
 						"foo":     "bar",
 					}),
 				},
-				TargetMatchLabel:  "service",
-				MetricsMatchLabel: "service_name",
-				LabelsToCopy:      []string{"env", "owner"},
+				TargetToMetricMatch: map[string]string{"service": "service_name"},
+				LabelsToCopy:        []string{"env", "owner"},
 			},
 			inputLabels: map[string]string{
 				"service_name": "test-service",
@@ -60,9 +61,8 @@ func TestEnricher(t *testing.T) {
 						"foo":     "bar",
 					}),
 				},
-				TargetMatchLabel:  "service",
-				MetricsMatchLabel: "service_name",
-				LabelsToCopy:      []string{"env", "owner"},
+				TargetToMetricMatch: map[string]string{"service": "service_name"},
+				LabelsToCopy:        []string{"env", "owner"},
 			},
 			inputLabels: map[string]string{
 				"service_name": "test-service",
@@ -72,7 +72,7 @@ func TestEnricher(t *testing.T) {
 			},
 		},
 		{
-			name: "match using target_match_label when metrics_match_label is not specified",
+			name: "match when the label name is the same in targets and metrics",
 			args: Arguments{
 				Targets: []discovery.Target{
 					discovery.NewTargetFromMap(map[string]string{
@@ -82,7 +82,7 @@ func TestEnricher(t *testing.T) {
 						"foo":     "bar",
 					}),
 				},
-				TargetMatchLabel: "service",
+				TargetToMetricMatch: map[string]string{"service": "service"},
 			},
 			inputLabels: map[string]string{
 				"service": "test-service",
@@ -97,8 +97,8 @@ func TestEnricher(t *testing.T) {
 		{
 			name: "copy as is, when targets is empty",
 			args: Arguments{
-				Targets:          []discovery.Target{},
-				TargetMatchLabel: "service",
+				Targets:             []discovery.Target{},
+				TargetToMetricMatch: map[string]string{"service": "service"},
 			},
 			inputLabels: map[string]string{
 				"service": "test-service",
@@ -178,8 +178,9 @@ func TestEnricher(t *testing.T) {
 					return ref, nil
 				}))
 
-			var entry storage.Appendable
-			tt.args.ForwardTo = []storage.Appendable{fanout}
+			dest := testappender.NewCollectingAppender()
+			var entry storage.AppendableV2
+			tt.args.ForwardTo = []storage.AppendableV2{fanout, testappender.ConstantAppendable{Inner: dest}}
 			_, err := New(component.Options{
 				ID:     "1",
 				Logger: util.TestAlloyLogger(t).Slog(),
@@ -194,13 +195,25 @@ func TestEnricher(t *testing.T) {
 			require.NoError(t, err)
 
 			lbls := labels.FromMap(tt.inputLabels)
-			app := entry.Appender(t.Context())
+			app := entry.(storage.Appendable).Appender(t.Context())
 
 			_, err = app.Append(0, lbls, time.Now().UnixMilli(), 0)
 			require.NoError(t, err)
 
 			err = app.Commit()
 			require.NoError(t, err)
+
+			// ST zeros carry the enriched labels.
+			appV2 := entry.AppenderV2(t.Context())
+			_, err = appV2.Append(0, lbls, 10, 20, 1, nil, nil, storage.AppendV2Options{})
+			require.NoError(t, err)
+			_, err = appV2.Append(0, lbls, 10, 20, 0, &histogram.Histogram{Count: 1, Sum: 1}, nil, storage.AppendV2Options{})
+			require.NoError(t, err)
+			require.NoError(t, appV2.Commit())
+
+			want := labels.FromMap(tt.expectedLabels).String()
+			require.Contains(t, dest.CollectedSTZeroSamples(), want)
+			require.Contains(t, dest.CollectedSTZeroHistograms(), want)
 		})
 	}
 }
@@ -212,19 +225,6 @@ func TestValidate(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name: "valid legacy",
-			args: Arguments{
-				TargetMatchLabel: "service",
-			},
-		},
-		{
-			name: "valid legacy with metrics_match_label",
-			args: Arguments{
-				TargetMatchLabel:  "service",
-				MetricsMatchLabel: "svc",
-			},
-		},
-		{
 			name: "valid new match",
 			args: Arguments{
 				TargetToMetricMatch: map[string]string{"ns": "namespace", "pod_name": "pod"},
@@ -233,21 +233,21 @@ func TestValidate(t *testing.T) {
 		{
 			name:    "error: no match mechanism",
 			args:    Arguments{},
-			wantErr: "at least one match mechanism must be specified",
+			wantErr: "target_to_metric_match must contain at least one label pair",
 		},
 		{
-			name: "new takes precedence over legacy",
+			name: "error: empty target label",
 			args: Arguments{
-				TargetMatchLabel:    "service",
-				TargetToMetricMatch: map[string]string{"ns": "namespace"},
+				TargetToMetricMatch: map[string]string{"": "namespace"},
 			},
+			wantErr: "target_to_metric_match must not contain empty label names",
 		},
 		{
-			name: "error: metrics_match_label without target_match_label",
+			name: "error: empty metric label",
 			args: Arguments{
-				MetricsMatchLabel: "svc",
+				TargetToMetricMatch: map[string]string{"namespace": ""},
 			},
-			wantErr: "target_match_label must be set",
+			wantErr: "target_to_metric_match must not contain empty label names",
 		},
 	}
 	for _, tt := range tests {
@@ -274,9 +274,9 @@ func TestEnrichConcurrentUpdate(t *testing.T) {
 		Targets: []discovery.Target{
 			discovery.NewTargetFromMap(map[string]string{"service": "svc", "env": "prod"}),
 		},
-		TargetMatchLabel: "service",
-		LabelsToCopy:     []string{"env"},
-		ForwardTo:        []storage.Appendable{fanout},
+		TargetToMetricMatch: map[string]string{"service": "service"},
+		LabelsToCopy:        []string{"env"},
+		ForwardTo:           []storage.AppendableV2{fanout},
 	}
 
 	c, err := New(component.Options{

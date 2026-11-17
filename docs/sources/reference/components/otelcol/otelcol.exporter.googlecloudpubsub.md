@@ -64,18 +64,22 @@ You can use the following blocks with `otelcol.exporter.googlecloudpubsub`:
 
 {{< docs/alloy-config >}}
 
-| Block                                  | Description                                                                                     | Required |
-| -------------------------------------- | ----------------------------------------------------------------------------------------------- | -------- |
-| [`debug_metrics`][debug_metrics]       | Configures the metrics that this component generates to monitor its state.                      | no       |
-| [`ordering`][ordering]                 | Configures the [Pub/Sub ordering](https://cloud.google.com/pubsub/docs/ordering) feature.       | no       |
-| [`retry_on_failure`][retry_on_failure] | Configures the retry behavior when the receiver encounters an error downstream in the pipeline. | no       |
-| [`sending_queue`][sending_queue]       | Configures batching of data before sending.                                                     | no       |
-| [`watermark`][watermark]               | Behaviour of how the ce-time attribute is set.                                                  | no       |
+| Block                                                | Description                                                                                     | Required |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------- | -------- |
+| [`debug_metrics`][debug_metrics]                     | Configures the metrics that this component generates to monitor its state.                      | no       |
+| [`ordering`][ordering]                               | Configures the [Pub/Sub ordering](https://cloud.google.com/pubsub/docs/ordering) feature.       | no       |
+| [`retry_on_failure`][retry_on_failure]               | Configures the retry behavior when the receiver encounters an error downstream in the pipeline. | no       |
+| [`sending_queue`][sending_queue]                     | Configures batching of data before sending.                                                     | no       |
+| `sending_queue` > [`batch`][batch]                   | Configures batching requests based on a timeout and a minimum number of items.                  | no       |
+| `sending_queue` > `batch` > [`partition`][partition] | Configures partitioning of batches by client metadata.                                          | no       |
+| [`watermark`][watermark]                             | Behaviour of how the ce-time attribute is set.                                                  | no       |
 
 [debug_metrics]: #debug_metrics
 [ordering]: #ordering
 [retry_on_failure]: #retry_on_failure
 [sending_queue]: #sending_queue
+[batch]: #batch
+[partition]: #partition
 [watermark]: #watermark
 
 {{< /docs/alloy-config >}}
@@ -105,6 +109,18 @@ The `retry_on_failure` block configures how failed requests to Datadog are retri
 The `sending_queue` block configures an in-memory buffer of batches before data is sent to the HTTP server.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `batch`
+
+The `batch` block configures batching requests based on a timeout and a minimum number of items.
+
+{{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `partition`
+
+The `partition` block configures how batches are partitioned by client metadata.
+
+{{< docs/shared lookup="reference/components/otelcol-queue-batch-partition-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `watermark`
 

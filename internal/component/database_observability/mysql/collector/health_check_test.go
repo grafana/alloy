@@ -11,6 +11,7 @@ import (
 	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -64,7 +65,7 @@ func TestHealthCheck(t *testing.T) {
 		require.GreaterOrEqual(t, len(lokiEntries), 3)
 
 		for _, entry := range lokiEntries[:3] {
-			require.Equal(t, model.LabelSet{"op": OP_HEALTH_STATUS}, entry.Labels)
+			require.Equal(t, model.LabelSet{"op": database_observability.OP_HEALTH_STATUS}, entry.Labels)
 			require.Contains(t, entry.Line, `result="true"`)
 		}
 	})
@@ -96,7 +97,7 @@ func TestHealthCheck(t *testing.T) {
 				sqlmock.NewRows([]string{"Grants"}).
 					AddRow("GRANT PROCESS, REPLICATION CLIENT, SELECT, SHOW VIEW ON *.* TO 'user'@'host'"),
 			)
-		mock.ExpectQuery(performanceSchemaHasRowsQuery([]string{"custom_schema", "another_schema"})).
+		mock.ExpectQuery(performanceSchemaHasRowsQuery([]string{"custom_schema", "another_schema"}, nil)).
 			WillReturnRows(
 				sqlmock.NewRows([]string{"COUNT(*)"}).
 					AddRow(100),
@@ -124,7 +125,7 @@ func TestHealthCheck(t *testing.T) {
 		require.GreaterOrEqual(t, len(lokiEntries), 3)
 
 		for _, entry := range lokiEntries[:3] {
-			require.Equal(t, model.LabelSet{"op": OP_HEALTH_STATUS}, entry.Labels)
+			require.Equal(t, model.LabelSet{"op": database_observability.OP_HEALTH_STATUS}, entry.Labels)
 			require.Contains(t, entry.Line, `result="true"`)
 		}
 	})
@@ -182,7 +183,7 @@ func TestHealthCheck(t *testing.T) {
 				name:             "no rows in events statements digest",
 				failingCheckName: "PerformanceSchemaHasRows",
 				customSetup: func(mock sqlmock.Sqlmock) {
-					mock.ExpectQuery(performanceSchemaHasRowsQuery(nil)).
+					mock.ExpectQuery(performanceSchemaHasRowsQuery(nil, nil)).
 						WillReturnRows(
 							sqlmock.NewRows([]string{"COUNT(*)"}).
 								AddRow(0),
@@ -240,7 +241,7 @@ func TestHealthCheck(t *testing.T) {
 				found := false
 				for _, entry := range lokiEntries {
 					if strings.Contains(entry.Line, tc.failingCheckName) {
-						require.Equal(t, model.LabelSet{"op": OP_HEALTH_STATUS}, entry.Labels)
+						require.Equal(t, model.LabelSet{"op": database_observability.OP_HEALTH_STATUS}, entry.Labels)
 						require.Contains(t, entry.Line, tc.expectedResult)
 						if tc.expectedValue != "" {
 							require.Contains(t, entry.Line, tc.expectedValue)
@@ -275,7 +276,7 @@ func setupExpectQueryAssertions(checkName string, mock sqlmock.Sqlmock, customSe
 		{
 			name: "PerformanceSchemaHasRows",
 			setup: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery(performanceSchemaHasRowsQuery(nil)).
+				mock.ExpectQuery(performanceSchemaHasRowsQuery(nil, nil)).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"COUNT(*)"}).
 							AddRow(100),

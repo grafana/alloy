@@ -84,8 +84,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 	positionsFile, err := positions.New(o.Logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
-		PositionsFile: filepath.Join(o.DataPath, "positions.yml"),
+		Path: filepath.Join(o.DataPath, "positions.yml"),
 	})
 
 	if err != nil {
@@ -170,7 +169,7 @@ func (c *Component) Update(args component.Arguments) error {
 }
 
 func (c *Component) resyncTargets(targets []discovery.Target) {
-	distTargets := discovery.NewDistributedTargetsWithCustomLabels(c.args.Clustering.Enabled, c.cluster, targets, kubetail.ClusteringLabels)
+	distTargets := discovery.NewDistributedTargets(c.args.Clustering.Enabled, c.cluster, targets, discovery.IdentityLabels(kubetail.ClusteringLabels))
 	targets = distTargets.LocalTargets()
 
 	tailTargets := make([]*kubetail.Target, 0, len(targets))

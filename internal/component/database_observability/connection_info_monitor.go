@@ -2,7 +2,6 @@ package database_observability
 
 import (
 	"context"
-	"database/sql"
 	"sync"
 	"time"
 
@@ -23,7 +22,16 @@ type ConnectionInfoMonitorConfig struct {
 	ChecksThreshold int
 }
 
-// RunConnectionInfoMonitor starts a goroutine that pings db every ConnectionCheckInterval.
+// Pinger verifies database connectivity. *sql.DB satisfies it directly, so most
+// engines pass their connection as-is. An engine that needs its connectivity
+// check tagged (for example sql_server, which replaces the driver's untagged
+// SELECT 1 with a marked statement) passes a wrapper whose PingContext issues
+// the tagged query.
+type Pinger interface {
+	PingContext(ctx context.Context) error
+}
+
+// RunConnectionInfoMonitor starts a goroutine that pings the database every ConnectionCheckInterval.
 // After ConnectionChecksThreshold consecutive ping failures it unregisters infoMetric from registry.
 // After ConnectionChecksThreshold consecutive ping successes (when the metric is unregistered) it re-registers
 // infoMetric and sets it to 1 with the given labelValues.
@@ -32,7 +40,7 @@ type ConnectionInfoMonitorConfig struct {
 // labelValues must contain exactly 6 values in order: provider_name, provider_region, provider_account,
 // db_instance_identifier, engine, engine_version.
 // If config is non-nil, its CheckInterval and ChecksThreshold override the default constants (used for testing).
-func RunConnectionInfoMonitor(ctx context.Context, db *sql.DB, registry *prometheus.Registry, infoMetric *prometheus.GaugeVec, labelValues []string, onStopped func(), config *ConnectionInfoMonitorConfig) (stop func()) {
+func RunConnectionInfoMonitor(ctx context.Context, pinger Pinger, registry *prometheus.Registry, infoMetric *prometheus.GaugeVec, labelValues []string, onStopped func(), config *ConnectionInfoMonitorConfig) (stop func()) {
 	interval := ConnectionCheckInterval
 	threshold := ConnectionChecksThreshold
 	if config != nil {
@@ -53,7 +61,7 @@ func RunConnectionInfoMonitor(ctx context.Context, db *sql.DB, registry *prometh
 		var consecutiveFailures, consecutiveSuccesses int
 		metricRegistered := true
 		for {
-			if err := db.PingContext(ctx); err != nil {
+			if err := pinger.PingContext(ctx); err != nil {
 				consecutiveFailures++
 				consecutiveSuccesses = 0
 				if metricRegistered && consecutiveFailures >= threshold {

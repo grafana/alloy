@@ -33,6 +33,9 @@ func (d Discovery) Convert() map[string]any {
 	if v := d.ExcludedLinuxSystemPaths; len(v) > 0 {
 		m["excluded_linux_system_paths"] = v
 	}
+	if d.InstrumentAllLocal {
+		m["instrument_all_local"] = true
+	}
 	if len(d.Instrument) > 0 {
 		m["instrument"] = d.Instrument.Convert()
 	}
@@ -120,6 +123,9 @@ func (e EBPF) Convert() map[string]any {
 	if v := e.ForceBpfMapReader; v != "" {
 		m["force_bpf_map_reader"] = v
 	}
+	if v := e.GoHTTPClientBufferTimeout; v != nil {
+		m["go_http_client_buffer_timeout"] = v.String()
+	}
 	if e.HeuristicSQLDetect {
 		m["heuristic_sql_detect"] = true
 	}
@@ -131,6 +137,12 @@ func (e EBPF) Convert() map[string]any {
 	}
 	if v := e.InstrumentCuda; v != 0 {
 		m["instrument_cuda"] = v
+	}
+	if v := e.KafkaConsumerGroupCacheSize; v != 0 {
+		m["kafka_consumer_group_cache_size"] = v
+	}
+	if v := e.KafkaConsumerGroupTTL; v != 0 {
+		m["kafka_consumer_group_ttl"] = v.String()
 	}
 	if v := e.KafkaTopicUuidCacheSize; v != 0 {
 		m["kafka_topic_uuid_cache_size"] = v
@@ -411,6 +423,9 @@ func (e EBPF) Convert() map[string]any {
 			m["payload_extraction"] = m1
 		}
 	}
+	if e.PopulateTraceContext {
+		m["populate_trace_context"] = true
+	}
 	if v := e.PostgresPreparedStatementsCacheSize; v != 0 {
 		m["postgres_prepared_statements_cache_size"] = v
 	}
@@ -546,15 +561,84 @@ func (j Javaagent) Convert() map[string]any {
 	return m
 }
 
-// Convert builds the jvm_runtime_metrics configuration.
+// Convert builds the jvm_runtime_metrics configuration. Enabled is not
+// forwarded: Beyla >= v3.35.0 (OBI v0.13.0) dropped jvm_runtime_metrics.enabled
+// from its schema, so the key would be silently ignored. JVM runtime metrics
+// are now gated solely by "application_runtime" in metrics.features.
 func (j JVMRuntimeMetrics) Convert() map[string]any {
 	m := make(map[string]any)
-	if j.Enabled {
-		m["enabled"] = true
-	}
 	if v := j.SamplingInterval; v != 0 {
 		m["sampling_interval"] = v.String()
 	}
+	return m
+}
+
+// Convert builds the dotnet_runtime_metrics configuration.
+func (d DotnetRuntimeMetrics) Convert() map[string]any {
+	m := make(map[string]any)
+	if v := d.SamplingInterval; v != 0 {
+		m["sampling_interval"] = v.String()
+	}
+	if v := d.Timeout; v != 0 {
+		m["timeout"] = v.String()
+	}
+	return m
+}
+
+// Convert builds the cloud_metadata configuration.
+func (c CloudMetadata) Convert() map[string]any {
+	m := make(map[string]any)
+	if v := c.ClusterName; v != "" {
+		m["cluster_name"] = v
+	}
+	if v := c.Region; v != "" {
+		m["region"] = v
+	}
+	if v := c.RefreshInterval; v != 0 {
+		m["refresh_interval"] = v.String()
+	}
+	route53 := make(map[string]any)
+	if v := c.Route53.HostedZoneIDs; len(v) > 0 {
+		route53["hosted_zone_ids"] = v
+	}
+	if v := c.Route53.RefreshInterval; v != 0 {
+		route53["refresh_interval"] = v.String()
+	}
+	set(m, "route53", route53)
+	return m
+}
+
+// Convert builds the name_resolver configuration.
+func (n NameResolver) Convert() map[string]any {
+	m := make(map[string]any)
+	if v := n.Sources; len(v) > 0 {
+		m["sources"] = v
+	}
+	if v := n.CacheLen; v != 0 {
+		m["cache_len"] = v
+	}
+	if v := n.CacheExpiry; v != 0 {
+		m["cache_expiry"] = v.String()
+	}
+	gce := make(map[string]any)
+	if v := n.GCE.ProjectID; v != "" {
+		gce["project_id"] = v
+	}
+	if v := n.GCE.Zone; v != "" {
+		gce["zone"] = v
+	}
+	if v := n.GCE.Endpoint; v != "" {
+		gce["endpoint"] = v
+	}
+	set(m, "gce", gce)
+	azure := make(map[string]any)
+	if v := n.Azure.SubscriptionID; v != "" {
+		azure["subscription_id"] = v
+	}
+	if v := n.Azure.ResourceGroup; v != "" {
+		azure["resource_group"] = v
+	}
+	set(m, "azure", azure)
 	return m
 }
 
@@ -832,70 +916,95 @@ func (s Selections) Convert() map[string]any {
 func (s Services) Convert() []map[string]any {
 	result := make([]map[string]any, 0, len(s))
 	for _, item := range s {
-		m := make(map[string]any)
-		if v := item.CmdArgs; v != "" {
-			m["cmd_args"] = v
+		if m := item.Convert(); len(m) > 0 {
+			result = append(result, m)
 		}
-		if item.ContainersOnly {
-			m["containers_only"] = true
+	}
+	return result
+}
+
+// Convert builds one service selector shared by instrumentation and survey.
+func (s Service) Convert() map[string]any {
+	m := make(map[string]any)
+	if v := s.CmdArgs; v != "" {
+		m["cmd_args"] = v
+	}
+	if s.ContainersOnly {
+		m["containers_only"] = true
+	}
+	if v := s.Path; v != "" {
+		m["exe_path"] = v
+	}
+	if v := s.ExportModes; len(v) > 0 {
+		m["exports"] = v
+	}
+	if v := s.Kubernetes.DaemonSetName; v != "" {
+		m["k8s_daemonset_name"] = v
+	}
+	if v := s.Kubernetes.DeploymentName; v != "" {
+		m["k8s_deployment_name"] = v
+	}
+	if v := s.Kubernetes.Namespace; v != "" {
+		m["k8s_namespace"] = v
+	}
+	if v := s.Kubernetes.OwnerName; v != "" {
+		m["k8s_owner_name"] = v
+	}
+	if v := s.Kubernetes.PodAnnotations; len(v) > 0 {
+		m["k8s_pod_annotations"] = v
+	}
+	if v := s.Kubernetes.PodLabels; len(v) > 0 {
+		m["k8s_pod_labels"] = v
+	}
+	if v := s.Kubernetes.PodName; v != "" {
+		m["k8s_pod_name"] = v
+	}
+	if v := s.Kubernetes.ReplicaSetName; v != "" {
+		m["k8s_replicaset_name"] = v
+	}
+	if v := s.Kubernetes.StatefulSetName; v != "" {
+		m["k8s_statefulset_name"] = v
+	}
+	if v := s.Languages; v != "" {
+		m["languages"] = v
+	}
+	if v := s.Name; v != "" {
+		m["name"] = v
+	}
+	if v := s.Namespace; v != "" {
+		m["namespace"] = v
+	}
+	if v := s.OpenPorts; v != "" {
+		m["open_ports"] = v
+	}
+	{
+		m1 := make(map[string]any)
+		if v := s.Sampler.Arg; v != "" {
+			m1["arg"] = v
 		}
-		if v := item.Path; v != "" {
-			m["exe_path"] = v
+		if v := s.Sampler.Name; v != "" {
+			m1["name"] = v
 		}
-		if v := item.ExportModes; len(v) > 0 {
-			m["exports"] = v
+		if len(m1) > 0 {
+			m["sampler"] = m1
 		}
-		if v := item.Kubernetes.DaemonSetName; v != "" {
-			m["k8s_daemonset_name"] = v
+	}
+	return m
+}
+
+// Convert keeps socket eligibility scoped to survey entries.
+func (s SurveyServices) Convert() []map[string]any {
+	result := make([]map[string]any, 0, len(s))
+	for _, item := range s {
+		m := item.Service.Convert()
+		socketApps := make(map[string]any)
+		if item.SocketApps.Enabled {
+			socketApps["enabled"] = true
 		}
-		if v := item.Kubernetes.DeploymentName; v != "" {
-			m["k8s_deployment_name"] = v
+		if item.SocketApps.NonRoot {
+			socketApps["non_root"] = true
 		}
-		if v := item.Kubernetes.Namespace; v != "" {
-			m["k8s_namespace"] = v
-		}
-		if v := item.Kubernetes.OwnerName; v != "" {
-			m["k8s_owner_name"] = v
-		}
-		if v := item.Kubernetes.PodAnnotations; len(v) > 0 {
-			m["k8s_pod_annotations"] = v
-		}
-		if v := item.Kubernetes.PodLabels; len(v) > 0 {
-			m["k8s_pod_labels"] = v
-		}
-		if v := item.Kubernetes.PodName; v != "" {
-			m["k8s_pod_name"] = v
-		}
-		if v := item.Kubernetes.ReplicaSetName; v != "" {
-			m["k8s_replicaset_name"] = v
-		}
-		if v := item.Kubernetes.StatefulSetName; v != "" {
-			m["k8s_statefulset_name"] = v
-		}
-		if v := item.Languages; v != "" {
-			m["languages"] = v
-		}
-		if v := item.Name; v != "" {
-			m["name"] = v
-		}
-		if v := item.Namespace; v != "" {
-			m["namespace"] = v
-		}
-		if v := item.OpenPorts; v != "" {
-			m["open_ports"] = v
-		}
-		{
-			m1 := make(map[string]any)
-			if v := item.Sampler.Arg; v != "" {
-				m1["arg"] = v
-			}
-			if v := item.Sampler.Name; v != "" {
-				m1["name"] = v
-			}
-			if len(m1) > 0 {
-				m["sampler"] = m1
-			}
-		}
+		set(m, "socket_apps", socketApps)
 		if len(m) > 0 {
 			result = append(result, m)
 		}

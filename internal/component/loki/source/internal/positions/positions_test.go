@@ -1,185 +1,14 @@
 package positions
 
-// This code is copied from Promtail. The positions package allows logging
-// components to keep track of read file offsets on disk and continue from the
-// same place in case of a restart.
-
 import (
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
 
 	"github.com/grafana/alloy/internal/runtime/logging"
 )
-
-func tempFilename(t *testing.T) string {
-	t.Helper()
-
-	temp, err := os.CreateTemp(t.TempDir(), "positions")
-	if err != nil {
-		t.Fatal("tempFilename:", err)
-	}
-	err = temp.Close()
-	if err != nil {
-		t.Fatal("tempFilename:", err)
-	}
-
-	name := temp.Name()
-	err = os.Remove(name)
-	if err != nil {
-		t.Fatal("tempFilename:", err)
-	}
-
-	return name
-}
-
-func writeLegacy(t *testing.T, tmpDir string) string {
-	legacy := filepath.Join(tmpDir, "legacy")
-	legacyPositions := LegacyFile{
-		Positions: make(map[string]string),
-	}
-	// Filename and byte offset
-	legacyPositions.Positions["/tmp/random.log"] = "17623"
-	buf, err := yaml.Marshal(legacyPositions)
-	require.NoError(t, err)
-	err = os.WriteFile(legacy, buf, 0644)
-	require.NoError(t, err)
-	return legacy
-}
-
-func TestLegacyConversion(t *testing.T) {
-	tmpDir := t.TempDir()
-	legacy := writeLegacy(t, tmpDir)
-	positionsPath := filepath.Join(tmpDir, "positions")
-	ConvertLegacyPositionsFile(legacy, positionsPath, logging.NewSlogNop())
-	ps, err := readPositionsFile(Config{
-		PositionsFile: positionsPath,
-	}, logging.NewSlogNop())
-	require.NoError(t, err)
-	require.Len(t, ps, 1)
-	for k, v := range ps {
-		require.True(t, k.Path == "/tmp/random.log")
-		require.True(t, v == "17623")
-	}
-}
-
-func TestLegacyConversionWithNewFile(t *testing.T) {
-	tmpDir := t.TempDir()
-	legacy := writeLegacy(t, tmpDir)
-	// Write a new file.
-	positionsPath := filepath.Join(tmpDir, "positions")
-	err := writePositionFile(positionsPath, map[Entry]string{
-		{Path: "/tmp/newrandom.log", Labels: ""}: "100",
-	})
-	require.NoError(t, err)
-
-	// In this state nothing should be overwritten.
-	ConvertLegacyPositionsFile(legacy, positionsPath, logging.NewSlogNop())
-	ps, err := readPositionsFile(Config{
-		PositionsFile: positionsPath,
-	}, logging.NewSlogNop())
-	require.NoError(t, err)
-	require.Len(t, ps, 1)
-	for k, v := range ps {
-		require.True(t, k.Path == "/tmp/newrandom.log")
-		require.True(t, v == "100")
-	}
-}
-
-func TestLegacyConversionWithNoLegacyFile(t *testing.T) {
-	tmpDir := t.TempDir()
-	legacy := filepath.Join(tmpDir, "legacy")
-	positionsPath := filepath.Join(tmpDir, "positions")
-	// Write a new file.
-	err := writePositionFile(positionsPath, map[Entry]string{
-		{Path: "/tmp/newrandom.log", Labels: ""}: "100",
-	})
-	require.NoError(t, err)
-
-	ConvertLegacyPositionsFile(legacy, positionsPath, logging.NewSlogNop())
-	ps, err := readPositionsFile(Config{
-		PositionsFile: positionsPath,
-	}, logging.NewSlogNop())
-	require.NoError(t, err)
-	require.Len(t, ps, 1)
-	for k, v := range ps {
-		require.True(t, k.Path == "/tmp/newrandom.log")
-		require.True(t, v == "100")
-	}
-}
-
-func TestLegacyConversionUnreadableFile(t *testing.T) {
-	tmpDir := t.TempDir()
-	// A directory can't be read as a file, so this reliably forces a read
-	// error without relying on chmod/permission bits.
-	legacy := filepath.Join(tmpDir, "legacy")
-	require.NoError(t, os.Mkdir(legacy, 0750))
-
-	positionsPath := filepath.Join(tmpDir, "positions")
-	err := ConvertLegacyPositionsFile(legacy, positionsPath, logging.NewSlogNop())
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "could not be read")
-	require.Contains(t, err.Error(), "refusing to start")
-	require.Contains(t, err.Error(), legacy)
-
-	// Refusing to convert must not leave a positions file behind either.
-	_, statErr := os.Stat(positionsPath)
-	require.True(t, os.IsNotExist(statErr))
-}
-
-func TestConvertLegacyPositionsFileJournalUnreadableFile(t *testing.T) {
-	tmpDir := t.TempDir()
-	// A directory can't be read as a file, so this reliably forces a read
-	// error without relying on chmod/permission bits.
-	legacyFile := filepath.Join(tmpDir, "legacy.yaml")
-	require.NoError(t, os.Mkdir(legacyFile, 0750))
-
-	newFile := filepath.Join(tmpDir, "new.yaml")
-	err := ConvertLegacyPositionsFileJournal(legacyFile, "oldjob", newFile, "loki.source.journal.test", logging.NewSlogNop())
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "could not be read")
-	require.Contains(t, err.Error(), "refusing to start")
-	require.Contains(t, err.Error(), legacyFile)
-
-	_, statErr := os.Stat(newFile)
-	require.True(t, os.IsNotExist(statErr))
-}
-
-func TestConvertLegacyPositionsFileJournal(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	journalCursor := "s=96c0493b15cd4824b73d031da667369f;i=25557;b=64c7ff8e6dbc4a21b77425da44ce57f1;m=d9ddfd2be7;t=63d7d20071963;x=336b5294210ef9ec"
-	legacyFile := filepath.Join(tmpDir, "legacy.yaml")
-	legacyPositions := LegacyFile{
-		Positions: map[string]string{
-			"/some/path/test.log": "100",
-			CursorKey("oldjob"):   journalCursor,
-		},
-	}
-
-	f, err := os.Create(legacyFile)
-	require.NoError(t, err)
-	require.NoError(t, yaml.NewEncoder(f).Encode(legacyPositions))
-	require.NoError(t, f.Close())
-
-	newFile := filepath.Join(tmpDir, "new.yaml")
-	ConvertLegacyPositionsFileJournal(legacyFile, "oldjob", newFile, "loki.source.journal.test", logging.NewSlogNop())
-
-	f, err = os.Open(newFile)
-	require.NoError(t, err)
-
-	var posFile File
-	require.NoError(t, yaml.NewDecoder(f).Decode(&posFile))
-	require.NoError(t, f.Close())
-
-	pos := posFile.Positions[Entry{Path: CursorKey("loki.source.journal.test"), Labels: "{}"}]
-	require.Equal(t, journalCursor, pos)
-}
 
 func TestReadPositions(t *testing.T) {
 	t.Run("current structure", func(t *testing.T) {
@@ -200,8 +29,8 @@ positions:
 		}
 
 		pos, err := readPositionsFile(Config{
-			PositionsFile: temp,
-		}, logging.NewSlogNop())
+			Path: temp,
+		})
 
 		require.NoError(t, err)
 		require.Equal(t, "17623", pos[Entry{
@@ -229,8 +58,8 @@ positions:
 		}
 
 		pos, err := readPositionsFile(Config{
-			PositionsFile: temp,
-		}, logging.NewSlogNop())
+			Path: temp,
+		})
 
 		require.NoError(t, err)
 		require.Equal(t, "17623", pos[Entry{
@@ -253,8 +82,8 @@ func TestReadPositionsEmptyFile(t *testing.T) {
 	}
 
 	pos, err := readPositionsFile(Config{
-		PositionsFile: temp,
-	}, logging.NewSlogNop())
+		Path: temp,
+	})
 
 	require.NoError(t, err)
 	require.NotNil(t, pos)
@@ -272,8 +101,8 @@ func TestReadPositionsFromDir(t *testing.T) {
 	}()
 
 	_, err = readPositionsFile(Config{
-		PositionsFile: temp,
-	}, logging.NewSlogNop())
+		Path: temp,
+	})
 
 	require.Error(t, err)
 	require.True(t, strings.Contains(err.Error(), temp)) // error must contain filename
@@ -297,81 +126,11 @@ positions:
 	}
 
 	_, err = readPositionsFile(Config{
-		PositionsFile: temp,
-	}, logging.NewSlogNop())
+		Path: temp,
+	})
 
 	require.Error(t, err)
 	require.True(t, strings.Contains(err.Error(), temp)) // error must contain filename
-}
-
-func TestReadPositionsFromBadYamlIgnoreCorruption(t *testing.T) {
-	temp := tempFilename(t)
-	defer func() {
-		_ = os.Remove(temp)
-	}()
-
-	badYaml := []byte(`
-positions:
-  ? path: /tmp/random.log
-    labels: "{}"
-  : "176
-`)
-	err := os.WriteFile(temp, badYaml, 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	out, err := readPositionsFile(Config{
-		PositionsFile:     temp,
-		IgnoreInvalidYaml: true,
-	}, logging.NewSlogNop())
-
-	require.NoError(t, err)
-	require.Equal(t, map[Entry]string{}, out)
-}
-
-func Test_ReadOnly(t *testing.T) {
-	temp := tempFilename(t)
-	defer func() {
-		_ = os.Remove(temp)
-	}()
-	yaml := []byte(`
-positions:
-  ? path: /tmp/random.log
-    labels: '{job="tmp"}'
-  : "17623"
-`)
-	err := os.WriteFile(temp, yaml, 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
-	p, err := New(logging.NewSlogNop(), Config{
-		SyncPeriod:    20 * time.Second,
-		PositionsFile: temp,
-		ReadOnly:      true,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer p.Stop()
-	p.Put("/foo/bar/f", "", 12132132)
-	p.PutString("/foo/f", "", "100")
-	pos, err := p.Get("/tmp/random.log", `{job="tmp"}`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	require.Equal(t, int64(17623), pos)
-	p.(*positions).save()
-	out, err := readPositionsFile(Config{
-		PositionsFile:     temp,
-		IgnoreInvalidYaml: true,
-		ReadOnly:          true,
-	}, logging.NewSlogNop())
-
-	require.NoError(t, err)
-	require.Equal(t, map[Entry]string{
-		{Path: "/tmp/random.log", Labels: `{job="tmp"}`}: "17623",
-	}, out)
 }
 
 func TestWriteEmptyLabels(t *testing.T) {
@@ -390,8 +149,7 @@ positions:
 		t.Fatal(err)
 	}
 	p, err := New(logging.NewSlogNop(), Config{
-		SyncPeriod:    20 * time.Second,
-		PositionsFile: temp,
+		Path: temp,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -406,12 +164,10 @@ positions:
 		t.Fatal(err)
 	}
 	require.Equal(t, int64(10030), pos)
-	p.(*positions).save()
+	p.save()
 	out, err := readPositionsFile(Config{
-		PositionsFile:     temp,
-		IgnoreInvalidYaml: true,
-		ReadOnly:          false,
-	}, logging.NewSlogNop())
+		Path: temp,
+	})
 
 	require.NoError(t, err)
 	require.Equal(t, map[Entry]string{
@@ -446,8 +202,8 @@ positions:
 	}
 
 	pos, err := readPositionsFile(Config{
-		PositionsFile: temp,
-	}, logging.NewSlogNop())
+		Path: temp,
+	})
 
 	require.NoError(t, err)
 	require.Equal(t, "10020", pos[Entry{
@@ -462,4 +218,25 @@ positions:
 		Path:   "/tmp/missinglabels.log",
 		Labels: ``,
 	}])
+}
+
+func tempFilename(t *testing.T) string {
+	t.Helper()
+
+	temp, err := os.CreateTemp(t.TempDir(), "positions")
+	if err != nil {
+		t.Fatal("tempFilename:", err)
+	}
+	err = temp.Close()
+	if err != nil {
+		t.Fatal("tempFilename:", err)
+	}
+
+	name := temp.Name()
+	err = os.Remove(name)
+	if err != nil {
+		t.Fatal("tempFilename:", err)
+	}
+
+	return name
 }

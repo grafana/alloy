@@ -1,6 +1,7 @@
 package faro
 
 import (
+	"log/slog"
 	"maps"
 	"time"
 
@@ -37,6 +38,12 @@ type Arguments struct {
 }
 
 var _ exporter.Arguments = Arguments{}
+var _ otelcol.DeprecationLogger = Arguments{}
+
+// LogDeprecations implements otelcol.DeprecationLogger.
+func (args Arguments) LogDeprecations(logger *slog.Logger) {
+	(*otelcol.HTTPClientArguments)(&args.Client).LogDeprecations(logger)
+}
 
 func (args *Arguments) SetToDefault() {
 	args.Queue.SetToDefault()
@@ -55,11 +62,11 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &faroexporter.Config{
-		ClientConfig: *convertedClientArgs,
-		QueueConfig:  q,
-		RetryConfig:  *args.Retry.Convert(),
-	}, nil
+	cfg := faroexporter.NewFactory().CreateDefaultConfig().(*faroexporter.Config)
+	cfg.ClientConfig = *convertedClientArgs
+	cfg.QueueConfig = q
+	cfg.RetryConfig = *args.Retry.Convert()
+	return cfg, nil
 }
 
 func (args *Arguments) Validate() error {

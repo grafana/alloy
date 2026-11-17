@@ -155,6 +155,17 @@ collect_interval = 3s"
 	}
 }
 
+func TestRejectDebugInfoConfig(t *testing.T) {
+	var args Arguments
+	err := syntax.Unmarshal([]byte(`
+forward_to = []
+debug_info {
+	upload = true
+}
+`), &args)
+	require.ErrorContains(t, err, `unrecognized block name "debug_info"`)
+}
+
 func TestConvertNoKernelVersionCheck(t *testing.T) {
 	args := NewDefaultArguments()
 	cfg, err := args.Convert()
@@ -180,6 +191,23 @@ func TestProbeLinks(t *testing.T) {
 		args.DeprecatedArguments.UProbeLinks = []string{"/bin/sh:entry"}
 		require.Equal(t, []string{"uprobe:/bin/sh:entry"}, args.probeLinks())
 	})
+}
+
+func TestProbes(t *testing.T) {
+	args := NewDefaultArguments()
+	probes, err := args.probes(t.Context())
+	require.NoError(t, err)
+	require.Empty(t, probes)
+
+	args.OffCPUThreshold = 0.5
+	args.ProbeLinks = []string{"kprobe:do_sys_open", "uprobe:/bin/sh:main"}
+	probes, err = args.probes(t.Context())
+	require.NoError(t, err)
+	require.Len(t, probes, 3)
+
+	args.ProbeLinks = []string{"uprobe:/bin/sh"}
+	_, err = args.probes(t.Context())
+	require.Error(t, err)
 }
 
 func TestReconstructionAfterError(t *testing.T) {

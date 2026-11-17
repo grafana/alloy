@@ -1,15 +1,21 @@
 package stages
 
 import (
+	"context"
+
 	"github.com/grafana/regexp"
 )
 
 type DecolorizeConfig struct{}
 
-type decolorizeStage struct{}
+var _ entryProcessor = (*decolorizeStage)(nil)
 
-func newDecolorizeStage(_ DecolorizeConfig) (Stage, error) {
-	return &decolorizeStage{}, nil
+func newDecolorizeStage(_ DecolorizeConfig, opts stageOpts) *decolorizeStage {
+	return &decolorizeStage{next: opts.next}
+}
+
+type decolorizeStage struct {
+	next nextFn
 }
 
 // regexp to select ANSI characters courtesy of https://github.com/acarl005/stripansi
@@ -17,21 +23,10 @@ const ansiPattern = "[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\
 
 var ansiRegex = regexp.MustCompile(ansiPattern)
 
-// Run implements Stage
-func (m *decolorizeStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		for e := range in {
-			decolorizedLine := ansiRegex.ReplaceAll([]byte(e.Line), []byte{})
-			e.Entry.Line = string(decolorizedLine)
-			out <- e
-		}
-	}()
-	return out
-}
-
-// Cleanup implements Stage.
-func (*decolorizeStage) Cleanup() {
-	// no-op
+func (m *decolorizeStage) process(ctx context.Context, entries []Entry) error {
+	for i := range entries {
+		decolorizedLine := ansiRegex.ReplaceAll([]byte(entries[i].Line), []byte{})
+		entries[i].Line = string(decolorizedLine)
+	}
+	return m.next(ctx, entries)
 }

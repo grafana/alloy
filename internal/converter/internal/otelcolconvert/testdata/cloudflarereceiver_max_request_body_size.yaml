@@ -1,0 +1,16 @@
+receivers:
+  cloudflare:
+    logs:
+      endpoint: 0.0.0.0:12345
+      max_request_body_size: 5242880
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+service:
+  pipelines:
+    logs:
+      receivers: [cloudflare]
+      processors: []
+      exporters: [otlp]

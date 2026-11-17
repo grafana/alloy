@@ -1,0 +1,19 @@
+receivers:
+  kafka:
+    brokers:
+      - broker:9092
+    protocol_version: 2.0.0
+    group_rebalance_strategies: [range]
+    logs:
+      # Deprecated upstream; kept as-is with a warning.
+      encoding: azure_resource_logs
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+service:
+  pipelines:
+    logs:
+      receivers: [kafka]
+      exporters: [otlp]

@@ -39,6 +39,9 @@ Beyla's published `schema.json`, validated with `gojsonschema` (with
 silently ignores, fails. A small `allowlist` covers real Beyla keys the schema doesn't
 export.
 
+The tests also check schema-to-Alloy coverage for supported sections and metric
+feature values, so new upstream options fail the tests until support is added.
+
 ## Upgrading Beyla
 
 See [docs/developer/updating-beyla.md](../../../../../../../docs/developer/updating-beyla.md).

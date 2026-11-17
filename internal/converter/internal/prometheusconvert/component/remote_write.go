@@ -125,6 +125,8 @@ func toSigV4(sigv4Config *sigv4.SigV4Config) *remotewrite.SigV4Config {
 		Profile:            sigv4Config.Profile,
 		RoleARN:            sigv4Config.RoleARN,
 		ExternalID:         sigv4Config.ExternalID,
+		SessionName:        sigv4Config.SessionName,
+		Tags:               sigv4Config.Tags,
 		UseFIPSSTSEndpoint: sigv4Config.UseFIPSSTSEndpoint,
 		ServiceName:        sigv4Config.ServiceName,
 	}

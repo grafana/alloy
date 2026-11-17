@@ -1,0 +1,39 @@
+SQL Server showplan XML generated from a query shaped like:
+
+```
+SELECT TOP 10 OrderId, OrderDate
+FROM Orders
+ORDER BY OrderDate DESC
+```
+
+-- sort_and_top.xml --
+<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan">
+  <BatchSequence>
+    <Batch>
+      <Statements>
+        <StmtSimple>
+          <QueryPlan>
+            <RelOp PhysicalOp="Top" LogicalOp="Top" EstimateRows="10" EstimatedTotalSubtreeCost="0.7">
+              <Top>
+                <RelOp PhysicalOp="Sort" LogicalOp="Sort" EstimateRows="2000" EstimatedTotalSubtreeCost="0.65">
+                  <Sort>
+                    <OrderBy>
+                      <OrderByColumn Ascending="0">
+                        <ColumnReference Database="[MyDb]" Schema="[dbo]" Table="[Orders]" Column="[OrderDate]" />
+                      </OrderByColumn>
+                    </OrderBy>
+                    <RelOp PhysicalOp="Table Scan" LogicalOp="Table Scan" EstimateRows="2000" EstimatedTotalSubtreeCost="0.6">
+                      <TableScan>
+                        <Object Database="[MyDb]" Schema="[dbo]" Table="[Orders]" />
+                      </TableScan>
+                    </RelOp>
+                  </Sort>
+                </RelOp>
+              </Top>
+            </RelOp>
+          </QueryPlan>
+        </StmtSimple>
+      </Statements>
+    </Batch>
+  </BatchSequence>
+</ShowPlanXML>

@@ -72,18 +72,21 @@ func toSplunkHecExporter(cfg *splunkhecexporter.Config) *splunkhec_config.Splunk
 }
 
 func toSplunkHecHTTPClientArguments(cfg *splunkhecexporter.Config) splunkhec_config.SplunkHecClientArguments {
+	keepalive := effectiveClientKeepalive(cfg.ClientConfig)
 	return splunkhec_config.SplunkHecClientArguments{
-		Endpoint:            cfg.ClientConfig.Endpoint,
-		Timeout:             cfg.ClientConfig.Timeout,
-		ReadBufferSize:      cfg.ClientConfig.ReadBufferSize,
-		WriteBufferSize:     cfg.ClientConfig.WriteBufferSize,
-		MaxIdleConns:        cfg.ClientConfig.MaxIdleConns,
-		MaxIdleConnsPerHost: cfg.ClientConfig.MaxIdleConnsPerHost,
+		Endpoint:        cfg.ClientConfig.Endpoint,
+		Timeout:         cfg.ClientConfig.Timeout,
+		ReadBufferSize:  cfg.ClientConfig.ReadBufferSize,
+		WriteBufferSize: cfg.ClientConfig.WriteBufferSize,
+		// The keepalive settings live in either the keepalive section or the deprecated fields.
+		MaxIdleConns:        keepalive.MaxIdleConns,
+		MaxIdleConnsPerHost: keepalive.MaxIdleConnsPerHost,
 		MaxConnsPerHost:     cfg.ClientConfig.MaxConnsPerHost,
-		IdleConnTimeout:     cfg.ClientConfig.IdleConnTimeout,
-		DisableKeepAlives:   cfg.ClientConfig.DisableKeepAlives,
-		InsecureSkipVerify:  cfg.ClientConfig.TLS.Insecure,
-		ForceAttemptHTTP2:   cfg.ClientConfig.ForceAttemptHTTP2,
+		IdleConnTimeout:     keepalive.IdleConnTimeout,
+		//nolint:staticcheck
+		DisableKeepAlives:  cfg.ClientConfig.DisableKeepAlives,
+		InsecureSkipVerify: cfg.ClientConfig.TLS.Insecure,
+		ForceAttemptHTTP2:  cfg.ClientConfig.ForceAttemptHTTP2,
 	}
 }
 

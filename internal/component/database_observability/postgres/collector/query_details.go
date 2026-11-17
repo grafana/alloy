@@ -3,6 +3,7 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -19,9 +20,7 @@ import (
 )
 
 const (
-	QueryDetailsCollector      = "query_details"
-	OP_QUERY_ASSOCIATION       = "query_association"
-	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
+	QueryDetailsCollector = "query_details"
 )
 
 var selectQueriesFromActivity = `
@@ -50,7 +49,9 @@ type QueryDetailsArguments struct {
 	CollectInterval           time.Duration
 	StatementsLimit           int
 	ExcludeDatabases          []string
+	IncludeDatabases          []string
 	ExcludeUsers              []string
+	IncludeUsers              []string
 	EntryHandler              loki.EntryHandler
 	TableRegistry             *TableRegistry
 	EnableErrorLogsProcessing bool
@@ -63,7 +64,9 @@ type QueryDetails struct {
 	collectInterval           time.Duration
 	statementsLimit           int
 	excludeDatabases          []string
+	includeDatabases          []string
 	excludeUsers              []string
+	includeUsers              []string
 	entryHandler              loki.EntryHandler
 	tableRegistry             *TableRegistry
 	enableErrorLogsProcessing bool
@@ -82,7 +85,9 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 		collectInterval:           args.CollectInterval,
 		statementsLimit:           args.StatementsLimit,
 		excludeDatabases:          args.ExcludeDatabases,
+		includeDatabases:          args.IncludeDatabases,
 		excludeUsers:              args.ExcludeUsers,
+		includeUsers:              args.IncludeUsers,
 		entryHandler:              args.EntryHandler,
 		tableRegistry:             args.TableRegistry,
 		enableErrorLogsProcessing: args.EnableErrorLogsProcessing,
@@ -139,9 +144,10 @@ func (c *QueryDetails) Stop() {
 }
 
 func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
-	excludedDatabasesClause := buildExcludedDatabasesClause(c.excludeDatabases)
-	excludedUsersClause := buildExcludedUsersClause(c.excludeUsers, "pg_get_userbyid(pg_stat_statements.userid)")
-	query := fmt.Sprintf(selectQueriesFromActivity, excludedDatabasesClause, excludedUsersClause, c.statementsLimit)
+	databasesClause := buildDatabaseFilterClause(c.excludeDatabases, c.includeDatabases, "pg_database.datname")
+	usersClause := buildUserFilterClause(c.excludeUsers, c.includeUsers, "pg_get_userbyid(pg_stat_statements.userid)")
+	// nosemgrep: go.lang.security.audit.database.string-formatted-query.string-formatted-query
+	query := fmt.Sprintf(selectQueriesFromActivity, databasesClause, usersClause, c.statementsLimit) // #nosec G201 -- filter values are quote-escaped before interpolation
 	rs, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to fetch statements from pg_stat_statements view: %w", err)
@@ -180,13 +186,13 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 
 		var body string
 		if fp != "" {
-			body = fmt.Sprintf(`queryid="%s" query_fingerprint="%s" querytext=%q datname="%s"`, queryID, fp, queryText, databaseName)
+			body = fmt.Sprintf(`queryid=%q query_fingerprint=%q querytext=%q datname=%q`, queryID, fp, queryText, databaseName)
 		} else {
-			body = fmt.Sprintf(`queryid="%s" querytext=%q datname="%s"`, queryID, queryText, databaseName)
+			body = fmt.Sprintf(`queryid=%q querytext=%q datname=%q`, queryID, queryText, databaseName)
 		}
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
-			OP_QUERY_ASSOCIATION,
+			database_observability.OP_QUERY_ASSOCIATION,
 			body,
 		)
 
@@ -196,19 +202,28 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 			continue
 		}
 
+		if len(tables) == 0 {
+			continue
+		}
+		parsedTables := make([]database_observability.ParsedTable, 0, len(tables))
 		for _, table := range tables {
 			validated := false
 			resolvedTable := table
 			if c.tableRegistry != nil {
 				resolvedTable, validated = c.tableRegistry.IsValid(databaseName, table)
 			}
-
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-				logging.LevelInfo,
-				OP_QUERY_PARSED_TABLE_NAME,
-				fmt.Sprintf(`queryid="%s" datname="%s" table="%s" validated="%t"`, queryID, databaseName, resolvedTable, validated),
-			)
+			parsedTables = append(parsedTables, database_observability.ParsedTable{Table: resolvedTable, Validated: validated})
 		}
+		tablesJSON, err := json.Marshal(parsedTables)
+		if err != nil {
+			c.logger.Error("failed to encode parsed tables", "err", err)
+			continue
+		}
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+			logging.LevelInfo,
+			database_observability.OP_QUERY_PARSED_TABLE_NAMES_V2,
+			fmt.Sprintf(`queryid=%q datname=%q tables=%q`, queryID, databaseName, tablesJSON),
+		)
 	}
 
 	if err := rs.Err(); err != nil {

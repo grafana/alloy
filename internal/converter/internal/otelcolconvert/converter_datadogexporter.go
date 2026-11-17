@@ -75,16 +75,19 @@ func toDatadogExporter(cfg *datadogOtelconfig.Config) *datadog.Arguments {
 }
 
 func toDatadogHTTPClientArguments(cfg confighttp.ClientConfig) datadog_config.DatadogClientArguments {
+	keepalive := effectiveClientKeepalive(cfg)
 	return datadog_config.DatadogClientArguments{
-		Timeout:             cfg.Timeout,
-		ReadBufferSize:      cfg.ReadBufferSize,
-		WriteBufferSize:     cfg.WriteBufferSize,
-		MaxIdleConns:        cfg.MaxIdleConns,
-		MaxIdleConnsPerHost: cfg.MaxIdleConnsPerHost,
+		Timeout:         cfg.Timeout,
+		ReadBufferSize:  cfg.ReadBufferSize,
+		WriteBufferSize: cfg.WriteBufferSize,
+		// The keepalive settings live in either the keepalive section or the deprecated fields.
+		MaxIdleConns:        keepalive.MaxIdleConns,
+		MaxIdleConnsPerHost: keepalive.MaxIdleConnsPerHost,
 		MaxConnsPerHost:     cfg.MaxConnsPerHost,
-		IdleConnTimeout:     cfg.IdleConnTimeout,
-		DisableKeepAlives:   cfg.DisableKeepAlives,
-		InsecureSkipVerify:  cfg.TLS.Insecure,
+		IdleConnTimeout:     keepalive.IdleConnTimeout,
+		//nolint:staticcheck
+		DisableKeepAlives:  cfg.DisableKeepAlives,
+		InsecureSkipVerify: cfg.TLS.Insecure,
 	}
 }
 

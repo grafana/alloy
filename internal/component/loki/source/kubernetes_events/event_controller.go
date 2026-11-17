@@ -64,7 +64,7 @@ func newEventController(opts eventControllerOptions) *eventController {
 	}
 }
 
-func (ctrl *eventController) Run(ctx context.Context) {
+func (ctrl *eventController) Run(ctx, _ context.Context) {
 	defer ctrl.handler.Stop()
 
 	ctrl.opts.Log.Info("watching events for namespace", "namespace", ctrl.opts.Namespace)
@@ -314,6 +314,9 @@ func appendTextMsg(msg *strings.Builder, fields map[string]any, key string, valu
 }
 
 func eventTimestamp(event *corev1.Event) time.Time {
+	if event.Series != nil && !event.Series.LastObservedTime.IsZero() {
+		return event.Series.LastObservedTime.Time
+	}
 	if !event.LastTimestamp.IsZero() {
 		return event.LastTimestamp.Time
 	}

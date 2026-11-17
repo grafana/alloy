@@ -99,54 +99,47 @@ func (t *tailer) Run(ctx context.Context) {
 
 	bo := backoff.New(ctx, retailBackoff)
 
-	handler := loki.NewEntryMutatorHandler(t.opts.Handler, func(e loki.Entry) loki.Entry {
-		// A log line got read, we can reset the backoff period now.
-		bo.Reset()
-		return e
-	})
-	defer handler.Stop()
-
 	for bo.Ongoing() {
-		err := t.tail(ctx, handler)
-		if err == nil {
-			// Check if we should stop tailing this container
-			// Fetch pod info once and use different logic for job pods vs regular pods
-			podInfo, podCheckErr := t.getPodInfo(ctx)
-			if podCheckErr != nil {
-				t.log.Warn("could not get pod info; will retry tailing", "err", podCheckErr)
-			} else {
-				isJob := isJobPod(podInfo)
-				if isJob {
-					// For job pods, use special grace period logic to ensure all logs are captured
-					finished, err := t.shouldStopTailingJobContainer(podInfo)
-					if finished {
-						t.log.Info("should stop tailing job container, stopping tailer")
-						return
-					} else if err != nil {
-						t.log.Warn("could not determine if should stop tailing job container; will retry tailing", "err", err)
-					}
-				} else {
-					// For regular pods, use standard termination logic
-					terminated, err := t.shouldStopTailingContainer(podInfo)
-					if terminated {
-						t.log.Info("container terminated, stopping tailer")
-						return
-					} else if err != nil {
-						t.log.Warn("could not determine if container terminated; will retry tailing", "err", err)
-					}
-				}
-			}
+		start := time.Now()
+		err := t.tail(ctx)
+		// Only short-lived connections can cause a tight reconnect loop, so a
+		// connection that outlived the maximum backoff resets it.
+		if time.Since(start) >= retailBackoff.MaxBackoff {
+			bo.Reset()
+		}
+		if err != nil {
+			t.target.reportError(err)
+			t.log.Warn("tailer stopped; will retry", "err", err)
+			bo.Wait()
+			continue
 		}
 
+		stop, err := t.shouldStop(ctx)
 		if err != nil {
-			t.target.Report(time.Now().UTC(), err)
-			t.log.Warn("tailer stopped; will retry", "err", err)
+			t.log.Warn("could not determine if tailer should stop; will retry tailing", "err", err)
+		}
+		if stop {
+			t.log.Info("container finished, stopping tailer")
+			return
 		}
 		bo.Wait()
 	}
 }
 
-func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
+// shouldStop reports whether no more logs will appear for the pod.
+func (t *tailer) shouldStop(ctx context.Context) (bool, error) {
+	podInfo, err := t.getPodInfo(ctx)
+	if err != nil {
+		return false, fmt.Errorf("get pod info: %w", err)
+	}
+	// Job pods use grace period logic to ensure all logs are captured.
+	if isJobPod(podInfo) {
+		return t.shouldStopTailingJobContainer(podInfo)
+	}
+	return t.shouldStopTailingContainer(podInfo)
+}
+
+func (t *tailer) tail(ctx context.Context) error {
 	// Set a maximum lifetime of the tail to ensure that connections are
 	// reestablished. This avoids an issue where the Kubernetes API server stops
 	// responding with new logs while the connection is kept open.
@@ -261,14 +254,18 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 
 	t.log.Info("opened log stream", "start time", lastReadTime)
 
-	return t.processLogStream(ctx, stream, handler, lastReadTime, positionsEnt, calc)
+	return t.processLogStream(ctx, stream, t.opts.Handler, lastReadTime, positionsEnt, calc)
 }
 
 // processLogStream reads log lines from a reader and processes them.
 // It returns when the context is done, the stream ends, or an error occurs.
-func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, handler loki.EntryHandler, lastReadTime time.Time, positionsEnt positions.Entry, calc *rollingAverageCalculator) error {
+func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, handler loki.EntryHandler, sinceTime time.Time, positionsEnt positions.Entry, calc *rollingAverageCalculator) error {
 	ch := handler.Chan()
 	reader := bufio.NewReader(stream)
+	lastReadTime := sinceTime
+	// A re-tail replays the lines at sinceTime that were already forwarded.
+	// Other lines can share that timestamp, so only skip as many as were sent.
+	replayed := t.target.entriesAt(sinceTime)
 	for {
 		line, err := reader.ReadString('\n')
 
@@ -278,13 +275,16 @@ func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, han
 			calc.AddTimestamp(time.Now())
 
 			entryTimestamp, entryLine := parseKubernetesLog(line)
-			// Skip only if the timestamp is strictly before lastReadTime.
-			// This allows multiple log lines with the same timestamp to be processed,
-			// which is common in Windows containers that log rapidly.
-			if entryTimestamp.Before(lastReadTime) {
+			// Skip only lines the API server re-sent from before the resume point
+			// (SinceTime has second precision). Do not compare against the previous
+			// line: stdout and stderr are stamped independently by the runtime.
+			if entryTimestamp.Before(sinceTime) {
 				continue
 			}
-			lastReadTime = entryTimestamp
+			if replayed > 0 && entryTimestamp.Equal(sinceTime) {
+				replayed--
+				continue
+			}
 
 			entry := loki.NewEntry(t.lset.Clone(), push.Entry{
 				Timestamp: entryTimestamp,
@@ -295,9 +295,14 @@ func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, han
 			case <-ctx.Done():
 				return nil
 			case ch <- entry:
-				// Save position after it's been sent over the channel.
-				t.opts.Positions.Put(positionsEnt.Path, positionsEnt.Labels, entryTimestamp.UnixMicro())
-				t.target.Report(entryTimestamp, nil)
+				// Save position after it's been sent over the channel. The saved
+				// position seeds sinceTime for the next tail, so it never moves
+				// backwards even when the stream is out of order.
+				if entryTimestamp.After(lastReadTime) {
+					lastReadTime = entryTimestamp
+				}
+				t.opts.Positions.Put(positionsEnt.Path, positionsEnt.Labels, lastReadTime.UnixMicro())
+				t.target.reportEntry(entryTimestamp)
 			}
 		}
 

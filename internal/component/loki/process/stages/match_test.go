@@ -1,262 +1,1032 @@
 package stages
 
 import (
+	"context"
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/stretchr/testify/assert"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 )
 
-var testMatchAlloy = `
-stage.json {
-		expressions = { "app" = "" }
-}
-
-stage.labels {
-		values = { "app" = "" }
-}
-
-stage.match {
-		selector = "{app=\"loki\"}"
-		stage.json {
-				expressions = { "msg" = "message" }
-		}
-		action = "keep"
-}
-
-stage.match {
-		pipeline_name = "app2"
-		selector = "{app=\"poki\"}"
-		stage.json {
-				expressions = { "msg" = "msg" }
-		}
-		action = "keep"
-}
-
-stage.output {
-		source = "msg"
-}
-`
-
-var testMatchLogLineApp1 = `
-{
-	"time":"2012-11-01T22:08:41+00:00",
-	"app":"loki",
-	"component": ["parser","type"],
-	"level" : "WARN",
-	"message" : "app1 log line"
-}
-`
-
-var testMatchLogLineApp2 = `
-{
-	"time":"2012-11-01T22:08:41+00:00",
-	"app":"poki",
-	"component": ["parser","type"],
-	"level" : "WARN",
-	"msg" : "app2 log line"
-}
-`
+var (
+	testMatchLogLineApp1 = `{"time":"2012-11-01T22:08:41+00:00", "app":"loki", "component": ["parser", "type"], "level": "WARN", "message": "app1 log line"}`
+	testMatchLogLineApp2 = `{"time":"2012-11-01T22:08:41+00:00", "app":"poki", "component": ["parser", "type"], "level": "WARN", "msg" : "app2 log line"}`
+)
 
 func TestMatchStage(t *testing.T) {
-	registry := prometheus.NewRegistry()
-	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger.Slog(), loadConfig(testMatchAlloy), registry, featuregate.StabilityGenerallyAvailable)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	in := make(chan Entry)
-
-	out := pl.Run(in)
-
-	in <- newEntry(nil, nil, testMatchLogLineApp1, time.Now())
-
-	e := <-out
-
-	assert.Equal(t, "app1 log line", e.Line)
-
-	// Process the second log line which should extract the output from the `msg` field
-	e.Line = testMatchLogLineApp2
-	e.Extracted = map[string]any{}
-	in <- e
-	e = <-out
-	assert.Equal(t, "app2 log line", e.Line)
-	close(in)
-}
-
-func TestMatcher(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		selector string
-		labels   map[string]string
-		action   string
-
-		shouldDrop bool
-		shouldRun  bool
-		wantErr    bool
-	}{
-		{`{foo="bar"} |= "foo"`, map[string]string{"foo": "bar"}, MatchActionKeep, false, true, false},
-		{`{foo="bar"} |~ "foo"`, map[string]string{"foo": "bar"}, MatchActionKeep, false, true, false},
-		{`{foo="bar"} |= "bar"`, map[string]string{"foo": "bar"}, MatchActionKeep, false, false, false},
-		{`{foo="bar"} |~ "bar"`, map[string]string{"foo": "bar"}, MatchActionKeep, false, false, false},
-		{`{foo="bar"} != "bar"`, map[string]string{"foo": "bar"}, MatchActionKeep, false, true, false},
-		{`{foo="bar"} !~ "bar"`, map[string]string{"foo": "bar"}, MatchActionKeep, false, true, false},
-		{`{foo="bar"} != "foo"`, map[string]string{"foo": "bar"}, MatchActionKeep, false, false, false},
-		{`{foo="bar"} |= "foo"`, map[string]string{"foo": "bar"}, MatchActionDrop, true, false, false},
-		{`{foo="bar"} |~ "foo"`, map[string]string{"foo": "bar"}, MatchActionDrop, true, false, false},
-		{`{foo="bar"} |= "bar"`, map[string]string{"foo": "bar"}, MatchActionDrop, false, false, false},
-		{`{foo="bar"} |~ "bar"`, map[string]string{"foo": "bar"}, MatchActionDrop, false, false, false},
-		{`{foo="bar"} != "bar"`, map[string]string{"foo": "bar"}, MatchActionDrop, true, false, false},
-		{`{foo="bar"} !~ "bar"`, map[string]string{"foo": "bar"}, MatchActionDrop, true, false, false},
-		{`{foo="bar"} != "foo"`, map[string]string{"foo": "bar"}, MatchActionDrop, false, false, false},
-		{`{foo="bar"} !~ "[]"`, map[string]string{"foo": "bar"}, MatchActionDrop, false, false, true},
-		{"foo", map[string]string{"foo": "bar"}, MatchActionKeep, false, false, true},
-		{"{}", map[string]string{"foo": "bar"}, MatchActionKeep, false, false, true},
-		{"{", map[string]string{"foo": "bar"}, MatchActionKeep, false, false, true},
-		{"", map[string]string{"foo": "bar"}, MatchActionKeep, false, true, true},
-		{`{foo="bar"}`, map[string]string{"foo": "bar"}, MatchActionKeep, false, true, false},
-		{`{foo=""}`, map[string]string{"foo": "bar"}, MatchActionKeep, false, false, false},
-		{`{foo=""}`, map[string]string{}, MatchActionKeep, false, true, false},
-		{`{foo!="bar"}`, map[string]string{"foo": "bar"}, MatchActionKeep, false, false, false},
-		{`{foo!="bar"}`, map[string]string{"foo": "bar"}, MatchActionDrop, false, false, false},
-		{`{foo="bar",bar!="test"}`, map[string]string{"foo": "bar"}, MatchActionKeep, false, true, false},
-		{`{foo="bar",bar!="test"}`, map[string]string{"foo": "bar"}, MatchActionDrop, true, false, false},
-		{`{foo="bar",bar!="test"}`, map[string]string{"foo": "bar", "bar": "test"}, MatchActionKeep, false, false, false},
-		{`{foo="bar",bar=~"te.*"}`, map[string]string{"foo": "bar", "bar": "test"}, MatchActionDrop, true, false, false},
-		{`{foo="bar",bar=~"te.*"}`, map[string]string{"foo": "bar", "bar": "test"}, MatchActionKeep, false, true, false},
-		{`{foo="bar",bar!~"te.*"}`, map[string]string{"foo": "bar", "bar": "test"}, MatchActionKeep, false, false, false},
-		{`{foo="bar",bar!~"te.*"}`, map[string]string{"foo": "bar", "bar": "test"}, MatchActionDrop, false, false, false},
-
-		{`{foo=""}`, map[string]string{}, MatchActionKeep, false, true, false},
-		{`{foo="bar"} |= "foo" | status >= 200`, map[string]string{"foo": "bar"}, MatchActionKeep, false, false, true},
-	}
-
-	for _, tt := range tests {
-		name := fmt.Sprintf("%s/%s/%s", tt.selector, tt.labels, tt.action)
-
-		t.Run(name, func(t *testing.T) {
-			// Build a match config which has a simple label stage that when matched will add the test_label to
-			// the labels in the pipeline.
-			var stages []StageConfig
-			if tt.action != MatchActionDrop {
-				stages = []StageConfig{
-					{
-						LabelsConfig: &LabelsConfig{
-							Values: map[string]*string{"test_label": nil},
-						},
-					},
-				}
-			}
-			matchConfig := MatchConfig{
-				tt.selector,
-				stages,
-				tt.action,
-				"",
-				"",
-			}
-			logger := util.TestAlloyLogger(t)
-			s, err := newMatcherStage(logger.Slog(), matchConfig, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("withMatcher() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if s != nil {
-				out := processEntries(s, newEntry(map[string]any{
-					"test_label": "unimportant value",
-				}, toLabelSet(tt.labels), "foo", time.Now()))
-
-				if tt.shouldDrop {
-					if len(out) != 0 {
-						t.Errorf("stage should have been dropped but got %v", out)
-					}
-					return
-				}
-				// test_label should only be in the label set if the stage ran
-				if _, ok := out[0].Labels["test_label"]; ok {
-					if !tt.shouldRun {
-						t.Error("stage ran but should have not")
-					}
-				}
-			}
-		})
-	}
-}
-
-func TestValidateMatcherConfig(t *testing.T) {
-	emptyStages := []StageConfig{}
-	defaultStage := []StageConfig{{MatchConfig: &MatchConfig{}}}
-	tests := []struct {
+	type testCase struct {
 		name     string
-		cfg      *MatchConfig
-		wantErr  bool
-		expected *MatchConfig
-	}{
-		{name: "pipeline name required", cfg: &MatchConfig{}, wantErr: true},
-		{name: "selector required", cfg: &MatchConfig{Selector: ""}, wantErr: true},
-		{name: "nil stages without dropping", cfg: &MatchConfig{PipelineName: "", Selector: `{app="foo"}`, Action: MatchActionKeep, Stages: nil}, wantErr: true},
-		{name: "empty stages without dropping", cfg: &MatchConfig{Selector: `{app="foo"}`, Action: MatchActionKeep, Stages: emptyStages}, wantErr: true},
-		{name: "stages with dropping", cfg: &MatchConfig{Selector: `{app="foo"}`, Action: MatchActionDrop, Stages: defaultStage}, wantErr: true},
-		{name: "empty stages dropping", cfg: &MatchConfig{Selector: `{app="foo"}`, Action: MatchActionDrop, Stages: emptyStages}},
-		{name: "stages without dropping", cfg: &MatchConfig{Selector: `{app="foo"}`, Action: MatchActionKeep, Stages: defaultStage}},
-		{name: "bad selector", cfg: &MatchConfig{Selector: `{app="foo}`, Action: MatchActionKeep, Stages: defaultStage}, wantErr: true},
-		{name: "bad action", cfg: &MatchConfig{Selector: `{app="foo}`, Action: "nope", Stages: emptyStages}, wantErr: true},
-		{
-			name:     "sets default action to keep",
-			cfg:      &MatchConfig{Selector: `{app="foo"}`, Stages: defaultStage},
-			wantErr:  false,
-			expected: &MatchConfig{Selector: `{app="foo"}`, Action: MatchActionKeep, Stages: defaultStage},
-		},
+		config   string
+		entries  []Entry
+		expected []Entry
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := validateMatcherConfig(tt.cfg)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("validateMatcherConfig() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if tt.expected != nil {
-				require.Equal(t, tt.expected, tt.cfg)
-			}
-		})
-	}
-}
 
-func TestMatchStage_NewPipelineErrorIsWrapped(t *testing.T) {
-	cfg := StageConfig{
-		MatchConfig: &MatchConfig{
-			Selector: `{app="loki"}`,
-			Action:   MatchActionKeep,
-			Stages: []StageConfig{
-				{RegexConfig: &RegexConfig{Expression: "[unclosed"}},
+	now := time.Now()
+
+	tests := []testCase{
+		{
+			name: "keep routes matching entries through the nested pipeline",
+			config: `
+			stage.json {
+				expressions = { "app" = "" }
+			}
+
+			stage.labels {
+				values = { "app" = "" }
+			}
+
+			stage.match {
+				selector = "{app=\"loki\"}"
+				action = "keep"
+
+				stage.json {
+					expressions = { "msg" = "message" }
+				}
+			}
+
+			stage.match {
+				selector = "{app=\"poki\"}"
+				action = "keep"
+
+				stage.json {
+					expressions = { "msg" = "msg" }
+				}
+			}
+
+			stage.output {
+				source = "msg"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, testMatchLogLineApp1, now),
+				newEntry(map[string]any{}, model.LabelSet{}, testMatchLogLineApp2, now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"app": "loki", "msg": "app1 log line"}, model.LabelSet{"app": "loki"}, "app1 log line", now),
+				newEntry(map[string]any{"app": "poki", "msg": "app2 log line"}, model.LabelSet{"app": "poki"}, "app2 log line", now),
+			},
+		},
+		{
+			name: `keep with matching selector and line filter runs the nested pipeline`,
+			config: `
+			stage.match {
+				selector = "{foo=\"bar\"} |= \"foo\""
+				action   = "keep"
+				stage.labels {
+					values = { "test_label" = "" }
+				}
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "bar"}, "foo", now),
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "bar"}, "baz", now),
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "different"}, "foo", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"foo": "bar", "test_label": "value"}, model.LabelSet{"foo": "bar", "test_label": "value"}, "foo", now),
+				newEntry(map[string]any{"foo": "bar", "test_label": "value"}, model.LabelSet{"foo": "bar"}, "baz", now),
+				newEntry(map[string]any{"foo": "different", "test_label": "value"}, model.LabelSet{"foo": "different"}, "foo", now),
+			},
+		},
+		{
+			name: `keep with matching selector and regex line filter runs the nested pipeline`,
+			config: `
+			stage.match {
+				selector = "{foo=\"bar\"} |~ \"foo\""
+				action   = "keep"
+				stage.labels {
+					values = { "test_label" = "" }
+				}
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "bar"}, "fooz", now),
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "bar"}, "baz", now),
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "different"}, "fooz", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"foo": "bar", "test_label": "value"}, model.LabelSet{"foo": "bar", "test_label": "value"}, "fooz", now),
+				newEntry(map[string]any{"foo": "bar", "test_label": "value"}, model.LabelSet{"foo": "bar"}, "baz", now),
+				newEntry(map[string]any{"foo": "different", "test_label": "value"}, model.LabelSet{"foo": "different"}, "fooz", now),
+			},
+		},
+		{
+			name: `drop with matching selector and line filter drops matching entries`,
+			config: `
+			stage.match {
+				selector = "{foo=\"bar\"} |= \"foo\""
+				action   = "drop"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{"foo": "bar"}, "foo", now),
+				newEntry(map[string]any{}, model.LabelSet{"foo": "bar"}, "baz", now),
+				newEntry(map[string]any{}, model.LabelSet{"foo": "different"}, "foo", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"foo": "bar"}, model.LabelSet{"foo": "bar"}, "baz", now),
+				newEntry(map[string]any{"foo": "different"}, model.LabelSet{"foo": "different"}, "foo", now),
+			},
+		},
+		{
+			name: `drop with matching selector and regex line filter drops matching entries`,
+			config: `
+			stage.match {
+				selector = "{foo=\"bar\"} |~ \"foo\""
+				action   = "drop"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{"foo": "bar"}, "fooz", now),
+				newEntry(map[string]any{}, model.LabelSet{"foo": "bar"}, "baz", now),
+				newEntry(map[string]any{}, model.LabelSet{"foo": "different"}, "fooz", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"foo": "bar"}, model.LabelSet{"foo": "bar"}, "baz", now),
+				newEntry(map[string]any{"foo": "different"}, model.LabelSet{"foo": "different"}, "fooz", now),
+			},
+		},
+		{
+			name: `keep with or line filter runs the nested pipeline when any operand matches`,
+			config: `
+			stage.match {
+				selector = "{foo=\"bar\"} |= \"foo\" or \"baz\""
+				action   = "keep"
+				stage.labels {
+					values = { "test_label" = "" }
+				}
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "bar"}, "foo", now),
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "bar"}, "baz", now),
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "bar"}, "other", now),
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "different"}, "foo", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"foo": "bar", "test_label": "value"}, model.LabelSet{"foo": "bar", "test_label": "value"}, "foo", now),
+				newEntry(map[string]any{"foo": "bar", "test_label": "value"}, model.LabelSet{"foo": "bar", "test_label": "value"}, "baz", now),
+				newEntry(map[string]any{"foo": "bar", "test_label": "value"}, model.LabelSet{"foo": "bar"}, "other", now),
+				newEntry(map[string]any{"foo": "different", "test_label": "value"}, model.LabelSet{"foo": "different"}, "foo", now),
+			},
+		},
+		{
+			name: `drop with or line filter drops entries when any operand matches`,
+			config: `
+			stage.match {
+				selector = "{foo=\"bar\"} |= \"foo\" or \"baz\""
+				action   = "drop"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{"foo": "bar"}, "foo", now),
+				newEntry(map[string]any{}, model.LabelSet{"foo": "bar"}, "baz", now),
+				newEntry(map[string]any{}, model.LabelSet{"foo": "bar"}, "other", now),
+				newEntry(map[string]any{}, model.LabelSet{"foo": "different"}, "foo", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"foo": "bar"}, model.LabelSet{"foo": "bar"}, "other", now),
+				newEntry(map[string]any{"foo": "different"}, model.LabelSet{"foo": "different"}, "foo", now),
+			},
+		},
+		{
+			name: `keep with negated line filter runs the nested pipeline only for lines without the string`,
+			config: `
+			stage.match {
+				selector = "{foo=\"bar\"} != \"foo\""
+				action   = "keep"
+				stage.labels {
+					values = { "test_label" = "" }
+				}
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "bar"}, "foo", now),
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "bar"}, "baz", now),
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "different"}, "baz", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"foo": "bar", "test_label": "value"}, model.LabelSet{"foo": "bar"}, "foo", now),
+				newEntry(map[string]any{"foo": "bar", "test_label": "value"}, model.LabelSet{"foo": "bar", "test_label": "value"}, "baz", now),
+				newEntry(map[string]any{"foo": "different", "test_label": "value"}, model.LabelSet{"foo": "different"}, "baz", now),
+			},
+		},
+		{
+			name: `drop with negated line filter drops only lines without the string`,
+			config: `
+			stage.match {
+				selector = "{foo=\"bar\"} != \"foo\""
+				action   = "drop"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{"foo": "bar"}, "foo", now),
+				newEntry(map[string]any{}, model.LabelSet{"foo": "bar"}, "baz", now),
+				newEntry(map[string]any{}, model.LabelSet{"foo": "different"}, "baz", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"foo": "bar"}, model.LabelSet{"foo": "bar"}, "foo", now),
+				newEntry(map[string]any{"foo": "different"}, model.LabelSet{"foo": "different"}, "baz", now),
+			},
+		},
+		{
+			name: `keep with negated regex line filter runs the nested pipeline only for lines the regex does not match`,
+			config: `
+			stage.match {
+				selector = "{foo=\"bar\"} !~ \"fo+\""
+				action   = "keep"
+				stage.labels {
+					values = { "test_label" = "" }
+				}
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "bar"}, "fooz", now),
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "bar"}, "baz", now),
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "different"}, "baz", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"foo": "bar", "test_label": "value"}, model.LabelSet{"foo": "bar"}, "fooz", now),
+				newEntry(map[string]any{"foo": "bar", "test_label": "value"}, model.LabelSet{"foo": "bar", "test_label": "value"}, "baz", now),
+				newEntry(map[string]any{"foo": "different", "test_label": "value"}, model.LabelSet{"foo": "different"}, "baz", now),
+			},
+		},
+		{
+			name: `drop with negated regex line filter drops only lines the regex does not match`,
+			config: `
+			stage.match {
+				selector = "{foo=\"bar\"} !~ \"fo+\""
+				action   = "drop"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{"foo": "bar"}, "fooz", now),
+				newEntry(map[string]any{}, model.LabelSet{"foo": "bar"}, "baz", now),
+				newEntry(map[string]any{}, model.LabelSet{"foo": "different"}, "baz", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"foo": "bar"}, model.LabelSet{"foo": "bar"}, "fooz", now),
+				newEntry(map[string]any{"foo": "different"}, model.LabelSet{"foo": "different"}, "baz", now),
+			},
+		},
+		{
+			name: `keep with negated or line filter runs the nested pipeline only for lines without any operand`,
+			config: `
+			stage.match {
+				selector = "{foo=\"bar\"} != \"foo\" or \"baz\""
+				action   = "keep"
+				stage.labels {
+					values = { "test_label" = "" }
+				}
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "bar"}, "foo", now),
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "bar"}, "baz", now),
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "bar"}, "other", now),
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "different"}, "other", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"foo": "bar", "test_label": "value"}, model.LabelSet{"foo": "bar"}, "foo", now),
+				newEntry(map[string]any{"foo": "bar", "test_label": "value"}, model.LabelSet{"foo": "bar"}, "baz", now),
+				newEntry(map[string]any{"foo": "bar", "test_label": "value"}, model.LabelSet{"foo": "bar", "test_label": "value"}, "other", now),
+				newEntry(map[string]any{"foo": "different", "test_label": "value"}, model.LabelSet{"foo": "different"}, "other", now),
+			},
+		},
+		{
+			name: `keep with chained line filters runs the nested pipeline only when all filters match`,
+			config: `
+			stage.match {
+				selector = "{foo=\"bar\"} |= \"a\" != \"b\""
+				action   = "keep"
+				stage.labels {
+					values = { "test_label" = "" }
+				}
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "bar"}, "a", now),
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "bar"}, "ab", now),
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "bar"}, "c", now),
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "different"}, "a", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"foo": "bar", "test_label": "value"}, model.LabelSet{"foo": "bar", "test_label": "value"}, "a", now),
+				newEntry(map[string]any{"foo": "bar", "test_label": "value"}, model.LabelSet{"foo": "bar"}, "ab", now),
+				newEntry(map[string]any{"foo": "bar", "test_label": "value"}, model.LabelSet{"foo": "bar"}, "c", now),
+				newEntry(map[string]any{"foo": "different", "test_label": "value"}, model.LabelSet{"foo": "different"}, "a", now),
+			},
+		},
+		{
+			name: `keep with empty label matcher runs the nested pipeline only for entries with the label absent`,
+			config: `
+			stage.match {
+				selector = "{foo=\"\"}"
+				action   = "keep"
+				stage.labels {
+					values = { "test_label" = "" }
+				}
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{}, "foo", now),
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "bar"}, "foo", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"test_label": "value"}, "foo", now),
+				newEntry(map[string]any{"foo": "bar", "test_label": "value"}, model.LabelSet{"foo": "bar"}, "foo", now),
+			},
+		},
+		{
+			name: `drop with empty label matcher drops entries only when the label is absent`,
+			config: `
+			stage.match {
+				selector = "{foo=\"\"}"
+				action   = "drop"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{}, "foo", now),
+				newEntry(map[string]any{}, model.LabelSet{"foo": "bar"}, "foo", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"foo": "bar"}, model.LabelSet{"foo": "bar"}, "foo", now),
+			},
+		},
+		{
+			name: `keep with negated label matcher runs the nested pipeline only for entries with a different label value`,
+			config: `
+			stage.match {
+				selector = "{foo!=\"bar\"}"
+				action   = "keep"
+				stage.labels {
+					values = { "test_label" = "" }
+				}
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "baz"}, "foo", now),
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "bar"}, "foo", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"foo": "bar", "test_label": "value"}, model.LabelSet{"foo": "bar"}, "foo", now),
+				newEntry(map[string]any{"foo": "baz", "test_label": "value"}, model.LabelSet{"foo": "baz", "test_label": "value"}, "foo", now),
+			},
+		},
+		{
+			name: `drop with negated label matcher drops entries with a different label value`,
+			config: `
+			stage.match {
+				selector = "{foo!=\"bar\"}"
+				action   = "drop"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{"foo": "baz"}, "foo", now),
+				newEntry(map[string]any{}, model.LabelSet{"foo": "bar"}, "foo", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"foo": "bar"}, model.LabelSet{"foo": "bar"}, "foo", now),
+			},
+		},
+		{
+			name: `keep with multiple label matchers runs the nested pipeline only when all matchers match`,
+			config: `
+			stage.match {
+				selector = "{foo=\"bar\",bar!=\"test\"}"
+				action   = "keep"
+				stage.labels {
+					values = { "test_label" = "" }
+				}
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "bar"}, "foo", now),
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "bar", "bar": "test"}, "foo", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"foo": "bar", "test_label": "value"}, model.LabelSet{"foo": "bar", "test_label": "value"}, "foo", now),
+				newEntry(map[string]any{"foo": "bar", "bar": "test", "test_label": "value"}, model.LabelSet{"foo": "bar", "bar": "test"}, "foo", now),
+			},
+		},
+		{
+			name: `drop with multiple label matchers drops entries only when all matchers match`,
+			config: `
+			stage.match {
+				selector = "{foo=\"bar\",bar!=\"test\"}"
+				action   = "drop"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{"foo": "bar"}, "foo", now),
+				newEntry(map[string]any{}, model.LabelSet{"foo": "bar", "bar": "test"}, "foo", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"foo": "bar", "bar": "test"}, model.LabelSet{"foo": "bar", "bar": "test"}, "foo", now),
+			},
+		},
+		{
+			name: `keep with regex label matcher runs the nested pipeline only when the label value matches the regex`,
+			config: `
+			stage.match {
+				selector = "{foo=\"bar\",bar=~\"te.*\"}"
+				action   = "keep"
+				stage.labels {
+					values = { "test_label" = "" }
+				}
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "bar", "bar": "test"}, "foo", now),
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "bar", "bar": "other"}, "foo", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"foo": "bar", "bar": "test", "test_label": "value"}, model.LabelSet{"foo": "bar", "bar": "test", "test_label": "value"}, "foo", now),
+				newEntry(map[string]any{"foo": "bar", "bar": "other", "test_label": "value"}, model.LabelSet{"foo": "bar", "bar": "other"}, "foo", now),
+			},
+		},
+		{
+			name: `drop with regex label matcher drops entries only when the label value matches the regex`,
+			config: `
+			stage.match {
+				selector = "{foo=\"bar\",bar=~\"te.*\"}"
+				action   = "drop"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{"foo": "bar", "bar": "test"}, "foo", now),
+				newEntry(map[string]any{}, model.LabelSet{"foo": "bar", "bar": "other"}, "foo", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"foo": "bar", "bar": "other"}, model.LabelSet{"foo": "bar", "bar": "other"}, "foo", now),
+			},
+		},
+		{
+			name: `keep with negated regex label matcher runs the nested pipeline only when the label value does not match the regex`,
+			config: `
+			stage.match {
+				selector = "{foo=\"bar\",bar!~\"te.*\"}"
+				action   = "keep"
+				stage.labels {
+					values = { "test_label" = "" }
+				}
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "bar", "bar": "other"}, "foo", now),
+				newEntry(map[string]any{"test_label": "value"}, model.LabelSet{"foo": "bar", "bar": "test"}, "foo", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"foo": "bar", "bar": "other", "test_label": "value"}, model.LabelSet{"foo": "bar", "bar": "other", "test_label": "value"}, "foo", now),
+				newEntry(map[string]any{"foo": "bar", "bar": "test", "test_label": "value"}, model.LabelSet{"foo": "bar", "bar": "test"}, "foo", now),
+			},
+		},
+		{
+			name: `drop with negated regex label matcher drops entries only when the label value does not match the regex`,
+			config: `
+			stage.match {
+				selector = "{foo=\"bar\",bar!~\"te.*\"}"
+				action   = "drop"
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{"foo": "bar", "bar": "other"}, "foo", now),
+				newEntry(map[string]any{}, model.LabelSet{"foo": "bar", "bar": "test"}, "foo", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"foo": "bar", "bar": "test"}, model.LabelSet{"foo": "bar", "bar": "test"}, "foo", now),
+			},
+		},
+		{
+			name: `keep seeds extracted with labels added before the match for the nested pipeline`,
+			config: `
+			stage.static_labels {
+				values = { "env" = "prod" }
+			}
+
+			stage.match {
+				selector = "{app=\"loki\"}"
+				action   = "keep"
+				stage.labels {
+					values = { "env_copy" = "env" }
+				}
+			}
+			`,
+			entries: []Entry{
+				newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "foo", now),
+				newEntry(map[string]any{}, model.LabelSet{"app": "other"}, "foo", now),
+			},
+			expected: []Entry{
+				newEntry(map[string]any{"app": "loki", "env": "prod"}, model.LabelSet{"app": "loki", "env": "prod", "env_copy": "prod"}, "foo", now),
+				newEntry(map[string]any{"app": "other"}, model.LabelSet{"app": "other", "env": "prod"}, "foo", now),
 			},
 		},
 	}
 
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			runPipelineTest(t, loadConfig(tt.config), tt.entries, tt.expected)
+		})
+	}
+}
+
+func TestMatchStageNestedPipelineError(t *testing.T) {
+	cfgs := loadConfig(`
+	stage.match {
+		selector = "{app=\"loki\"}"
+		action   = "keep"
+
+		stage.timestamp {
+			source = "timestamp"
+			format = ""
+		}
+	}
+	`)
+
 	logger := util.TestAlloyLogger(t)
-	_, err := New(logger.Slog(), cfg, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
+	next := func(_ context.Context, _ []Entry) error { return nil }
+	_, err := newStageWithOpts(cfgs[0], stageOpts{
+		slogger:      logger.Slog(),
+		registerer:   prometheus.NewRegistry(),
+		minStability: featuregate.StabilityGenerallyAvailable,
+		next:         next,
+	})
 	require.ErrorContains(t, err, "match stage failed to create pipeline")
 	require.ErrorContains(t, errors.Unwrap(err), "invalid stage config")
 }
 
-var testMatchNestedLimitAlloy = `
-stage.match {
-		selector = "{app=\"loki\"}"
-		action = "keep"
-		stage.limit {
-				rate  = 0.1
-				burst = 1
-				drop  = false
-		}
-}`
+// TestMatchStageOrder asserts that entries are forwarded in timestamp order
+// even though the stage runs the nested pipeline on only a subset of the batch.
+func TestMatchStageOrder(t *testing.T) {
+	now := time.Now()
 
-func TestMatchNestedLimitShutdown(t *testing.T) {
-	assertPipelineStopsPromptly(t, testMatchNestedLimitAlloy)
+	run := func(t *testing.T, cfgs []StageConfig, entries []Entry) []string {
+		var collected []Entry
+		next := func(_ context.Context, entries []Entry) error {
+			collected = append(collected, entries...)
+			return nil
+		}
+
+		p, err := newPipeline(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, next)
+		require.NoError(t, err)
+		require.NoError(t, p.process(context.Background(), entries))
+		p.stop()
+
+		got := make([]string, 0, len(collected))
+		for _, e := range collected {
+			got = append(got, e.Line)
+		}
+		return got
+	}
+
+	t.Run("line filter selector restores timestamp order", func(t *testing.T) {
+		cfgs := loadConfig(`
+		stage.match {
+			selector = "{app=\"loki\"} |= \"match\""
+
+			stage.replace {
+				expression = "(match)"
+				replace    = "matched"
+			}
+		}
+		`)
+
+		got := run(t, cfgs, []Entry{
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "match 1", now),
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "other 2", now.Add(1*time.Millisecond)),
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "match 3", now.Add(2*time.Millisecond)),
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "other 4", now.Add(3*time.Millisecond)),
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "match 5", now.Add(4*time.Millisecond)),
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "other 6", now.Add(5*time.Millisecond)),
+		})
+
+		require.Equal(t, []string{
+			"matched 1",
+			"other 2",
+			"matched 3",
+			"other 4",
+			"matched 5",
+			"other 6",
+		}, got)
+	})
+
+	t.Run("label matcher selector restores timestamp order", func(t *testing.T) {
+		// The nested stage rewrites app, so matched and bypassed entries end up
+		// in the same stream even though the selector has no line filter.
+		cfgs := loadConfig(`
+		stage.match {
+			selector = "{app=\"loki\"}"
+
+			stage.static_labels {
+				values = { "app" = "other" }
+			}
+		}
+		`)
+
+		got := run(t, cfgs, []Entry{
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "line 1", now),
+			newEntry(map[string]any{}, model.LabelSet{"app": "other"}, "line 2", now.Add(1*time.Millisecond)),
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "line 3", now.Add(2*time.Millisecond)),
+			newEntry(map[string]any{}, model.LabelSet{"app": "other"}, "line 4", now.Add(3*time.Millisecond)),
+		})
+
+		require.Equal(t, []string{
+			"line 1",
+			"line 2",
+			"line 3",
+			"line 4",
+		}, got)
+	})
+
+	t.Run("sorts entries when inner pipeline changes timestamp", func(t *testing.T) {
+		cfgs := loadConfig(`
+		stage.match {
+			selector = "{app=\"loki\"} |= \"match\""
+
+			stage.regex {
+				expression = "ts=(?P<ts>[0-9]+)"
+			}
+			stage.timestamp {
+				source = "ts"
+				format = "Unix"
+			}
+		}
+		`)
+
+		got := run(t, cfgs, []Entry{
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "match ts=2000", now),
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "other 1", now.Add(1*time.Millisecond)),
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "match ts=1000", now.Add(2*time.Millisecond)),
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "other 2", now.Add(3*time.Millisecond)),
+		})
+
+		require.Equal(t, []string{
+			"match ts=1000",
+			"match ts=2000",
+			"other 1",
+			"other 2",
+		}, got)
+	})
+
+	t.Run("entries sharing a timestamp keeps input order", func(t *testing.T) {
+		cfgs := loadConfig(`
+		stage.match {
+			selector = "{app=\"loki\"} |= \"match\""
+
+			stage.replace {
+				expression = "(match)"
+				replace    = "matched"
+			}
+		}
+		`)
+
+		got := run(t, cfgs, []Entry{
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "match 1", now),
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "other 2", now),
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "other 3", now.Add(1*time.Millisecond)),
+			newEntry(map[string]any{}, model.LabelSet{"app": "loki"}, "match 4", now.Add(1*time.Millisecond)),
+		})
+
+		require.Equal(t, []string{
+			"matched 1",
+			"other 2",
+			"other 3",
+			"matched 4",
+		}, got)
+	})
+}
+
+func TestValidateMatcherConfig(t *testing.T) {
+	type testCase struct {
+		name      string
+		config    string
+		expectErr bool
+	}
+
+	tests := []testCase{
+		{
+			name:      "empty config",
+			config:    ``,
+			expectErr: true,
+		},
+		{
+			name: "missing selector",
+			config: `
+				stage.label_drop {
+					values = ["unused"]
+				}
+			`,
+			expectErr: true,
+		},
+		{
+			name: "empty selector",
+			config: `
+				selector = ""
+				stage.label_drop {
+					values = ["unused"]
+				}
+			`,
+			expectErr: true,
+		},
+		{
+			name:      "keep action and no stages",
+			config:    `selector = "{app=\"foo\"}"`,
+			expectErr: true,
+		},
+		{
+			name: "keep action with stages",
+			config: `
+				selector = "{app=\"foo\"}"
+				action   = "keep"
+				stage.label_drop {
+					values = ["unused"]
+				}
+			`,
+		},
+		{
+			name: "drop action with stages",
+			config: `
+				selector = "{app=\"foo\"}"
+				action   = "drop"
+				stage.label_drop {
+					values = ["unused"]
+				}
+			`,
+			expectErr: true,
+		},
+		{
+			name: "drop action and no stages",
+			config: `
+				selector = "{app=\"foo\"}"
+				action   = "drop"
+			`,
+		},
+		{
+			name: "bad action",
+			config: `
+				selector = "{app=\"foo\"}"
+				action   = "nope"
+			`,
+			expectErr: true,
+		},
+		{
+			name: "empty action with stages, defaults to keep",
+			config: `
+				selector = "{app=\"foo\"}"
+				stage.label_drop {
+					values = ["unused"]
+				}
+			`,
+		},
+		{
+			name: "selector with unclosed quote",
+			config: `
+				selector = "{app=\"foo}"
+				stage.label_drop {
+					values = ["unused"]
+				}
+			`,
+			expectErr: true,
+		},
+		{
+			name: "selector missing braces",
+			config: `
+				selector = "foo"
+				stage.label_drop {
+					values = ["unused"]
+				}
+			`,
+			expectErr: true,
+		},
+		{
+			name: "selector with no matchers",
+			config: `
+				selector = "{}"
+				stage.label_drop {
+					values = ["unused"]
+				}
+			`,
+			expectErr: true,
+		},
+		{
+			name: "selector with unclosed brace",
+			config: `
+				selector = "{"
+				stage.label_drop {
+					values = ["unused"]
+				}
+			`,
+			expectErr: true,
+		},
+		{
+			name: "selector with invalid line filter regex",
+			config: `
+				selector = "{foo=\"bar\"} !~ \"[]\""
+				stage.label_drop {
+					values = ["unused"]
+				}
+			`,
+			expectErr: true,
+		},
+		{
+			name: "selector with line filter",
+			config: `
+				selector = "{foo=\"bar\"} |= \"foo\""
+				stage.label_drop {
+					values = ["unused"]
+				}
+			`,
+		},
+		{
+			name: "selector with or line filter",
+			config: `
+				selector = "{foo=\"bar\"} |= \"foo\" or \"baz\""
+				stage.label_drop {
+					values = ["unused"]
+				}
+			`,
+		},
+		{
+			name: "selector with unsupported parser and label filter",
+			config: `
+				selector = "{foo=\"bar\"} | json | status >= 200"
+				stage.label_drop {
+					values = ["unused"]
+				}
+			`,
+			expectErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var cfg MatchConfig
+			err := syntax.Unmarshal([]byte(tt.config), &cfg)
+			if tt.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func BenchmarkMatchStage(b *testing.B) {
+	const numEntries = 50
+
+	b.Run("all entries match", func(b *testing.B) {
+		cfgs := loadConfig(`
+		stage.match {
+			selector = "{app=\"bench\"}"
+
+			stage.label_drop {
+				values = ["unused"]
+			}
+		}
+		`)
+
+		entries := make([]push.Entry, numEntries)
+		for i := range entries {
+			entries[i] = push.Entry{Timestamp: time.Now(), Line: "level=info user=bob dur=1.5"}
+		}
+
+		batch := loki.NewBatch()
+		batch.Add(loki.NewStream(model.LabelSet{"app": "bench"}, entries...))
+
+		runPipelineBenchmark(b, cfgs, []loki.Batch{batch})
+	})
+
+	b.Run("no entries match", func(b *testing.B) {
+		cfgs := loadConfig(`
+		stage.match {
+			selector = "{app=\"none\"}"
+
+			stage.label_drop {
+				values = ["unused"]
+			}
+		}
+		`)
+
+		entries := make([]push.Entry, numEntries)
+		for i := range entries {
+			entries[i] = push.Entry{Timestamp: time.Now(), Line: "level=info user=bob dur=1.5"}
+		}
+
+		batch := loki.NewBatch()
+		batch.Add(loki.NewStream(model.LabelSet{"app": "bench"}, entries...))
+
+		runPipelineBenchmark(b, cfgs, []loki.Batch{batch})
+	})
+
+	b.Run("label matcher splits the batch", func(b *testing.B) {
+		cfgs := loadConfig(`
+		stage.match {
+			selector = "{app=\"bench\"}"
+
+			stage.label_drop {
+				values = ["unused"]
+			}
+		}
+		`)
+
+		// Split across two streams so the batch still holds numEntries in
+		// total and stays comparable to the other cases.
+		matching := make([]push.Entry, numEntries/2)
+		for i := range matching {
+			matching[i] = push.Entry{Timestamp: time.Now(), Line: "level=info user=bob dur=1.5"}
+		}
+
+		bypassed := make([]push.Entry, numEntries/2)
+		for i := range bypassed {
+			bypassed[i] = push.Entry{Timestamp: time.Now(), Line: "level=info user=bob dur=1.5"}
+		}
+
+		batch := loki.NewBatch()
+		batch.Add(loki.NewStream(model.LabelSet{"app": "bench"}, matching...))
+		batch.Add(loki.NewStream(model.LabelSet{"app": "other"}, bypassed...))
+
+		runPipelineBenchmark(b, cfgs, []loki.Batch{batch})
+	})
+
+	b.Run("line filter splits a stream", func(b *testing.B) {
+		cfgs := loadConfig(`
+		stage.match {
+			selector = "{app=\"bench\"} |= \"match\""
+
+			stage.label_drop {
+				values = ["unused"]
+			}
+		}
+		`)
+
+		entries := make([]push.Entry, numEntries)
+		for i := range entries {
+			entries[i] = push.Entry{Timestamp: time.Now(), Line: "other level=info user=bob dur=1.5"}
+			if i%2 == 0 {
+				entries[i].Line = "match level=info user=bob dur=1.5"
+			}
+		}
+
+		batch := loki.NewBatch()
+		batch.Add(loki.NewStream(model.LabelSet{"app": "bench"}, entries...))
+
+		runPipelineBenchmark(b, cfgs, []loki.Batch{batch})
+	})
+
+	b.Run("regex alternation line filter matches no entries", func(b *testing.B) {
+		cfgs := loadConfig(`
+		stage.match {
+			selector = "{app=\"bench\"} |~ \"(?i)error|warn|fatal\""
+
+			stage.label_drop {
+				values = ["unused"]
+			}
+		}
+		`)
+
+		entries := make([]push.Entry, numEntries)
+		for i := range entries {
+			entries[i] = push.Entry{Timestamp: time.Now(), Line: `level=info msg="request handled" method=GET path=/api/v1/items status=200 duration=15ms user=bob`}
+		}
+
+		batch := loki.NewBatch()
+		batch.Add(loki.NewStream(model.LabelSet{"app": "bench"}, entries...))
+
+		runPipelineBenchmark(b, cfgs, []loki.Batch{batch})
+	})
+
+	b.Run("regex alternation line filter matches all entries", func(b *testing.B) {
+		cfgs := loadConfig(`
+		stage.match {
+			selector = "{app=\"bench\"} |~ \"(?i)error|warn|fatal\""
+
+			stage.label_drop {
+				values = ["unused"]
+			}
+		}
+		`)
+
+		entries := make([]push.Entry, numEntries)
+		for i := range entries {
+			entries[i] = push.Entry{Timestamp: time.Now(), Line: `level=ERROR msg="request failed" method=GET path=/api/v1/items status=500 duration=15ms user=bob`}
+		}
+
+		batch := loki.NewBatch()
+		batch.Add(loki.NewStream(model.LabelSet{"app": "bench"}, entries...))
+
+		runPipelineBenchmark(b, cfgs, []loki.Batch{batch})
+	})
 }

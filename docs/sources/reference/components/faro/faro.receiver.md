@@ -108,7 +108,10 @@ The default value, `[]`, disables CORS support.
 To support requests from all origins, set `cors_allowed_origins` to `["*"]`.
 The `*` character indicates a wildcard.
 
-You can use the following headers for cross-domain requests: `Content-Type`, `Content-Encoding`, `Traceparent`, `X-API-Key`, `X-Faro-Session-Id`, or `X-Scope-OrgID`.
+You can use the following headers for cross-domain requests: `Content-Type`, `Content-Encoding`, `Idempotency-Key`, `Traceparent`, `X-API-Key`, `X-Faro-Session-Id`, or `X-Scope-OrgID`.
+
+Browser clients can read the `Retry-After` response header when it's present.
+`faro.receiver` doesn't generate this header or deduplicate requests based on `Idempotency-Key`.
 
 The server supports gzip-compressed request bodies.
 When a client sends a request with a `Content-Encoding: gzip` header, the server automatically decompresses the body before processing.
@@ -163,10 +166,57 @@ Sourcemaps are then used to transform file and line information from minified co
 When exceptions are sent to the `faro.receiver` component, it can download sourcemaps from the web application.
 You can disable this behavior by setting the `download` argument to `false`.
 
-The `download_from_origins` argument determines which origins a sourcemap may be downloaded from.
-The origin is attached to the URL that a browser is sending telemetry data from.
+{{< admonition type="warning" >}}
+By default, `faro.receiver` downloads sourcemaps by requesting any URL that a client includes in its telemetry.
+Those requests come from the host that runs {{< param "PRODUCT_NAME" >}}, so any client that reaches the receiver can make {{< param "PRODUCT_NAME" >}} send HTTP or HTTPS requests to any address the host can reach, including internal services.
+
+If the receiver accepts telemetry from the internet or from other networks that you don't trust, take one or more of the following steps:
+
+* Set `download` to `false`, and provide sourcemaps with [`location` blocks](#location).
+* Set `download_from_origins` so {{< param "PRODUCT_NAME" >}} downloads sourcemaps only for scripts served from your own origins.
+* Restrict outbound network access from the host that runs {{< param "PRODUCT_NAME" >}}, for example with a network policy or firewall rules, so that it can only reach the destinations it needs.
+{{< /admonition >}}
+
+{{< param "PRODUCT_NAME" >}} checks the script URL, the sourcemap URL that the script refers to, and every redirect against `download_from_origins`.
+
+The `download_from_origins` argument restricts sourcemap downloads to scripts served from the listed origins.
+The receiver compares the URL of the script file in each stack frame of the telemetry it receives with these origins.
+The client that sends the telemetry sets that URL.
 The default value, `["*"]`, enables downloading sourcemaps from all origins.
 The `*` character indicates a wildcard.
+
+Each origin has the form `[<SCHEME>://]<HOST>[:<PORT>][/<PATH>]`, and the receiver compares it with each part of the URL separately.
+If you omit the scheme, both `http` and `https` match.
+If you omit the port, only the default port for the scheme matches.
+To match other ports, add the port, for example `:8443` or `:*`.
+The host must match the whole host name, ignoring case.
+The path matches as a prefix of the URL path.
+Write the path the way it appears in the URL, with special characters percent-encoded, for example `/my%20app/`.
+`*` matches any characters and `?` matches a single character.
+In the host, `*` and `?` don't match `.`.
+For example, `http://10.0.0.*/` matches `http://10.0.0.1/app.js` but not `http://10.0.0.1.example.net/app.js`, and `https://*example.com/` matches `https://myexample.com/app.js` but not `https://cdn.example.com/app.js`.
+To match subdomains, start the host with `*.`.
+For example, `https://*.example.com/` matches `https://cdn.example.com/app.js` and `https://eu.cdn.example.com/app.js`, but not `https://example.com/app.js` or `https://example.net/cdn.example.com/app.js`.
+To match any host, use `*` as the whole host, for example `https://*:8443/`.
+
+The receiver ignores any origin that it can't parse and logs a warning that names the origin.
+An origin can't be parsed if it has no host, for example `""`, `https://`, or `/static/`, or if its IPv6 address is missing the closing `]` or has anything other than a port after the `]`.
+If every origin is ignored, the receiver doesn't download any sourcemaps.
+
+The following example downloads sourcemaps only for scripts served from `https://app.example.com/`:
+
+```alloy
+faro.receiver "default" {
+    sourcemaps {
+        download_from_origins = ["https://app.example.com/"]
+    }
+
+    output {
+        logs   = [loki.write.default.receiver]
+        traces = [otelcol.exporter.otlphttp.traces.input]
+    }
+}
+```
 
 By default, sourcemap downloads are subject to a timeout of `"1s"`, specified by the `download_timeout` argument.
 Setting `download_timeout` to `"0s"` disables timeouts.

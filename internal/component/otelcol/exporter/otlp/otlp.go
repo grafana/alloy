@@ -70,14 +70,12 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &otlpexporter.Config{
-		TimeoutConfig: otelpexporterhelper.TimeoutConfig{
-			Timeout: args.Timeout,
-		},
-		QueueConfig:  q,
-		RetryConfig:  *args.Retry.Convert(),
-		ClientConfig: *convertedClientArgs,
-	}, nil
+	cfg := otlpexporter.NewFactory().CreateDefaultConfig().(*otlpexporter.Config)
+	cfg.TimeoutConfig = otelpexporterhelper.TimeoutConfig{Timeout: args.Timeout}
+	cfg.QueueConfig = q
+	cfg.RetryConfig = *args.Retry.Convert()
+	cfg.ClientConfig = *convertedClientArgs
+	return cfg, nil
 }
 
 // Extensions implements exporter.Arguments.

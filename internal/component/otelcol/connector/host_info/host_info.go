@@ -50,7 +50,7 @@ var (
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
-		HostIdentifiers:      []string{"host.id"},
+		HostIdentifiers:      []string{"k8s.node.name", "host.id"},
 		MetricsFlushInterval: 60 * time.Second,
 	}
 	args.DebugMetrics.SetToDefault()

@@ -20,8 +20,6 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
-const OP_ERROR_MESSAGE = "error_message"
-
 const (
 	LogsCollector         = "logs"
 	expectedLogLinePrefix = "%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a"
@@ -97,7 +95,9 @@ type LogsArguments struct {
 	Logger                    *slog.Logger
 	Registry                  *prometheus.Registry
 	ExcludeDatabases          []string
+	IncludeDatabases          []string
 	ExcludeUsers              []string
+	IncludeUsers              []string
 	EnableErrorLogsProcessing bool
 	DB                        *sql.DB
 }
@@ -109,7 +109,9 @@ type Logs struct {
 
 	receiver                  loki.LogsReceiver
 	excludeDatabases          []string
+	includeDatabases          []string
 	excludeUsers              []string
+	includeUsers              []string
 	enableErrorLogsProcessing bool
 
 	db              *sql.DB
@@ -157,8 +159,10 @@ func NewLogs(args LogsArguments) (*Logs, error) {
 		entryHandler:              args.EntryHandler,
 		registry:                  args.Registry,
 		receiver:                  args.Receiver,
-		excludeDatabases:          args.ExcludeDatabases,
+		excludeDatabases:          database_observability.MergeExclusions(excludedDatabases, args.ExcludeDatabases),
+		includeDatabases:          args.IncludeDatabases,
 		excludeUsers:              args.ExcludeUsers,
+		includeUsers:              args.IncludeUsers,
 		enableErrorLogsProcessing: args.EnableErrorLogsProcessing,
 		db:                        args.DB,
 		pendingErrorTimeout:       5 * time.Second,
@@ -180,7 +184,7 @@ func (l *Logs) initMetrics() {
 			Name:      "pg_errors_total",
 			Help:      "Number of log lines with errors by severity and sql state code",
 		},
-		[]string{"severity", "sqlstate", "sqlstate_class", "datname", "user"},
+		[]string{"severity", "sqlstate", "sqlstate_class", labelDatname, "user"},
 	)
 
 	l.parseErrors = prometheus.NewCounter(
@@ -405,12 +409,18 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	if slices.Contains(l.excludeDatabases, database) {
 		return nil
 	}
+	if len(l.includeDatabases) > 0 && !slices.Contains(l.includeDatabases, database) {
+		return nil
+	}
 
 	beforeAt := line[:atIdx]
 	lastColonBeforeAt := strings.LastIndex(beforeAt, ":")
 	user := strings.TrimSpace(beforeAt[lastColonBeforeAt+1:])
 
 	if slices.Contains(l.excludeUsers, user) {
+		return nil
+	}
+	if len(l.includeUsers) > 0 && !slices.Contains(l.includeUsers, user) {
 		return nil
 	}
 
@@ -600,7 +610,7 @@ func (l *Logs) emitErrorEntry(p *pendingError) {
 	select {
 	case l.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 		logging.LevelInfo,
-		OP_ERROR_MESSAGE,
+		database_observability.OP_ERROR_MESSAGE,
 		body,
 		ts.UnixNano(),
 	):

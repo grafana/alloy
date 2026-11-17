@@ -1,6 +1,8 @@
 package kafka_test
 
 import (
+	"bytes"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -69,11 +71,12 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				ProtocolVersion: "2.0.0",
 				ClientID:        "otel-collector",
 				ConnIdleTimeout: 9 * time.Minute,
+				DialTimeout:     10 * time.Second,
 				Metadata: configkafka.MetadataConfig{
 					Full:            true,
 					RefreshInterval: 10 * time.Minute,
 					Retry: configkafka.MetadataRetryConfig{
-						Max:     3,
+						Max:     20,
 						Backoff: 250 * time.Millisecond,
 					},
 				},
@@ -204,6 +207,18 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}(),
 		},
 		{
+			testName: "Signal header",
+			cfg: `
+				protocol_version = "2.0.0"
+				signal_header = true
+			`,
+			expected: func() kafkaexporter.Config {
+				cfg := defaultExpected()
+				cfg.SignalHeader = true
+				return cfg
+			}(),
+		},
+		{
 			testName: "Message key from metadata key",
 			cfg: `
 				protocol_version = "2.0.0"
@@ -325,11 +340,11 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					MaxElapsedTime:      11 * time.Minute,
 				},
 				ClientConfig: configkafka.ClientConfig{
-					Brokers:                              []string{"redpanda:123"},
-					ProtocolVersion:                      "2.0.0",
-					ClientID:                             "my-client",
-					ConnIdleTimeout:                      9 * time.Minute,
-					ResolveCanonicalBootstrapServersOnly: true,
+					Brokers:         []string{"redpanda:123"},
+					ProtocolVersion: "2.0.0",
+					ClientID:        "my-client",
+					ConnIdleTimeout: 9 * time.Minute,
+					DialTimeout:     10 * time.Second,
 					Metadata: configkafka.MetadataConfig{
 						Full:            false,
 						RefreshInterval: 14 * time.Second,
@@ -339,9 +354,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						},
 					},
 					Authentication: configkafka.AuthenticationConfig{
-						PlainText: &configkafka.PlainTextConfig{
-							Username: "user",
-							Password: "pass",
+						SASL: &configkafka.SASLConfig{
+							Username:  "user",
+							Password:  "pass",
+							Mechanism: "PLAIN",
 						},
 					},
 				},
@@ -400,7 +416,6 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
-				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 		{
@@ -413,7 +428,6 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: false,
-				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 		{
@@ -426,7 +440,6 @@ func TestDebugMetricsConfig(t *testing.T) {
 			`,
 			expected: otelcolCfg.DebugMetricsArguments{
 				DisableHighCardinalityMetrics: true,
-				Level:                         otelcolCfg.LevelDetailed,
 			},
 		},
 	}
@@ -598,4 +611,70 @@ func TestProducerNewFields(t *testing.T) {
 		require.Equal(t, 209715200, otelObj.Producer.MaxMessageBytes)
 		require.Equal(t, 209715200, otelObj.Producer.MaxBrokerWriteBytes)
 	})
+}
+
+func TestArguments_LogDeprecations(t *testing.T) {
+	args := kafka.Arguments{ResolveCanonicalBootstrapServersOnly: true}
+
+	var buf bytes.Buffer
+	args.LogDeprecations(slog.New(slog.NewTextHandler(&buf, nil)))
+	require.NotEmpty(t, buf.String())
+
+	require.NotPanics(t, func() {
+		args.LogDeprecations(nil)
+	})
+}
+
+func TestArguments_SASLAndKerberosAreMutuallyExclusive(t *testing.T) {
+	tests := []struct {
+		testName string
+		cfg      string
+	}{
+		{
+			testName: "sasl and kerberos",
+			cfg: `
+				protocol_version = "2.0.0"
+
+				authentication {
+					sasl {
+						username  = "user"
+						password  = "pass"
+						mechanism = "PLAIN"
+					}
+					kerberos {
+						username     = "user"
+						service_name = "someservice"
+					}
+				}
+			`,
+		},
+		{
+			// plaintext also converts to upstream's sasl field (see
+			// KafkaAuthenticationArguments.Convert), so it's rejected too.
+			testName: "plaintext and kerberos",
+			cfg: `
+				protocol_version = "2.0.0"
+
+				authentication {
+					plaintext {
+						username = "user"
+						password = "pass"
+					}
+					kerberos {
+						username     = "user"
+						service_name = "someservice"
+					}
+				}
+			`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.testName, func(t *testing.T) {
+			var args kafka.Arguments
+			err := syntax.Unmarshal([]byte(tc.cfg), &args)
+
+			require.ErrorContains(t, err, "only one of sasl or kerberos authentication can be configured")
+		})
+	}
 }

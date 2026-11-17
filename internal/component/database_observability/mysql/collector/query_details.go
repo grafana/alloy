@@ -3,6 +3,7 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -18,9 +19,7 @@ import (
 )
 
 const (
-	QueryDetailsCollector      = "query_details"
-	OP_QUERY_ASSOCIATION       = "query_association"
-	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
+	QueryDetailsCollector = "query_details"
 )
 
 const selectQueryTablesSamples = `
@@ -40,7 +39,9 @@ type QueryDetailsArguments struct {
 	CollectInterval time.Duration
 	StatementsLimit int
 	ExcludeSchemas  []string
+	IncludeSchemas  []string
 	EntryHandler    loki.EntryHandler
+	TableRegistry   *TableRegistry
 
 	Logger *slog.Logger
 }
@@ -50,9 +51,11 @@ type QueryDetails struct {
 	collectInterval time.Duration
 	statementsLimit int
 	excludeSchemas  []string
+	includeSchemas  []string
 	entryHandler    loki.EntryHandler
 	sqlParser       parser.Parser
 	normalizer      *sqllexer.Normalizer
+	tableRegistry   *TableRegistry
 
 	logger  *slog.Logger
 	running *atomic.Bool
@@ -67,9 +70,11 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 		collectInterval: args.CollectInterval,
 		statementsLimit: args.StatementsLimit,
 		excludeSchemas:  args.ExcludeSchemas,
+		includeSchemas:  args.IncludeSchemas,
 		entryHandler:    args.EntryHandler,
 		sqlParser:       parser.NewTiDBSqlParser(),
 		normalizer:      sqllexer.NewNormalizer(sqllexer.WithCollectTables(true)),
+		tableRegistry:   args.TableRegistry,
 		logger:          args.Logger.With("collector", QueryDetailsCollector),
 		running:         &atomic.Bool{},
 	}
@@ -124,7 +129,8 @@ func (c *QueryDetails) Stop() {
 }
 
 func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
-	query := fmt.Sprintf(selectQueryTablesSamples, buildExcludedSchemasClause(c.excludeSchemas), c.statementsLimit)
+	// nosemgrep: go.lang.security.audit.database.string-formatted-query.string-formatted-query
+	query := fmt.Sprintf(selectQueryTablesSamples, buildSchemaFilterClause(c.excludeSchemas, c.includeSchemas, "schema_name"), c.statementsLimit) // #nosec G201 -- filter values are quote-escaped before interpolation
 	rs, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to fetch summary table samples: %w", err)
@@ -150,17 +156,32 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
-			OP_QUERY_ASSOCIATION,
-			fmt.Sprintf(`schema="%s" parseable="%t" digest="%s" digest_text="%s"`, schema, parserErr == nil, digest, digestText),
+			database_observability.OP_QUERY_ASSOCIATION,
+			fmt.Sprintf(`schema=%q parseable="%t" digest=%q digest_text=%q`, schema, parserErr == nil, digest, digestText),
 		)
 
-		for _, table := range tables {
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-				logging.LevelInfo,
-				OP_QUERY_PARSED_TABLE_NAME,
-				fmt.Sprintf(`schema="%s" digest="%s" table="%s"`, schema, digest, table),
-			)
+		if len(tables) == 0 {
+			continue
 		}
+		parsedTables := make([]database_observability.ParsedTable, 0, len(tables))
+		for _, table := range tables {
+			validated := false
+			resolvedTable := table
+			if c.tableRegistry != nil {
+				resolvedTable, validated = c.tableRegistry.IsValid(schema, table)
+			}
+			parsedTables = append(parsedTables, database_observability.ParsedTable{Table: resolvedTable, Validated: validated})
+		}
+		tablesJSON, err := json.Marshal(parsedTables)
+		if err != nil {
+			c.logger.Error("failed to encode parsed tables", "err", err)
+			continue
+		}
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+			logging.LevelInfo,
+			database_observability.OP_QUERY_PARSED_TABLE_NAMES_V2,
+			fmt.Sprintf(`schema=%q digest=%q tables=%q`, schema, digest, tablesJSON),
+		)
 	}
 
 	if err := rs.Err(); err != nil {

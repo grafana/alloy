@@ -35,6 +35,10 @@ func (mockCluster) Ready() bool {
 	return true
 }
 
+func (mockCluster) Enabled() bool {
+	return true
+}
+
 func (mockCluster) Observe(ckit.Observer) {
 	// no-op
 }

@@ -72,13 +72,13 @@ func (args *Arguments) Validate() error {
 
 // Convert implements processor.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	return &batchprocessor.Config{
-		Timeout:                  args.Timeout,
-		SendBatchSize:            args.SendBatchSize,
-		SendBatchMaxSize:         args.SendBatchMaxSize,
-		MetadataKeys:             args.MetadataKeys,
-		MetadataCardinalityLimit: args.MetadataCardinalityLimit,
-	}, nil
+	cfg := batchprocessor.NewFactory().CreateDefaultConfig().(*batchprocessor.Config)
+	cfg.Timeout = args.Timeout
+	cfg.SendBatchSize = args.SendBatchSize
+	cfg.SendBatchMaxSize = args.SendBatchMaxSize
+	cfg.MetadataKeys = args.MetadataKeys
+	cfg.MetadataCardinalityLimit = args.MetadataCardinalityLimit
+	return cfg, nil
 }
 
 // Extensions implements processor.Arguments.

@@ -3,6 +3,7 @@ package processor_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/processor"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/stretchr/testify/require"
@@ -90,6 +92,64 @@ func TestProcessor(t *testing.T) {
 	}()
 
 	require.NoError(t, waitTracesTrigger.Wait(time.Second), "consumer did not get invoked")
+}
+
+// TestProcessor_StabilityValidation checks that Update rejects Arguments
+// that implement otelcol.StabilityValidator and require a higher stability
+// level than the component was configured with. New calls Update
+// internally, so this covers both initial build and later config changes.
+func TestProcessor_StabilityValidation(t *testing.T) {
+	ctx := componenttest.TestContext(t)
+
+	reg := component.Registration{
+		Name:    "testcomponent",
+		Args:    fakeStabilityArgs{},
+		Exports: otelcol.ConsumerExports{},
+		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
+			factory := otelprocessor.NewFactory(
+				otelcomponent.MustNewType("testcomponent"),
+				func() otelcomponent.Config { return &struct{}{} },
+				otelprocessor.WithTraces(func(
+					_ context.Context,
+					_ otelprocessor.Settings,
+					_ otelcomponent.Config,
+					_ otelconsumer.Traces,
+				) (otelprocessor.Traces, error) {
+
+					return &fakeProcessor{}, nil
+				}, otelcomponent.StabilityLevelUndefined),
+			)
+			return processor.New(opts, factory, args.(processor.Arguments))
+		},
+	}
+
+	atGA := func(opts component.Options) component.Options {
+		opts.MinStability = featuregate.StabilityGenerallyAvailable
+		return opts
+	}
+	atExperimental := func(opts component.Options) component.Options {
+		opts.MinStability = featuregate.StabilityExperimental
+		return opts
+	}
+
+	args := fakeStabilityArgs{
+		fakeProcessorArgs:   fakeProcessorArgs{Output: &otelcol.ConsumerArguments{}},
+		RequireExperimental: true,
+	}
+
+	t.Run("rejected below the required stability level", func(t *testing.T) {
+		controller := componenttest.NewControllerFromReg(util.TestLogger(t), reg)
+		err := controller.Run(ctx, args, atGA)
+		require.ErrorContains(t, err, "experimental")
+	})
+
+	t.Run("allowed at the required stability level", func(t *testing.T) {
+		controller := componenttest.NewControllerFromReg(util.TestLogger(t), reg)
+		go func() {
+			_ = controller.Run(ctx, args, atExperimental)
+		}()
+		require.NoError(t, controller.WaitRunning(time.Second))
+	})
 }
 
 type testEnvironment struct {
@@ -176,6 +236,22 @@ func (fa fakeProcessorArgs) DebugMetricsConfig() otelcolCfg.DebugMetricsArgument
 	var dma otelcolCfg.DebugMetricsArguments
 	dma.SetToDefault()
 	return dma
+}
+
+// fakeStabilityArgs adds a RequireExperimental toggle to fakeProcessorArgs so
+// tests can exercise the otelcol.StabilityValidator hook in Processor.Update.
+type fakeStabilityArgs struct {
+	fakeProcessorArgs
+	RequireExperimental bool
+}
+
+var _ otelcol.StabilityValidator = fakeStabilityArgs{}
+
+func (fa fakeStabilityArgs) ValidateStabilityLevel(minStability featuregate.Stability) error {
+	if fa.RequireExperimental && !minStability.Permits(featuregate.StabilityExperimental) {
+		return fmt.Errorf("this feature is experimental and requires setting the stability.level flag to experimental")
+	}
+	return nil
 }
 
 type fakeProcessor struct {

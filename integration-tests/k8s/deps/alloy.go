@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/grafana/alloy/integration-tests/k8s/harness"
@@ -19,13 +20,21 @@ type AlloyOptions struct {
 	// ConfigPath is an optional .alloy file. When set, mounted via a "alloy-config"
 	// ConfigMap and wired to the chart (alloy.configMap.{create,name,key}).
 	ConfigPath string
+	// ExtraFiles are added to the "alloy-config" ConfigMap next to the config,
+	// so Alloy sees each one as /etc/alloy/<base name>. Requires ConfigPath.
+	ExtraFiles []string
 	// ValuesPath is an optional helm values file applied to the Alloy chart.
 	ValuesPath string
+	// ForwardPorts are Service ports made reachable from the test via Endpoint.
+	// Ports other than alloy.listenPort must be exposed with alloy.extraPorts.
+	ForwardPorts []int
 }
 
 type Alloy struct {
-	opts      AlloyOptions
-	installed bool
+	opts             AlloyOptions
+	installed        bool
+	localPorts       map[int]string
+	stopPortForwards []func()
 }
 
 func NewAlloy(opts AlloyOptions) *Alloy {
@@ -44,8 +53,11 @@ func (a *Alloy) Install(ctx *harness.TestContext) error {
 		return fmt.Errorf("alloy release name is required")
 	}
 
+	if len(a.opts.ExtraFiles) > 0 && a.opts.ConfigPath == "" {
+		return fmt.Errorf("alloy extra files require a config path")
+	}
 	if a.opts.ConfigPath != "" {
-		if err := createAlloyConfigMap(a.opts.Namespace, a.opts.ConfigPath); err != nil {
+		if err := createAlloyConfigMap(a.opts.Namespace, a.opts.ConfigPath, a.opts.ExtraFiles); err != nil {
 			return err
 		}
 	}
@@ -93,6 +105,17 @@ func (a *Alloy) Install(ctx *harness.TestContext) error {
 	}
 	a.installed = true
 
+	a.localPorts = make(map[int]string, len(a.opts.ForwardPorts))
+	for _, port := range a.opts.ForwardPorts {
+		localPort, stop, pfErr := startPortForwardWithRetries(a.opts.Namespace, a.opts.Release, 5, strconv.Itoa(port))
+		if pfErr != nil {
+			a.Cleanup()
+			return pfErr
+		}
+		a.localPorts[port] = localPort
+		a.stopPortForwards = append(a.stopPortForwards, stop)
+	}
+
 	ctx.AddDiagnosticHook("alloy logs", func(c context.Context) error {
 		return harness.RunDiagnosticCommands(c, [][]string{
 			{"kubectl", "--namespace", a.opts.Namespace, "logs", "-l", "app.kubernetes.io/name=alloy", "--all-containers=true", "--tail", "200"},
@@ -101,7 +124,23 @@ func (a *Alloy) Install(ctx *harness.TestContext) error {
 	return nil
 }
 
+// Endpoint returns a URL for path on the given Service port. Fails if port is
+// not in ForwardPorts.
+func (a *Alloy) Endpoint(port int, path string) (string, error) {
+	localPort, ok := a.localPorts[port]
+	if !ok {
+		return "", fmt.Errorf("alloy port %d is not in ForwardPorts", port)
+	}
+	return "http://localhost:" + localPort + path, nil
+}
+
 func (a *Alloy) Cleanup() {
+	for _, stop := range a.stopPortForwards {
+		_ = util.Step("stop alloy port-forward", func() error {
+			stop()
+			return nil
+		})
+	}
 	if !a.installed {
 		return
 	}
@@ -125,16 +164,25 @@ func (a *Alloy) Cleanup() {
 }
 
 // createAlloyConfigMap creates the "alloy-config" ConfigMap with key
-// "config.alloy" sourced from configPath. Fails if it already exists.
-func createAlloyConfigMap(namespace, configPath string) error {
+// "config.alloy" sourced from configPath, plus one key per extra file named
+// after its base name. Fails if it already exists.
+func createAlloyConfigMap(namespace, configPath string, extraFiles []string) error {
 	absConfigPath, err := filepath.Abs(configPath)
 	if err != nil {
 		return fmt.Errorf("resolve alloy config path: %w", err)
 	}
-	if err := harness.RunCommand("kubectl", "create", "configmap", "alloy-config",
+	args := []string{"create", "configmap", "alloy-config",
 		"--namespace", namespace,
-		"--from-file=config.alloy="+absConfigPath,
-	); err != nil {
+		"--from-file=config.alloy=" + absConfigPath,
+	}
+	for _, f := range extraFiles {
+		absPath, err := filepath.Abs(f)
+		if err != nil {
+			return fmt.Errorf("resolve alloy extra file path: %w", err)
+		}
+		args = append(args, "--from-file="+filepath.Base(f)+"="+absPath)
+	}
+	if err := harness.RunCommand("kubectl", args...); err != nil {
 		return fmt.Errorf("create alloy configmap: %w", err)
 	}
 	return nil

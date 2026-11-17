@@ -17,6 +17,7 @@ type Discovery struct {
 	ExcludeOtelInstrumentedServicesSpanMetrics bool                  `alloy:"exclude_otel_instrumented_services_span_metrics,attr,optional"`
 	ExcludeServices                            Services              `alloy:"exclude_services,block,optional"`
 	ExcludedLinuxSystemPaths                   []string              `alloy:"excluded_linux_system_paths,attr,optional"`
+	InstrumentAllLocal                         bool                  `alloy:"instrument_all_local,attr,optional"`
 	Instrument                                 Services              `alloy:"instrument,block,optional"`
 	MinProcessAge                              time.Duration         `alloy:"min_process_age,attr,optional"`
 	PollInterval                               time.Duration         `alloy:"poll_interval,attr,optional"`
@@ -24,7 +25,7 @@ type Discovery struct {
 	RouteHarvesterTimeout                      time.Duration         `alloy:"route_harvester_timeout,attr,optional"`
 	Services                                   Services              `alloy:"services,block,optional"`
 	SkipGoSpecificTracers                      bool                  `alloy:"skip_go_specific_tracers,attr,optional"`
-	Survey                                     Services              `alloy:"survey,block,optional"`
+	Survey                                     SurveyServices        `alloy:"survey,block,optional"`
 }
 
 type EBPFBufferSizes struct {
@@ -160,20 +161,24 @@ type RedisDBCacheConfig struct {
 }
 
 type EBPF struct {
-	BatchLength                         int                `alloy:"batch_length,attr,optional"`
-	BatchTimeout                        time.Duration      `alloy:"batch_timeout,attr,optional"`
-	BpfDebug                            bool               `alloy:"bpf_debug,attr,optional"`
-	BpfFsPath                           string             `alloy:"bpf_fs_path,attr,optional"`
-	BufferSizes                         EBPFBufferSizes    `alloy:"buffer_sizes,block,optional"`
-	ContextPropagation                  string             `alloy:"context_propagation,attr,optional"`
-	CouchbaseDbCacheSize                int                `alloy:"couchbase_db_cache_size,attr,optional"`
-	DisableBlackBoxCp                   bool               `alloy:"disable_black_box_cp,attr,optional"`
-	DnsRequestTimeout                   time.Duration      `alloy:"dns_request_timeout,attr,optional"`
-	ForceBpfMapReader                   string             `alloy:"force_bpf_map_reader,attr,optional"`
+	BatchLength          int             `alloy:"batch_length,attr,optional"`
+	BatchTimeout         time.Duration   `alloy:"batch_timeout,attr,optional"`
+	BpfDebug             bool            `alloy:"bpf_debug,attr,optional"`
+	BpfFsPath            string          `alloy:"bpf_fs_path,attr,optional"`
+	BufferSizes          EBPFBufferSizes `alloy:"buffer_sizes,block,optional"`
+	ContextPropagation   string          `alloy:"context_propagation,attr,optional"`
+	CouchbaseDbCacheSize int             `alloy:"couchbase_db_cache_size,attr,optional"`
+	DisableBlackBoxCp    bool            `alloy:"disable_black_box_cp,attr,optional"`
+	DnsRequestTimeout    time.Duration   `alloy:"dns_request_timeout,attr,optional"`
+	ForceBpfMapReader    string          `alloy:"force_bpf_map_reader,attr,optional"`
+	// Pointer preserves an explicit zero, which disables Go HTTP client event deferral.
+	GoHTTPClientBufferTimeout           *time.Duration     `alloy:"go_http_client_buffer_timeout,attr,optional"`
 	HeuristicSQLDetect                  bool               `alloy:"heuristic_sql_detect,attr,optional"`
 	HighRequestVolume                   bool               `alloy:"high_request_volume,attr,optional"`
 	HTTPRequestTimeout                  time.Duration      `alloy:"http_request_timeout,attr,optional"`
 	InstrumentCuda                      int                `alloy:"instrument_cuda,attr,optional"`
+	KafkaConsumerGroupCacheSize         int                `alloy:"kafka_consumer_group_cache_size,attr,optional"`
+	KafkaConsumerGroupTTL               time.Duration      `alloy:"kafka_consumer_group_ttl,attr,optional"`
 	KafkaTopicUuidCacheSize             int                `alloy:"kafka_topic_uuid_cache_size,attr,optional"`
 	LogEnricher                         LogEnricherConfig  `alloy:"log_enricher,block,optional"`
 	MapsConfig                          EBPFMapsConfig     `alloy:"maps_config,block,optional"`
@@ -183,6 +188,7 @@ type EBPF struct {
 	MysqlPreparedStatementsCacheSize    int                `alloy:"mysql_prepared_statements_cache_size,attr,optional"`
 	OverrideBpfloopEnabled              bool               `alloy:"override_bpfloop_enabled,attr,optional"`
 	PayloadExtraction                   PayloadExtraction  `alloy:"payload_extraction,block,optional"`
+	PopulateTraceContext                bool               `alloy:"populate_trace_context,attr,optional"`
 	PostgresPreparedStatementsCacheSize int                `alloy:"postgres_prepared_statements_cache_size,attr,optional"`
 	ProtocolDebug                       bool               `alloy:"protocol_debug_print,attr,optional"`
 	RedisDbCache                        RedisDBCacheConfig `alloy:"redis_db_cache,block,optional"`
@@ -237,8 +243,38 @@ type Javaagent struct {
 }
 
 type JVMRuntimeMetrics struct {
+	// Deprecated: Add "application_runtime" to metrics.features instead. Beyla
+	// no longer has an enabled switch for JVM runtime metrics; this field is
+	// kept only so existing configs don't fail to parse, but has no effect.
 	Enabled          bool          `alloy:"enabled,attr,optional"`
 	SamplingInterval time.Duration `alloy:"sampling_interval,attr,optional"`
+}
+
+type DotnetRuntimeMetrics struct {
+	SamplingInterval time.Duration `alloy:"sampling_interval,attr,optional"`
+	Timeout          time.Duration `alloy:"timeout,attr,optional"`
+}
+
+type CloudMetadata struct {
+	ClusterName     string          `alloy:"cluster_name,attr,optional"`
+	Region          string          `alloy:"region,attr,optional"`
+	RefreshInterval time.Duration   `alloy:"refresh_interval,attr,optional"`
+	Route53         Route53Metadata `alloy:"route53,block,optional"`
+}
+
+type NameResolver struct {
+	Sources     []string      `alloy:"sources,attr,optional"`
+	CacheLen    int           `alloy:"cache_len,attr,optional"`
+	CacheExpiry time.Duration `alloy:"cache_expiry,attr,optional"`
+
+	// Deprecated: Use cloud_metadata.refresh_interval instead.
+	ECS   ECSNameResolver   `alloy:"ecs,block,optional"`
+	GCE   GCENameResolver   `alloy:"gce,block,optional"`
+	Azure AzureNameResolver `alloy:"azure,block,optional"`
+}
+
+type ECSNameResolver struct {
+	RefreshInterval time.Duration `alloy:"refresh_interval,attr,optional"`
 }
 
 type Nodejs struct {
@@ -284,4 +320,33 @@ type Stats struct {
 	GeoIp        GeoIP      `alloy:"geo_ip,block,optional"`
 	Print        bool       `alloy:"print_stats,attr,optional"`
 	ReverseDns   ReverseDNS `alloy:"reverse_dns,block,optional"`
+}
+
+// SurveyService adds socket eligibility to the common service selectors.
+type SurveyService struct {
+	Service    Service           `alloy:",squash"`
+	SocketApps SocketAppSelector `alloy:"socket_apps,block,optional"`
+}
+
+type SurveyServices []SurveyService
+
+type SocketAppSelector struct {
+	Enabled bool `alloy:"enabled,attr,optional"`
+	NonRoot bool `alloy:"non_root,attr,optional"`
+}
+
+type GCENameResolver struct {
+	ProjectID string `alloy:"project_id,attr,optional"`
+	Zone      string `alloy:"zone,attr,optional"`
+	Endpoint  string `alloy:"endpoint,attr,optional"`
+}
+
+type AzureNameResolver struct {
+	SubscriptionID string `alloy:"subscription_id,attr,optional"`
+	ResourceGroup  string `alloy:"resource_group,attr,optional"`
+}
+
+type Route53Metadata struct {
+	HostedZoneIDs   []string      `alloy:"hosted_zone_ids,attr,optional"`
+	RefreshInterval time.Duration `alloy:"refresh_interval,attr,optional"`
 }

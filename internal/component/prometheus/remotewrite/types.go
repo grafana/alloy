@@ -245,7 +245,7 @@ func (o *WALOptions) Validate() error {
 // Exports are the set of fields exposed by the prometheus.remote_write
 // component.
 type Exports struct {
-	Receiver storage.Appendable `alloy:"receiver,attr"`
+	Receiver storage.AppendableV2 `alloy:"receiver,attr"`
 }
 
 func convertConfigs(cfg Arguments) (*config.Config, error) {
@@ -503,6 +503,8 @@ type SigV4Config struct {
 	Profile            string            `alloy:"profile,attr,optional"`
 	RoleARN            string            `alloy:"role_arn,attr,optional"`
 	ExternalID         string            `alloy:"external_id,attr,optional"`
+	SessionName        string            `alloy:"session_name,attr,optional"`
+	Tags               map[string]string `alloy:"tags,attr,optional"`
 	UseFIPSSTSEndpoint bool              `alloy:"use_fips_sts_endpoint,attr,optional"`
 	ServiceName        string            `alloy:"service_name,attr,optional"`
 }
@@ -529,6 +531,8 @@ func (s *SigV4Config) toPrometheusType() *promsigv4.SigV4Config {
 		Profile:            s.Profile,
 		RoleARN:            s.RoleARN,
 		ExternalID:         s.ExternalID,
+		SessionName:        s.SessionName,
+		Tags:               s.Tags,
 		UseFIPSSTSEndpoint: s.UseFIPSSTSEndpoint,
 		ServiceName:        s.ServiceName,
 	}

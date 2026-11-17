@@ -93,10 +93,12 @@ Calculate name of image ID to use for "alloy.
 {{- $digest = printf "sha256:%s" $digest }}
 {{- end }}
 {{- printf "@%s" $digest }}
-{{- else if .Values.image.tag }}
-{{- printf ":%s" .Values.image.tag }}
 {{- else }}
-{{- printf ":%s" .Chart.AppVersion }}
+{{- $tag := .Values.image.tag | default .Chart.AppVersion }}
+{{- if .Values.image.distroless }}
+{{- $tag = printf "%s-distroless" $tag }}
+{{- end }}
+{{- printf ":%s" $tag }}
 {{- end }}
 {{- end }}
 

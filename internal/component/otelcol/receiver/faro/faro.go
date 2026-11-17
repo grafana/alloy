@@ -60,9 +60,9 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		return nil, err
 	}
 
-	return &faroreceiver.Config{
-		ServerConfig: *httpServerConfig,
-	}, nil
+	cfg := faroreceiver.NewFactory().CreateDefaultConfig().(*faroreceiver.Config)
+	cfg.ServerConfig = *httpServerConfig
+	return cfg, nil
 }
 
 // Extensions implements receiver.Arguments.

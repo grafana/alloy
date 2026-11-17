@@ -1,0 +1,32 @@
+{
+  "operation": "Grouping Operation",
+  "details": {
+    "estimatedRows": 0
+  },
+  "children": [
+    {
+      "operation": "Non-Unique Key Lookup",
+      "details": {
+        "estimatedRows": 41630,
+        "estimatedCost": 86283.02,
+        "alias": "s",
+        "accessType": "ref",
+        "keyUsed": "PRIMARY",
+        "joinAlgorithm": "nested_loop",
+        "condition": "( `employees` . `s` . `to_date` = date ? )"
+      },
+      "children": [
+        {
+          "operation": "Full Table Scan",
+          "details": {
+            "estimatedRows": 44260,
+            "estimatedCost": 45512.5,
+            "alias": "t",
+            "accessType": "all",
+            "condition": "( `employees` . `t` . `to_date` = date ? )"
+          }
+        }
+      ]
+    }
+  ]
+}

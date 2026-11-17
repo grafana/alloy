@@ -11,6 +11,7 @@ import (
 	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -63,7 +64,7 @@ func TestHealthCheck(t *testing.T) {
 		require.GreaterOrEqual(t, len(lokiEntries), 6)
 
 		for _, entry := range lokiEntries[:6] {
-			require.Equal(t, model.LabelSet{"op": OP_HEALTH_STATUS}, entry.Labels)
+			require.Equal(t, model.LabelSet{"op": database_observability.OP_HEALTH_STATUS}, entry.Labels)
 			require.Contains(t, entry.Line, `result="true"`)
 		}
 	})
@@ -108,7 +109,7 @@ func TestHealthCheck(t *testing.T) {
 				name:             "pg_stat_statements has no usable rows",
 				failingCheckName: "PgStatStatementsHasRows",
 				customSetup: func(mock sqlmock.Sqlmock) {
-					mock.ExpectQuery(pgStatStatementsHasRowsQuery(nil, nil)).
+					mock.ExpectQuery(pgStatStatementsHasRowsQuery(nil, nil, nil, nil)).
 						WillReturnRows(sqlmock.NewRows([]string{"exists"}).
 							AddRow(false))
 				},
@@ -207,7 +208,7 @@ func TestHealthCheck(t *testing.T) {
 				found := false
 				for _, entry := range lokiEntries {
 					if strings.Contains(entry.Line, tc.failingCheckName) {
-						require.Equal(t, model.LabelSet{"op": OP_HEALTH_STATUS}, entry.Labels)
+						require.Equal(t, model.LabelSet{"op": database_observability.OP_HEALTH_STATUS}, entry.Labels)
 						require.Contains(t, entry.Line, tc.expectedResult)
 						found = true
 						break
@@ -239,7 +240,7 @@ func TestHealthCheck(t *testing.T) {
 				"can_select_pg_stat_statements",
 				"sees_insufficient_privilege",
 			}).AddRow(true, true, true, false))
-		mock.ExpectQuery(pgStatStatementsHasRowsQuery([]string{"my_db"}, []string{"my_user"})).
+		mock.ExpectQuery(pgStatStatementsHasRowsQuery([]string{"my_db"}, nil, []string{"my_user"}, nil)).
 			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
 
 		lokiClient := loki.NewCollectingHandler()
@@ -315,7 +316,7 @@ func setupExpectQueryAssertions(checkName string, mock sqlmock.Sqlmock, customSe
 		{
 			name: "PgStatStatementsHasRows",
 			setup: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery(pgStatStatementsHasRowsQuery(nil, nil)).
+				mock.ExpectQuery(pgStatStatementsHasRowsQuery(nil, nil, nil, nil)).
 					WillReturnRows(sqlmock.NewRows([]string{"exists"}).
 						AddRow(true))
 			},

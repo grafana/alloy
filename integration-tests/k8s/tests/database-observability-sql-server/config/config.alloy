@@ -1,0 +1,57 @@
+logging {
+  level = "debug"
+}
+
+database_observability.sql_server "test" {
+  data_source_name = "sqlserver://monitoring_user:Monitoring_Password_1@mssql:1433?database=testdb&encrypt=disable"
+  forward_to       = [loki.write.loki.receiver]
+
+  query_metrics {
+    collect_interval = "1s"
+  }
+
+  query_samples {
+    collect_interval = "1s"
+  }
+
+  query_details {
+    collect_interval = "1s"
+  }
+
+  schema_details {
+    collect_interval = "1s"
+  }
+
+  explain_plans {
+    collect_interval = "1s"
+  }
+
+  health_check {
+    collect_interval = "1s"
+  }
+}
+
+prometheus.scrape "sql_server" {
+  targets         = database_observability.sql_server.test.targets
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+  scrape_interval = "1s"
+  scrape_timeout  = "500ms"
+}
+
+prometheus.remote_write "mimir" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+  }
+  external_labels = {
+    alloy_test_name = "database-observability-sql-server",
+  }
+}
+
+loki.write "loki" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+  external_labels = {
+    alloy_test_name = "database-observability-sql-server",
+  }
+}

@@ -11,10 +11,21 @@ type TestConfig struct {
 }
 
 func RunTest(ctx context.Context, schema TestSchema, cfg TestConfig) error {
+	if err := validateMocks(schema.Mocks); err != nil {
+		return err
+	}
+	if err := validateHTTPInputs(schema.Inputs.HTTP); err != nil {
+		return err
+	}
+	if err := validateSocketInputs(schema.Inputs.TCP, schema.Inputs.UDP); err != nil {
+		return err
+	}
+
 	alloy, err := harness.NewAlloy(harness.Config{
-		SinkID:   "pipelinetest.sink.out",
-		DataPath: cfg.DataPath,
-		Source:   withPrelude(schema),
+		SinkID:         "pipelinetest.sink.out",
+		DataPath:       cfg.DataPath,
+		Source:         withPrelude(schema),
+		LokiPipelineV2: schema.Flags.LokiPipelineV2,
 	})
 	if err != nil {
 		return err

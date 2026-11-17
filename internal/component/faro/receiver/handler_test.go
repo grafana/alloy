@@ -310,6 +310,107 @@ func TestCORSPreflightWithAllowedHeader(t *testing.T) {
 	}
 }
 
+func TestCORSFaroSDKIngestion(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		compressed bool
+		headers    string
+	}{
+		{
+			name:    "uncompressed",
+			headers: "content-type,idempotency-key,x-api-key,x-faro-session-id",
+		},
+		{
+			name:       "compressed",
+			compressed: true,
+			headers:    "content-encoding,content-type,idempotency-key,x-api-key,x-faro-session-id",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			out := &testExporter{name: "test"}
+			h := newHandler(util.TestAlloyLogger(t).Slog(), prometheus.NewRegistry(), []exporter{out})
+			var args ServerArguments
+			args.SetToDefault()
+			args.CORSAllowedOrigins = []string{"https://example.com"}
+			args.RateLimiting.Enabled = false
+			h.Update(args)
+
+			preflight := httptest.NewRequest(http.MethodOptions, "/collect", nil)
+			preflight.Header.Set("Origin", "https://example.com")
+			preflight.Header.Set("Access-Control-Request-Method", http.MethodPost)
+			preflight.Header.Set("Access-Control-Request-Headers", tc.headers)
+			preflightResponse := httptest.NewRecorder()
+			h.ServeHTTP(preflightResponse, preflight)
+			require.Equal(t, http.StatusNoContent, preflightResponse.Code)
+			require.Equal(t, "https://example.com", preflightResponse.Header().Get("Access-Control-Allow-Origin"))
+			for _, header := range strings.Split(tc.headers, ",") {
+				require.Contains(t, preflightResponse.Header().Get("Access-Control-Allow-Headers"), header)
+			}
+			require.Empty(t, out.payloads)
+
+			body := []byte(emptyPayload)
+			if tc.compressed {
+				var compressed bytes.Buffer
+				writer := gzip.NewWriter(&compressed)
+				_, err := writer.Write(body)
+				require.NoError(t, err)
+				require.NoError(t, writer.Close())
+				body = compressed.Bytes()
+			}
+			request := httptest.NewRequest(http.MethodPost, "/collect", bytes.NewReader(body))
+			request.Header.Set("Origin", "https://example.com")
+			request.Header.Set("Content-Type", "application/json")
+			request.Header.Set("Idempotency-Key", "faro-batch-id")
+			request.Header.Set("X-API-Key", "test-key")
+			request.Header.Set("X-Faro-Session-Id", "test-session")
+			if tc.compressed {
+				request.Header.Set("Content-Encoding", "gzip")
+			}
+			response := httptest.NewRecorder()
+			h.ServeHTTP(response, request)
+			require.Equal(t, http.StatusAccepted, response.Code)
+			require.Equal(t, "https://example.com", response.Header().Get("Access-Control-Allow-Origin"))
+			require.Len(t, out.payloads, 1)
+		})
+	}
+}
+
+func TestCORSExposesOptionalRetryAfter(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		retryAfter string
+	}{
+		{name: "absent"},
+		{name: "provided by middleware", retryAfter: "30"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			out := &testExporter{name: "test"}
+			h := newHandler(util.TestAlloyLogger(t).Slog(), prometheus.NewRegistry(), []exporter{out})
+			var args ServerArguments
+			args.SetToDefault()
+			args.CORSAllowedOrigins = []string{"https://example.com"}
+			args.RateLimiting.Enabled = false
+			h.Update(args)
+
+			request := httptest.NewRequest(http.MethodPost, "/collect", strings.NewReader(emptyPayload))
+			request.Header.Set("Origin", "https://example.com")
+			request.Header.Set("Content-Type", "application/json")
+			response := httptest.NewRecorder()
+			if tc.retryAfter != "" {
+				// An outer middleware or proxy may provide a hint; the receiver does not generate one.
+				response.Header().Set("Retry-After", tc.retryAfter)
+			}
+			h.ServeHTTP(response, request)
+			require.Equal(t, http.StatusAccepted, response.Code)
+			require.Equal(t, tc.retryAfter, response.Header().Get("Retry-After"))
+			require.Contains(t, response.Header().Get("Access-Control-Expose-Headers"), "Retry-After")
+			require.Len(t, out.payloads, 1)
+		})
+	}
+}
+
 func TestRateLimiter(t *testing.T) {
 	var (
 		exporter1 = &testExporter{"exporter1", false, nil}

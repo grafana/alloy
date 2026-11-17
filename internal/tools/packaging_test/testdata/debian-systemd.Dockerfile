@@ -1,11 +1,12 @@
 # Build a Debian image with systemd configured to test deb package installation.
 # See the `test-packages` make target and associated script for how this image is used.
-FROM debian:buster-20240612@sha256:58ce6f1271ae1c8a2006ff7d3e54e9874d839f573d8009c20154ad0f2fb0a225
-ENV container docker
-ENV LC_ALL C
-ENV DEBIAN_FRONTEND noninteractive
+FROM debian:12-slim@sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171
+ENV container=docker
+ENV LC_ALL=C
+ENV DEBIAN_FRONTEND=noninteractive
+# procps provides ps, used to assert which engine the service launched in testing
 RUN apt-get update \
-        && apt-get install -y systemd \
+        && apt-get install -y systemd procps \
         && apt-get clean \
         && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 RUN rm -f /lib/systemd/system/multi-user.target.wants/* \
@@ -16,5 +17,4 @@ RUN rm -f /lib/systemd/system/multi-user.target.wants/* \
         /lib/systemd/system/sysinit.target.wants/systemd-tmpfiles-setup* \
         /lib/systemd/system/systemd-update-utmp*
 
-VOLUME [ "/sys/fs/cgroup" ]
 CMD ["/lib/systemd/systemd"]

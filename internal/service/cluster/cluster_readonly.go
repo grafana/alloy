@@ -50,6 +50,10 @@ type Cluster interface {
 	// - there is a minimum size requirement and the cluster size is >= that size
 	// - there is a minimum size requirement and cluster size is too small, but the configured wait deadline has passed.
 	Ready() bool
+
+	// Enabled returns true if clustering is enabled for this instance of Alloy as a whole, as set
+	// by the --cluster.enabled flag.
+	Enabled() bool
 }
 
 // alloyCluster implements the Cluster interface and manages the admission control logic.
@@ -129,6 +133,10 @@ func (c *alloyCluster) Lookup(key shard.Key, replicationFactor int, op shard.Op)
 
 func (c *alloyCluster) Peers() []peer.Peer {
 	return c.sharder.Peers()
+}
+
+func (c *alloyCluster) Enabled() bool {
+	return c.opts.EnableClustering
 }
 
 func (c *alloyCluster) Ready() bool {

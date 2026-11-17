@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -19,16 +18,13 @@ import (
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/util"
-	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
-	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
-	"github.com/grafana/alloy/internal/component/pyroscope/write/promhttp2"
 	"github.com/grafana/dskit/backoff"
-	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/api/model/labelset"
 	"github.com/prometheus/client_golang/prometheus"
+	promconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -53,7 +49,7 @@ var (
 type Arguments struct {
 	ExternalLabels map[string]string  `alloy:"external_labels,attr,optional"`
 	Endpoints      []*EndpointOptions `alloy:"endpoint,block,optional"`
-	Tracing        TracingOptions     `alloy:"tracing,block,optional"`
+	Tracing        TracingOptions     `alloy:"tracing,block,optional"` // Intentionally undocumented: temporary troubleshooting hooks that may change or be removed.
 }
 
 type TracingOptions struct {
@@ -69,27 +65,25 @@ func (rc *Arguments) SetToDefault() {
 // EndpointOptions describes an individual location for where profiles
 // should be delivered to using the Pyroscope push API.
 type EndpointOptions struct {
-	Name                   string                   `alloy:"name,attr,optional"`
-	URL                    string                   `alloy:"url,attr"`
-	RemoteTimeout          time.Duration            `alloy:"remote_timeout,attr,optional"`
-	DebugInfoUploadTimeout time.Duration            `alloy:"debug_info_upload_timeout,attr,optional"`
-	Headers                map[string]string        `alloy:"headers,attr,optional"`
-	HTTPClientConfig       *config.HTTPClientConfig `alloy:",squash"`
-	MinBackoff             time.Duration            `alloy:"min_backoff_period,attr,optional"`  // start backoff at this level
-	MaxBackoff             time.Duration            `alloy:"max_backoff_period,attr,optional"`  // increase exponentially to this level
-	MaxBackoffRetries      int                      `alloy:"max_backoff_retries,attr,optional"` // give up after this many; zero means infinite retries
-	RetryOnHTTP429         bool                     `alloy:"retry_on_http_429,attr,optional"`
+	Name              string                   `alloy:"name,attr,optional"`
+	URL               string                   `alloy:"url,attr"`
+	RemoteTimeout     time.Duration            `alloy:"remote_timeout,attr,optional"`
+	Headers           map[string]string        `alloy:"headers,attr,optional"`
+	HTTPClientConfig  *config.HTTPClientConfig `alloy:",squash"`
+	MinBackoff        time.Duration            `alloy:"min_backoff_period,attr,optional"`  // start backoff at this level
+	MaxBackoff        time.Duration            `alloy:"max_backoff_period,attr,optional"`  // increase exponentially to this level
+	MaxBackoffRetries int                      `alloy:"max_backoff_retries,attr,optional"` // give up after this many; zero means infinite retries
+	RetryOnHTTP429    bool                     `alloy:"retry_on_http_429,attr,optional"`
 }
 
 func GetDefaultEndpointOptions() EndpointOptions {
 	defaultEndpointOptions := EndpointOptions{
-		RemoteTimeout:          10 * time.Second,
-		DebugInfoUploadTimeout: 2 * time.Minute,
-		MinBackoff:             500 * time.Millisecond,
-		MaxBackoff:             5 * time.Minute,
-		MaxBackoffRetries:      10,
-		HTTPClientConfig:       config.CloneDefaultHTTPClientConfig(),
-		RetryOnHTTP429:         true,
+		RemoteTimeout:     10 * time.Second,
+		MinBackoff:        500 * time.Millisecond,
+		MaxBackoff:        5 * time.Minute,
+		MaxBackoffRetries: 10,
+		HTTPClientConfig:  config.CloneDefaultHTTPClientConfig(),
+		RetryOnHTTP429:    true,
 	}
 
 	return defaultEndpointOptions
@@ -115,16 +109,9 @@ type Component struct {
 	logger        *slog.Logger
 	tracer        trace.Tracer
 	onStateChange func(Exports)
-	cfg           Arguments
 	metrics       *metrics
 	userAgent     string
 	uid           string
-	dataPath      string
-
-	mu             sync.Mutex
-	receiver       *fanOutClient
-	runCtx         context.Context
-	receiverCancel context.CancelFunc
 }
 
 // Exports are the set of fields exposed by the pyroscope.write component.
@@ -139,12 +126,11 @@ func New(
 	reg prometheus.Registerer,
 	onStateChange func(Exports),
 	userAgent, uid string,
-	dataPath string,
 	c Arguments,
 ) (*Component, error) {
 
 	m := newMetrics(reg)
-	receiver, err := newFanOut(logger, tracer, c, m, userAgent, uid, dataPath)
+	receiver, err := newFanOut(logger, tracer, c, m, userAgent, uid)
 	if err != nil {
 		return nil, err
 	}
@@ -152,145 +138,64 @@ func New(
 	onStateChange(Exports{Receiver: receiver})
 
 	return &Component{
-		cfg:           c,
 		logger:        logger,
 		tracer:        tracer,
 		onStateChange: onStateChange,
 		metrics:       m,
 		userAgent:     userAgent,
 		uid:           uid,
-		dataPath:      dataPath,
-		receiver:      receiver,
 	}, nil
 }
 
 // Run implements Component.
 func (c *Component) Run(ctx context.Context) error {
-	var receiverCtx context.Context
-
-	c.mu.Lock()
-	c.runCtx = ctx
-	receiverCtx, c.receiverCancel = context.WithCancel(ctx)
-	c.receiver.Start(receiverCtx)
-	c.mu.Unlock()
-
 	<-ctx.Done()
-
-	c.mu.Lock()
-	c.receiverCancel()
-	c.receiver.Wait()
-	c.runCtx = nil
-	c.receiverCancel = nil
-	c.mu.Unlock()
-
 	return ctx.Err()
 }
 
 // Update implements Component.
 func (c *Component) Update(newConfig Arguments) error {
-	c.cfg = newConfig
-	receiver, err := newFanOut(c.logger, c.tracer, newConfig, c.metrics, c.userAgent, c.uid, c.dataPath)
+	receiver, err := newFanOut(c.logger, c.tracer, newConfig, c.metrics, c.userAgent, c.uid)
 	if err != nil {
 		return err
 	}
 
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.receiverCancel != nil {
-		c.receiverCancel()
-		c.receiver.Wait()
-	}
-
-	c.receiver = receiver
 	c.onStateChange(Exports{Receiver: receiver})
-
-	if c.runCtx != nil {
-		var receiverCtx context.Context
-		receiverCtx, c.receiverCancel = context.WithCancel(c.runCtx)
-		c.receiver.Start(receiverCtx)
-	}
-
 	return nil
 }
 
 type endpointClient struct {
 	options      *EndpointOptions
 	pushClient   pushv1connect.PusherServiceClient
-	debugInfo    *debuginfo.Uploader
 	ingestClient *http.Client
 }
 
 type fanOutClient struct {
-	endpoints  []*endpointClient
-	config     Arguments
-	metrics    *metrics
-	tracer     trace.Tracer
-	logger     *slog.Logger
-	uploaderWg sync.WaitGroup
-}
-
-func (f *fanOutClient) DebugInfoClients() []*debuginfoclient.Client {
-	var clients []*debuginfoclient.Client
-	for _, client := range f.endpoints {
-		clients = append(clients, client.debugInfo.DebugInfoClients()...)
-	}
-	return clients
-}
-
-func (f *fanOutClient) Upload(j debuginfo.UploadJob) {
-	for _, ec := range f.endpoints {
-		ec.debugInfo.Upload(j)
-	}
-}
-
-func (f *fanOutClient) Start(ctx context.Context) {
-	for _, ec := range f.endpoints {
-		u := ec.debugInfo
-		f.uploaderWg.Add(1)
-		go func(c *debuginfo.Uploader) {
-			defer f.uploaderWg.Done()
-			if err := c.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
-				f.logger.Error("debuginfo uploader error", "err", err)
-			}
-		}(u)
-	}
-}
-
-func (f *fanOutClient) Wait() {
-	f.uploaderWg.Wait()
+	endpoints []*endpointClient
+	config    Arguments
+	metrics   *metrics
+	tracer    trace.Tracer
+	logger    *slog.Logger
 }
 
 // newFanOut creates a new fan out client that will fan out to all endpoints.
-func newFanOut(logger *slog.Logger, tracer trace.Tracer, config Arguments, metrics *metrics, userAgent string, uid string, dataPath string) (*fanOutClient, error) {
+func newFanOut(logger *slog.Logger, tracer trace.Tracer, config Arguments, metrics *metrics, userAgent string, uid string) (*fanOutClient, error) {
 	endpoints := make([]*endpointClient, 0, len(config.Endpoints))
 
-	for i, endpoint := range config.Endpoints {
+	for _, endpoint := range config.Endpoints {
 		if endpoint.Headers == nil {
 			endpoint.Headers = map[string]string{}
 		}
 		endpoint.Headers["X-Alloy-Id"] = uid
-		httpClient, err := promhttp2.NewClientFromConfig(*endpoint.HTTPClientConfig.Convert(), endpoint.Name)
+		httpClient, err := promconfig.NewClientFromConfig(*endpoint.HTTPClientConfig.Convert(), endpoint.Name)
 		if err != nil {
 			return nil, err
 		}
 		configureTracing(config, httpClient)
 
-		endpointDataPath := filepath.Join(dataPath, fmt.Sprintf("endpoint-%d", i))
-
-		debugInfoConnect := debuginfov1alpha1connect.NewDebuginfoServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent))
-		dic := &debuginfoclient.Client{
-			DebuginfoServiceClient: debugInfoConnect,
-			HTTPClient:             httpClient,
-			BaseURL:                endpoint.URL,
-			UploadTimeout:          endpoint.DebugInfoUploadTimeout,
-		}
-		debugInfo := debuginfo.NewUploader(logger, dic, metrics.debugInfoUploadBytes, endpointDataPath)
-
 		endpoints = append(endpoints, &endpointClient{
 			options:      endpoint,
 			pushClient:   pushv1connect.NewPusherServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent)),
-			debugInfo:    debugInfo,
 			ingestClient: httpClient,
 		})
 	}

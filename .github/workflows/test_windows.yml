@@ -17,7 +17,7 @@ jobs:
   test_windows:
     if: ${{ contains(github.event.pull_request.labels.*.name, 'os:windows') || github.event_name == 'push' || github.event_name == 'merge_group' }}
     name: Test (Windows)
-    runs-on: windows-latest
+    runs-on: github-hosted-windows-x64-large
     steps:
     - name: Checkout code
       uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -32,4 +32,7 @@ jobs:
         install_args: go
 
     - name: Test
-      run: '& "C:/Program Files/git/bin/bash.exe" -c ''make GO_TAGS="nodocker nonetwork" test'''
+      # To prevent MinGW from running out of memory when linking large binaries:
+      # * Set --no-keep-memory on the linker so that it keeps memory low during linking at the cost of speed.
+      # * Set the -p flag to limit concurrent Go build/test jobs to reduce memory usage.
+      run: '& "C:/Program Files/git/bin/bash.exe" -c ''make GOFLAGS="-p=4" CGO_LDFLAGS="-Wl,--no-keep-memory" GO_TAGS="nodocker nonetwork" test'''

@@ -5,7 +5,6 @@ otelcol.receiver.otlp "default" {
 
 	http {
 		endpoint            = "localhost:4318"
-		idle_timeout        = "0s"
 		write_timeout       = "0s"
 		read_header_timeout = "0s"
 	}
@@ -272,6 +271,7 @@ otelcol.processor.tail_sampling "default" {
 	expected_new_traces_per_sec     = 10
 	sample_on_first_match           = true
 	drop_pending_traces_on_shutdown = true
+	num_shards                      = 1
 
 	output {
 		traces = [otelcol.exporter.otlp.default.input]

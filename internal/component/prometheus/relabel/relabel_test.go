@@ -8,6 +8,7 @@ import (
 
 	prom "github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
+	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/prometheus/prometheus/model/value"
@@ -64,10 +65,24 @@ func TestValidator(t *testing.T) {
 }
 
 func TestNil(t *testing.T) {
-	fanout := prometheus.NewInterceptor(nil, prometheus.WithAppendHook(func(ref storage.SeriesRef, _ labels.Labels, _ int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
-		require.True(t, false)
-		return ref, nil
-	}))
+	fanout := prometheus.NewInterceptor(nil,
+		prometheus.WithAppendHook(func(ref storage.SeriesRef, _ labels.Labels, _ int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
+			require.True(t, false)
+			return ref, nil
+		}),
+		prometheus.WithHistogramHook(func(ref storage.SeriesRef, _ labels.Labels, _ int64, _ *histogram.Histogram, _ *histogram.FloatHistogram, _ storage.Appender) (storage.SeriesRef, error) {
+			require.True(t, false)
+			return ref, nil
+		}),
+		prometheus.WithSTZeroSampleHook(func(ref storage.SeriesRef, _ labels.Labels, _, _ int64, _ storage.Appender) (storage.SeriesRef, error) {
+			require.True(t, false)
+			return ref, nil
+		}),
+		prometheus.WithHistogramSTZeroSampleHook(func(ref storage.SeriesRef, _ labels.Labels, _, _ int64, _ *histogram.Histogram, _ *histogram.FloatHistogram, _ storage.Appender) (storage.SeriesRef, error) {
+			require.True(t, false)
+			return ref, nil
+		}),
+	)
 	relabeller, err := New(component.Options{
 		ID:             "1",
 		Logger:         util.TestAlloyLogger(t).Slog(),
@@ -75,7 +90,7 @@ func TestNil(t *testing.T) {
 		Registerer:     prom.NewRegistry(),
 		GetServiceData: getServiceData,
 	}, Arguments{
-		ForwardTo: []storage.Appendable{fanout},
+		ForwardTo: []storage.AppendableV2{fanout},
 		MetricRelabelConfigs: []*alloy_relabel.Config{
 			{
 				SourceLabels: []string{"__address__"},
@@ -90,6 +105,14 @@ func TestNil(t *testing.T) {
 
 	lbls := labels.FromStrings("__address__", "localhost")
 	relabeller.relabel(0, lbls)
+
+	// Dropped series forward nothing, ST zero samples included.
+	app := relabeller.receiver.AppenderV2(t.Context())
+	_, err = app.Append(0, lbls, 10, 20, 1, nil, nil, storage.AppendV2Options{})
+	require.NoError(t, err)
+	_, err = app.Append(0, lbls, 10, 20, 0, &histogram.Histogram{Count: 1, Sum: 1}, nil, storage.AppendV2Options{})
+	require.NoError(t, err)
+	require.NoError(t, app.Commit())
 }
 
 // TestUpdateSwitchesCacheMode confirms that toggling cache_ttl on or
@@ -140,7 +163,7 @@ func TestCacheSizeMetric(t *testing.T) {
 			reg := prom.NewRegistry()
 			fanout := prometheus.NewInterceptor(nil)
 			args := tc.args
-			args.ForwardTo = []storage.Appendable{fanout}
+			args.ForwardTo = []storage.AppendableV2{fanout}
 			args.MetricRelabelConfigs = []*alloy_relabel.Config{
 				{
 					SourceLabels: []string{"__address__"},
@@ -246,7 +269,7 @@ func BenchmarkCacheParallel(b *testing.B) {
 	fanout := prometheus.NewInterceptor(nil, prometheus.WithAppendHook(func(ref storage.SeriesRef, l labels.Labels, _ int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
 		return ref, nil
 	}))
-	var entry storage.Appendable
+	var entry storage.AppendableV2
 	_, err := New(component.Options{
 		ID:     "1",
 		Logger: util.TestAlloyLogger(b).Slog(),
@@ -257,7 +280,7 @@ func BenchmarkCacheParallel(b *testing.B) {
 		Registerer:     prom.NewRegistry(),
 		GetServiceData: getServiceData,
 	}, Arguments{
-		ForwardTo: []storage.Appendable{fanout},
+		ForwardTo: []storage.AppendableV2{fanout},
 		MetricRelabelConfigs: []*alloy_relabel.Config{
 			{
 				SourceLabels: []string{"__address__"},
@@ -273,7 +296,7 @@ func BenchmarkCacheParallel(b *testing.B) {
 
 	lbls := labels.FromStrings("__address__", "localhost")
 	b.RunParallel(func(pb *testing.PB) {
-		app := entry.Appender(b.Context())
+		app := entry.(storage.Appendable).Appender(b.Context())
 		for pb.Next() {
 			app.Append(0, lbls, time.Now().UnixMilli(), 0)
 		}
@@ -286,7 +309,7 @@ func BenchmarkCache(b *testing.B) {
 		require.True(b, l.Has("new_label"))
 		return ref, nil
 	}))
-	var entry storage.Appendable
+	var entry storage.AppendableV2
 	_, err := New(component.Options{
 		ID:     "1",
 		Logger: util.TestAlloyLogger(b).Slog(),
@@ -297,7 +320,7 @@ func BenchmarkCache(b *testing.B) {
 		Registerer:     prom.NewRegistry(),
 		GetServiceData: getServiceData,
 	}, Arguments{
-		ForwardTo: []storage.Appendable{fanout},
+		ForwardTo: []storage.AppendableV2{fanout},
 		MetricRelabelConfigs: []*alloy_relabel.Config{
 			{
 				SourceLabels: []string{"__address__"},
@@ -312,7 +335,7 @@ func BenchmarkCache(b *testing.B) {
 	require.NoError(b, err)
 
 	lbls := labels.FromStrings("__address__", "localhost")
-	app := entry.Appender(b.Context())
+	app := entry.(storage.Appendable).Appender(b.Context())
 	for i := 0; i < b.N; i++ {
 		app.Append(0, lbls, time.Now().UnixMilli(), 0)
 	}
@@ -336,7 +359,7 @@ func BenchmarkCacheModes(b *testing.B) {
 				return ref, nil
 			}))
 			args := tc.args
-			args.ForwardTo = []storage.Appendable{fanout}
+			args.ForwardTo = []storage.AppendableV2{fanout}
 			args.MetricRelabelConfigs = []*alloy_relabel.Config{
 				{
 					SourceLabels: []string{"__address__"},
@@ -346,7 +369,7 @@ func BenchmarkCacheModes(b *testing.B) {
 					Action:       "replace",
 				},
 			}
-			var entry storage.Appendable
+			var entry storage.AppendableV2
 			_, err := New(component.Options{
 				ID:     "1",
 				Logger: util.TestAlloyLogger(b).Slog(),
@@ -361,7 +384,7 @@ func BenchmarkCacheModes(b *testing.B) {
 			lbls := labels.FromStrings("__address__", "localhost")
 			b.ResetTimer()
 			b.RunParallel(func(pb *testing.PB) {
-				app := entry.Appender(b.Context())
+				app := entry.(storage.Appendable).Appender(b.Context())
 				for pb.Next() {
 					app.Append(0, lbls, time.Now().UnixMilli(), 0)
 				}
@@ -377,7 +400,7 @@ func generateRelabel(t *testing.T) *Component {
 
 func generateRelabelWithArgs(t *testing.T, args Arguments) *Component {
 	fanout := prometheus.NewInterceptor(nil)
-	args.ForwardTo = []storage.Appendable{fanout}
+	args.ForwardTo = []storage.AppendableV2{fanout}
 	args.MetricRelabelConfigs = []*alloy_relabel.Config{
 		{
 			SourceLabels: []string{"__address__"},

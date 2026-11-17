@@ -34,7 +34,8 @@ You can use the following arguments with `database_observability.mysql`:
 | `targets`                                  | `list(map(string))`  | List of external targets to scrape.                                         |         | no       |
 | `disable_collectors`                       | `list(string)`       | A list of collectors to disable from the default set.                       |         | no       |
 | `enable_collectors`                        | `list(string)`       | A list of collectors to enable on top of the default set.                   |         | no       |
-| `exclude_schemas`                          | `list(string)`       | A list of schemas to exclude from monitoring.                               | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
+| `exclude_schemas`                          | `list(string)`       | A list of schemas to exclude from monitoring on top of the default exclusions. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
+| `include_schemas`                          | `list(string)`       | A list of schemas to monitor. When empty, all non-excluded schemas are monitored. Items in `include_schemas` override the default exclusions, but cannot overlap with `exclude_schemas` or system schemas (`mysql`, `performance_schema`, `sys`, `information_schema`). | `[]` | no       |
 | `allow_update_performance_schema_settings` | `boolean`            | Whether to allow updates to `performance_schema` settings in any collector. Enable this in conjunction with other collector-specific settings where required. | `false` | no       |
 
 The following collectors are configurable:
@@ -63,6 +64,7 @@ You can use the following blocks with `database_observability.mysql`:
 | `cloud_provider` > [`gcp`][gcp]                  | Provide GCP database host information.            | no       |
 | [`database_instance`][database_instance]                           | Define one database to monitor. Repeat the block to monitor several databases. | no       |
 | `database_instance` > [`cloud_provider`][cloud_provider]  | Provide Cloud Provider information for one database. | no       |
+| `database_instance` > [`rule`][rule]                      | Relabel the metrics and logs of one database.        | no       |
 | [`clustering`][clustering]                       | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no       |
 | [`setup_consumers`][setup_consumers]             | Configure the `setup_consumers` collector.        | no       |
 | [`setup_actors`][setup_actors]                   | Configure the `setup_actors` collector.           | no       |
@@ -79,6 +81,7 @@ You can use the following blocks with `database_observability.mysql`:
 [azure]: #azure
 [gcp]: #gcp
 [database_instance]: #database_instance
+[rule]: #rule
 [clustering]: #clustering
 [setup_consumers]: #setup_consumers
 [query_details]: #query_details
@@ -141,7 +144,7 @@ Each `database_instance` block must also point to a distinct server: two blocks 
 |--------------------|---------------------|-----------------------------------------------------------|---------|----------|
 | `data_source_name` | `secret`            | [Data Source Name][] for the MySQL server to connect to. |         | yes      |
 
-Each `database_instance` block can also contain a [`cloud_provider`][cloud_provider] block that applies to that database only.
+Each `database_instance` block can also contain a [`cloud_provider`][cloud_provider] block that applies to that database only, and [`rule`][rule] blocks that relabel the metrics and logs of that database only.
 
 The component always embeds a `mysqld_exporter` for each `database_instance` block and serves its metrics on the block's metrics path.
 Use the [`prometheus_exporter`][prometheus_exporter] block to configure it.
@@ -169,13 +172,32 @@ database_observability.mysql "pool" {
         arn = "orders-rds-db-arn"
       }
     }
+
+    rule {
+      target_label = "environment"
+      replacement  = "production"
+    }
   }
 
   database_instance "billing" {
     data_source_name = sys.env("BILLING_DSN")
+
+    rule {
+      target_label = "environment"
+      replacement  = "staging"
+    }
   }
 }
 ```
+
+In this example, the metrics and logs of the `orders` database carry `environment="production"`, and those of the `billing` database carry `environment="staging"`.
+
+### `rule`
+
+The `rule` block relabels the metrics and the logs of the `database_instance` block that contains it.
+Use it to tell the data of each monitored database apart, for example by environment, team, or tier.
+
+{{< docs/shared lookup="reference/components/rule-block-database-observability.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `clustering`
 
@@ -209,7 +231,7 @@ If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the blo
 | Name               | Type       | Description                                          | Default | Required |
 |--------------------|------------|------------------------------------------------------|---------|----------|
 | `collect_interval` | `duration` | How frequently to collect information from database. | `"1m"`  | no       |
-| `statements_limit` | `integer`  | Max number of recent queries to collect details for. | `250`   | no       |
+| `statements_limit` | `integer`  | Max number of recent queries to collect details for. | `100`   | no       |
 
 ### `schema_details`
 
@@ -247,7 +269,7 @@ The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they
 | `setup_consumers_check_interval` | `duration` | How frequently to check if `setup_consumers` are correctly enabled.            | `"1h"`  | no       |
 | `sample_min_duration`            | `duration` | Minimum duration for query samples to be collected. Set to "0s" to disable filtering and collect all samples regardless of their duration.| `"0s"`  | no       |
 | `wait_event_min_duration`        | `duration` | Minimum duration for a wait event to be collected. Set to "0s" to disable filtering and collect all wait events regardless of their duration.  | `"1us"` | no       |
-| `enable_pre_classified_wait_events` | `boolean` | When `true`, emits telemetry data with pre-classified wait event information. | `false` | no       |
+| `enable_pre_classified_wait_events` | `boolean` | When `true`, emits telemetry data with pre-classified wait event information. | `true` | no       |
 
 ### `setup_actors`
 
@@ -265,10 +287,19 @@ The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they
 
 ### `prometheus_exporter`
 
-The `prometheus_exporter` block configures the embedded mysqld_exporter scrapers.
+The `prometheus_exporter` block configures the embedded `mysqld_exporter` scrapers.
 The `data_source_name` is inherited from the parent block.
+By default, the embedded exporter enables only the collectors that Database Observability reads: `perf_schema.eventsstatements`, `global_status`, `global_variables`, and `slave_status`.
+The `limit` of the `perf_schema.eventsstatements` collector defaults to `100`.
+Use `enable_collectors` and `disable_collectors` to adjust this set, or `set_collectors` to replace it.
+The embedded `perf_schema.eventsstatements` collector inherits the top-level `exclude_schemas` list. Setting `prometheus_exporter > perf_schema.eventsstatements > exclude_schemas` is discouraged because it can cause the embedded exporter and the component's collectors to monitor different schemas.
+Configure the top-level `exclude_schemas` argument instead.
+The `include_schemas` argument applies only to `database_observability.mysql` collectors and isn't forwarded to the embedded `mysqld_exporter`.
 
 Refer to [`prometheus.exporter.mysql`](../../prometheus/prometheus.exporter.mysql/) docs for the full list of supported arguments and sub-blocks.
+
+Unlike in `prometheus.exporter.mysql`, the `text_limit` argument of the `perf_schema.eventsstatements` block defaults to `0`.
+The statement metrics then don't have a `digest_text` label, because the `query_details` collector sends the statement text as logs.
 
 ## Example
 
@@ -276,7 +307,6 @@ Refer to [`prometheus.exporter.mysql`](../../prometheus/prometheus.exporter.mysq
 database_observability.mysql "orders_db" {
   data_source_name = "user:pass@tcp(mysql:3306)/"
   forward_to       = [loki.relabel.orders_db.receiver]
-  targets          = prometheus.exporter.mysql.orders_db.targets
 
   enable_collectors = ["query_samples", "explain_plans"]
 
@@ -285,11 +315,6 @@ database_observability.mysql "orders_db" {
       arn = "your-rds-db-arn"
     }
   }
-}
-
-prometheus.exporter.mysql "orders_db" {
-  data_source_name  = "user:pass@tcp(mysql:3306)/"
-  enable_collectors = ["perf_schema.eventsstatements"]
 }
 
 loki.relabel "orders_db" {

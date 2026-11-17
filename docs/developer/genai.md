@@ -84,9 +84,13 @@ low-effort AI-generated, using the same [issue triage][issue-triage] process as 
 When they do, they will explain why and, where appropriate, offer guidance on how to improve the
 contribution. Repeated abuse may lead to stricter review or blocked contributions.
 
+Maintainers may also edit or replace contributions without prior notice. Refer to [Editing issues
+and pull requests][maintainer-edits].
+
 [alloy-docs]: https://grafana.com/docs/alloy/latest/
 [issue-triage]: ./issue-triage.md
 [license]: ../../LICENSE
 [cla]: https://cla-assistant.io/grafana/alloy
 [contributing-deps]: ./contributing.md#dependency-management
+[maintainer-edits]: ./contributing.md#maintainers-editing-issues-and-pull-requests
 [proposal-process]: ../design/README.md

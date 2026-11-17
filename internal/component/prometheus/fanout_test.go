@@ -23,7 +23,7 @@ import (
 
 func TestRollback(t *testing.T) {
 	ls := labelstore.New(nil, promclient.DefaultRegisterer)
-	fanout := prometheus.NewFanout([]storage.Appendable{prometheus.NewFanout(nil, "1", promclient.DefaultRegisterer, ls)}, "", promclient.DefaultRegisterer, ls)
+	fanout := prometheus.NewFanout([]storage.AppendableV2{prometheus.NewFanout(nil, "1", promclient.DefaultRegisterer, ls)}, "", promclient.DefaultRegisterer, ls)
 	app := fanout.Appender(t.Context())
 	err := app.Rollback()
 	require.NoError(t, err)
@@ -31,7 +31,7 @@ func TestRollback(t *testing.T) {
 
 func TestCommit(t *testing.T) {
 	ls := labelstore.New(nil, promclient.DefaultRegisterer)
-	fanout := prometheus.NewFanout([]storage.Appendable{prometheus.NewFanout(nil, "1", promclient.DefaultRegisterer, ls)}, "", promclient.DefaultRegisterer, ls)
+	fanout := prometheus.NewFanout([]storage.AppendableV2{prometheus.NewFanout(nil, "1", promclient.DefaultRegisterer, ls)}, "", promclient.DefaultRegisterer, ls)
 	app := fanout.Appender(t.Context())
 	err := app.Commit()
 	require.NoError(t, err)
@@ -39,14 +39,14 @@ func TestCommit(t *testing.T) {
 
 func TestNewFanoutIgnoresNilChildren(t *testing.T) {
 	ls := labelstore.New(nil, promclient.DefaultRegisterer)
-	fanout := prometheus.NewFanout([]storage.Appendable{nil, nil}, "", promclient.DefaultRegisterer, ls)
+	fanout := prometheus.NewFanout([]storage.AppendableV2{nil, nil}, "", promclient.DefaultRegisterer, ls)
 	app := fanout.Appender(t.Context())
 	err := app.Commit()
 	require.NoError(t, err)
 }
 
 func TestNewFanoutWithNilLabelStore(t *testing.T) {
-	fanout := prometheus.NewFanout([]storage.Appendable{noopStore{}}, "", promclient.DefaultRegisterer, nil)
+	fanout := prometheus.NewFanout([]storage.AppendableV2{noopStore{}}, "", promclient.DefaultRegisterer, nil)
 	app := fanout.Appender(t.Context())
 	_, err := app.Append(0, labels.FromStrings("foo", "bar"), time.Now().UnixMilli(), 1.0)
 	require.NoError(t, err)
@@ -100,7 +100,7 @@ func BenchmarkAppenderFlows(b *testing.B) {
 		now := time.Now().UnixMilli()
 		ls := labelstore.New(nil, promclient.DefaultRegisterer, c.useLabelStore)
 
-		children := make([]storage.Appendable, c.targetsCount)
+		children := make([]storage.AppendableV2, c.targetsCount)
 		for i := range c.targetsCount {
 			children[i] = remotewrite.NewInterceptor(strconv.Itoa(i), &atomic.Bool{}, noopDebugDataPublisher{}, ls, noopStore{})
 		}
@@ -231,13 +231,16 @@ func (r *recordingAppender) AppendSTZeroSample(ref storage.SeriesRef, _ labels.L
 	return ref, nil
 }
 
-// recordingStore is a storage.Appendable backed by a recordingAppender.
+// recordingStore is a storage.AppendableV2 backed by a recordingAppender.
 type recordingStore struct{ appender *recordingAppender }
 
 func newRecordingStore() *recordingStore {
 	return &recordingStore{appender: &recordingAppender{nextRef: 5000}}
 }
 func (s *recordingStore) Appender(context.Context) storage.Appender { return s.appender }
+func (s *recordingStore) AppenderV2(context.Context) storage.AppenderV2 {
+	panic("AppenderV2 not implemented")
+}
 
 // TestFanout_SeriesRefMappingToPassthroughTransition verifies that when the fanout
 // transitions from seriesRefMapping (2 children) to passthrough (1 child) via
@@ -246,7 +249,7 @@ func (s *recordingStore) Appender(context.Context) storage.Appender { return s.a
 func TestFanout_SeriesRefMappingToPassthroughTransition(t *testing.T) {
 	child1 := newRecordingStore()
 	child2 := newRecordingStore()
-	fanout := prometheus.NewFanout([]storage.Appendable{child1, child2}, "test", promclient.NewRegistry(), nil)
+	fanout := prometheus.NewFanout([]storage.AppendableV2{child1, child2}, "test", promclient.NewRegistry(), nil)
 
 	// Phase 1 (2 children → seriesRefMapping): store issues unique ref 1 for lblsA.
 	app1 := fanout.Appender(t.Context())
@@ -258,7 +261,7 @@ func TestFanout_SeriesRefMappingToPassthroughTransition(t *testing.T) {
 
 	// Transition to 1 child.
 	walChild := newRecordingStore()
-	fanout.UpdateChildren([]storage.Appendable{walChild})
+	fanout.UpdateChildren([]storage.AppendableV2{walChild})
 
 	// Phase 2 (1 child → passthrough): caller re-sends the store-issued unique ref.
 	// The passthrough must zero it so the child allocates a fresh ref.
@@ -279,7 +282,7 @@ func TestFanout_SeriesRefMappingToPassthroughTransition(t *testing.T) {
 // than risk colliding with one of its own series.
 func TestFanout_PassthroughToSeriesRefMappingTransition(t *testing.T) {
 	walChild := newRecordingStore()
-	fanout := prometheus.NewFanout([]storage.Appendable{walChild}, "test", promclient.NewRegistry(), nil)
+	fanout := prometheus.NewFanout([]storage.AppendableV2{walChild}, "test", promclient.NewRegistry(), nil)
 
 	// Phase 1 (1 child → passthrough): child returns raw ref 5001 for lblsB.
 	app1 := fanout.Appender(t.Context())
@@ -293,7 +296,7 @@ func TestFanout_PassthroughToSeriesRefMappingTransition(t *testing.T) {
 	// Transition to 2 children.
 	child1 := newRecordingStore()
 	child2 := newRecordingStore()
-	fanout.UpdateChildren([]storage.Appendable{child1, child2})
+	fanout.UpdateChildren([]storage.AppendableV2{child1, child2})
 
 	// Phase 2 (2 children → seriesRefMapping): store issues unique ref 1 for lblsA.
 	app2 := fanout.Appender(t.Context())

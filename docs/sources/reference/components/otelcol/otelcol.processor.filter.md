@@ -42,6 +42,10 @@ Raw {{< param "PRODUCT_NAME" >}} syntax strings can be used to write OTTL statem
 For example, the OTTL statement `attributes["grpc"] == true` is written in {{< param "PRODUCT_NAME" >}} syntax as \`attributes["grpc"] == true\`
 {{< /admonition >}}
 
+{{< admonition type="caution" >}}
+The upstream OpenTelemetry Collector removed the `Base64Decode` OTTL converter function. Use the `Decode` converter with the `base64` encoding instead, for example `Decode(value, "base64")`.
+{{< /admonition >}}
+
 {{< admonition type="note" >}}
 `otelcol.processor.filter` is a wrapper over the upstream OpenTelemetry Collector [`filter`][] processor.
 If necessary, bug reports or feature requests will be redirected to the upstream repository.

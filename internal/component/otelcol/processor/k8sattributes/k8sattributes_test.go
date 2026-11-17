@@ -1,6 +1,8 @@
 package k8sattributes_test
 
 import (
+	"bytes"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -46,34 +48,30 @@ func Test_Extract(t *testing.T) {
 
 	extract := &otelObj.Extract
 	require.Equal(t, []string{"k8s.namespace.name", "k8s.job.name", "k8s.node.name"}, extract.Metadata)
-
-	require.True(t, extract.DeploymentNameFromReplicaSet) //nolint:staticcheck // deprecated upstream but still read until the field is removed
 }
 
+// deployment_name_from_replicaset has been deprecated.
 func Test_DeploymentNameFromReplicaSet(t *testing.T) {
-	convert := func(t *testing.T, cfg string) *k8sattributesprocessor.Config {
+	convert := func(t *testing.T, cfg string) {
 		var args k8sattributes.Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		convertedArgs, err := args.Convert()
+		_, err := args.Convert()
 		require.NoError(t, err)
-		return convertedArgs.(*k8sattributesprocessor.Config)
 	}
 
 	t.Run("default", func(t *testing.T) {
-		otelObj := convert(t, `
+		convert(t, `
 			output {}
 		`)
-		require.True(t, otelObj.Extract.DeploymentNameFromReplicaSet) //nolint:staticcheck // deprecated upstream but still read until the field is removed
 	})
 
-	t.Run("disabled", func(t *testing.T) {
-		otelObj := convert(t, `
+	t.Run("explicitly disabled is a no-op", func(t *testing.T) {
+		convert(t, `
 			extract {
 				deployment_name_from_replicaset = false
 			}
 			output {}
 		`)
-		require.False(t, otelObj.Extract.DeploymentNameFromReplicaSet) //nolint:staticcheck // deprecated upstream but still read until the field is removed
 	})
 }
 
@@ -479,7 +477,7 @@ func Test_ExtractMetadata(t *testing.T) {
 
 	upstreamDefaults := []string{
 		"container.image.name",
-		"container.image.tag",
+		"container.image.tags",
 		"k8s.deployment.name",
 		"k8s.namespace.name",
 		"k8s.node.name",
@@ -541,5 +539,17 @@ func Test_PodDeleteGracePeriod(t *testing.T) {
 		`)
 
 		require.Equal(t, 30*time.Second, otelObj.PodDeleteGracePeriod)
+	})
+}
+
+func TestArguments_LogDeprecations(t *testing.T) {
+	args := k8sattributes.Arguments{ExtractConfig: k8sattributes.ExtractConfig{DeploymentNameFromReplicaSet: false}}
+
+	var buf bytes.Buffer
+	args.LogDeprecations(slog.New(slog.NewTextHandler(&buf, nil)))
+	require.NotEmpty(t, buf.String())
+
+	require.NotPanics(t, func() {
+		args.LogDeprecations(nil)
 	})
 }

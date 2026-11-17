@@ -2,6 +2,7 @@
 package k8sattributes
 
 import (
+	"log/slog"
 	"time"
 
 	"github.com/go-viper/mapstructure/v2"
@@ -78,6 +79,21 @@ func (args *Arguments) SetToDefault() {
 	args.PodDeleteGracePeriod = def.PodDeleteGracePeriod
 	args.ExtractConfig.SetToDefault()
 	args.DebugMetrics.SetToDefault()
+}
+
+var _ otelcol.DeprecationLogger = Arguments{}
+
+// LogDeprecations implements otelcol.DeprecationLogger.
+func (args Arguments) LogDeprecations(logger *slog.Logger) {
+	if logger == nil {
+		return
+	}
+	if !args.ExtractConfig.DeploymentNameFromReplicaSet {
+		logger.Warn(
+			"extract.deployment_name_from_replicaset is deprecated and is a no-op upstream; the deployment name is always extracted",
+			"deployment_name_from_replicaset", args.ExtractConfig.DeploymentNameFromReplicaSet,
+		)
+	}
 }
 
 // Validate implements syntax.Validator.

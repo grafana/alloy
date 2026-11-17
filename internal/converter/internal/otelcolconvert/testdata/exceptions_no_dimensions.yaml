@@ -1,0 +1,25 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+connectors:
+  exceptions:
+    dimensions: []
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [exceptions]
+    metrics:
+      receivers: [exceptions]
+      exporters: [otlp]
+    logs:
+      receivers: [exceptions]
+      exporters: [otlp]
