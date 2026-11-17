@@ -46,6 +46,7 @@ A support bundle contains the following data:
 * `alloy-runtime-flags.txt` contains the values of the runtime flags available in {{< param "PRODUCT_NAME" >}}.
 * The `pprof/` directory contains Go runtime profiling data (CPU, heap, goroutine, mutex, block profiles) as exported by the pprof package.
 Refer to the [profile][profile] documentation for more details on how to use this information.
+* `pprof/goroutine.txt` contains plain-text stack traces and states for all goroutines, which can help identify blocked goroutines without loading the pprof profile.
 * The `sources/` directory contains copies of the local configuration files used to configure {{< param "PRODUCT_NAME" >}}.
 * `sources/remote-config/remote.alloy` contains a copy of the last received [remote configuration][remotecfg].
 
