@@ -181,9 +181,9 @@ On hosts without a CRI endpoint, the collector exports containers without Kubern
 ### `filetime`
 
 {{< admonition type="caution" >}}
-The `filetime` block is deprecated.
 Windows exporter v0.32 replaced the `filetime` collector with the `file` collector.
-Migrate to the [`file`][file-block] block, because the `filetime` block will be removed in a future version.
+{{< param "PRODUCT_NAME" >}} deprecates the `filetime` block and will remove it in a future version.
+Migrate to the [`file`][file-block] block.
 {{< /admonition >}}
 
 The `filetime` block configures the `file` collector.
@@ -372,8 +372,9 @@ The component [wraps][wrap-regex] user-supplied `exclude` and `include` strings 
 | `include`                   | `string` | Regular expression of processes to include. | `"^.+$"` | no       |
 
 {{< admonition type="caution" >}}
-The `counter_version` attribute is deprecated and has no effect.
-Remove it from your configuration, because it will be removed in a future version of {{< param "PRODUCT_NAME" >}}.
+The `counter_version` attribute has no effect.
+{{< param "PRODUCT_NAME" >}} deprecates it and will remove it in a future version.
+Remove it from your configuration.
 {{< /admonition >}}
 
 The component includes processes that match the regular expression specified by `include` and don't match the regular expression specified by `exclude`.
@@ -415,6 +416,8 @@ prometheus.exporter.windows "default" {
 | `missed_runs` | `bool` | Report the number of missed runs of each task in `windows_scheduled_task_missed_runs`. | `false` | no |
 
 The component includes tasks that match the regular expression specified by `include` and don't match the regular expression specified by `exclude`.
+
+The `include` and `exclude` expressions match task paths that use forward slashes, for example `/Microsoft/Windows/Chkdsk/SyspartRepair`.
 
 Reading the missed runs of a task costs the Task Scheduler service extra requests, so `missed_runs` is off by default.
 
@@ -658,7 +661,7 @@ You can enable a subset of collectors to limit the amount of metrics that the `p
 | [`system`][system]                         | System calls                                                   | Yes                |
 | [`tcp`][tcp]                               | TCP connections                                                |                    |
 | [`time`][time]                             | Windows Time Service                                           |                    |
-| `thermalzone`                              | Removed in Windows exporter v0.32. Alloy ignores it. Use the [`performancecounter`][performancecounter] block instead. |                    |
+| `thermalzone`                              | Windows exporter v0.32 removed it. Alloy ignores it. Use the [`performancecounter`][performancecounter] block instead. |                    |
 | [`terminal_services`][terminal_services]   | Terminal services (RDS)                                        |                    |
 | [`textfile`][textfile]                     | Read Prometheus metrics from a text file                       |                    |
 | [`udp`][udp]                               | UDP connections                                                |                    |
