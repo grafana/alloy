@@ -102,10 +102,18 @@ func (env Env) NewReceiver(t *testing.T) *Receiver {
 			consumer: consumer,
 			entries:  consumer.Entries,
 			stopFn:   consumer.Stop,
+			pauseFn:  consumer.Pause,
+			resumeFn: consumer.Resume,
 		}
 	} else {
 		recv := NewCollectingReceiver()
-		r = &Receiver{recv: recv, entries: recv.Entries, stopFn: recv.Stop}
+		r = &Receiver{
+			recv:     recv,
+			entries:  recv.Entries,
+			stopFn:   recv.Stop,
+			pauseFn:  recv.Pause,
+			resumeFn: recv.Resume,
+		}
 	}
 
 	t.Cleanup(r.Stop)

@@ -5,6 +5,7 @@ package ebpf
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension"
@@ -15,6 +16,29 @@ import (
 
 type probeProvider interface {
 	Probe() tracer.Probe
+}
+
+type probeEnabler interface {
+	EnableProbe(ctx context.Context, p tracer.Probe) error
+}
+
+// enableProbes enables each probe. If a probe fails to enable, it unloads all the probes.
+func enableProbes(ctx context.Context, enabler probeEnabler, probes []tracer.Probe, logger *slog.Logger) error {
+	for _, p := range probes {
+		if err := enabler.EnableProbe(ctx, p); err != nil {
+			unloadProbes(probes, logger)
+			return fmt.Errorf("failed to enable probe: %w", err)
+		}
+	}
+	return nil
+}
+
+func unloadProbes(probes []tracer.Probe, logger *slog.Logger) {
+	for _, p := range probes {
+		if err := p.Unload(); err != nil {
+			logger.Warn("failed to unload probe", "err", err)
+		}
+	}
 }
 
 func (args *Arguments) probes(ctx context.Context) ([]tracer.Probe, error) {

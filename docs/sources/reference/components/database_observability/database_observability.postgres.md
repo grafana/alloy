@@ -297,7 +297,9 @@ The `logs` collector is always enabled and counts server errors from the Postgre
 
 The `prometheus_exporter` block configures the embedded `postgres_exporter` scrapers.
 The `data_source_name` is inherited from the parent block.
-Only the `stat_statements` collector is enabled by default.
+By default the embedded exporter enables the `database`, `database_wraparound`, `postmaster`, `replication`, `stat_bgwriter`, `stat_checkpointer`, `stat_statements`, and `wal` collectors.
+Setting `enabled_collectors` replaces the default set instead of adding to it, so the embedded exporter runs only the collectors you list. To keep a default collector, include it in the list. If you set `enabled_collectors`, it is highly recommended to always include `stat_statements` in the list.
+
 The embedded exporter inherits the top-level `exclude_databases` list in both `autodiscovery > database_denylist` and `stat_statements > exclude_databases`, inherits `include_databases` in `autodiscovery > database_allowlist`, and inherits the effective top-level `exclude_users` list in `stat_statements > exclude_users`.
 Setting these nested filter lists in `prometheus_exporter` is discouraged because it can cause the embedded exporter and the component's collectors to monitor different databases or users.
 Configure the top-level `exclude_databases`, `include_databases`, and `exclude_users` arguments instead.
