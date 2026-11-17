@@ -18,7 +18,7 @@ The `beyla.ebpf` component uses Grafana Beyla version {{< param "BEYLA_VERSION" 
 
 The `beyla.ebpf` component is a wrapper for [Grafana Beyla][] which uses [eBPF][eBPF website] to automatically inspect application executables and the OS networking layer, and capture trace spans related to web transactions and Rate Errors Duration (RED) metrics for Linux HTTP/S and gRPC services.
 You can configure the component to collect telemetry data from a specific port or executable path, and other criteria from Kubernetes metadata.
-The component exposes metrics that can be collected by a Prometheus scrape component, and traces that can be forwarded to an OTel exporter component.
+The component exposes metrics that a Prometheus scrape component can collect, and logs and traces that you can forward to OpenTelemetry exporter components.
 
 ## Permissions
 
@@ -172,6 +172,8 @@ You can use the following blocks with `beyla.ebpf`:
 
 | Block                                                                  | Description                                                                                        | Required |
 |------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|----------|
+| [`exceptions`][exceptions] | Configures runtime exception capture for instrumented services. | no |
+| `exceptions` > [`go`][go exceptions] | Configures Go panic and formatted error capture. | no |
 | [`output`][output]                                                     | Configures where to send received telemetry data.                                                  | yes      |
 | [`attributes`][attributes]                                             | Configures the Beyla attributes for the component.                                                 | no       |
 | `attributes` > [`kubernetes`][kubernetes attributes]                   | Configures decorating of the metrics and traces with Kubernetes metadata of the instrumented Pods. | no       |
@@ -253,6 +255,8 @@ You can use the following blocks with `beyla.ebpf`:
 [metrics]: #metrics
 [network metrics]: #network-metrics
 [network filters]: #network-filters
+[exceptions]: #exceptions
+[go exceptions]: #go-exceptions
 [output]: #output
 [injector]: #injector
 [injector webhook]: #webhook
@@ -282,11 +286,31 @@ The following arguments are supported:
 
 | Name     | Type                     | Description                          | Default | Required |
 |----------|--------------------------|--------------------------------------|---------|----------|
+| `logs` | `list(otelcol.Consumer)` | List of consumers to send exception logs to. | `[]` | no |
 | `traces` | `list(otelcol.Consumer)` | List of consumers to send traces to. | `[]`    | no       |
 
 You must specify the `output` block, but all its arguments are optional.
 By default, telemetry data is dropped.
-Configure the `traces` argument to send traces data to other components.
+Configure `logs` to forward exception logs and `traces` to forward traces to other components.
+
+### `exceptions`
+
+The `exceptions` block configures runtime exception capture for services selected by `discovery`.
+You must configure at least one destination in `output.logs` when you enable exception capture.
+
+| Name | Type | Description | Default | Required |
+|------|------|-------------|---------|----------|
+| `enabled` | `bool` | Enables runtime exception capture. | `false` | no |
+
+#### `go` exceptions
+
+The `go` block configures which Go exceptions Beyla captures as OpenTelemetry log records.
+Set `exceptions.enabled` to `true` to enable capture.
+
+| Name | Type | Description | Default | Required |
+|------|------|-------------|---------|----------|
+| `formatted_errors` | `bool` | Captures errors created with `fmt.Errorf`. | `false` | no |
+| `panics` | `bool` | Captures Go panics. | `true` | no |
 
 ### `attributes`
 
@@ -1279,7 +1303,7 @@ A scrape job that targets only the {{< param "PRODUCT_NAME" >}} pprof endpoints 
 
 ## Examples
 
-The following examples show you how to collect metrics and traces from `beyla.ebpf`.
+The following examples show you how to collect metrics, logs, and traces from `beyla.ebpf`.
 
 ### Metrics
 
@@ -1365,6 +1389,47 @@ Replace the following:
 * _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
 * _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
 * _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+
+### Go exception logs
+
+This example captures panics and formatted errors from Go services that listen on the specified port and forwards them through an OpenTelemetry logs pipeline:
+
+```alloy
+beyla.ebpf "default" {
+  discovery {
+    instrument {
+      open_ports = "<OPEN_PORT>"
+    }
+  }
+
+  exceptions {
+    enabled = true
+    go {
+      panics = true
+      formatted_errors = true
+    }
+  }
+
+  output {
+    logs = [otelcol.processor.batch.default.input]
+  }
+}
+
+otelcol.processor.batch "default" {
+  output {
+    logs = [otelcol.exporter.otlphttp.default.input]
+  }
+}
+
+otelcol.exporter.otlphttp "default" {
+  client {
+    endpoint = "<OTLP_ENDPOINT>"
+  }
+}
+```
+
+Replace _`<OPEN_PORT>`_ with the port of your Go service and _`<OTLP_ENDPOINT>`_ with the HTTP endpoint of your OpenTelemetry Collector.
+
 
 ### Traces
 
