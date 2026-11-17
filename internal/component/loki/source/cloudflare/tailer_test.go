@@ -44,8 +44,7 @@ func TestTailer(t *testing.T) {
 		cfClient = newFakeCloudflareClient()
 	)
 	ps, err := positions.New(logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
-		PositionsFile: t.TempDir() + "/positions.yml",
+		Path: t.TempDir() + "/positions.yml",
 	})
 	// set our end time to be the last time we have a position
 	ps.Put(positions.CursorKey(cfg.ZoneID), cfg.Labels.String(), end.UnixNano())
@@ -210,8 +209,7 @@ func TestTailer_CloudflareTargetError(t *testing.T) {
 		cfClient = newFakeCloudflareClient()
 	)
 	ps, err := positions.New(logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
-		PositionsFile: t.TempDir() + "/positions.yml",
+		Path: t.TempDir() + "/positions.yml",
 	})
 
 	// set our end time to be the last time we have a position
@@ -261,8 +259,7 @@ func TestTailer_CloudflareTargetError168h(t *testing.T) {
 		cfClient = newFakeCloudflareClient()
 	)
 	ps, err := positions.New(logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
-		PositionsFile: t.TempDir() + "/positions.yml",
+		Path: t.TempDir() + "/positions.yml",
 	})
 
 	// set our end time to be the last time we have a position

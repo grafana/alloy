@@ -49,6 +49,7 @@ type TableStatsArguments struct {
 	DB               *sql.DB
 	DSN              string
 	ExcludeDatabases []string
+	IncludeDatabases []string
 	Registry         *prometheus.Registry
 
 	Logger *slog.Logger
@@ -61,6 +62,7 @@ type TableStats struct {
 	dbDSN               string
 	dbConnectionFactory databaseConnectionFactory
 	excludeDatabases    []string
+	includeDatabases    []string
 	registry            *prometheus.Registry
 
 	logger  *slog.Logger
@@ -78,6 +80,7 @@ func NewTableStats(args TableStatsArguments) (*TableStats, error) {
 		dbDSN:               args.DSN,
 		dbConnectionFactory: factory,
 		excludeDatabases:    args.ExcludeDatabases,
+		includeDatabases:    args.IncludeDatabases,
 		registry:            args.Registry,
 		logger:              args.Logger.With("collector", TableStatsCollector),
 		running:             &atomic.Bool{},
@@ -117,7 +120,7 @@ func (c *TableStats) Describe(ch chan<- *prometheus.Desc) {
 func (c *TableStats) Collect(ch chan<- prometheus.Metric) {
 	ctx := context.Background()
 
-	databases, err := discoverDatabases(ctx, c.initialConnection, c.excludeDatabases)
+	databases, err := discoverDatabases(ctx, c.initialConnection, c.excludeDatabases, c.includeDatabases)
 	if err != nil {
 		c.logger.Error("failed to discover databases", "err", err)
 		return

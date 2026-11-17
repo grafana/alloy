@@ -48,6 +48,7 @@ type IndexStatsArguments struct {
 	DB               *sql.DB
 	DSN              string
 	ExcludeDatabases []string
+	IncludeDatabases []string
 	Registry         *prometheus.Registry
 
 	Logger *slog.Logger
@@ -60,6 +61,7 @@ type IndexStats struct {
 	dbDSN               string
 	dbConnectionFactory databaseConnectionFactory
 	excludeDatabases    []string
+	includeDatabases    []string
 	registry            *prometheus.Registry
 
 	logger  *slog.Logger
@@ -77,6 +79,7 @@ func NewIndexStats(args IndexStatsArguments) (*IndexStats, error) {
 		dbDSN:               args.DSN,
 		dbConnectionFactory: factory,
 		excludeDatabases:    args.ExcludeDatabases,
+		includeDatabases:    args.IncludeDatabases,
 		registry:            args.Registry,
 		logger:              args.Logger.With("collector", IndexStatsCollector),
 		running:             &atomic.Bool{},
@@ -115,7 +118,7 @@ func (c *IndexStats) Describe(ch chan<- *prometheus.Desc) {
 func (c *IndexStats) Collect(ch chan<- prometheus.Metric) {
 	ctx := context.Background()
 
-	databases, err := discoverDatabases(ctx, c.initialConnection, c.excludeDatabases)
+	databases, err := discoverDatabases(ctx, c.initialConnection, c.excludeDatabases, c.includeDatabases)
 	if err != nil {
 		c.logger.Error("failed to discover databases", "err", err)
 		return

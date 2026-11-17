@@ -68,6 +68,14 @@ This is a more controlled way to talk about performance. Over time, major featur
 
 Ideally we want to scale our efforts and add automated tests that will prevent regressions, so manual tests are not recommended. However, these can be used as an additional safety check when we see given change as risky.
 
+## Writing good tests
+
+These apply to anyone writing tests, including AI agents:
+
+* Try to match a source file with a test file. For example, when testing functionality in `example.go`, the test should ideally go in `example_test.go`.
+* Keep tests small, readable, and straight to the point. For example, a bug report may mention a convoluted sequence of steps as a way to reproduce the bug. If there is a way to avoid this convoluted sequence and write a more direct test, do it.
+* Prefer table-driven tests. They tend to be extendable, readable and concise.
+
 ## Benchmarking a pull request
 
 To check how a pull request affects performance, add the `run-benchmarks` label to it.

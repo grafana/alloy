@@ -12,22 +12,6 @@ import (
 
 const promURL = "http://localhost:9009/prometheus/api/v1/"
 
-// Default metrics list according to what the otel-gen app is generating.
-var OtelDefaultMetrics = []string{
-	"example_counter",
-	"example_float_counter",
-	"example_updowncounter",
-	"example_float_updowncounter",
-	"example_histogram_bucket",
-	"example_float_histogram_bucket",
-}
-
-// Default histogram metrics list according to what the otel-gen app is generating.
-var OtelDefaultHistogramMetrics = []string{
-	"example_exponential_histogram",
-	"example_exponential_float_histogram",
-}
-
 // MetricQuery returns a formatted Prometheus metric query with a given metricName and the given test_name label.
 func MetricQuery(metricName string, testName string) string {
 	// https://prometheus.io/docs/prometheus/latest/querying/api/#instant-queries

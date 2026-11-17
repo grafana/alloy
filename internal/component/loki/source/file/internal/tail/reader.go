@@ -14,7 +14,13 @@ import (
 	"golang.org/x/text/encoding"
 )
 
-const defaultBufSize = 4096
+const (
+	defaultBufSize = 4096
+
+	// maxRetainedBufSize caps the pending buffer capacity kept between lines, so
+	// one very long line doesn't pin its allocation for the tailer's lifetime.
+	maxRetainedBufSize = 1 << 20 // 1MiB
+)
 
 // newReader creates a new reader that is used to read from file.
 func newReader(logger *slog.Logger, f io.ReadSeeker, offset int64, enc encoding.Encoding, compression string, startFromEnd bool) (*reader, error) {
@@ -115,6 +121,7 @@ func (r *reader) flush() (string, error) {
 	line := r.pending[:]
 	r.pos += int64(len(line))
 	r.pending = r.pending[:0]
+	r.trimPending()
 	return r.decode(bytes.TrimSuffix(line, r.nl))
 }
 
@@ -142,10 +149,20 @@ func (r *reader) consumeLine() ([]byte, bool) {
 
 	// Reset pending. We never buffer beyond newline so it is safe to reset.
 	r.pending = r.pending[:0]
+	r.trimPending()
 
 	// Advance the position on bytes we have consumed as a full line.
 	r.pos += int64(len(line) + len(r.nl))
 	return line, true
+}
+
+// trimPending releases the pending buffer when its capacity exceeds
+// maxRetainedBufSize. This prevents a single long line from keeping a large
+// buffer alive for the lifetime of the tailer.
+func (r *reader) trimPending() {
+	if cap(r.pending) > maxRetainedBufSize {
+		r.pending = make([]byte, 0, defaultBufSize)
+	}
 }
 
 // position returns the byte offset for completed lines,

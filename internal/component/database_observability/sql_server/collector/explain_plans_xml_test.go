@@ -474,6 +474,29 @@ func TestNewExplainPlanOutputFromShowPlanXML(t *testing.T) {
 				},
 			},
 		},
+		{
+			fixture: "stmt_cond",
+			want: database_observability.ExplainPlanNode{
+				Operation: database_observability.ExplainPlanOutputOperationComputeScalar,
+				Details: database_observability.ExplainPlanNodeDetails{
+					EstimatedRows: 1,
+					EstimatedCost: floatPtr(0.005),
+				},
+				Children: []database_observability.ExplainPlanNode{
+					{
+						Operation: database_observability.ExplainPlanOutputOperationIndexScan,
+						Details: database_observability.ExplainPlanNodeDetails{
+							EstimatedRows: 1,
+							EstimatedCost: floatPtr(0.015),
+							TableName:     stringPtr("sysschobjs"),
+							KeyUsed:       stringPtr("clst"),
+							AccessType:    accessTypePtr(database_observability.ExplainPlanAccessTypeIndex),
+							Condition:     stringPtr("OBJECTPROPERTY([MyDb].[sys].[sysschobjs].[id],N?)=(?)"),
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, test := range tests {
@@ -495,6 +518,11 @@ func TestNewExplainPlanOutputFromShowPlanXML_Errors(t *testing.T) {
 	t.Run("no statements", func(t *testing.T) {
 		_, err := newExplainPlanOutputFromShowPlanXML([]byte(`<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan"><BatchSequence><Batch><Statements></Statements></Batch></BatchSequence></ShowPlanXML>`))
 		require.Error(t, err)
+	})
+
+	t.Run("stmt_cond without query plan", func(t *testing.T) {
+		_, err := newExplainPlanOutputFromShowPlanXML([]byte(`<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan"><BatchSequence><Batch><Statements><StmtCond><Condition /><Then><Statements /></Then></StmtCond></Statements></Batch></BatchSequence></ShowPlanXML>`))
+		require.ErrorContains(t, err, "showplan xml has no root RelOp")
 	})
 }
 

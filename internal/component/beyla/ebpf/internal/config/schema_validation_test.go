@@ -74,7 +74,9 @@ func TestSupportedSectionsCoverSchema(t *testing.T) {
 		{"CloudMetadataConfig", []string{"cloud_metadata"}},
 		{"DotnetRuntimeMetricsConfig", []string{"dotnet_runtime_metrics"}},
 		{"NameResolverConfig", []string{"name_resolver"}},
-		{"ECSNameResolverConfig", []string{"name_resolver", "ecs"}},
+		{"GCENameResolverConfig", []string{"name_resolver", "gce"}},
+		{"AzureNameResolverConfig", []string{"name_resolver", "azure"}},
+		{"Route53MetadataConfig", []string{"cloud_metadata", "route53"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.definition, func(t *testing.T) {

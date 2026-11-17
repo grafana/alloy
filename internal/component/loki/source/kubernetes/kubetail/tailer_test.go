@@ -28,10 +28,6 @@ func (m *mockPositions) Remove(path, labels string) {}
 
 func (m *mockPositions) Stop() {}
 
-func (m *mockPositions) SyncPeriod() time.Duration { return 0 }
-
-func (m *mockPositions) WatchConfig(cfg positions.Config) {}
-
 // mockEntryHandler is a simple implementation of loki.EntryHandler for testing.
 type mockEntryHandler struct {
 	ch chan loki.Entry

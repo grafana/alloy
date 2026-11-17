@@ -8,6 +8,7 @@ import (
 
 	prom "github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
+	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/prometheus/prometheus/model/value"
@@ -64,10 +65,24 @@ func TestValidator(t *testing.T) {
 }
 
 func TestNil(t *testing.T) {
-	fanout := prometheus.NewInterceptor(nil, prometheus.WithAppendHook(func(ref storage.SeriesRef, _ labels.Labels, _ int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
-		require.True(t, false)
-		return ref, nil
-	}))
+	fanout := prometheus.NewInterceptor(nil,
+		prometheus.WithAppendHook(func(ref storage.SeriesRef, _ labels.Labels, _ int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
+			require.True(t, false)
+			return ref, nil
+		}),
+		prometheus.WithHistogramHook(func(ref storage.SeriesRef, _ labels.Labels, _ int64, _ *histogram.Histogram, _ *histogram.FloatHistogram, _ storage.Appender) (storage.SeriesRef, error) {
+			require.True(t, false)
+			return ref, nil
+		}),
+		prometheus.WithSTZeroSampleHook(func(ref storage.SeriesRef, _ labels.Labels, _, _ int64, _ storage.Appender) (storage.SeriesRef, error) {
+			require.True(t, false)
+			return ref, nil
+		}),
+		prometheus.WithHistogramSTZeroSampleHook(func(ref storage.SeriesRef, _ labels.Labels, _, _ int64, _ *histogram.Histogram, _ *histogram.FloatHistogram, _ storage.Appender) (storage.SeriesRef, error) {
+			require.True(t, false)
+			return ref, nil
+		}),
+	)
 	relabeller, err := New(component.Options{
 		ID:             "1",
 		Logger:         util.TestAlloyLogger(t).Slog(),
@@ -90,6 +105,14 @@ func TestNil(t *testing.T) {
 
 	lbls := labels.FromStrings("__address__", "localhost")
 	relabeller.relabel(0, lbls)
+
+	// Dropped series forward nothing, ST zero samples included.
+	app := relabeller.receiver.AppenderV2(t.Context())
+	_, err = app.Append(0, lbls, 10, 20, 1, nil, nil, storage.AppendV2Options{})
+	require.NoError(t, err)
+	_, err = app.Append(0, lbls, 10, 20, 0, &histogram.Histogram{Count: 1, Sum: 1}, nil, storage.AppendV2Options{})
+	require.NoError(t, err)
+	require.NoError(t, app.Commit())
 }
 
 // TestUpdateSwitchesCacheMode confirms that toggling cache_ttl on or

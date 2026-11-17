@@ -3579,3 +3579,47 @@ func TestExplainPlans_ExcludeUsers(t *testing.T) {
 
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
+
+func TestExplainPlans_IncludeDatabasesAndUsers(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	logBuffer := syncbuffer.Buffer{}
+	logger, err := logging.New(&logBuffer, logging.Options{
+		Level:  logging.LevelDebug,
+		Format: logging.FormatLogfmt,
+	})
+	require.NoError(t, err)
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	explainPlan := &ExplainPlans{
+		dbConnection:       db,
+		dbVersion:          semver.MustParse("17.0.0"),
+		queryCache:         make(map[string]*queryInfo),
+		queryDenylist:      make(map[string]struct{}),
+		finishedQueryCache: make(map[string]processedQueryInfo),
+		includeDatabases:   []string{"included_db"},
+		includeUsers:       []string{"included_user"},
+		perScrapeRatio:     1.0,
+		logger:             logger.Slog(),
+		entryHandler:       lokiClient,
+	}
+
+	expectedDatabasesClause := buildDatabaseFilterClause(nil, []string{"included_db"}, "d.datname")
+	expectedUsersClause := buildUserFilterClause(nil, []string{"included_user"}, "pg_get_userbyid(s.userid)")
+	expectedQuery := fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", expectedDatabasesClause, expectedUsersClause)
+
+	rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
+		AddRow("included_db", "111111", "SELECT * FROM test_table", int64(5), time.Now())
+
+	mock.ExpectQuery(expectedQuery).WillReturnRows(rows)
+
+	require.NoError(t, explainPlan.populateQueryCache(context.Background()))
+	assert.Len(t, explainPlan.queryCache, 1)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
