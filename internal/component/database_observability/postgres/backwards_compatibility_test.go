@@ -14,7 +14,7 @@ func TestEmbeddedExporterCollectorNames(t *testing.T) {
 		user *PrometheusExporterArguments
 		want []string
 	}{
-		{name: "preserves implicit legacy groups", want: []string{"stat_statements", "stat_activity", "stat_archiver", "stat_replication", "replication_slots", "settings"}},
+		{name: "preserves current defaults and implicit legacy groups", want: []string{"database", "database_wraparound", "postmaster", "replication", "stat_bgwriter", "stat_checkpointer", "stat_statements", "wal", "stat_activity", "stat_archiver", "stat_replication", "replication_slots", "settings"}},
 		{name: "explicit standalone list does not remove legacy groups", user: &PrometheusExporterArguments{EnabledCollectors: []string{"wal"}}, want: []string{"wal", "stat_activity", "stat_archiver", "stat_replication", "replication_slots", "settings"}},
 		{name: "settings remains independent of disabled defaults", user: &PrometheusExporterArguments{DisableDefaultMetrics: true}, want: []string{"settings"}},
 		{name: "both disabled", user: &PrometheusExporterArguments{DisableDefaultMetrics: true, DisableSettingsMetrics: true}, want: []string{}},

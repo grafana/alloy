@@ -58,19 +58,10 @@ var _ entryProcessor = (*labelStage)(nil)
 
 // newLabelStage creates a new label stage to set labels from extracted data
 func newLabelStage(configs LabelsConfig, opts stageOpts) *labelStage {
-	labelsConfig := map[string]string{}
-	for labelName, labelSrc := range configs.Values {
-		if labelSrc == nil || *labelSrc == "" {
-			labelsConfig[labelName] = labelName
-		} else {
-			labelsConfig[labelName] = *labelSrc
-		}
-	}
-
 	return &labelStage{
 		next:         opts.next,
 		cfg:          &configs,
-		labelsConfig: labelsConfig,
+		labelsConfig: resolveLabelSources(configs.Values),
 		logger:       opts.slogger.With("stage", "labels"),
 	}
 }

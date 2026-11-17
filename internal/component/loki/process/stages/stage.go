@@ -53,10 +53,7 @@ func newStageWithOpts(
 	case cfg.LabelsConfig != nil:
 		s = newLabelStage(*cfg.LabelsConfig, opts)
 	case cfg.StructuredMetadata != nil:
-		s, err = newStructuredMetadataStage(*cfg.StructuredMetadata, opts)
-		if err != nil {
-			return nil, err
-		}
+		s = newStructuredMetadataStage(*cfg.StructuredMetadata, opts)
 	case cfg.StructuredMetadataDropConfig != nil:
 		s = newStructuredMetadataDropStage(*cfg.StructuredMetadataDropConfig, opts)
 	case cfg.RegexConfig != nil:
@@ -122,10 +119,7 @@ func newStageWithOpts(
 	case cfg.WindowsEventConfig != nil:
 		s = newWindowsEventStage(cfg.WindowsEventConfig, opts)
 	case cfg.PatternConfig != nil:
-		s, err = newPatternStage(*cfg.PatternConfig, opts)
-		if err != nil {
-			return nil, err
-		}
+		s = newPatternStage(*cfg.PatternConfig, opts)
 	case cfg.TruncateConfig != nil:
 		s = newTruncateStage(*cfg.TruncateConfig, opts)
 	case cfg.SplitJSONConfig != nil:
