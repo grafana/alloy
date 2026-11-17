@@ -221,6 +221,191 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 	})
 }
 
+func TestRemoveTarget(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	t.Run("drain file when removed", func(t *testing.T) {
+		runTests(t, func(t *testing.T, match FileMatch, env lokitest.Env) {
+			synctest.Test(t, func(t *testing.T) {
+				f, err := os.CreateTemp(t.TempDir(), "example")
+				require.NoError(t, err)
+
+				_, err = f.WriteString("line 1\nline 2\nline 3\nline 4\nline 5\n")
+				require.NoError(t, err)
+				require.NoError(t, f.Close())
+
+				// The receiver holds back entries until the target is removed.
+				recv := env.NewReceiver(t)
+				recv.Pause()
+
+				ctrl, _ := env.Run(t, "loki.source.file", Arguments{
+					Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
+						"__path__": f.Name(),
+						"foo":      "bar",
+					})},
+					ForwardTo: []loki.LogsReceiver{recv},
+					FileMatch: match,
+				})
+
+				// Wait until the tailer has read the file and is blocked delivering it.
+				synctest.Wait()
+
+				require.NoError(t, ctrl.Update(Arguments{
+					Targets:   []discovery.Target{},
+					ForwardTo: []loki.LogsReceiver{recv},
+					FileMatch: match,
+				}))
+
+				recv.Resume()
+
+				var lines []string
+				for _, entry := range recv.Next(t, 5) {
+					lines = append(lines, entry.Line)
+				}
+				require.Equal(t, []string{"line 1", "line 2", "line 3", "line 4", "line 5"}, lines)
+			})
+		})
+	})
+
+	t.Run("drain lines written since last poll when removed", func(t *testing.T) {
+		runTests(t, func(t *testing.T, match FileMatch, env lokitest.Env) {
+			synctest.Test(t, func(t *testing.T) {
+				f, err := os.CreateTemp(t.TempDir(), "example")
+				require.NoError(t, err)
+				defer f.Close()
+
+				_, err = f.WriteString("line 1\n")
+				require.NoError(t, err)
+
+				recv := env.NewReceiver(t)
+				ctrl, _ := env.Run(t, "loki.source.file", Arguments{
+					Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
+						"__path__": f.Name(),
+						"foo":      "bar",
+					})},
+					ForwardTo: []loki.LogsReceiver{recv},
+					FileMatch: match,
+				})
+				recv.Next(t, 1)
+
+				// Wait until the tailer is idle and waiting for the file to change.
+				synctest.Wait()
+
+				// No time passes before the target is removed, so the tailer has not polled these lines.
+				_, err = f.WriteString("line 2\nline 3\nline 4")
+				require.NoError(t, err)
+
+				require.NoError(t, ctrl.Update(Arguments{
+					Targets:   []discovery.Target{},
+					ForwardTo: []loki.LogsReceiver{recv},
+					FileMatch: match,
+				}))
+
+				var lines []string
+				for _, entry := range recv.Next(t, 3) {
+					lines = append(lines, entry.Line)
+				}
+				require.Equal(t, []string{"line 2", "line 3", "line 4"}, lines)
+			})
+		})
+	})
+
+	t.Run("does not drain on shutdown", func(t *testing.T) {
+		runTests(t, func(t *testing.T, match FileMatch, env lokitest.Env) {
+			synctest.Test(t, func(t *testing.T) {
+				f, err := os.CreateTemp(t.TempDir(), "example")
+				require.NoError(t, err)
+				defer f.Close()
+
+				_, err = f.WriteString("line 1\nline 2\n")
+				require.NoError(t, err)
+
+				recv := env.NewReceiver(t)
+				ctrl, stop := env.Run(t, "loki.source.file", Arguments{
+					Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
+						"__path__": f.Name(),
+						"foo":      "bar",
+					})},
+					ForwardTo: []loki.LogsReceiver{recv},
+					FileMatch: match,
+				})
+				recv.Next(t, 2)
+
+				// The receiver holds back the next lines, so they are not delivered when the component stops.
+				recv.Pause()
+				_, err = f.WriteString("line 3\nline 4\nline 5\n")
+				require.NoError(t, err)
+
+				// Let the tailer poll the new lines and block delivering them.
+				time.Sleep(time.Second)
+				synctest.Wait()
+
+				c, err := ctrl.GetComponent()
+				require.NoError(t, err)
+				posFile := c.(*Component).posFile
+				key := model.LabelSet{"foo": "bar"}.String()
+
+				// With pipeline v1 the component accepts one more entry before it blocks, so we compare with the position before stopping.
+				before, err := posFile.Get(f.Name(), key)
+				require.NoError(t, err)
+				require.Greater(t, before, int64(0))
+
+				// Stopping waits for the component to exit, so it would hang if it tried to drain.
+				stop()
+
+				after, err := posFile.Get(f.Name(), key)
+				require.NoError(t, err)
+				require.Equal(t, before, after)
+			})
+		})
+	})
+
+	t.Run("drain rotated file when removed", func(t *testing.T) {
+		runTests(t, func(t *testing.T, match FileMatch, env lokitest.Env) {
+			synctest.Test(t, func(t *testing.T) {
+				path := filepath.Join(t.TempDir(), "example")
+				require.NoError(t, os.WriteFile(path, []byte("line 1\nline 2\nline 3\nline 4\nline 5\n"), 0o600))
+
+				// The receiver holds back entries so the tailer is blocked delivering when the file is rotated.
+				recv := env.NewReceiver(t)
+				recv.Pause()
+
+				ctrl, _ := env.Run(t, "loki.source.file", Arguments{
+					Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
+						"__path__": path,
+						"foo":      "bar",
+					})},
+					ForwardTo: []loki.LogsReceiver{recv},
+					FileMatch: match,
+				})
+
+				// Wait until the tailer has read the file and is blocked delivering it.
+				synctest.Wait()
+
+				// Rotate file.
+				require.NoError(t, os.Rename(path, path+".1"))
+				require.NoError(t, os.WriteFile(path, []byte("new line\n"), 0o600))
+
+				require.NoError(t, ctrl.Update(Arguments{
+					Targets:   []discovery.Target{},
+					ForwardTo: []loki.LogsReceiver{recv},
+					FileMatch: match,
+				}))
+
+				recv.Resume()
+
+				// FIXME: A rotated file is not followed when draining, so "new line" is not delivered.
+				// Expect it as the sixth line once the new file is drained as well.
+				var lines []string
+				for _, entry := range recv.Next(t, 5) {
+					lines = append(lines, entry.Line)
+				}
+				require.Equal(t, []string{"line 1", "line 2", "line 3", "line 4", "line 5"}, lines)
+			})
+		})
+	})
+}
+
 func TestFileWatch(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 	runTests(t, func(t *testing.T, match FileMatch, env lokitest.Env) {
