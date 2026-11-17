@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"strconv"
 	"sync"
@@ -218,6 +219,21 @@ func newShards(metrics *metrics, logger *slog.Logger, tracker sentDataTracker, c
 	client, err := config.NewClientFromConfig(cfg.Client, useragent.ProductName)
 	if err != nil {
 		return nil, err
+	}
+
+	// Send over a unix-domain socket instead of TCP when configured. Only
+	// the transport changes: the request URL (host header and path) is left
+	// untouched, so the socket listener must serve plaintext HTTP.
+	if cfg.UnixSocketPath != "" {
+		tr, ok := client.Transport.(*http.Transport)
+		if !ok || tr == nil {
+			return nil, fmt.Errorf("unix_socket_path requires the default HTTP transport, got %T", client.Transport)
+		}
+		socketPath := cfg.UnixSocketPath
+		dialer := &net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}
+		tr.DialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
+			return dialer.DialContext(ctx, "unix", socketPath)
+		}
 	}
 
 	client.Timeout = cfg.Timeout

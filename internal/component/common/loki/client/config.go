@@ -18,6 +18,12 @@ type Config struct {
 	Client  config.HTTPClientConfig
 	Headers map[string]string
 
+	// UnixSocketPath, when set, sends batches over a unix-domain socket
+	// instead of TCP: the client's transport dials this path while the
+	// request URL (host header and path) is left untouched. The socket
+	// listener must serve plaintext HTTP.
+	UnixSocketPath string
+
 	BackoffConfig backoff.Config
 	Timeout       time.Duration
 
