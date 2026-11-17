@@ -1,0 +1,75 @@
+Captured from MySQL 8.0.46 and 8.4.11 Docker images, which return the same output, with schema `shop` selected:
+
+```
+CREATE VIEW v_order_counts AS SELECT customer_id, COUNT(*) AS n FROM orders GROUP BY customer_id;
+EXPLAIN FORMAT=JSON SELECT v.customer_id, v.n FROM v_order_counts v WHERE v.n > 1;
+SHOW WARNINGS;
+```
+-- plan.json --
+{
+  "query_block": {
+    "select_id": 1,
+    "cost_info": {
+      "query_cost": "2.95"
+    },
+    "table": {
+      "table_name": "v",
+      "access_type": "ALL",
+      "rows_examined_per_scan": 4,
+      "rows_produced_per_join": 4,
+      "filtered": "100.00",
+      "cost_info": {
+        "read_cost": "2.55",
+        "eval_cost": "0.40",
+        "prefix_cost": "2.95",
+        "data_read_per_join": "96"
+      },
+      "used_columns": [
+        "customer_id",
+        "n"
+      ],
+      "materialized_from_subquery": {
+        "using_temporary_table": true,
+        "dependent": false,
+        "cacheable": true,
+        "query_block": {
+          "select_id": 2,
+          "cost_info": {
+            "query_cost": "0.65"
+          },
+          "grouping_operation": {
+            "using_filesort": false,
+            "table": {
+              "table_name": "orders",
+              "access_type": "index",
+              "possible_keys": [
+                "k_customer"
+              ],
+              "key": "k_customer",
+              "used_key_parts": [
+                "customer_id"
+              ],
+              "key_length": "5",
+              "rows_examined_per_scan": 4,
+              "rows_produced_per_join": 4,
+              "filtered": "100.00",
+              "using_index": true,
+              "cost_info": {
+                "read_cost": "0.25",
+                "eval_cost": "0.40",
+                "prefix_cost": "0.65",
+                "data_read_per_join": "864"
+              },
+              "used_columns": [
+                "id",
+                "customer_id"
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}
+-- note --
+/* select#1 */ select `shop`.`v`.`customer_id` AS `customer_id`,`shop`.`v`.`n` AS `n` from `shop`.`v_order_counts` `v`

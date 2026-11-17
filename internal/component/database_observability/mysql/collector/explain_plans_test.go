@@ -528,16 +528,19 @@ func TestExplainPlans(t *testing.T) {
 				"digest",
 				"query_text",
 				"last_seen",
+				"sum_timer_wait",
 			}).AddRow(
 				"some_schema",
 				"some_digest",
 				"some_query_text",
 				lastSeen.Add(time.Second*5),
+				0,
 			).AddRow(
 				"some_schema",
 				"some_digest",
 				"some_query_text",
 				nextSeen,
+				0,
 			))
 			lastSeen = nextSeen
 			err := c.populateQueryCache(t.Context())
@@ -550,11 +553,13 @@ func TestExplainPlans(t *testing.T) {
 				"digest",
 				"query_text",
 				"last_seen",
+				"sum_timer_wait",
 			}).AddRow(
 				"some_schema",
 				"some_digest",
 				"some_query_text",
 				lastSeen.Add(time.Second*5),
+				0,
 			))
 			err := c.populateQueryCache(t.Context())
 			require.NoError(t, err)
@@ -596,11 +601,13 @@ func TestExplainPlansSkipsTruncatedQueries(t *testing.T) {
 		"digest",
 		"query_sample_text",
 		"last_seen",
+		"sum_timer_wait",
 	}).AddRow(
 		"some_schema",
 		"some_digest",
 		"select * from some_table where ...",
 		lastSeen,
+		0,
 	))
 
 	require.NoError(t, c.fetchExplainPlans(t.Context()))
@@ -653,41 +660,49 @@ func TestExplainPlansSkipsNonSelectQueries(t *testing.T) {
 		"digest",
 		"query_sample_text",
 		"last_seen",
+		"sum_timer_wait",
 	}).AddRow(
 		"some_schema",
 		"update_digest",
 		"update some_table set col = 1 where id = 1",
 		lastSeen,
+		0,
 	).AddRow(
 		"some_schema",
 		"delete_digest",
 		"delete from some_table",
 		lastSeen,
+		0,
 	).AddRow(
 		"some_schema",
 		"insert_digest",
 		"insert into some_table (col) values (1)",
 		lastSeen,
+		0,
 	).AddRow(
 		"some_schema",
 		"show_digest",
 		"show global status like 'Uptime'",
 		lastSeen,
+		0,
 	).AddRow(
 		"some_schema",
 		"kill_digest",
 		"kill query 123",
 		lastSeen,
+		0,
 	).AddRow(
 		"some_schema",
 		"call_digest",
 		"call refresh_summary()",
 		lastSeen,
+		0,
 	).AddRow(
 		"some_schema",
 		"do_digest",
 		"do release_lock('foo')",
 		lastSeen,
+		0,
 	))
 
 	require.NoError(t, c.fetchExplainPlans(t.Context()))
@@ -745,11 +760,13 @@ func TestExplainPlansSkipsNoRowResult(t *testing.T) {
 		"digest",
 		"query_sample_text",
 		"last_seen",
+		"sum_timer_wait",
 	}).AddRow(
 		"some_schema",
 		"some_digest",
 		"select * from some_table where id = 1",
 		lastSeen,
+		0,
 	))
 
 	mock.ExpectExec("USE `some_schema`").WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 0))
@@ -798,11 +815,13 @@ func TestExplainPlansPassesQueriesBeginningInSelect(t *testing.T) {
 		"digest",
 		"query_sample_text",
 		"last_seen",
+		"sum_timer_wait",
 	}).AddRow(
 		"some_schema",
 		"some_digest",
 		"select * from some_table where id = 1",
 		lastSeen,
+		0,
 	))
 
 	mock.ExpectExec("USE `some_schema`").WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 0))
@@ -858,11 +877,13 @@ func TestExplainPlansPassesQueriesBeginningInWith(t *testing.T) {
 		"digest",
 		"query_sample_text",
 		"last_seen",
+		"sum_timer_wait",
 	}).AddRow(
 		"some_schema",
 		"some_digest",
 		"with cte as (select * from some_table where id = 1) select * from cte",
 		lastSeen,
+		0,
 	))
 
 	mock.ExpectExec("USE `some_schema`").WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 0))
@@ -998,9 +1019,9 @@ func TestExplainPlansThrottling(t *testing.T) {
 		nextSeen := base.Add(2 * time.Minute)
 		mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).
 			WithArgs(base.Add(-time.Hour)).
-			WillReturnRows(sqlmock.NewRows([]string{"schema_name", "digest", "query_sample_text", "last_seen"}).
-				AddRow("some_schema", "throttled_digest", "select * from throttled_table", base).
-				AddRow("some_schema", "due_digest", "select * from due_table", nextSeen))
+			WillReturnRows(sqlmock.NewRows([]string{"schema_name", "digest", "query_sample_text", "last_seen", "sum_timer_wait"}).
+				AddRow("some_schema", "throttled_digest", "select * from throttled_table", base, 0).
+				AddRow("some_schema", "due_digest", "select * from due_table", nextSeen, 0))
 
 		require.NoError(t, c.populateQueryCache(t.Context()))
 		require.NotContains(t, c.queryCache, throttledKey)
@@ -1045,8 +1066,8 @@ func TestExplainPlansThrottling(t *testing.T) {
 
 		mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).
 			WithArgs(base.Add(-time.Hour)).
-			WillReturnRows(sqlmock.NewRows([]string{"schema_name", "digest", "query_sample_text", "last_seen"}).
-				AddRow("some_schema", "some_digest", "select * from some_table", base))
+			WillReturnRows(sqlmock.NewRows([]string{"schema_name", "digest", "query_sample_text", "last_seen", "sum_timer_wait"}).
+				AddRow("some_schema", "some_digest", "select * from some_table", base, 0))
 
 		require.NoError(t, c.populateQueryCache(t.Context()))
 		require.Empty(t, c.queryCache)
@@ -1091,11 +1112,13 @@ func TestQueryFailureDenylist(t *testing.T) {
 		"digest",
 		"query_sample_text",
 		"last_seen",
+		"sum_timer_wait",
 	}).AddRow(
 		"some_schema",
 		"some_digest1",
 		"select * from some_table where id = 1",
 		lastSeen,
+		0,
 	))
 
 	c.populateQueryCache(t.Context())
@@ -1125,16 +1148,19 @@ func TestQueryFailureDenylist(t *testing.T) {
 			"digest",
 			"query_sample_text",
 			"last_seen",
+			"sum_timer_wait",
 		}).AddRow(
 			"some_schema",
 			"some_digest1",
 			"select * from some_table where id = 1",
 			lastSeen,
+			0,
 		).AddRow(
 			"some_schema",
 			"some_digest2",
 			"select * from some_table where id = 2",
 			lastSeen,
+			0,
 		))
 
 		err = c.populateQueryCache(t.Context())
@@ -1229,11 +1255,13 @@ func TestSchemaDenylist(t *testing.T) {
 		"digest",
 		"query_sample_text",
 		"last_seen",
+		"sum_timer_wait",
 	}).AddRow(
 		"different_schema",
 		"some_digest2",
 		"select * from some_table where id = 2",
 		lastSeen,
+		0,
 	))
 
 	c.populateQueryCache(t.Context())
