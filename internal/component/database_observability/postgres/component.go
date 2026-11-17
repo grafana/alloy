@@ -15,7 +15,6 @@ import (
 
 	"github.com/grafana/ckit/shard"
 	"github.com/lib/pq"
-	pg_collector "github.com/prometheus-community/postgres_exporter/collector"
 	pg_exporter "github.com/prometheus-community/postgres_exporter/exporter"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
@@ -206,7 +205,8 @@ func (a *PrometheusExporterArguments) Validate() error {
 	return args.Validate()
 }
 
-// defaultEnabledCollectors is a replacement allowlist, not additive, so this is the only collector enabled by default here.
+// defaultEnabledCollectors selects optional standalone collectors. The embedded
+// exporter also preserves its former implicit groups independently of this list.
 var defaultEnabledCollectors = []string{"stat_statements"}
 
 // resolveExporterArgs injects defaultEnabledCollectors after decoding, since SetToDefault runs before the user's block is decoded onto it.
@@ -774,7 +774,6 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 			c.opts.Logger,
 			pg_exporter.DisableDefaultMetrics(exporterArgs.DisableDefaultMetrics),
 			pg_exporter.WithUserQueriesPath(exporterArgs.CustomQueriesConfigPath),
-			pg_exporter.DisableSettingsMetrics(exporterArgs.DisableSettingsMetrics),
 			pg_exporter.AutoDiscoverDatabases(true),
 			pg_exporter.ExcludeDatabases(exporterArgs.AutoDiscovery.DatabaseDenylist),
 			pg_exporter.IncludeDatabases(strings.Join(exporterArgs.AutoDiscovery.DatabaseAllowlist, ",")),
@@ -785,27 +784,11 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 		}
 		inst.exporterCollectors = append(inst.exporterCollectors, e)
 
-		if !exporterArgs.DisableDefaultMetrics {
-			collectorOpts := []pg_collector.Option{pg_collector.WithCollectionTimeout("10s")}
-			if exporterArgs.StatStatementFlags != nil {
-				collectorOpts = append(collectorOpts, pg_collector.WithStatStatementsConfig(pg_collector.StatStatementsConfig{
-					IncludeQuery:     exporterArgs.StatStatementFlags.IncludeQuery,
-					QueryLength:      exporterArgs.StatStatementFlags.QueryLength,
-					Limit:            exporterArgs.StatStatementFlags.Limit,
-					ExcludeDatabases: exporterArgs.StatStatementFlags.ExcludeDatabases,
-					ExcludeUsers:     exporterArgs.StatStatementFlags.ExcludeUsers,
-				}))
-			}
-			col, err := pg_collector.NewPostgresCollector(
-				c.opts.Logger,
-				exporterArgs.AutoDiscovery.DatabaseDenylist,
-				dsn,
-				exporterArgs.EnabledCollectors,
-				collectorOpts...,
-			)
-			if err != nil {
-				return fmt.Errorf("failed to create postgres collector: %w", err)
-			}
+		col, err := newEmbeddedExporterCollector(c.opts.Logger, exporterArgs, dsn)
+		if err != nil {
+			return fmt.Errorf("failed to create postgres collector: %w", err)
+		}
+		if col != nil {
 			if err := inst.registry.Register(col); err != nil {
 				return fmt.Errorf("failed to register postgres collector: %w", err)
 			}

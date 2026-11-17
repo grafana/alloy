@@ -297,7 +297,17 @@ The `logs` collector is always enabled and counts server errors from the Postgre
 
 The `prometheus_exporter` block configures the embedded `postgres_exporter` scrapers.
 The `data_source_name` is inherited from the parent block.
-Only the `stat_statements` collector is enabled by default.
+The embedded exporter collects `stat_statements`, `settings`, `stat_activity`, `stat_archiver`, `stat_replication`, and `replication_slots` by default.
+The migrated groups remain enabled independently of `enabled_collectors` to preserve the metrics previously collected by the legacy exporter.
+Set `disable_default_metrics` to suppress the default groups and standalone collectors.
+Settings remain independently controlled by `disable_settings_metrics`, including when `disable_default_metrics` is `true`.
+Custom query namespaces replace their corresponding migrated default groups.
+
+The embedded standalone metrics include a credential-free `server` label containing the PostgreSQL host and port.
+The exporter uses upstream's `replication_slots` collector and plural metric names.
+This collector combines the existing slot metrics with the active and lag metrics, so it also exposes the slot metrics when only the migrated default groups are selected.
+Refer to the upgrade section in [`prometheus.exporter.postgres`](../../prometheus/prometheus.exporter.postgres/) for the metric rename list.
+Unlike that component, `database_observability.postgres` preserves the migrated default groups and their server identity for each configured database instance.
 The embedded exporter inherits the top-level `exclude_databases` list in both `autodiscovery > database_denylist` and `stat_statements > exclude_databases`, inherits `include_databases` in `autodiscovery > database_allowlist`, and inherits the effective top-level `exclude_users` list in `stat_statements > exclude_users`.
 Setting these nested filter lists in `prometheus_exporter` is discouraged because it can cause the embedded exporter and the component's collectors to monitor different databases or users.
 Configure the top-level `exclude_databases`, `include_databases`, and `exclude_users` arguments instead.

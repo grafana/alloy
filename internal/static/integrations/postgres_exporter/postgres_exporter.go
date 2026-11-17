@@ -35,7 +35,7 @@ type Config struct {
 	// Instance is used by Alloy to specify the instance name manually. This is
 	// only used when there are multiple DSNs provided.
 	Instance string
-	// EnabledCollectors is a list of additional collectors to enable. NOTE: Due to limitations of the postgres_exporter,
+	// EnabledCollectors is an explicit allowlist. An empty list selects Alloy's defaults. NOTE: Due to limitations of the postgres_exporter,
 	// this is only used for the first DSN provided and only some collectors can be enabled/disabled this way. See the
 	// user-facing docs for more information.
 	EnabledCollectors  []string
@@ -151,6 +151,27 @@ func (c *Config) getDataSourceNames() ([]string, error) {
 	return stringDsn, nil
 }
 
+// resolveEnabledCollectors applies Alloy's defaults and its settings toggle.
+// An explicit allowlist replaces the defaults. Always return a fresh slice so
+// independent components cannot change each other's selection.
+func resolveEnabledCollectors(enabled []string, disableSettings bool) []string {
+	if len(enabled) == 0 {
+		enabled = []string{
+			"database", "locks", "replication", "replication_slots", "roles", "settings",
+			"stat_activity", "stat_archiver", "stat_bgwriter", "stat_database",
+			"stat_progress_vacuum", "stat_replication", "stat_user_tables", "statio_user_tables", "wal",
+		}
+	}
+	result := make([]string, 0, len(enabled))
+	for _, name := range enabled {
+		if disableSettings && name == "settings" {
+			continue
+		}
+		result = append(result, name)
+	}
+	return result
+}
+
 func init() {
 	integrations.RegisterIntegration(&Config{})
 	integrations_v2.RegisterLegacy(&Config{}, integrations_v2.TypeMultiplex, metricsutils.NewNamedShim("postgres"))
@@ -169,7 +190,6 @@ func New(logger *slog.Logger, cfg *Config) (integrations.Integration, error) {
 		logger,
 		postgres_exporter.DisableDefaultMetrics(cfg.DisableDefaultMetrics),
 		postgres_exporter.WithUserQueriesPath(cfg.QueryPath),
-		postgres_exporter.DisableSettingsMetrics(cfg.DisableSettingsMetrics),
 		postgres_exporter.AutoDiscoverDatabases(cfg.AutodiscoverDatabases),
 		postgres_exporter.ExcludeDatabases(cfg.ExcludeDatabases),
 		postgres_exporter.IncludeDatabases(strings.Join(cfg.IncludeDatabases, ",")),
@@ -182,7 +202,8 @@ func New(logger *slog.Logger, cfg *Config) (integrations.Integration, error) {
 		return nil
 	}
 
-	if cfg.DisableDefaultMetrics {
+	names := resolveEnabledCollectors(cfg.EnabledCollectors, cfg.DisableSettingsMetrics)
+	if cfg.DisableDefaultMetrics || len(names) == 0 {
 		// Don't include the collector metrics if the default metrics are disabled.
 		return integrations.NewCollectorIntegration(
 			cfg.Name(),
@@ -214,7 +235,7 @@ func New(logger *slog.Logger, cfg *Config) (integrations.Integration, error) {
 		logger,
 		cfg.ExcludeDatabases,
 		dsns[0],
-		cfg.EnabledCollectors,
+		names,
 		collectorOpts...,
 	)
 	if err != nil {
