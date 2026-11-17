@@ -601,9 +601,16 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 		return true
 	}
 
-	redactedByteExplainPlanJSON := database_observability.RedactSql(string(byteExplainPlanJSON))
-
-	logger.Debug("db native explain plan", "db_native_explain_plan", base64.StdEncoding.EncodeToString([]byte(redactedByteExplainPlanJSON)))
+	if logger.Enabled(ctx, slog.LevelDebug) {
+		// Only the SQL expressions in the plan are redacted, so the logged plan
+		// keeps its costs, row estimates, and structure.
+		redactedByteExplainPlanJSON, redactErr := redactExplainPlanJSON(byteExplainPlanJSON)
+		if redactErr != nil {
+			logger.Error("failed to redact explain plan json for the debug log", "err", redactErr)
+		} else {
+			logger.Debug("db native explain plan", "db_native_explain_plan", base64.StdEncoding.EncodeToString(redactedByteExplainPlanJSON))
+		}
+	}
 
 	explainPlanOutput, genErr := newExplainPlanOutput(byteExplainPlanJSON)
 	explainPlanOutputJSON, err := json.Marshal(explainPlanOutput)
