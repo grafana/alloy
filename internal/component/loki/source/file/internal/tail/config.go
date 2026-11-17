@@ -9,6 +9,9 @@ type Config struct {
 	// Filename is the path to the file to tail.
 	Filename string
 
+	// MaxLineSize is the max size in bytes that will be read as a single line.
+	MaxLineSize int
+
 	// Offset is the byte offset in the file where tailing should start.
 	// If 0, tailing starts from the beginning of the file.
 	Offset int64
