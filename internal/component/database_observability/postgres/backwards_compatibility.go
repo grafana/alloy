@@ -1,8 +1,15 @@
 // Compatibility with the v0.19.1-based postgres_exporter fork used before
-// upgrading to v0.20.1. That upgrade moved legacy metric groups into standalone
-// collectors, changing how collector selection, settings flags, custom queries,
-// and server labels affect their output. The adapters below preserve those
-// behaviors for database_observability.postgres independently of the Prometheus
+// upgrading to v0.20.1. Upstream moved legacy metric groups into standalone
+// collectors in these PRs:
+//   - settings (also removed disable-settings-metrics): https://github.com/prometheus-community/postgres_exporter/pull/1303
+//   - stat_archiver: https://github.com/prometheus-community/postgres_exporter/pull/1304
+//   - stat_activity: https://github.com/prometheus-community/postgres_exporter/pull/1305
+//   - stat_replication: https://github.com/prometheus-community/postgres_exporter/pull/1306
+//   - replication_slots (also renamed the collector and slot metrics): https://github.com/prometheus-community/postgres_exporter/pull/1307
+//
+// These changes affect collector selection, settings flags, custom queries,
+// and server labels. The adapters below preserve those behaviors for
+// database_observability.postgres independently of the Prometheus
 // exporter component. They retain upstream metric names and the combined
 // replication_slots collector; they do not reproduce the old output exactly.
 // Removing an adapter requires an explicit migration decision for the behavior
@@ -65,10 +72,12 @@ func embeddedExporterCollectorNames(args exporter_postgres.Arguments) []string {
 		// Before v0.20.1 these groups ran even when enabled_collectors selected
 		// only stat_statements. The slot group supplied the active/lag metrics;
 		// its replacement also includes the formerly optional slot metrics.
+		// The rename and merge are in https://github.com/prometheus-community/postgres_exporter/pull/1307.
 		names = append(names, "stat_activity", "stat_archiver", "stat_replication", "replication_slots")
 	}
 	// The old DisableSettingsMetrics option was independent of
 	// DisableDefaultMetrics. Keep settings enabled when only defaults are disabled.
+	// The option was removed in https://github.com/prometheus-community/postgres_exporter/pull/1303.
 	if !args.DisableSettingsMetrics {
 		names = append(names, "settings")
 	}
