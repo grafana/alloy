@@ -265,10 +265,7 @@ integration-test-windows-service: dist-alloy-installer-windows
 		$(GO_ENV) go test -v -tags="gore2regex alloyintegrationtests" -timeout 10m -run TestWindowsService ./...
 
 # Windows exporter integration test. Runs only on Windows.
-# Builds Alloy, starts it with prometheus.exporter.windows configs and checks the metrics.
-# The recursive make passes the skip flags on the command line, because the generate-ui and
-# generate-source-code targets read them when make parses the file. The test does not use the UI,
-# and Windows needs the .exe suffix to run the binary.
+# The skip flags are on the make command line because other targets read them when make parses the file.
 .PHONY: integration-test-windows-exporter
 integration-test-windows-exporter:
 	"$(MAKE)" SKIP_UI_BUILD=1 SKIP_CODE_GENERATION=1 ALLOY_BINARY=build/alloy.exe alloy
