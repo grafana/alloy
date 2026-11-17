@@ -1,8 +1,8 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/scenarios/run-a-scenario/
 description: Clone the alloy-scenarios repository and run a Grafana Alloy scenario
-review_date: 2026-10-15
 menuTitle: Run a scenario
+review_date: 2026-11-17
 title: Run a scenario
 weight: 50
 ---
@@ -16,31 +16,46 @@ Each scenario directory has its own configuration, backends, and README.
 
 Ensure you have the following:
 
-- [Docker][] and [Docker Compose][].
-- Git, to clone the repository.
+- [Docker][] and [Docker Compose][], for Docker-based scenarios
+- Git
+- kind, kubectl, and Helm, for Kubernetes scenarios
 
-## Start a scenario
+## Start a Docker-based scenario
 
-Clone the repository:
+1. Clone the repository and change to its root directory:
+
+   ```shell
+   git clone https://github.com/grafana/alloy-scenarios.git
+   cd alloy-scenarios
+   ```
+
+1. Start the scenario with the image versions pinned in `image-versions.env`:
+
+   ```shell
+   ./run-example.sh <SCENARIO_DIRECTORY>
+   ```
+
+   Replace _`<SCENARIO_DIRECTORY>`_ with the scenario path, for example `logs-file`.
+
+1. Open Grafana at [http://localhost:3000][grafana-local] and the {{< param "PRODUCT_NAME" >}} UI at [http://localhost:12345][alloy-local].
+   You don't need to log in to Grafana.
+   Refer to the scenario README for additional endpoints.
+
+## Stop a scenario
+
+From the repository root, run:
 
 ```shell
-git clone https://github.com/grafana/alloy-scenarios.git
+cd <SCENARIO_DIRECTORY> && docker compose down
 ```
 
-Navigate to the scenario directory and open the README file.
-The scenario README documents everything you need to know to deploy and explore the scenario.
+## Start a Kubernetes scenario
 
-From the repository root, you can start Docker-based scenarios with pinned image versions: `./run-example.sh <scenario-dir>`.
-Image versions are in `image-versions.env`.
-
-Kubernetes scenarios use Helm charts.
-
-## Explore the services
-
-Most Docker-based scenarios expose Grafana at http://localhost:3000 and the Alloy UI at http://localhost:12345.
-You don't need to log in to Grafana in these scenarios.
-Refer to the scenario README for additional endpoints.
+Kubernetes scenarios are in the `k8s/` directory.
+Follow the README in the scenario directory.
 
 [alloy-scenarios]: https://github.com/grafana/alloy-scenarios
 [Docker]: https://docs.docker.com/get-docker/
 [Docker Compose]: https://docs.docker.com/compose/install/
+[grafana-local]: http://localhost:3000
+[alloy-local]: http://localhost:12345
