@@ -44,26 +44,6 @@ prometheus.exporter.windows "<LABEL>" {
 }
 ```
 
-## Upgrade from `windows_exporter` v0.31
-
-This version of {{< param "PRODUCT_NAME" >}} includes `windows_exporter` v0.32.
-Existing configurations keep working, but v0.32 renames many metrics and changes some units and types.
-Update your dashboards, recording rules, and alerts.
-Refer to the upstream [0.31 to 0.32 upgrade guide][upgrade-0.32] and its compatibility recording rules for the full list.
-
-Alloy accepts the following removed settings and logs a warning:
-
-- The `filetime` collector and block run the `file` collector instead.
-- The `thermalzone` collector is ignored. Use the [`performancecounter`][performancecounter] block to read the `Thermal Zone Information` counters.
-- The `counter_version` attribute of the `process` block has no effect.
-
-The following defaults change:
-
-- The `exclude` attribute of the [`scheduled_task`](#scheduled_task) block now excludes the tasks below `/Microsoft/`. Set it to `"^$"` to keep the series from v0.31.
-- The `mscluster` collector now runs the `shared_volumes` sub-collector by default, and the `time` collector runs `sync_status`.
-
-[upgrade-0.32]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/upgrade/0.32.md
-
 ## Arguments
 
 You can use the following arguments with `prometheus.exporter.windows`:
@@ -203,13 +183,11 @@ On hosts without a CRI endpoint, the collector exports containers without Kubern
 {{< admonition type="caution" >}}
 The `filetime` block is deprecated.
 Windows exporter v0.32 replaced the `filetime` collector with the `file` collector.
-Use the [`file`][file-block] block and the `file` collector instead.
+Migrate to the [`file`][file-block] block, because the `filetime` block will be removed in a future version.
 {{< /admonition >}}
 
-Alloy keeps accepting the `filetime` block and the `filetime` collector name for compatibility.
-Alloy logs a warning, runs the `file` collector, and adds the `file_patterns` of this block to the `file_patterns` of the `file` block.
-The `file` collector uses the same glob pattern syntax.
-The metric `windows_filetime_mtime_timestamp_seconds` is now `windows_file_mtime_timestamp_seconds`, and the collector adds `windows_file_size_bytes`.
+The `filetime` block configures the `file` collector.
+Metrics with the prefix `windows_filetime` now have the prefix `windows_file`.
 
 | Name            | Type           | Description                                          | Default | Required |
 | --------------- | -------------- | ---------------------------------------------------- | ------- | -------- |
@@ -395,9 +373,7 @@ The component [wraps][wrap-regex] user-supplied `exclude` and `include` strings 
 
 {{< admonition type="caution" >}}
 The `counter_version` attribute is deprecated and has no effect.
-Windows exporter v0.32 reads process data directly from the Windows kernel and removed the option.
-Alloy logs a warning if you set a value other than `0`.
-Remove the attribute from your configuration.
+Remove it from your configuration, because it will be removed in a future version of {{< param "PRODUCT_NAME" >}}.
 {{< /admonition >}}
 
 The component includes processes that match the regular expression specified by `include` and don't match the regular expression specified by `exclude`.
@@ -440,13 +416,7 @@ prometheus.exporter.windows "default" {
 
 The component includes tasks that match the regular expression specified by `include` and don't match the regular expression specified by `exclude`.
 
-{{< admonition type="note" >}}
-The `include` and `exclude` expressions match task paths that use forward slashes, for example `/Microsoft/Windows/Chkdsk/SyspartRepair`.
-Windows exporter v0.32 excludes the tasks below `/Microsoft/` by default, which are most of the tasks of Windows itself.
-{{< param "PRODUCT_NAME" >}} now uses the same default, so the series for these tasks no longer appear after an upgrade from v0.31.
-To keep the previous behavior, set `exclude` to `"^$"`.
 Reading the missed runs of a task costs the Task Scheduler service extra requests, so `missed_runs` is off by default.
-{{< /admonition >}}
 
 The component [wraps][wrap-regex] user-supplied `exclude` and `include` strings in a regular expression.
 
