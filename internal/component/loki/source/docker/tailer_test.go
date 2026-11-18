@@ -70,7 +70,7 @@ func TestTailer(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	wg := sync.WaitGroup{}
 	wg.Go(func() {
-		tailer.Run(ctx)
+		tailer.Run(ctx, ctx)
 	})
 
 	expectedLines := []string{
@@ -93,7 +93,7 @@ func TestTailer(t *testing.T) {
 	ctx, cancel = context.WithCancel(t.Context())
 	defer cancel()
 	wg.Go(func() {
-		tailer.Run(ctx)
+		tailer.Run(ctx, ctx)
 	})
 	expectedLinesAfterRestart := []string{
 		"243.115.12.215 - - [09/Dec/2023:09:16:57 +0000] \"DELETE /morph/exploit/granular HTTP/1.0\" 500 26468",
@@ -170,7 +170,7 @@ func TestTailerRestart(t *testing.T) {
 	expectedLogLine := "caller=module_service.go:114 msg=\"module stopped\" module=distributor"
 
 	tailer, entryHandler := setupTailer(t, client)
-	go tailer.Run(t.Context())
+	go tailer.Run(t.Context(), t.Context())
 
 	// The container is already running, expect log lines.
 	assert.EventuallyWithT(t, func(c *assert.CollectT) {
@@ -210,7 +210,7 @@ func TestTailerNeverStarted(t *testing.T) {
 	tailer, entryHandler := setupTailer(t, client)
 
 	ctx, cancel := context.WithCancel(t.Context())
-	go tailer.Run(ctx)
+	go tailer.Run(ctx, ctx)
 
 	assert.EventuallyWithT(t, func(c *assert.CollectT) {
 		logLines := entryHandler.Received()
@@ -242,7 +242,7 @@ func TestTailerStopsWhenContainerNotFound(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		tailer.Run(t.Context())
+		tailer.Run(t.Context(), t.Context())
 		close(done)
 	}()
 

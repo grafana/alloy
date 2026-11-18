@@ -6,7 +6,7 @@ title: Configure Alloy for clustering
 weight: 100
 ---
 
-# Configure {{< param "PRODUCT_NAME" >}} for clustering
+# Configure {{% param "PRODUCT_NAME" %}} for clustering
 
 You can enable clustering in {{< param "PRODUCT_NAME" >}} with Helm chart settings or command-line flags.
 
