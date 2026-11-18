@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -759,6 +760,7 @@ func TestExplainPlansSkipsNoRowResult(t *testing.T) {
 	}).AddRow(
 		[]byte(`{"query_block": {"message": "no matching row in const table"}}`),
 	))
+	expectShowWarnings(mock, sqlmock.NewRows(showWarningsColumns))
 
 	require.NoError(t, c.fetchExplainPlans(t.Context()))
 
@@ -812,6 +814,7 @@ func TestExplainPlansPassesQueriesBeginningInSelect(t *testing.T) {
 	}).AddRow(
 		[]byte(`{"query_block": {"select_id": 1}}`),
 	))
+	expectShowWarnings(mock, sqlmock.NewRows(showWarningsColumns))
 
 	require.NoError(t, c.fetchExplainPlans(t.Context()))
 
@@ -872,6 +875,7 @@ func TestExplainPlansPassesQueriesBeginningInWith(t *testing.T) {
 	}).AddRow(
 		[]byte(`{"query_block": {"select_id": 1}}`),
 	))
+	expectShowWarnings(mock, sqlmock.NewRows(showWarningsColumns))
 
 	require.NoError(t, c.fetchExplainPlans(t.Context()))
 
@@ -1148,6 +1152,7 @@ func TestQueryFailureDenylist(t *testing.T) {
 		}).AddRow(
 			[]byte(`{"query_block": {"select_id": 1}}`),
 		))
+		expectShowWarnings(mock, sqlmock.NewRows(showWarningsColumns))
 
 		err = c.fetchExplainPlans(t.Context())
 		require.NoError(t, err)
@@ -1276,4 +1281,172 @@ func TestSchemaAllowlist(t *testing.T) {
 	require.NoError(t, c.populateQueryCache(t.Context()))
 	require.Equal(t, 1, len(c.queryCache))
 	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// showWarningsColumns are the columns SHOW WARNINGS returns.
+var showWarningsColumns = []string{"Level", "Code", "Message"}
+
+// expectShowWarnings registers the SHOW WARNINGS the collector runs after the EXPLAIN while
+// debug logging is on.
+func expectShowWarnings(mock sqlmock.Sqlmock, rows *sqlmock.Rows) {
+	mock.ExpectQuery(showWarnings).WillReturnRows(rows)
+}
+
+func TestFetchExplainWarnings(t *testing.T) {
+	newConn := func(t *testing.T) (*sql.Conn, sqlmock.Sqlmock) {
+		t.Helper()
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = db.Close() })
+		conn, err := db.Conn(t.Context())
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = conn.Close() })
+		return conn, mock
+	}
+
+	t.Run("skips the rewritten query and keeps messages only for codes known not to carry query text", func(t *testing.T) {
+		conn, mock := newConn(t)
+		expectShowWarnings(mock, sqlmock.NewRows(showWarningsColumns).
+			AddRow("Warning", int64(1739), "Cannot use ref access on index 'ks' due to type or collation conversion on field 's'").
+			AddRow("Warning", int64(1064), "Optimizer hint syntax error near 'abc) */ * FROM t1 WHERE s = 'secret_value'' at line 1").
+			AddRow("Warning", int64(3128), "Unresolved name `zz`@`select#1` for BKA hint").
+			AddRow("Note", int64(1003), "/* select#1 */ select `t1`.`id` AS `id` from `t1` where (`t1`.`s` = 'secret_value')").
+			AddRow("Note", int64(1276), "Field or reference 'w.t1.id' of SELECT #2 was resolved in SELECT #1").
+			AddRow("Warning", int64(1287), "SQL_CALC_FOUND_ROWS is deprecated and will be removed in a future release. Consider using two separate queries instead.").
+			AddRow("Warning", int64(3170), "Memory capacity of 1000 bytes for 'range_optimizer_max_mem_size' exceeded. Range optimization was not done for this query."))
+
+		warnings, err := fetchExplainWarnings(t.Context(), conn)
+		require.NoError(t, err)
+		require.Equal(t, []explainWarning{
+			{Level: "Warning", Code: 1739, Message: "Cannot use ref access on index 'ks' due to type or collation conversion on field 's'"},
+			{Level: "Warning", Code: 1064},
+			{Level: "Warning", Code: 3128},
+			{Level: "Note", Code: 1276, Message: "Field or reference 'w.t1.id' of SELECT #2 was resolved in SELECT #1"},
+			{Level: "Warning", Code: 1287, Message: "SQL_CALC_FOUND_ROWS is deprecated and will be removed in a future release. Consider using two separate queries instead."},
+			{Level: "Warning", Code: 3170, Message: "Memory capacity of 1000 bytes for 'range_optimizer_max_mem_size' exceeded. Range optimization was not done for this query."},
+		}, warnings)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("keeps at most maxExplainWarnings warnings", func(t *testing.T) {
+		conn, mock := newConn(t)
+		rows := sqlmock.NewRows(showWarningsColumns)
+		for range 3 * maxExplainWarnings {
+			rows.AddRow("Warning", int64(1287), "deprecated")
+		}
+		expectShowWarnings(mock, rows)
+
+		warnings, err := fetchExplainWarnings(t.Context(), conn)
+		require.NoError(t, err)
+		require.Len(t, warnings, maxExplainWarnings)
+	})
+
+	t.Run("returns no warnings for a statement without any", func(t *testing.T) {
+		conn, mock := newConn(t)
+		expectShowWarnings(mock, sqlmock.NewRows(showWarningsColumns))
+
+		warnings, err := fetchExplainWarnings(t.Context(), conn)
+		require.NoError(t, err)
+		require.Empty(t, warnings)
+	})
+
+	t.Run("returns the error of the statement", func(t *testing.T) {
+		conn, mock := newConn(t)
+		mock.ExpectQuery(showWarnings).WillReturnError(fmt.Errorf("connection reset"))
+
+		_, err := fetchExplainWarnings(t.Context(), conn)
+		require.ErrorContains(t, err, "connection reset")
+	})
+}
+
+// newWarningsTestExplainPlans returns a collector with one digest to explain, whose EXPLAIN is
+// already expected. The caller registers what follows the EXPLAIN.
+func newWarningsTestExplainPlans(t *testing.T, level logging.Level) (c *ExplainPlans, mock sqlmock.Sqlmock, logs *syncbuffer.Buffer, received func() int) {
+	t.Helper()
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = db.Close() })
+
+	lastSeen := time.Now().Add(-time.Hour)
+	lokiClient := loki.NewCollectingHandler()
+	t.Cleanup(lokiClient.Stop)
+
+	logs = &syncbuffer.Buffer{}
+	logger, err := logging.New(logs, logging.Options{Level: level, Format: logging.FormatLogfmt})
+	require.NoError(t, err)
+
+	c, err = NewExplainPlans(ExplainPlansArguments{
+		DB:              db,
+		Logger:          logger.Slog(),
+		ScrapeInterval:  time.Second,
+		PerScrapeRatio:  1,
+		EntryHandler:    lokiClient,
+		InitialLookback: lastSeen,
+	})
+	require.NoError(t, err)
+
+	mock.ExpectQuery(fmt.Sprintf(selectDigestsForExplainPlan, exclusionClause)).WithArgs(lastSeen).RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows([]string{"schema_name", "digest", "query_sample_text", "last_seen"}).
+			AddRow("some_schema", "some_digest", "select * from some_table where id = 1", lastSeen))
+	mock.ExpectExec("USE `some_schema`").WithoutArgs().WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectQuery(selectExplainPlanPrefix + "select * from some_table where id = 1").
+		WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow([]byte(`{"query_block": {"select_id": 1}}`)))
+
+	return c, mock, logs, func() int { return len(lokiClient.Received()) }
+}
+
+func TestExplainPlansLogsWarningsAtDebugLevel(t *testing.T) {
+	c, mock, logs, received := newWarningsTestExplainPlans(t, logging.LevelDebug)
+	expectShowWarnings(mock, sqlmock.NewRows(showWarningsColumns).
+		AddRow("Warning", int64(1739), "Cannot use ref access on index 'ks' due to type or collation conversion on field 's'").
+		AddRow("Warning", int64(1064), "Optimizer hint syntax error near 'abc) */ * FROM t1 WHERE s = 'secret_value'' at line 1").
+		AddRow("Note", int64(1003), "/* select#1 */ select `t1`.`id` AS `id` from `t1` where (`t1`.`s` = 'secret_value')"))
+
+	require.NoError(t, c.fetchExplainPlans(t.Context()))
+	require.NoError(t, mock.ExpectationsWereMet())
+
+	out := logs.String()
+	require.Contains(t, out, "db_native_explain_warnings=")
+	require.Contains(t, out, "type or collation conversion on field")
+	require.Contains(t, out, `\"code\":1064`, "a warning without a known message is kept by its code")
+
+	// Nothing from the query reaches the log: not the hint error, which quotes the query, and not
+	// the rewritten query.
+	require.NotContains(t, out, "secret_value")
+	require.NotContains(t, out, "Optimizer hint syntax error")
+	require.NotContains(t, out, `\"code\":1003`)
+	require.NotContains(t, out, "level=error")
+
+	// The plan sent to Loki is the one it always was.
+	require.Eventually(t, func() bool { return received() == 1 }, 5*time.Second, 10*time.Millisecond)
+}
+
+func TestExplainPlansKeepsThePlanWhenWarningsCannotBeRead(t *testing.T) {
+	c, mock, logs, received := newWarningsTestExplainPlans(t, logging.LevelDebug)
+	mock.ExpectQuery(showWarnings).WillReturnError(fmt.Errorf("connection reset"))
+
+	require.NoError(t, c.fetchExplainPlans(t.Context()))
+	require.NoError(t, mock.ExpectationsWereMet())
+
+	out := logs.String()
+	require.Contains(t, out, "failed to fetch explain warnings")
+	require.Contains(t, out, "db_native_explain_plan=")
+	require.NotContains(t, out, "db_native_explain_warnings")
+	require.NotContains(t, out, "level=error")
+	require.Eventually(t, func() bool { return received() == 1 }, 5*time.Second, 10*time.Millisecond)
+}
+
+func TestExplainPlansDoesNotReadWarningsWithoutDebugLogging(t *testing.T) {
+	c, mock, logs, received := newWarningsTestExplainPlans(t, logging.LevelInfo)
+	expectShowWarnings(mock, sqlmock.NewRows(showWarningsColumns))
+
+	require.NoError(t, c.fetchExplainPlans(t.Context()))
+	require.Eventually(t, func() bool { return received() == 1 }, 5*time.Second, 10*time.Millisecond)
+
+	// The one expectation left unmet is the SHOW WARNINGS: it was never run.
+	err := mock.ExpectationsWereMet()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "SHOW WARNINGS")
+	require.NotContains(t, logs.String(), "db_native_explain")
 }
