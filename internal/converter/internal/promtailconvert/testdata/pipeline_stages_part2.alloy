@@ -24,11 +24,10 @@ loki.process "example" {
 	}
 
 	stage.timestamp {
-		source            = "time"
-		format            = "2006-01-02T15:04:05.000Z07:00"
-		fallback_formats  = ["2006-01-02T15:04:05.000Z07.00", "2006-01-02T15:04:05.000Z07:0000"]
-		location          = "Europe/Berlin"
-		action_on_failure = "fudge"
+		source           = "time"
+		format           = "2006-01-02T15:04:05.000Z07:00"
+		fallback_formats = ["2006-01-02T15:04:05.000Z07.00", "2006-01-02T15:04:05.000Z07:0000"]
+		location         = "Europe/Berlin"
 	}
 
 	stage.output {

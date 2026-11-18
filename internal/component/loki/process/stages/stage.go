@@ -59,10 +59,7 @@ func newStageWithOpts(
 	case cfg.RegexConfig != nil:
 		s = newRegexStage(*cfg.RegexConfig, opts)
 	case cfg.TimestampConfig != nil:
-		s, err = newTimestampStage(*cfg.TimestampConfig, opts)
-		if err != nil {
-			return nil, err
-		}
+		s = newTimestampStage(*cfg.TimestampConfig, opts)
 	case cfg.OutputConfig != nil:
 		s = newOutputStage(*cfg.OutputConfig, opts)
 	case cfg.MatchConfig != nil:

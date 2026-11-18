@@ -54,59 +54,69 @@ type TimestampConfig struct {
 	ActionOnDuplicateTimestamp string   `alloy:"action_on_duplicate_timestamp,attr,optional"`
 }
 
-type parser func(string) (time.Time, error)
+// defaultTimestampConfig holds the default values for TimestampConfig.
+var defaultTimestampConfig = TimestampConfig{
+	ActionOnFailure:            timestampActionOnFailureDefault,
+	ActionOnDuplicateTimestamp: timestampActionOnDuplicateTimestampDefault,
+}
 
-func validateTimestampConfig(cfg *TimestampConfig) (parser, error) {
+func (cfg *TimestampConfig) SetToDefault() {
+	*cfg = defaultTimestampConfig
+}
+
+func (cfg *TimestampConfig) Validate() error {
 	if cfg.Source == "" {
-		return nil, errTimestampSourceRequired
+		return errTimestampSourceRequired
 	}
 	if cfg.Format == "" {
-		return nil, errTimestampFormatRequired
+		return errTimestampFormatRequired
 	}
-	var loc *time.Location
-	var err error
 	if cfg.Location != nil {
-		loc, err = time.LoadLocation(*cfg.Location)
-		if err != nil {
-			return nil, fmt.Errorf("%v: %w", errInvalidLocation, err)
+		if _, err := time.LoadLocation(*cfg.Location); err != nil {
+			return fmt.Errorf("%v: %w", errInvalidLocation, err)
 		}
 	}
+	if !slices.Contains(timestampActionOnFailureOptions, cfg.ActionOnFailure) {
+		return fmt.Errorf(errInvalidActionOnFailure.Error(), timestampActionOnFailureOptions)
+	}
+	if !slices.Contains(timestampActionOnDuplicateTimestampOptions, cfg.ActionOnDuplicateTimestamp) {
+		return fmt.Errorf(errInvalidActionOnDuplicateTimestamp.Error(), timestampActionOnDuplicateTimestampOptions)
+	}
+	return nil
+}
 
-	// Validate the action on failure and enforce the default
-	if cfg.ActionOnFailure == "" {
-		cfg.ActionOnFailure = timestampActionOnFailureDefault
-	} else {
-		if !slices.Contains(timestampActionOnFailureOptions, cfg.ActionOnFailure) {
-			return nil, fmt.Errorf(errInvalidActionOnFailure.Error(), timestampActionOnFailureOptions)
-		}
+type parser func(string) (time.Time, error)
+
+// newTimestampParser builds a parser from the configured format, fallback
+// formats and location. cfg must have passed Validate.
+func newTimestampParser(cfg TimestampConfig) parser {
+	var loc *time.Location
+	if cfg.Location != nil {
+		// Validate already confirmed the location loads.
+		loc, _ = time.LoadLocation(*cfg.Location)
 	}
 
-	// Validate the action on duplicate timestamp and enforce the default
-	if cfg.ActionOnDuplicateTimestamp == "" {
-		cfg.ActionOnDuplicateTimestamp = timestampActionOnDuplicateTimestampDefault
-	} else {
-		if !slices.Contains(timestampActionOnDuplicateTimestampOptions, cfg.ActionOnDuplicateTimestamp) {
-			return nil, fmt.Errorf(errInvalidActionOnDuplicateTimestamp.Error(), timestampActionOnDuplicateTimestampOptions)
-		}
+	if len(cfg.FallbackFormats) == 0 {
+		return convertDateLayout(cfg.Format, loc)
 	}
 
-	if len(cfg.FallbackFormats) > 0 {
-		multiConvertDateLayout := func(input string) (time.Time, error) {
-			originalTime, originalErr := convertDateLayout(cfg.Format, loc)(input)
-			if originalErr == nil {
-				return originalTime, originalErr
+	parsers := make([]parser, 0, len(cfg.FallbackFormats)+1)
+	parsers = append(parsers, convertDateLayout(cfg.Format, loc))
+	for _, format := range cfg.FallbackFormats {
+		parsers = append(parsers, convertDateLayout(format, loc))
+	}
+	return func(input string) (time.Time, error) {
+		originalTime, originalErr := parsers[0](input)
+		if originalErr == nil {
+			return originalTime, nil
+		}
+		for _, p := range parsers[1:] {
+			if t, err := p(input); err == nil {
+				return t, nil
 			}
-			for i := 0; i < len(cfg.FallbackFormats); i++ {
-				if t, err := convertDateLayout(cfg.FallbackFormats[i], loc)(input); err == nil {
-					return t, err
-				}
-			}
-			return originalTime, originalErr
 		}
-		return multiConvertDateLayout, nil
+		return originalTime, originalErr
 	}
-
-	return convertDateLayout(cfg.Format, loc), nil
 }
 
 func timestampFudgeEnabled(cfg TimestampConfig) bool {
@@ -116,17 +126,15 @@ func timestampFudgeEnabled(cfg TimestampConfig) bool {
 var _ entryProcessor = (*timestampStage)(nil)
 
 // newTimestampStage creates a new timestamp extraction pipeline stage.
-func newTimestampStage(config TimestampConfig, opts stageOpts) (*timestampStage, error) {
-	parser, err := validateTimestampConfig(&config)
-	if err != nil {
-		return nil, err
-	}
-
-	var lastKnownTimestamps *simplelru.LRU[string, timestampCacheEntry]
+func newTimestampStage(config TimestampConfig, opts stageOpts) *timestampStage {
+	var (
+		lastKnownTimestamps *simplelru.LRU[string, timestampCacheEntry]
+		err                 error
+	)
 	if timestampFudgeEnabled(config) {
 		lastKnownTimestamps, err = simplelru.NewLRU[string, timestampCacheEntry](maxLastKnownTimestampsCacheSize, nil)
 		if err != nil {
-			return nil, err
+			panic("invalid size passed to simplelru constructor")
 		}
 	}
 
@@ -134,9 +142,9 @@ func newTimestampStage(config TimestampConfig, opts stageOpts) (*timestampStage,
 		next:                opts.next,
 		config:              config,
 		logger:              opts.slogger.With("stage", "timestamp"),
-		parser:              parser,
+		parser:              newTimestampParser(config),
 		lastKnownTimestamps: lastKnownTimestamps,
-	}, nil
+	}
 }
 
 // timestampCacheEntry holds both the original parsed timestamp and the last
