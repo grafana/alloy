@@ -4473,6 +4473,13 @@ func TestQuerySamples_determineTimerWindow(t *testing.T) {
 	})
 }
 
+func TestQuerySamples_timelineClauses(t *testing.T) {
+	// The clause goes last in the WHERE of selectQuerySamples, after the digest, SQL text, schema and duration
+	// filters. Without parentheses, statements from after an overflow would match the OR without those filters.
+	assert.Equal(t, ` AND (statements.TIMER_END > ? OR statements.TIMER_END <= ?)`, beginningAndEndOfTimeline)
+	assert.Equal(t, ` AND statements.TIMER_END > ? AND statements.TIMER_END <= ?`, endOfTimeline)
+}
+
 func TestTimerWindow_overflowsBefore(t *testing.T) {
 	t.Run("statements in a window that doesn't span an overflow", func(t *testing.T) {
 		w := timerWindow{clause: endOfTimeline, limit: 5e12, overflows: 1}

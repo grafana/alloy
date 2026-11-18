@@ -26,7 +26,7 @@ const (
 	maxControlledMemoryField  = `, statements.MAX_CONTROLLED_MEMORY`
 	maxTotalMemoryField       = `, statements.MAX_TOTAL_MEMORY`
 	endOfTimeline             = ` AND statements.TIMER_END > ? AND statements.TIMER_END <= ?`
-	beginningAndEndOfTimeline = ` AND statements.TIMER_END > ? OR statements.TIMER_END <= ?`
+	beginningAndEndOfTimeline = ` AND (statements.TIMER_END > ? OR statements.TIMER_END <= ?)`
 )
 
 const selectUptime = `SELECT variable_value FROM performance_schema.global_status WHERE variable_name = 'UPTIME'`
