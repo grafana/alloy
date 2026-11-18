@@ -3,6 +3,7 @@ package deps
 import (
 	"context"
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -18,6 +19,16 @@ const (
 	alloyOtelConfigMap = "alloy-otel-config"
 	// alloyImagePlaceholder is replaced with the image under test at install time.
 	alloyImagePlaceholder = "__ALLOY_IMAGE__"
+	// alloyOtelCommandPlaceholder is replaced with the container command, as a
+	// JSON array, which YAML reads as a flow sequence.
+	alloyOtelCommandPlaceholder = "__ALLOY_OTEL_COMMAND__"
+)
+
+var (
+	alloyOtelCommand = []string{"/bin/alloy", "otel"}
+	// otelcolCommand is the image's wrapper for tools that expect an otelcol
+	// binary. It runs `alloy otel` with the same arguments.
+	otelcolCommand = []string{"/bin/otelcol"}
 )
 
 //go:embed manifests/alloy-otel.yaml
@@ -27,19 +38,26 @@ var alloyOtelManifest string
 var _ harness.Dependency = (*AlloyOtel)(nil)
 
 // AlloyOtel deploys Alloy running the OTel engine (`alloy otel`) via a raw
-// manifest, with the alloyengine extension running an inner Alloy config. The
-// Helm chart can't run `alloy otel` (its args hardcode `run`), hence the raw
-// Deployment. CollectorConfigPath is the collector YAML; AlloyConfigPath is the
-// inner .alloy config the alloyengine extension runs.
+// manifest. The Helm chart can't run `alloy otel` (its args hardcode `run`),
+// hence the raw Deployment.
 type AlloyOtel struct {
 	opts      AlloyOtelOptions
+	manifest  string
 	installed bool
 }
 
 type AlloyOtelOptions struct {
-	Namespace           string
+	Namespace string
+	// CollectorConfigPath is the collector YAML.
 	CollectorConfigPath string
-	AlloyConfigPath     string
+	// AlloyConfigPath is the inner .alloy config, mounted as
+	// /etc/alloy/config.alloy for the alloyengine extension to run. Optional,
+	// for collector configs without the extension.
+	AlloyConfigPath string
+	// OtelcolEntrypoint starts the collector through the image's /bin/otelcol
+	// wrapper, as tools that expect an otelcol binary do, instead of running
+	// `alloy otel` directly.
+	OtelcolEntrypoint bool
 }
 
 func NewAlloyOtel(opts AlloyOtelOptions) *AlloyOtel {
@@ -64,9 +82,20 @@ func (a *AlloyOtel) Install(ctx *harness.TestContext) error {
 	}
 	a.installed = true
 
-	manifest := strings.ReplaceAll(alloyOtelManifest, alloyImagePlaceholder, image)
+	command := alloyOtelCommand
+	if a.opts.OtelcolEntrypoint {
+		command = otelcolCommand
+	}
+	commandJSON, err := json.Marshal(command)
+	if err != nil {
+		return fmt.Errorf("encode alloy-otel command: %w", err)
+	}
+	a.manifest = strings.NewReplacer(
+		alloyImagePlaceholder, image,
+		alloyOtelCommandPlaceholder, string(commandJSON),
+	).Replace(alloyOtelManifest)
 	if err := util.Step("apply alloy-otel manifest", func() error {
-		return harness.ApplyManifest(a.opts.Namespace, manifest)
+		return harness.ApplyManifest(a.opts.Namespace, a.manifest)
 	}); err != nil {
 		return err
 	}
@@ -89,30 +118,35 @@ func (a *AlloyOtel) Cleanup() {
 	if !a.installed || a.opts.Namespace == "" {
 		return
 	}
-	manifest := strings.ReplaceAll(alloyOtelManifest, alloyImagePlaceholder, os.Getenv(harness.AlloyImageEnv))
-	_ = harness.DeleteManifest(a.opts.Namespace, manifest)
+	if a.manifest != "" {
+		_ = harness.DeleteManifest(a.opts.Namespace, a.manifest)
+	}
 	_ = harness.RunCommand("kubectl", "delete", "configmap", alloyOtelConfigMap,
 		"--namespace", a.opts.Namespace,
 		"--ignore-not-found=true",
 	)
 }
 
-// createConfigMap creates the "alloy-otel-config" ConfigMap with keys
-// collector.yaml and config.alloy sourced from the given paths.
+// createConfigMap creates the "alloy-otel-config" ConfigMap with key
+// collector.yaml, and config.alloy when AlloyConfigPath is set, sourced from
+// the given paths.
 func (a *AlloyOtel) createConfigMap() error {
 	collectorAbs, err := filepath.Abs(a.opts.CollectorConfigPath)
 	if err != nil {
 		return fmt.Errorf("resolve collector config path: %w", err)
 	}
-	alloyAbs, err := filepath.Abs(a.opts.AlloyConfigPath)
-	if err != nil {
-		return fmt.Errorf("resolve alloy config path: %w", err)
-	}
-	if err := harness.RunCommand("kubectl", "create", "configmap", alloyOtelConfigMap,
+	args := []string{"create", "configmap", alloyOtelConfigMap,
 		"--namespace", a.opts.Namespace,
-		"--from-file=collector.yaml="+collectorAbs,
-		"--from-file=config.alloy="+alloyAbs,
-	); err != nil {
+		"--from-file=collector.yaml=" + collectorAbs,
+	}
+	if a.opts.AlloyConfigPath != "" {
+		alloyAbs, err := filepath.Abs(a.opts.AlloyConfigPath)
+		if err != nil {
+			return fmt.Errorf("resolve alloy config path: %w", err)
+		}
+		args = append(args, "--from-file=config.alloy="+alloyAbs)
+	}
+	if err := harness.RunCommand("kubectl", args...); err != nil {
 		return fmt.Errorf("create alloy-otel configmap: %w", err)
 	}
 	return nil

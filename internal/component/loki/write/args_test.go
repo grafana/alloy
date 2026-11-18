@@ -210,3 +210,15 @@ func TestUnmarshalAlloy(t *testing.T) {
 		})
 	}
 }
+
+func TestConvertEndpointConfigsCopiesHeaders(t *testing.T) {
+	args := Arguments{Endpoints: []EndpointArguments{{
+		URL:     "http://localhost:3100/loki/api/v1/push",
+		Headers: map[string]string{"X-Custom": "value"},
+	}}}
+
+	cfgs := args.convertEndpointConfigs()
+	cfgs[0].Headers["X-Added"] = "added"
+
+	require.Equal(t, map[string]string{"X-Custom": "value"}, args.Endpoints[0].Headers)
+}

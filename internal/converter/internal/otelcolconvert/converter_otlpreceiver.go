@@ -182,6 +182,15 @@ func toHTTPServerArguments(cfg *confighttp.ServerConfig) *otelcol.HTTPServerArgu
 		compressionAlgorithms = append([]string{}, otelcol.DefaultCompressionAlgorithms...)
 	}
 
+	// Upstream keeps the idle timeout in the keepalive section when the
+	// pkg.confighttp.PrioritizeNewKeepalive feature gate is enabled, and in the
+	// deprecated idle_timeout field otherwise.
+	//nolint:staticcheck
+	idleTimeout := cfg.IdleTimeout
+	if ka := cfg.Keepalive.Get(); ka != nil {
+		idleTimeout = ka.IdleTimeout
+	}
+
 	return &otelcol.HTTPServerArguments{
 		Endpoint: cfg.NetAddr.Endpoint,
 
@@ -194,9 +203,7 @@ func toHTTPServerArguments(cfg *confighttp.ServerConfig) *otelcol.HTTPServerArgu
 
 		CompressionAlgorithms: compressionAlgorithms,
 
-		// IdleTimeout is deprecated but remains the source of truth for an already-unmarshaled ServerConfig.
-		//nolint:staticcheck
-		IdleTimeout:       cfg.IdleTimeout,
+		IdleTimeout:       idleTimeout,
 		ReadTimeout:       cfg.ReadTimeout,
 		ReadHeaderTimeout: cfg.ReadHeaderTimeout,
 		WriteTimeout:      cfg.WriteTimeout,

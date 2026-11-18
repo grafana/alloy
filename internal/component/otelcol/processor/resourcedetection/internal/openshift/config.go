@@ -4,6 +4,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	rac "github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/resource_attribute_config"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 const Name = "openshift"
@@ -15,7 +16,7 @@ type Config struct {
 	Address string `alloy:"address,attr,optional"`
 
 	// Token is used to identify against the openshift api server
-	Token string `alloy:"token,attr,optional"`
+	Token alloytypes.Secret `alloy:"token,attr,optional"`
 
 	// TLSSettings contains TLS configurations that are specific to client
 	// connection used to communicate with the Openshift API.
@@ -44,7 +45,7 @@ func (args *Config) SetToDefault() {
 func (args Config) Convert() map[string]any {
 	return map[string]any{
 		"address":             args.Address,
-		"token":               args.Token,
+		"token":               string(args.Token),
 		"tls":                 args.TLSSettings.Convert(),
 		"resource_attributes": args.ResourceAttributes.Convert(),
 	}

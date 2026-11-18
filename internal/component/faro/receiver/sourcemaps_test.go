@@ -5,14 +5,18 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"log/slog"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
 	alloyutil "github.com/grafana/alloy/internal/util"
@@ -76,6 +80,7 @@ func Test_sourceMapsStoreImpl_DownloadSuccess(t *testing.T) {
 			},
 			newSourceMapMetrics(prometheus.NewRegistry()),
 			httpClient,
+			httpClient,
 			newTestFileService(),
 		)
 	)
@@ -128,6 +133,7 @@ func Test_sourceMapsStoreImpl_DownloadError(t *testing.T) {
 			},
 			newSourceMapMetrics(prometheus.NewRegistry()),
 			httpClient,
+			httpClient,
 			newTestFileService(),
 		)
 	)
@@ -159,6 +165,7 @@ func Test_sourceMapsStoreImpl_DownloadHTTPOriginFiltering(t *testing.T) {
 				DownloadFromOrigins: []string{"http://bar.com/"},
 			},
 			newSourceMapMetrics(prometheus.NewRegistry()),
+			httpClient,
 			httpClient,
 			newTestFileService(),
 		)
@@ -235,6 +242,7 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystem(t *testing.T) {
 			},
 		},
 		newSourceMapMetrics(prometheus.NewRegistry()),
+		httpClient,
 		httpClient,
 		fileService,
 	)
@@ -341,6 +349,7 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystemAndDownload(t *testing.T) {
 		},
 		newSourceMapMetrics(prometheus.NewRegistry()),
 		httpClient,
+		httpClient,
 		fileService,
 	)
 
@@ -422,6 +431,7 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystemAndNotDownloadIfDisabled(t *test
 		},
 		newSourceMapMetrics(prometheus.NewRegistry()),
 		httpClient,
+		httpClient,
 		fileService,
 	)
 
@@ -498,6 +508,7 @@ func Test_sourceMapsStoreImpl_ReadFromRemoteLocation(t *testing.T) {
 			},
 		},
 		newSourceMapMetrics(prometheus.NewRegistry()),
+		httpClient,
 		httpClient,
 		fileService,
 	)
@@ -576,6 +587,7 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystemIfBothLocalAndRemoteLocation(t *
 		},
 		newSourceMapMetrics(prometheus.NewRegistry()),
 		httpClient,
+		httpClient,
 		fileService,
 	)
 
@@ -653,6 +665,7 @@ func Test_sourceMapsStoreImpl_ReadFromRemoteLocationIfBothDownloadAndLocationIsS
 		},
 		newSourceMapMetrics(prometheus.NewRegistry()),
 		httpClient,
+		httpClient,
 		fileService,
 	)
 
@@ -719,6 +732,7 @@ func Test_sourceMapsStoreImpl_FilepathSanitized(t *testing.T) {
 				},
 			},
 			newSourceMapMetrics(prometheus.NewRegistry()),
+			httpClient,
 			httpClient,
 			fileService,
 		)
@@ -788,7 +802,7 @@ func Test_urlMatchesOrigins(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			actual := urlMatchesOrigins(tc.url, tc.origins)
+			actual := parseOriginPatterns(tc.origins).matches(tc.url)
 
 			if tc.shouldMatch {
 				require.True(t, actual, "expected %v to be matched from origin set %v", tc.url, tc.origins)
@@ -797,6 +811,183 @@ func Test_urlMatchesOrigins(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_urlMatchesOrigins_URLParts(t *testing.T) {
+	tt := []struct {
+		name    string
+		origin  string
+		match   []string
+		noMatch []string
+	}{
+		// Host
+		{
+			name:   "exact host",
+			origin: "https://app.example.com/",
+			match: []string{
+				"https://APP.Example.COM/foo.js",
+				"https://app.example.com:443/foo.js",
+			},
+			noMatch: []string{
+				"http://app.example.com/foo.js",
+				"https://app.example.com:8443/foo.js",
+				"https://app.example.com.example.net/foo.js",
+			},
+		},
+		{
+			name:   "origin without trailing slash doesn't match a longer host or userinfo",
+			origin: "https://app.example.com",
+			match:  []string{"https://app.example.com/static/foo.js"},
+			noMatch: []string{
+				"https://app.example.com.other.example.net/foo.js",
+				"https://app.example.com@other.example.net/foo.js",
+				"https://app.example.com%40other.example.net/foo.js",
+				"https://app.example.com\\@other.example.net/foo.js",
+			},
+		},
+		{
+			name:   "subdomain wildcard",
+			origin: "https://*.example.com/",
+			match: []string{
+				"https://cdn.example.com/foo.js",
+				"https://a.cdn.example.com/foo.js",
+			},
+			noMatch: []string{
+				"https://example.com/foo.js",
+				"https://example.net/x.example.com/foo.js",
+				"https://example.net/?d=x.example.com/foo.js",
+			},
+		},
+		{
+			name:    "subdomain wildcard without scheme doesn't match the query",
+			origin:  "*.example.com/",
+			noMatch: []string{"https://example.net/?d=x.example.com/foo.js"},
+		},
+		{
+			name:    "backslash in host",
+			origin:  "https://*.app.example.com/",
+			noMatch: []string{"https://other.example.net\\.app.example.com/foo.js"},
+		},
+		{
+			name:    "wildcard inside a part of the host",
+			origin:  "https://app-*.example.com/",
+			match:   []string{"https://app-eu.example.com/foo.js"},
+			noMatch: []string{"https://app-eu.cdn.example.com/foo.js"},
+		},
+		{
+			name:    "leading wildcard without a dot doesn't match subdomains",
+			origin:  "https://*example.com/",
+			noMatch: []string{"https://a.cdn.example.com/foo.js"},
+		},
+		{
+			name:    "single character wildcard",
+			origin:  "https://app?.example.com/",
+			match:   []string{"https://app1.example.com/foo.js"},
+			noMatch: []string{"https://app12.example.com/foo.js"},
+		},
+		{
+			name:    "wildcard in an IP address",
+			origin:  "http://10.0.0.*/",
+			match:   []string{"http://10.0.0.1/foo.js"},
+			noMatch: []string{"http://10.0.0.1.example.net/foo.js"},
+		},
+		{
+			name:   "IPv6 host",
+			origin: "http://[2001:db8::1]:8080/",
+			match:  []string{"http://[2001:db8::1]:8080/foo.js"},
+		},
+		{
+			// The zone is ignored when dialing, so it must not satisfy a host wildcard.
+			name:    "IPv6 zone",
+			origin:  "http://*.example.com:*/",
+			noMatch: []string{"http://[::ffff:127.0.0.1%25.example.com]:8080/foo.js"},
+		},
+		{
+			// IDNA turns these into dots when dialing, so they must not hide a label from a host wildcard.
+			name:   "non-ASCII dots",
+			origin: "http://192.168.*.*/",
+			noMatch: []string{
+				"http://192.168.0。example.net/foo.js",
+				"http://192.168.0．example.net/foo.js",
+				"http://192.168.0｡example.net/foo.js",
+			},
+		},
+
+		// Port
+		{
+			name:    "explicit default port",
+			origin:  "https://app.example.com:443/",
+			noMatch: []string{"https://app.example.com:8443/foo.js"},
+		},
+		{
+			name:   "explicit port",
+			origin: "http://app.example.com:8080/",
+			match:  []string{"http://app.example.com:8080/foo.js"},
+		},
+		{
+			name:   "port wildcard",
+			origin: "http://localhost:*/",
+			match:  []string{"http://localhost:3000/foo.js"},
+		},
+		{
+			name:   "any host on a port",
+			origin: "http://*:8080/",
+			match:  []string{"http://cdn.example.com:8080/foo.js"},
+		},
+
+		// Path
+		{
+			name:   "path prefix",
+			origin: "https://app.example.com/maps",
+			match: []string{
+				"https://app.example.com/maps/foo.js",
+				"https://app.example.com/maps-other/foo.js",
+			},
+		},
+		{
+			name:   "path prefix with trailing slash",
+			origin: "https://app.example.com/maps/",
+			match:  []string{"https://app.example.com/maps/foo.js"},
+		},
+		{
+			name:   "path wildcard",
+			origin: "https://app.example.com/*/static/",
+			match:  []string{"https://app.example.com/v2/static/foo.js"},
+		},
+
+		// Scheme
+		{
+			name:    "non-http scheme",
+			origin:  "file:///",
+			noMatch: []string{"file:///etc/passwd"},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, u := range tc.match {
+				require.True(t, parseOriginPatterns([]string{tc.origin}).matches(u), "expected %s to match %s", u, tc.origin)
+			}
+			for _, u := range tc.noMatch {
+				require.False(t, parseOriginPatterns([]string{tc.origin}).matches(u), "expected %s not to match %s", u, tc.origin)
+			}
+		})
+	}
+}
+
+func Test_newSourceMapsStore_WarnsOnInvalidOrigins(t *testing.T) {
+	var buf bytes.Buffer
+	newSourceMapsStore(
+		slog.New(slog.NewTextHandler(&buf, nil)),
+		SourceMapsArguments{Download: true, DownloadFromOrigins: []string{"https://app.example.com/", "http://"}},
+		newSourceMapMetrics(prometheus.NewRegistry()),
+		nil,
+		nil,
+		newTestFileService(),
+	)
+	require.Contains(t, buf.String(), "level=WARN")
+	require.Contains(t, buf.String(), "origin=http://")
+	require.NotContains(t, buf.String(), "app.example.com")
 }
 
 func TestOsFileService_RejectsInvalidPaths(t *testing.T) {
@@ -849,6 +1040,7 @@ func Test_sourceMapsStoreImpl_RealWorldPathValidation(t *testing.T) {
 				},
 			},
 			newSourceMapMetrics(prometheus.NewRegistry()),
+			nil,
 			nil,
 			fileService,
 		)
@@ -1108,4 +1300,95 @@ func newTestFileService() *testFileService {
 		stats:         make([]string, 0),
 		reads:         make([]string, 0),
 	}
+}
+
+func Test_sourceMapsStoreImpl_DownloadRedirects(t *testing.T) {
+	var otherHits atomic.Int32
+	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		otherHits.Add(1)
+		_, _ = w.Write(loadTestData(t, "foo.js"))
+	}))
+	defer other.Close()
+
+	var loopHits atomic.Int32
+	mux := http.NewServeMux()
+	mux.HandleFunc("/same/foo.js", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/foo.js", http.StatusFound)
+	})
+	mux.HandleFunc("/other/foo.js", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, other.URL+"/foo.js", http.StatusFound)
+	})
+	mux.HandleFunc("/loop/foo.js", func(w http.ResponseWriter, r *http.Request) {
+		loopHits.Add(1)
+		http.Redirect(w, r, "/loop/foo.js", http.StatusFound)
+	})
+	mux.HandleFunc("/foo.js", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(loadTestData(t, "foo.js"))
+	})
+	mux.HandleFunc("/same/foo.js.map", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(loadTestData(t, "foo.js.map"))
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	origins := []string{srv.URL + "/"}
+	newStore := func() *sourceMapsStoreImpl {
+		return newSourceMapsStore(
+			alloyutil.TestAlloyLogger(t).Slog(),
+			SourceMapsArguments{Download: true, DownloadFromOrigins: origins},
+			newSourceMapMetrics(prometheus.NewRegistry()),
+			nil,
+			newDownloadClient(time.Second, parseOriginPatterns(origins)),
+			newTestFileService(),
+		)
+	}
+
+	t.Run("same origin redirect is followed", func(t *testing.T) {
+		smap, err := newStore().GetSourceMap(srv.URL+"/same/foo.js", "123")
+		require.NoError(t, err)
+		require.NotNil(t, smap)
+	})
+
+	t.Run("redirect to other origin is refused", func(t *testing.T) {
+		smap, err := newStore().GetSourceMap(srv.URL+"/other/foo.js", "123")
+		require.ErrorContains(t, err, "not allowed by download_from_origins")
+		require.Nil(t, smap)
+		require.Zero(t, otherHits.Load())
+	})
+
+	t.Run("redirect chain is capped", func(t *testing.T) {
+		smap, err := newStore().GetSourceMap(srv.URL+"/loop/foo.js", "123")
+		require.ErrorContains(t, err, "stopped after")
+		require.Nil(t, smap)
+		require.Equal(t, int32(maxDownloadRedirects), loopHits.Load())
+	})
+}
+
+func Test_sourceMapsStoreImpl_DownloadRefusesSourceMapURLFromOtherOrigin(t *testing.T) {
+	httpClient := &mockHTTPClient{
+		responses: []struct {
+			*http.Response
+			error
+		}{
+			{&http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(strings.NewReader("console.log(1)\n//# sourceMappingURL=http://other.example.net/foo.js.map\n")),
+			}, nil},
+			{newResponseFromTestData(t, "foo.js.map"), nil},
+		},
+	}
+
+	store := newSourceMapsStore(
+		alloyutil.TestAlloyLogger(t).Slog(),
+		SourceMapsArguments{Download: true, DownloadFromOrigins: []string{"http://app.example.com/"}},
+		newSourceMapMetrics(prometheus.NewRegistry()),
+		httpClient,
+		httpClient,
+		newTestFileService(),
+	)
+
+	smap, err := store.GetSourceMap("http://app.example.com/foo.js", "123")
+	require.ErrorContains(t, err, "not allowed by download_from_origins")
+	require.Nil(t, smap)
+	require.Equal(t, []string{"http://app.example.com/foo.js"}, httpClient.requests)
 }

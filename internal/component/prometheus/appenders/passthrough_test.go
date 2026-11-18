@@ -13,6 +13,7 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/storage"
+	"github.com/prometheus/prometheus/tsdb/tsdbutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -242,4 +243,54 @@ func (f *failingAppender) UpdateMetadata(ref storage.SeriesRef, _ labels.Labels,
 
 func (f *failingAppender) AppendSTZeroSample(ref storage.SeriesRef, _ labels.Labels, _, _ int64) (storage.SeriesRef, error) {
 	return ref, errors.New("append st zero failed")
+}
+
+func TestPassthroughV2_ZerosDeadRefs(t *testing.T) {
+	child := &mockAppenderV2{}
+	app := NewPassthroughV2(child, 10, newTestHistogram(), newTestCounter())
+
+	lbls := labels.FromStrings("job", "test")
+	_, err := app.Append(9, lbls, 0, 1, 1, nil, nil, storage.AppendV2Options{})
+	require.NoError(t, err)
+	_, err = app.Append(10, lbls, 0, 1, 1, nil, nil, storage.AppendV2Options{})
+	require.NoError(t, err)
+
+	require.Equal(t, []storage.SeriesRef{0, 10}, child.appendRefs)
+}
+
+func TestPassthroughV2_CountsFloatSamples(t *testing.T) {
+	partialErr := &storage.AppendPartialError{ExemplarErrors: []error{storage.ErrOutOfOrderExemplar}}
+	hardErr := errors.New("append failed")
+
+	for _, tc := range []struct {
+		name          string
+		h             *histogram.Histogram
+		childErr      error
+		expectedCount float64
+	}{
+		{name: "float sample", expectedCount: 1},
+		{name: "float sample with exemplar errors", childErr: partialErr, expectedCount: 1},
+		{name: "failed float sample", childErr: hardErr, expectedCount: 0},
+		// Histograms aren't counted, to match the V1 passthrough.
+		{name: "histogram sample", h: tsdbutil.GenerateTestHistogram(1), expectedCount: 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			child := &mockAppenderV2{err: tc.childErr}
+			samplesForwarded := newTestCounter()
+			app := NewPassthroughV2(child, 0, newTestHistogram(), samplesForwarded)
+
+			_, err := app.Append(0, labels.FromStrings("job", "test"), 0, 1, 1, tc.h, nil, storage.AppendV2Options{})
+			require.ErrorIs(t, err, tc.childErr)
+			require.Equal(t, tc.expectedCount, testutil.ToFloat64(samplesForwarded))
+		})
+	}
+}
+
+func TestPassthroughV2_CommitAndRollback(t *testing.T) {
+	child := &mockAppenderV2{}
+	app := NewPassthroughV2(child, 0, newTestHistogram(), newTestCounter())
+	require.NoError(t, app.Commit())
+	require.NoError(t, app.Rollback())
+	require.Equal(t, 1, child.commitCalls)
+	require.Equal(t, 1, child.rollbackCalls)
 }

@@ -1,0 +1,59 @@
+logging {
+  level = "debug"
+}
+
+livedebugging {
+  enabled = true
+}
+
+otelcol.encoding.azure "default" { }
+
+otelcol.receiver.kafka "azure" {
+  brokers          = ["kafka:9092"]
+  protocol_version = "2.0.0"
+  // The test may produce records before the consumer group is joined.
+  initial_offset = "earliest"
+
+  logs {
+    topics             = ["azure-resource-logs"]
+    encoding_extension = otelcol.encoding.azure.default.handler
+  }
+
+  output {
+    logs = [otelcol.processor.attributes.loki_labels.input]
+  }
+}
+
+// Promote attributes set by the Azure encoding to Loki labels so the test can
+// assert on them.
+otelcol.processor.attributes "loki_labels" {
+  action {
+    key    = "loki.resource.labels"
+    action = "insert"
+    value  = "cloud.provider, cloud.resource_id, cloud.region"
+  }
+
+  action {
+    key    = "loki.attribute.labels"
+    action = "insert"
+    value  = "azure.category, azure.operation.name"
+  }
+
+  output {
+    logs = [otelcol.exporter.loki.default.input]
+  }
+}
+
+otelcol.exporter.loki "default" {
+  forward_to = [loki.write.loki.receiver]
+}
+
+loki.write "loki" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+
+  external_labels = {
+    alloy_test_name = "otelcol-receiver-kafka-azure",
+  }
+}

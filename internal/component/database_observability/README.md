@@ -1,1 +1,1 @@
-Please refer to [reference documentation](https://grafana.com/docs/grafana-cloud/monitor-applications/database-observability/introduction/#get-started) to get started setting up Database Observability with Grafana Cloud.
+Please refer to [reference documentation](https://grafana.com/docs/grafana-cloud/monitor-infrastructure/database-observability/introduction/#get-started) to get started setting up Database Observability with Grafana Cloud.

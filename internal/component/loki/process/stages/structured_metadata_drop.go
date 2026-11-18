@@ -24,10 +24,7 @@ func (s *StructuredMetadataDropConfig) Validate() error {
 	return nil
 }
 
-var (
-	_ Stage          = (*structuredMetadataDropStage)(nil)
-	_ entryProcessor = (*structuredMetadataDropStage)(nil)
-)
+var _ entryProcessor = (*structuredMetadataDropStage)(nil)
 
 func newStructuredMetadataDropStage(config StructuredMetadataDropConfig, opts stageOpts) *structuredMetadataDropStage {
 	return &structuredMetadataDropStage{
@@ -41,13 +38,6 @@ type structuredMetadataDropStage struct {
 	next   nextFn
 	config *StructuredMetadataDropConfig
 	logger *slog.Logger
-}
-
-// Run implements Stage
-func (s *structuredMetadataDropStage) Run(in chan Entry) chan Entry {
-	return RunWith(in, func(e Entry) Entry {
-		return s.processEntry(e)
-	})
 }
 
 func (s *structuredMetadataDropStage) process(ctx context.Context, entries []Entry) error {
@@ -65,6 +55,3 @@ func (s *structuredMetadataDropStage) processEntry(e Entry) Entry {
 	}
 	return e
 }
-
-// Cleanup implements Stage.
-func (*structuredMetadataDropStage) Cleanup() {}

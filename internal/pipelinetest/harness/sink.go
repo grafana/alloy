@@ -24,6 +24,7 @@ import (
 	alloyprom "github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/loki/util"
+	"github.com/grafana/alloy/internal/service/lokipipelinev2"
 )
 
 const (
@@ -47,10 +48,10 @@ func init() {
 type SinkArguments struct{}
 
 type SinkExports struct {
-	LokiPushUrl              string             `alloy:"loki_push_url,attr"`
-	LokiReceiver             loki.LogsReceiver  `alloy:"loki_receiver,attr"`
-	PrometheusRemoteWriteURL string             `alloy:"prometheus_remote_write_url,attr"`
-	PrometheusReceiver       storage.Appendable `alloy:"prometheus_receiver,attr"`
+	LokiPushUrl              string               `alloy:"loki_push_url,attr"`
+	LokiReceiver             loki.LogsReceiver    `alloy:"loki_receiver,attr"`
+	PrometheusRemoteWriteURL string               `alloy:"prometheus_remote_write_url,attr"`
+	PrometheusReceiver       storage.AppendableV2 `alloy:"prometheus_receiver,attr"`
 }
 
 // PrometheusSample is one sample captured by the sink. Histogram is set only for
@@ -69,25 +70,38 @@ type Sink struct {
 
 	server   *httptest.Server
 	lokirecv loki.LogsReceiver
-	promrecv storage.Appendable
+	promrecv storage.AppendableV2
 
 	mux          sync.Mutex
 	lokiEntries  []loki.Entry
 	promSamples  []PrometheusSample
 	promMetadata map[string]metadata.Metadata
+
+	pipelineV2 bool
 }
 
 func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
+	svc, err := opts.GetServiceData(lokipipelinev2.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
 	s := &Sink{
 		opts:         opts,
 		args:         args,
-		lokirecv:     loki.NewLogsReceiver(loki.WithComponentID(opts.ID)),
 		promMetadata: make(map[string]metadata.Metadata),
+		pipelineV2:   svc.(lokipipelinev2.Data).PipelineV2Enabled(),
+	}
+
+	if s.pipelineV2 {
+		s.lokirecv = loki.NewLogsReceiverV2(s, opts.ID)
+	} else {
+		s.lokirecv = loki.NewLogsReceiver(loki.WithComponentID(opts.ID))
 	}
 
 	// An Interceptor with no next Appendable terminates the chain, so appended
 	// samples land in the snapshot and go no further.
-	s.promrecv = alloyprom.NewInterceptor(
+	promrecv := alloyprom.NewInterceptor(
 		nil,
 		alloyprom.WithComponentID(opts.ID),
 		alloyprom.WithAppendHook(func(_ storage.SeriesRef, l labels.Labels, t int64, v float64, _ storage.Appender) (storage.SeriesRef, error) {
@@ -111,6 +125,7 @@ func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
 			return 0, nil
 		}),
 	)
+	s.promrecv = promrecv
 
 	router := mux.NewRouter()
 	router.HandleFunc(lokiPushPath, func(w http.ResponseWriter, r *http.Request) {
@@ -151,7 +166,7 @@ func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
 		promremote.NewWriteHandler(
 			opts.Logger,
 			prometheus.NewRegistry(),
-			s.promrecv, acceptedMsgs,
+			promrecv, acceptedMsgs,
 			ingestSTZeroSample,
 			enableTypeAndUnitLabels,
 			appendMetadata,
@@ -170,10 +185,18 @@ func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
 	return s, nil
 }
 
-var _ component.Component = (*Sink)(nil)
+var (
+	_ component.Component = (*Sink)(nil)
+	_ loki.Consumer       = (*Sink)(nil)
+)
 
 func (s *Sink) Run(ctx context.Context) error {
 	defer s.server.Close()
+
+	if s.pipelineV2 {
+		<-ctx.Done()
+		return nil
+	}
 
 	for {
 		select {
@@ -189,6 +212,21 @@ func (s *Sink) Run(ctx context.Context) error {
 
 func (s *Sink) Update(args component.Arguments) error {
 	s.args = args.(SinkArguments)
+	return nil
+}
+
+func (s *Sink) Consume(_ context.Context, batch loki.Batch) error {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+
+	for _, stream := range batch.Streams() {
+		for _, e := range stream.Entries {
+			s.lokiEntries = append(
+				s.lokiEntries,
+				loki.NewEntryWithCreatedUnixMicro(stream.Labels, stream.Created(), e),
+			)
+		}
+	}
 	return nil
 }
 

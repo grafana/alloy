@@ -20,6 +20,9 @@ When memory usage goes above the soft limit, the processor component drops data 
 When usage exceeds the hard limit, the processor forces a garbage collection to try and free memory.
 When usage is below the soft limit, no data is dropped and no forced garbage collection is performed.
 
+Grafana recommends that you connect `otelcol.processor.memory_limiter` directly to your receivers, before any other processor.
+Each receiver can then retry the refused data and apply backpressure to its data sources, which minimizes the data dropped when memory usage exceeds the soft limit.
+
 {{< admonition type="note" >}}
 `otelcol.processor.memory_limiter` is a wrapper over the upstream OpenTelemetry Collector [`memorylimiter`][] processor.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.

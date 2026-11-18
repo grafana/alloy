@@ -102,6 +102,7 @@ type QuerySamplesArguments struct {
 	EngineVersion                 semver.Version
 	CollectInterval               time.Duration
 	ExcludeSchemas                []string
+	IncludeSchemas                []string
 	EntryHandler                  loki.EntryHandler
 	Registry                      *prometheus.Registry
 	DisableQueryRedaction         bool
@@ -119,6 +120,7 @@ type QuerySamples struct {
 	engineVersion                 semver.Version
 	collectInterval               time.Duration
 	excludeSchemas                []string
+	includeSchemas                []string
 	entryHandler                  loki.EntryHandler
 	registry                      *prometheus.Registry
 	disableQueryRedaction         bool
@@ -145,6 +147,7 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		engineVersion:                 args.EngineVersion,
 		collectInterval:               args.CollectInterval,
 		excludeSchemas:                args.ExcludeSchemas,
+		includeSchemas:                args.IncludeSchemas,
 		entryHandler:                  args.EntryHandler,
 		disableQueryRedaction:         args.DisableQueryRedaction,
 		autoEnableSetupConsumers:      args.AutoEnableSetupConsumers,
@@ -275,7 +278,7 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 
 	timerClause, limit := c.determineTimerClauseAndLimit(uptime)
 
-	excludedSchemasClause := buildExcludedSchemasClause(c.excludeSchemas)
+	schemaFilterClause := buildSchemaFilterClause(c.excludeSchemas, c.includeSchemas, "statements.CURRENT_SCHEMA")
 
 	var waitDurationClause, nestedWaitDurationClause string
 	if c.waitEventMinDuration > 0 {
@@ -291,12 +294,12 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 
 	query := ""
 	if semver.MustParseRange("<8.0.28")(c.engineVersion) {
-		query = fmt.Sprintf(selectQuerySamples, "", waitDurationClause, nestedWaitDurationClause, excludedSchemasClause, sampleDurationClause, timerClause)
+		query = fmt.Sprintf(selectQuerySamples, "", waitDurationClause, nestedWaitDurationClause, schemaFilterClause, sampleDurationClause, timerClause)
 	} else if semver.MustParseRange("<8.0.31")(c.engineVersion) {
-		query = fmt.Sprintf(selectQuerySamples, cpuTimeField, waitDurationClause, nestedWaitDurationClause, excludedSchemasClause, sampleDurationClause, timerClause)
+		query = fmt.Sprintf(selectQuerySamples, cpuTimeField, waitDurationClause, nestedWaitDurationClause, schemaFilterClause, sampleDurationClause, timerClause)
 	} else {
 		additionalFields := cpuTimeField + maxControlledMemoryField + maxTotalMemoryField
-		query = fmt.Sprintf(selectQuerySamples, additionalFields, waitDurationClause, nestedWaitDurationClause, excludedSchemasClause, sampleDurationClause, timerClause)
+		query = fmt.Sprintf(selectQuerySamples, additionalFields, waitDurationClause, nestedWaitDurationClause, schemaFilterClause, sampleDurationClause, timerClause)
 	}
 
 	rs, err := c.dbConnection.QueryContext(ctx, query, c.timerBookmark, limit)

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"crypto/sha3"
 	"encoding"
 	"encoding/hex"
 	"errors"
@@ -15,7 +16,6 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
-	"golang.org/x/crypto/sha3"
 
 	"github.com/grafana/alloy/syntax"
 )
@@ -98,24 +98,18 @@ func (t Template) parse() (*template.Template, error) {
 	return template.New("pipeline_template").Funcs(functionMap).Parse(string(t))
 }
 
-var (
-	_ Stage          = (*templateStage)(nil)
-	_ entryProcessor = (*templateStage)(nil)
-)
+var _ entryProcessor = (*templateStage)(nil)
 
 // newTemplateStage creates a new templateStage
-func newTemplateStage(config TemplateConfig, opts stageOpts) (*templateStage, error) {
-	templ, err := config.Template.parse()
-	// We should not get an error here when built from alloy syntax.
-	if err != nil {
-		return nil, err
-	}
+func newTemplateStage(config TemplateConfig, opts stageOpts) *templateStage {
+	// Template is validated during unmarshal.
+	templ, _ := config.Template.parse()
 	return &templateStage{
 		next:     opts.next,
 		cfg:      config,
 		template: templ,
 		logger:   opts.slogger.With("stage", "template"),
-	}, nil
+	}
 }
 
 // templateStage will mutate the incoming entry and set it from extracted data
@@ -126,22 +120,12 @@ type templateStage struct {
 	logger   *slog.Logger
 }
 
-// Run implements Stage.
-func (o *templateStage) Run(in chan Entry) chan Entry {
-	return RunWith(in, func(e Entry) Entry {
-		return o.processEntry(e)
-	})
-}
-
 func (o *templateStage) process(ctx context.Context, entries []Entry) error {
 	for i := range entries {
 		entries[i] = o.processEntry(entries[i])
 	}
 	return o.next(ctx, entries)
 }
-
-// Cleanup implements Stage.
-func (o *templateStage) Cleanup() {}
 
 var bufPool = sync.Pool{
 	New: func() any {

@@ -1,0 +1,42 @@
+{
+  "operation": "Unique Key Lookup",
+  "details": {
+    "estimatedRows": 94604,
+    "estimatedCost": 104065.21,
+    "alias": "e",
+    "accessType": "eq_ref",
+    "keyUsed": "PRIMARY",
+    "joinAlgorithm": "nested_loop"
+  },
+  "children": [
+    {
+      "operation": "Full Table Scan",
+      "details": {
+        "estimatedRows": 94604,
+        "estimatedCost": 0,
+        "alias": "s",
+        "accessType": "all",
+        "condition": "( ( `employees` . `s` . `to_date` = date ? ) and ( `employees` . `s` . `salary` \u003e ( select ( avg ( `employees` . `salaries` . `salary` ) * ? ) from `employees` . `salaries` ) ) )"
+      },
+      "children": [
+        {
+          "operation": "Attached Subquery",
+          "details": {
+            "estimatedRows": 0
+          },
+          "children": [
+            {
+              "operation": "Full Table Scan",
+              "details": {
+                "estimatedRows": 2838426,
+                "estimatedCost": 289962.6,
+                "alias": "salaries",
+                "accessType": "all"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

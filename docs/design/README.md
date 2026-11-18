@@ -10,7 +10,8 @@ such as minor code refactors.
 
 If a contributor is uncertain about whether a proposal is needed, it is
 preferable to create a proposal instead of jumping into a change that may be
-declined.
+declined. For guidance on when to open an issue or a pull request, refer to
+[Issue or pull request?](../developer/contributing.md#issue-or-pull-request).
 
 ## Process
 

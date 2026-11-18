@@ -15,10 +15,7 @@ type SplitJSONConfig struct {
 	Source *Source `alloy:"source,attr,optional"`
 }
 
-var (
-	_ Stage          = (*splitJSONStage)(nil)
-	_ entryProcessor = (*splitJSONStage)(nil)
-)
+var _ entryProcessor = (*splitJSONStage)(nil)
 
 // newSplitJSONStage creates a new split_json pipeline stage from a config.
 func newSplitJSONStage(cfg SplitJSONConfig, opts stageOpts) *splitJSONStage {
@@ -34,37 +31,6 @@ type splitJSONStage struct {
 	next   nextFn
 	cfg    SplitJSONConfig
 	logger *slog.Logger
-}
-
-// Run implements Stage. An entry that holds a JSON array of N elements
-// becomes N entries. Every other entry passes through unchanged. The stage
-// sends each new entry as it builds it.
-func (s *splitJSONStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		for e := range in {
-			elems, ok := s.split(e)
-			if !ok {
-				out <- e
-				continue
-			}
-			for i, raw := range elems {
-				child := e
-				if i < len(elems)-1 {
-					child.Entry = e.Entry.Clone()
-					child.Extracted = maps.Clone(e.Extracted)
-				}
-				// Safety: json.RawMessage's UnmarshalJSON contract copies each
-				// value into its own backing slice, which is never exposed or
-				// mutated after this point, so the string's bytes stay immutable.
-				// nosemgrep: use-of-unsafe-block
-				child.Line = unsafe.String(unsafe.SliceData(raw), len(raw)) // #nosec G103
-				out <- child
-			}
-		}
-	}()
-	return out
 }
 
 func (s *splitJSONStage) process(ctx context.Context, entries []Entry) error {
@@ -143,9 +109,4 @@ func (s *splitJSONStage) split(e Entry) ([]json.RawMessage, bool) {
 		return nil, false
 	}
 	return elems, true
-}
-
-// Cleanup implements Stage.
-func (*splitJSONStage) Cleanup() {
-	// no-op
 }

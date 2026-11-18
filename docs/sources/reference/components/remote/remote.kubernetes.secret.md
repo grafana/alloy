@@ -7,7 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
-review_date: 2026-09-11
+review_date: 2026-10-01
 title: remote.kubernetes.secret
 ---
 
@@ -16,6 +16,8 @@ title: remote.kubernetes.secret
 `remote.kubernetes.secret` reads a Secret from the Kubernetes API server and exposes its data for other components to consume.
 
 A common use case for this is loading credentials or other information from secrets that aren't already mounted into the {{< param "PRODUCT_NAME" >}} Pod at deployment time.
+
+You can specify multiple `remote.kubernetes.secret` components by giving them different labels.
 
 ## Usage
 
@@ -133,7 +135,7 @@ If an individual key stored in `data` doesn't hold sensitive data, you can conve
 convert.nonsensitive(remote.kubernetes.secret.LABEL.data.KEY_NAME)
 ```
 
-Using `convert.nonsensitive` allows for using the exports of `remote.kubernetes.secret` for attributes in components that don't support secrets.
+Use `convert.nonsensitive` to pass the exports of `remote.kubernetes.secret` to attributes in components that don't support secrets.
 
 [convert]: ../../../stdlib/convert/
 

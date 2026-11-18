@@ -6,6 +6,13 @@ headless: true
 
 The following arguments are supported:
 
-| Name      | Type   | Description                               | Default | Required |
-| --------- | ------ | ----------------------------------------- | ------- | -------- |
-| `enabled` | `bool` | The target URL to send telemetry data to. | `false` | no       |
+| Name      | Type   | Description                   | Default | Required |
+| --------- | ------ | ----------------------------- | ------- | -------- |
+| `enabled` | `bool` | Deprecated and has no effect. | n/a     | no       |
+
+{{< admonition type="caution" >}}
+Starting with Alloy v1.22, the `enabled` argument is deprecated.
+It will be removed in a future release.
+
+Cookies are turned on whenever the `cookies` block is present, regardless of the value of `enabled`.
+{{< /admonition >}}

@@ -17,6 +17,16 @@ import (
 
 // Traces creates a new fanout consumer for traces.
 func Traces(in []otelcol.Consumer) otelconsumer.Traces {
+	consumers := make([]otelconsumer.Traces, len(in))
+	for i, c := range in {
+		consumers[i] = c
+	}
+	return TracesFromConsumers(consumers)
+}
+
+// TracesFromConsumers creates a new fanout consumer for traces from
+// traces-only consumers.
+func TracesFromConsumers(in []otelconsumer.Traces) otelconsumer.Traces {
 	if len(in) == 0 {
 		return &tracesFanout{}
 	} else if len(in) == 1 {

@@ -44,6 +44,7 @@ You can use the following arguments with `otelcol.exporter.kafka`:
 | `brokers`                                  | `list(string)` | Kafka brokers to connect to.                                                                                                | `["localhost:9092"]` | no       |
 | `allow_auto_topic_creation`                | `bool`         | Whether to allow automatic topic creation.                                                                                  | `true`               | no       |
 | `client_id`                                | `string`       | Consumer client ID to use. The ID will be used for all produce requests.                                                    | `"otel-collector"`   | no       |
+| `dial_timeout`                             | `duration`     | Timeout for establishing a connection to a broker.                                                                          | `"10s"`              | no       |
 | `conn_idle_timeout`                        | `duration`     | Time after which idle connections are not reused and may be closed.                                                         | `"9m"`               | no       |
 | `encoding`                                 | `string`       | (Deprecated) Encoding of payload read from Kafka.                                                                           | `"otlp_proto"`       | no       |
 | `include_metadata_keys`                    | `list(string)` | List of metadata keys to propagate as Kafka message headers.                                                                | `[]`                 | no       |
@@ -102,11 +103,12 @@ You can use the following blocks with `otelcol.exporter.kafka`:
 | [`metrics`][metrics]                                    | Configures how to send metrics to Kafka brokers.                               | no       |
 | [`producer`][producer]                                  | Kafka producer configuration,                                                  | no       |
 | `producer` > [`compression_params`][compression_params] | Configures the compression parameters for the Kafka producer.                  | no       |
-| [`record_partitioner`][record_partitioner]             | Selects the Kafka record partitioning strategy.                                | no       |
-| `record_partitioner` > [`sticky_key`][sticky_key]      | Configures the sticky-key partitioner.                                         | no       |
+| [`record_partitioner`][record_partitioner]              | Selects the Kafka record partitioning strategy.                                | no       |
+| `record_partitioner` > [`sticky_key`][sticky_key]       | Configures the sticky-key partitioning strategy.                               | no       |
 | [`retry_on_failure`][retry_on_failure]                  | Configures retry mechanism for failed requests.                                | no       |
 | [`sending_queue`][sending_queue]                        | Configures batching of data before sending.                                    | no       |
 | `sending_queue` > [`batch`][batch]                      | Configures batching requests based on a timeout and a minimum number of items. | no       |
+| `sending_queue` > `batch` > [`partition`][partition]    | Configures partitioning of batches by client metadata.                         | no       |
 | [`tls`][tls]                                            | Configures TLS for connecting to the Kafka brokers.                            | no       |
 | `tls` > [`tpm`][tpm]                                    | Configures TPM settings for the TLS `key_file`.                                | no       |
 | [`traces`][traces]                                      | Configures how to send traces to Kafka brokers.                                | no       |
@@ -126,6 +128,7 @@ You can use the following blocks with `otelcol.exporter.kafka`:
 [retry_on_failure]: #retry_on_failure
 [sending_queue]: #sending_queue
 [batch]: #batch
+[partition]: #partition
 [producer]: #producer
 [compression_params]: #compression_params
 [record_partitioner]: #record_partitioner
@@ -303,6 +306,12 @@ The `sending_queue` block configures queueing and batching for the exporter.
 The `batch` block configures batching requests based on a timeout and a minimum number of items.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `partition`
+
+The `partition` block configures how batches are partitioned by client metadata.
+
+{{< docs/shared lookup="reference/components/otelcol-queue-batch-partition-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 

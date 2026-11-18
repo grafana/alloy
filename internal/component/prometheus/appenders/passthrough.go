@@ -1,6 +1,7 @@
 package appenders
 
 import (
+	"errors"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -108,4 +109,71 @@ func (p *passthrough) AppendSTZeroSample(ref storage.SeriesRef, l labels.Labels,
 		p.start = time.Now()
 	}
 	return p.wrapping.AppendSTZeroSample(p.sanitizeRef(ref), l, t, st)
+}
+
+// passthroughV2 is the storage.AppenderV2 counterpart of passthrough.
+type passthroughV2 struct {
+	wrapping         storage.AppenderV2
+	start            time.Time
+	writeLatency     prometheus.Histogram
+	samplesForwarded prometheus.Counter
+	// deadRefThreshold has the same meaning as in passthrough.
+	deadRefThreshold storage.SeriesRef
+}
+
+func NewPassthroughV2(wrapping storage.AppenderV2, deadRefThreshold storage.SeriesRef, writeLatency prometheus.Histogram, samplesForwarded prometheus.Counter) storage.AppenderV2 {
+	return &passthroughV2{
+		wrapping:         wrapping,
+		deadRefThreshold: deadRefThreshold,
+		writeLatency:     writeLatency,
+		samplesForwarded: samplesForwarded,
+	}
+}
+
+func (p *passthroughV2) Append(ref storage.SeriesRef, l labels.Labels, st, t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, opts storage.AppendV2Options) (storage.SeriesRef, error) {
+	if p.start.IsZero() {
+		p.start = time.Now()
+	}
+	if ref != 0 && ref < p.deadRefThreshold {
+		ref = 0
+	}
+
+	ref, err := p.wrapping.Append(ref, l, st, t, v, h, fh, opts)
+
+	// Only float samples are counted, to match the V1 passthrough which only
+	// counts calls to Append.
+	if h == nil && fh == nil && sampleAppended(err) {
+		p.samplesForwarded.Inc()
+	}
+
+	return ref, err
+}
+
+func (p *passthroughV2) Commit() error {
+	defer p.recordLatency()
+	return p.wrapping.Commit()
+}
+
+func (p *passthroughV2) Rollback() error {
+	defer p.recordLatency()
+	return p.wrapping.Rollback()
+}
+
+func (p *passthroughV2) recordLatency() {
+	if p.start.IsZero() {
+		return
+	}
+	duration := time.Since(p.start)
+	p.writeLatency.Observe(duration.Seconds())
+}
+
+// sampleAppended reports whether a storage.AppenderV2.Append call that
+// returned err still appended its sample. A *storage.AppendPartialError means
+// the sample was appended but some of its exemplars were not.
+func sampleAppended(err error) bool {
+	if err == nil {
+		return true
+	}
+	var partialErr *storage.AppendPartialError
+	return errors.As(err, &partialErr)
 }

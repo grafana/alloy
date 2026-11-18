@@ -61,7 +61,9 @@ type Arguments struct {
 	Labels           map[string]string       `alloy:"labels,attr,optional"`
 	RelabelRules     alloy_relabel.Rules     `alloy:"relabel_rules,attr,optional"`
 	HTTPClientConfig *types.HTTPClientConfig `alloy:"http_client_config,block,optional"`
-	RefreshInterval  time.Duration           `alloy:"refresh_interval,attr,optional"`
+	// Deprecated: RefreshInterval has no effect. It is kept so existing
+	// configurations still load.
+	RefreshInterval time.Duration `alloy:"refresh_interval,attr,optional"`
 }
 
 // GetDefaultArguments return an instance of Arguments with the optional fields
@@ -69,7 +71,6 @@ type Arguments struct {
 func GetDefaultArguments() Arguments {
 	return Arguments{
 		HTTPClientConfig: types.CloneDefaultHTTPClientConfig(),
-		RefreshInterval:  60 * time.Second,
 	}
 }
 
@@ -85,9 +86,6 @@ func (a *Arguments) Validate() error {
 	}
 	// We must explicitly Validate because HTTPClientConfig is squashed and it won't run otherwise
 	if a.HTTPClientConfig != nil {
-		if a.RefreshInterval <= 0 {
-			return fmt.Errorf("refresh_interval must be positive, got %q", a.RefreshInterval)
-		}
 		return a.HTTPClientConfig.Validate()
 	}
 
@@ -123,10 +121,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 	positionsFile, err := positions.New(o.Logger, positions.Config{
-		SyncPeriod:        10 * time.Second,
-		PositionsFile:     filepath.Join(o.DataPath, "positions.yml"),
-		IgnoreInvalidYaml: false,
-		ReadOnly:          false,
+		Path: filepath.Join(o.DataPath, "positions.yml"),
 	})
 	if err != nil {
 		return nil, err
@@ -296,10 +291,7 @@ func newClient(args Arguments) (client.APIClient, error) {
 			return nil, err
 		}
 		opts = append(opts,
-			client.WithHTTPClient(&http.Client{
-				Transport: rt,
-				Timeout:   args.RefreshInterval,
-			}),
+			client.WithHTTPClient(&http.Client{Transport: rt}),
 			client.WithScheme(hostURL.Scheme),
 			client.WithHTTPHeaders(map[string]string{
 				"User-Agent": userAgent,
@@ -317,7 +309,6 @@ func newClient(args Arguments) (client.APIClient, error) {
 
 func requiresReset(newArgs, oldArgs Arguments) bool {
 	return newArgs.Host != oldArgs.Host ||
-		newArgs.RefreshInterval != oldArgs.RefreshInterval ||
 		!reflect.DeepEqual(newArgs.HTTPClientConfig, oldArgs.HTTPClientConfig) ||
 		!reflect.DeepEqual(newArgs.RelabelRules, oldArgs.RelabelRules)
 }

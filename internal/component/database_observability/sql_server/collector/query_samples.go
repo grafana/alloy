@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"encoding/hex"
@@ -30,94 +31,6 @@ const (
 	maxWaitOccurrencesPerRequest = 1000
 )
 
-const selectQuerySamplesTemplate = `
-WITH tracked_requests AS (
-	SELECT
-		SYSDATETIMEOFFSET() AS now,
-		DB_NAME(r.database_id) AS database_name,
-		r.session_id,
-		r.request_id,
-		TODATETIMEOFFSET(r.start_time, DATEPART(TZOFFSET, SYSDATETIMEOFFSET())) AS start_time,
-		s.login_name,
-		s.original_login_name,
-		s.host_name,
-		s.program_name,
-		c.client_net_address,
-		c.client_tcp_port,
-		r.query_hash,
-		r.cpu_time,
-		r.total_elapsed_time,
-		r.reads,
-		r.writes,
-		r.logical_reads,
-		r.row_count,
-		SUBSTRING(
-			st.text,
-			(r.statement_start_offset / 2) + 1,
-			(
-				CASE r.statement_end_offset
-					WHEN -1 THEN DATALENGTH(st.text)
-					ELSE r.statement_end_offset
-				END - r.statement_start_offset
-			) / 2 + 1
-		) AS statement_text
-	FROM sys.dm_exec_requests AS r
-	INNER JOIN sys.dm_exec_sessions AS s
-		ON s.session_id = r.session_id
-	LEFT JOIN sys.dm_exec_connections AS c
-		ON c.connection_id = r.connection_id
-	OUTER APPLY sys.dm_exec_sql_text(r.sql_handle) AS st
-	WHERE
-		r.session_id <> @@SPID
-		AND s.is_user_process = 1
-		AND r.database_id = DB_ID()
-		AND r.query_hash IN (%s)
-		%s
-),
-current_waits AS (
-	SELECT
-		t.session_id,
-		t.request_id,
-		w.exec_context_id,
-		w.wait_type,
-		w.wait_duration_ms,
-		w.blocking_session_id,
-		w.resource_description
-	FROM sys.dm_os_tasks AS t
-	INNER JOIN sys.dm_os_waiting_tasks AS w
-		ON w.waiting_task_address = t.task_address
-)
-SELECT
-	r.now,
-	r.database_name,
-	r.session_id,
-	r.request_id,
-	r.start_time,
-	r.login_name,
-	r.original_login_name,
-	r.host_name,
-	r.program_name,
-	r.client_net_address,
-	r.client_tcp_port,
-	r.query_hash,
-	r.cpu_time,
-	r.total_elapsed_time,
-	r.reads,
-	r.writes,
-	r.logical_reads,
-	r.row_count,
-	r.statement_text,
-	w.exec_context_id,
-	w.wait_type,
-	w.wait_duration_ms,
-	w.blocking_session_id,
-	w.resource_description
-FROM tracked_requests AS r
-LEFT JOIN current_waits AS w
-	ON w.session_id = r.session_id
-	AND w.request_id = r.request_id
-ORDER BY r.session_id, r.request_id, w.exec_context_id`
-
 type QuerySamplesArguments struct {
 	DB                    *sql.DB
 	CollectInterval       time.Duration
@@ -126,8 +39,15 @@ type QuerySamplesArguments struct {
 	EntryHandler          loki.EntryHandler
 	Logger                *slog.Logger
 	DisableQueryRedaction bool
+	SampleMinDuration     time.Duration
+	WaitEventMinDuration  time.Duration
+	MaxSamplesPerQuery    int
+	MaxSamplesPerCollect  int
 	ExcludeDatabases      []string
+	IncludeDatabases      []string
 	ExcludeUsers          []string
+	IncludeUsers          []string
+	ExcludeCurrentUser    bool
 }
 
 type QuerySamples struct {
@@ -137,8 +57,15 @@ type QuerySamples struct {
 	tracker               QueryTracker
 	entryHandler          loki.EntryHandler
 	disableQueryRedaction bool
+	sampleMinDuration     time.Duration
+	waitEventMinDuration  time.Duration
+	maxSamplesPerQuery    int
+	maxSamplesPerCollect  int
 	excludeDatabases      []string
+	includeDatabases      []string
 	excludeUsers          []string
+	includeUsers          []string
+	excludeCurrentUser    bool
 
 	logger  *slog.Logger
 	running *atomic.Bool
@@ -271,8 +198,15 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		tracker:               args.Tracker,
 		entryHandler:          args.EntryHandler,
 		disableQueryRedaction: args.DisableQueryRedaction,
-		excludeDatabases:      append(slices.Clone(excludedDatabases), args.ExcludeDatabases...),
+		sampleMinDuration:     args.SampleMinDuration,
+		waitEventMinDuration:  args.WaitEventMinDuration,
+		maxSamplesPerQuery:    args.MaxSamplesPerQuery,
+		maxSamplesPerCollect:  args.MaxSamplesPerCollect,
+		excludeDatabases:      database_observability.MergeExclusions(excludedDatabases, args.ExcludeDatabases),
+		includeDatabases:      args.IncludeDatabases,
 		excludeUsers:          uniqueSorted(args.ExcludeUsers),
+		includeUsers:          args.IncludeUsers,
+		excludeCurrentUser:    args.ExcludeCurrentUser,
 		logger:                args.Logger.With("collector", QuerySamplesCollector),
 		running:               atomic.NewBool(false),
 		samples:               make(map[querySampleKey]*querySampleState),
@@ -362,7 +296,7 @@ func (c *QuerySamples) collect(ctx context.Context) error {
 	// TODO(cristian): GetQueryHashes returns TTL-retained hashes and can exceed
 	// query_metrics.statements_limit. Introduce an exact latest-top-N snapshot
 	// before relying on the tracker as a strict admission bound.
-	query, args, err := buildQuerySamplesStatement(candidateHashes, c.excludeUsers)
+	query, args, err := buildQuerySamplesStatement(candidateHashes, c.excludeUsers, c.includeUsers, c.excludeCurrentUser)
 	if err != nil {
 		return err
 	}
@@ -479,11 +413,64 @@ func (c *QuerySamples) applySnapshot(snapshot []querySampleRow, registrySet map[
 		c.samples[key].waits.closeMissing(seenWaitTasks[key])
 	}
 
-	for key := range c.samples {
+	type completedSample struct {
+		key   querySampleKey
+		state *querySampleState
+	}
+
+	var completed []completedSample
+	for key, state := range c.samples {
 		if _, active := activeKeys[key]; active {
 			continue
 		}
-		c.emitAndDelete(key)
+		delete(c.samples, key)
+		if c.sampleMinDuration > 0 && time.Duration(state.lastRow.ElapsedTimeMillis)*time.Millisecond < c.sampleMinDuration {
+			continue
+		}
+		completed = append(completed, completedSample{key: key, state: state})
+	}
+
+	slices.SortFunc(completed, func(a, b completedSample) int {
+		if diff := cmp.Compare(b.state.lastRow.ElapsedTimeMillis, a.state.lastRow.ElapsedTimeMillis); diff != 0 {
+			return diff
+		}
+		if diff := cmp.Compare(b.state.lastRow.CPUTimeMillis, a.state.lastRow.CPUTimeMillis); diff != 0 {
+			return diff
+		}
+		if diff := cmp.Compare(a.key.startNanos, b.key.startNanos); diff != 0 {
+			return diff
+		}
+		if diff := cmp.Compare(a.key.sessionID, b.key.sessionID); diff != 0 {
+			return diff
+		}
+		if diff := cmp.Compare(a.key.requestID, b.key.requestID); diff != 0 {
+			return diff
+		}
+		return cmp.Compare(a.key.queryHash, b.key.queryHash)
+	})
+
+	var emittedTotal int
+	var emittedPerQuery map[queryMetricsKey]int
+	if c.maxSamplesPerQuery > 0 {
+		emittedPerQuery = make(map[queryMetricsKey]int)
+	}
+
+	for _, candidate := range completed {
+		if c.maxSamplesPerCollect > 0 && emittedTotal >= c.maxSamplesPerCollect {
+			break
+		}
+		if c.maxSamplesPerQuery > 0 {
+			qKey := queryMetricsKey{
+				database:  candidate.state.lastRow.DatabaseName,
+				queryHash: candidate.state.lastRow.QueryHash,
+			}
+			if emittedPerQuery[qKey] >= c.maxSamplesPerQuery {
+				continue
+			}
+			emittedPerQuery[qKey]++
+		}
+		emittedTotal++
+		c.emitSample(candidate.state)
 	}
 }
 
@@ -538,12 +525,7 @@ func (t *queryWaitTracker) closeMissing(seen map[int64]struct{}) {
 	}
 }
 
-func (c *QuerySamples) emitAndDelete(key querySampleKey) {
-	state, ok := c.samples[key]
-	if !ok {
-		return
-	}
-
+func (c *QuerySamples) emitSample(state *querySampleState) {
 	timestamp := state.lastSeenAt.UnixNano()
 	if !state.lastRow.StartTime.IsZero() {
 		timestamp = state.lastRow.StartTime.UnixNano()
@@ -559,6 +541,9 @@ func (c *QuerySamples) emitAndDelete(key querySampleKey) {
 		if wait.identity.waitType == "" {
 			continue
 		}
+		if c.waitEventMinDuration > 0 && wait.duration < c.waitEventMinDuration {
+			continue
+		}
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 			logging.LevelInfo,
 			database_observability.OP_WAIT_EVENT_V2,
@@ -566,8 +551,6 @@ func (c *QuerySamples) emitAndDelete(key querySampleKey) {
 			timestamp,
 		)
 	}
-
-	delete(c.samples, key)
 }
 
 func (c *QuerySamples) buildQuerySampleLine(row querySampleRow) string {
@@ -584,7 +567,7 @@ func (c *QuerySamples) buildQuerySampleLine(row querySampleRow) string {
 		line += fmt.Sprintf(` client_port="%d"`, row.ClientPort.Int64)
 	}
 	line += fmt.Sprintf(
-		` session_id="%d" request_id="%d" query_hash=%s cpu_time="%dms" elapsed_time="%s" elapsed_time_ms="%d" reads="%d" writes="%d" logical_reads="%d" row_count="%d"`,
+		` session_id="%d" request_id="%d" query_hash=%s cpu_time="%dms" elapsed_time=%q elapsed_time_ms="%d" reads="%d" writes="%d" logical_reads="%d" row_count="%d"`,
 		row.SessionID,
 		row.RequestID,
 		strconv.Quote(row.QueryHash),
@@ -610,7 +593,7 @@ func (c *QuerySamples) buildQuerySampleLine(row querySampleRow) string {
 
 func (c *QuerySamples) buildWaitEventLine(row querySampleRow, wait queryWaitOccurrence) string {
 	line := fmt.Sprintf(
-		`database=%s user=%s session_id="%d" request_id="%d" exec_context_id="%d" query_hash=%s wait_event_type=%s wait_event_name=%s wait_object_name=%s`,
+		`database=%s user=%s session_id="%d" request_id="%d" exec_context_id="%d" query_hash=%s wait_event_type=%s wait_event_name=%s`,
 		strconv.Quote(row.DatabaseName),
 		strconv.Quote(row.LoginName.String),
 		row.SessionID,
@@ -619,7 +602,6 @@ func (c *QuerySamples) buildWaitEventLine(row querySampleRow, wait queryWaitOccu
 		strconv.Quote(row.QueryHash),
 		strconv.Quote(classifySQLServerWaitEventType(wait.identity.waitType)),
 		strconv.Quote(wait.identity.waitType),
-		strconv.Quote(wait.identity.resource),
 	)
 	if wait.identity.blockingSessionID.Valid {
 		line += fmt.Sprintf(` blocking_session_id="%d"`, wait.identity.blockingSessionID.Int64)
@@ -627,10 +609,10 @@ func (c *QuerySamples) buildWaitEventLine(row querySampleRow, wait queryWaitOccu
 	return line + fmt.Sprintf(` wait_time=%s`, strconv.Quote(wait.duration.String()))
 }
 
-func buildQuerySamplesStatement(hashes, excludedUsers []string) (string, []any, error) {
+func buildQuerySamplesStatement(hashes, excludedUsers, includedUsers []string, excludeCurrentUser bool) (string, []any, error) {
 	hashes = uniqueSorted(hashes)
 	hashPlaceholders := make([]string, 0, len(hashes))
-	args := make([]any, 0, len(hashes)+len(excludedUsers))
+	args := make([]any, 0, len(hashes)+len(excludedUsers)+len(includedUsers))
 	for i, queryHash := range hashes {
 		raw, err := hex.DecodeString(queryHash)
 		if err != nil {
@@ -657,6 +639,22 @@ func buildQuerySamplesStatement(hashes, excludedUsers []string) (string, []any, 
 		}
 		userClause = fmt.Sprintf("AND s.original_login_name NOT IN (%s)", strings.Join(userPlaceholders, ", "))
 	}
+	if len(includedUsers) > 0 {
+		userPlaceholders := make([]string, 0, len(includedUsers))
+		for i, user := range includedUsers {
+			name := fmt.Sprintf("iu%d", i)
+			userPlaceholders = append(userPlaceholders, "@"+name)
+			args = append(args, sql.Named(name, user))
+		}
+		inClause := fmt.Sprintf("AND s.original_login_name IN (%s)", strings.Join(userPlaceholders, ", "))
+		if userClause != "" {
+			userClause += " " + inClause
+		} else {
+			userClause = inClause
+		}
+	}
+
+	args = append(args, sql.Named("exclude_current_user", excludeCurrentUser), sql.Named("collector_app_name", AppName), sql.Named("collector_marker", QueryMarker))
 
 	return fmt.Sprintf(selectQuerySamplesTemplate, strings.Join(hashPlaceholders, ", "), userClause), args, nil
 }
@@ -675,6 +673,14 @@ func (c *QuerySamples) databaseExcluded(database string) bool {
 		if strings.EqualFold(database, excluded) {
 			return true
 		}
+	}
+	if len(c.includeDatabases) > 0 {
+		for _, included := range c.includeDatabases {
+			if strings.EqualFold(database, included) {
+				return false
+			}
+		}
+		return true
 	}
 	return false
 }

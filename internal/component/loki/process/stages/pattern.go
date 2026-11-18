@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"sync"
 
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/loki/v3/pkg/logql/log/pattern"
 	"github.com/prometheus/common/model"
 )
@@ -26,8 +27,9 @@ type PatternConfig struct {
 	LabelsFromGroups bool    `alloy:"labels_from_groups,attr,optional"`
 }
 
-// validatePatternConfig validates the PatternConfig
-func validatePatternConfig(c PatternConfig) error {
+var _ syntax.Validator = (*PatternConfig)(nil)
+
+func (c *PatternConfig) Validate() error {
 	if c.Pattern == "" {
 		return errPatternRequired
 	}
@@ -51,17 +53,10 @@ func validatePatternConfig(c PatternConfig) error {
 	return nil
 }
 
-var (
-	_ Stage          = (*patternStage)(nil)
-	_ entryProcessor = (*patternStage)(nil)
-)
+var _ entryProcessor = (*patternStage)(nil)
 
 // newPatternStage creates a newPatternStage
-func newPatternStage(config PatternConfig, opts stageOpts) (*patternStage, error) {
-	err := validatePatternConfig(config)
-	if err != nil {
-		return nil, err
-	}
+func newPatternStage(config PatternConfig, opts stageOpts) *patternStage {
 	return &patternStage{
 		next:   opts.next,
 		config: &config,
@@ -74,7 +69,7 @@ func newPatternStage(config PatternConfig, opts stageOpts) (*patternStage, error
 				return m
 			},
 		},
-	}, nil
+	}
 }
 
 // patternStage sets extracted data using logQL patterns
@@ -85,22 +80,12 @@ type patternStage struct {
 	matcherPool sync.Pool
 }
 
-// Run implements Stage.
-func (r *patternStage) Run(in chan Entry) chan Entry {
-	return RunWith(in, func(e Entry) Entry {
-		return r.processEntry(e)
-	})
-}
-
 func (r *patternStage) process(ctx context.Context, entries []Entry) error {
 	for i := range entries {
 		entries[i] = r.processEntry(entries[i])
 	}
 	return r.next(ctx, entries)
 }
-
-// Cleanup implements Stage.
-func (r *patternStage) Cleanup() {}
 
 func (r *patternStage) processEntry(e Entry) Entry {
 	// If a source key is provided, the pattern stage should process it

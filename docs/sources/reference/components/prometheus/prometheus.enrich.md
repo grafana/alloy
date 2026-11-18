@@ -5,13 +5,13 @@ labels:
   stage: experimental
   products:
     - oss
-review_date: 2026-09-14
+review_date: 2026-10-01
 title: prometheus.enrich
 ---
 
 # `prometheus.enrich`
 
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 The `prometheus.enrich` component enriches metrics with additional labels from service discovery targets.
 It matches labels from incoming metrics against labels from discovered targets, and copies specified labels from the matched target to the metric sample.
@@ -19,11 +19,7 @@ If no match occurs, the metrics pass through unchanged.
 
 Use the `target_to_metric_match` argument to specify which target labels correspond to which metric labels. The map keys are target label names and the values are the corresponding metric label names. All labels in the map must match for enrichment to occur.
 
-{{< admonition type="caution" >}}
-The `target_match_label` and `metrics_match_label` arguments are deprecated in favor of `target_to_metric_match`.
-If `target_to_metric_match` is set, it takes precedence. Replace `target_match_label = "hostname"` with `target_to_metric_match = {"hostname" = "hostname"}`.
-These deprecated arguments will be removed in a future release.
-{{< /admonition >}}
+You can specify multiple `prometheus.enrich` components by giving them different labels.
 
 ## Usage
 
@@ -46,14 +42,12 @@ You can use the following arguments with `prometheus.enrich`:
 
 | Name                     | Type                    | Description                                                                                                     | Default | Required |
 | ------------------------ | ----------------------- | --------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `forward_to`             | `list(MetricsReceiver)` | Where the metrics should be forwarded to, after enrichment.                                                     |         | yes      |
+| `forward_to`             | `list(MetricsReceiver)` | Where to forward metrics after enrichment.                                                                      |         | yes      |
 | `targets`                | `list(map(string))`     | List of targets from a discovery component.                                                                     |         | yes      |
-| `labels_to_copy`         | `list(string)`          | List of labels to copy from discovered targets to metrics. If empty, all labels are copied.                     |         | no       |
-| `metrics_match_label`    | `string`                | (Deprecated) The label from incoming metrics to match against discovered targets, for example `"service_name"`. |         | no       |
-| `target_match_label`     | `string`                | (Deprecated) The label from discovered targets to match against, for example, `"__inventory_consul_service"`.   |         | no       |
-| `target_to_metric_match` | `map(string)`           | Map of target label name to metric label name. All entries must match for enrichment.                           |         | no       |
+| `labels_to_copy`         | `list(string)`          | List of labels to copy from discovered targets to metrics. If empty, the component copies all labels.           |         | no       |
+| `target_to_metric_match` | `map(string)`           | Map of target label name to metric label name. All entries must match for enrichment.                           |         | yes      |
 
-You must set at least one of `target_to_metric_match` or `target_match_label`. Setting `metrics_match_label` alone, without `target_match_label`, causes a validation error.
+The `target_to_metric_match` map must contain at least one entry. The keys and values can't be empty strings.
 
 ## Blocks
 
@@ -63,9 +57,9 @@ The `prometheus.enrich` component doesn't support any blocks. You can configure 
 
 The following fields are exported and can be referenced by other components:
 
-| Name       | Type              | Description                                               |
-|------------|-------------------|-----------------------------------------------------------|
-| `receiver` | `MetricsReceiver` | The input receiver where samples are sent to be enriched. |
+| Name       | Type              | Description                                                        |
+| ---------- | ----------------- | ------------------------------------------------------------------ |
+| `receiver` | `MetricsReceiver` | The input receiver where the component receives samples to enrich. |
 
 ## Component health
 
@@ -78,6 +72,8 @@ In those cases, exported fields retain their last healthy values.
 
 ## Debug metrics
 
+The following Prometheus metrics are exposed:
+
 | Name                                 | Type      | Description                                                  |
 | ------------------------------------ | --------- | ------------------------------------------------------------ |
 | `prometheus_fanout_latency`          | histogram | Write latency for sending to direct and indirect components. |
@@ -86,11 +82,11 @@ In those cases, exported fields retain their last healthy values.
 
 ## Examples
 
+The following examples demonstrate how to enrich metrics from different sources and how to match targets on multiple labels.
+
 ### Enrich metrics from `prometheus.scrape`
 
-The following example shows how the `prometheus.enrich` enriches incoming metrics from
-`prometheus.scrape.default`, using HTTP discovery, and forwards the results to
-`prometheus.remote_write.default` component:
+The following example shows how `prometheus.enrich` enriches incoming metrics from `prometheus.scrape.default` using HTTP discovery and forwards the results to the `prometheus.remote_write.default` component:
 
 ```alloy
 discovery.http "default" {
@@ -124,9 +120,7 @@ prometheus.remote_write "default" {
 
 ### Enrich metrics from `prometheus.receive_http`
 
-The following example shows how the `prometheus.enrich` enriches incoming metrics from
-`prometheus.receive_http.default`, using file-based discovery, and forwards the results to
-`prometheus.remote_write.default` component:
+The following example shows how `prometheus.enrich` enriches incoming metrics from `prometheus.receive_http.default` using file-based discovery and forwards the results to the `prometheus.remote_write.default` component:
 
 ```alloy
 discovery.file "network_devices" {

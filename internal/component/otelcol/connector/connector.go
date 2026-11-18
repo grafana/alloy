@@ -9,6 +9,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	otelconnector "go.opentelemetry.io/collector/connector"
+	otelconsumer "go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pipeline"
 	sdkprometheus "go.opentelemetry.io/otel/exporters/prometheus"
@@ -28,8 +30,10 @@ import (
 	"github.com/grafana/alloy/internal/slogadapter"
 )
 
+// Each constant must occupy a distinct bit: connectors combine them with the
+// bitwise OR operator to declare the signal pairs they support.
 const (
-	ConnectorTracesToTraces = iota + 1
+	ConnectorTracesToTraces = 1 << iota
 	ConnectorTracesToMetrics
 	ConnectorTracesToLogs
 	ConnectorMetricsToTraces
@@ -186,13 +190,13 @@ func (p *Connector) Update(args component.Arguments) error {
 
 	next := p.args.NextConsumers()
 
-	// Create instances of the connector from our factory for each of our
-	// supported telemetry signals.
+	// Create instances of the connector from our factory, one per supported
+	// (input signal, output signal) pair.
 	var components []otelcomponent.Component
 
-	var tracesConnector otelconnector.Traces
-	var metricsConnector otelconnector.Metrics
-	var logsConnector otelconnector.Logs
+	var tracesConnectors []otelconsumer.Traces
+	var metricsConnectors []otelconsumer.Metrics
+	var logsConnectors []otelconsumer.Logs
 
 	connectorType := p.args.ConnectorType()
 
@@ -202,11 +206,28 @@ func (p *Connector) Update(args component.Arguments) error {
 	}
 
 	if !outputsToLogs(connectorType) && len(next.Logs) > 0 {
-		return errors.New("logs output is not supported yet")
+		return errors.New("this connector cannot output logs")
 	}
 
 	if !outputsToTraces(connectorType) && len(next.Traces) > 0 {
-		return errors.New("traces output is not supported yet")
+		return errors.New("this connector cannot output traces")
+	}
+
+	// addConnector records a connector instance created by the factory. A
+	// factory which lacks support for a signal pair returns
+	// pipeline.ErrSignalNotSupported, which is tolerated.
+	addConnector := func(c otelcomponent.Component, err error) (bool, error) {
+		if err != nil {
+			if errors.Is(err, pipeline.ErrSignalNotSupported) {
+				return false, nil
+			}
+			return false, err
+		}
+		if c == nil {
+			return false, nil
+		}
+		components = append(components, c)
+		return true, nil
 	}
 
 	if len(next.Metrics) > 0 {
@@ -218,39 +239,88 @@ func (p *Connector) Update(args component.Arguments) error {
 			},
 		)
 
-		// Create traces to metrics connector if supported
 		if (connectorType & ConnectorTracesToMetrics) != 0 {
-			tracesConnector, err = p.factory.CreateTracesToMetrics(p.ctx, settings, connectorConfig, metricsInterceptor)
-			if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
+			c, err := p.factory.CreateTracesToMetrics(p.ctx, settings, connectorConfig, metricsInterceptor)
+			if ok, err := addConnector(c, err); err != nil {
 				return err
-			} else if tracesConnector != nil {
-				components = append(components, tracesConnector)
+			} else if ok {
+				tracesConnectors = append(tracesConnectors, c)
 			}
 		}
 
-		// Create metrics to metrics connector if supported
 		if (connectorType & ConnectorMetricsToMetrics) != 0 {
-			metricsConnector, err = p.factory.CreateMetricsToMetrics(p.ctx, settings, connectorConfig, metricsInterceptor)
-			if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
+			c, err := p.factory.CreateMetricsToMetrics(p.ctx, settings, connectorConfig, metricsInterceptor)
+			if ok, err := addConnector(c, err); err != nil {
 				return err
-			} else if metricsConnector != nil {
-				components = append(components, metricsConnector)
+			} else if ok {
+				metricsConnectors = append(metricsConnectors, c)
 			}
 		}
 
-		// Create logs to metrics connector if supported
 		if (connectorType & ConnectorLogsToMetrics) != 0 {
-			logsConnector, err = p.factory.CreateLogsToMetrics(p.ctx, settings, connectorConfig, metricsInterceptor)
-			if err != nil && !errors.Is(err, pipeline.ErrSignalNotSupported) {
+			c, err := p.factory.CreateLogsToMetrics(p.ctx, settings, connectorConfig, metricsInterceptor)
+			if ok, err := addConnector(c, err); err != nil {
 				return err
-			} else if logsConnector != nil {
-				components = append(components, logsConnector)
+			} else if ok {
+				logsConnectors = append(logsConnectors, c)
+			}
+		}
+	}
+
+	if len(next.Logs) > 0 {
+		fanout := fanoutconsumer.Logs(next.Logs)
+		logsInterceptor := interceptconsumer.Logs(fanout,
+			func(ctx context.Context, ld plog.Logs) error {
+				livedebuggingpublisher.PublishLogsIfActive(p.debugDataPublisher, p.opts.ID, ld, otelcol.GetComponentMetadata(next.Logs))
+				return fanout.ConsumeLogs(ctx, ld)
+			},
+		)
+
+		if (connectorType & ConnectorTracesToLogs) != 0 {
+			c, err := p.factory.CreateTracesToLogs(p.ctx, settings, connectorConfig, logsInterceptor)
+			if ok, err := addConnector(c, err); err != nil {
+				return err
+			} else if ok {
+				tracesConnectors = append(tracesConnectors, c)
+			}
+		}
+
+		if (connectorType & ConnectorMetricsToLogs) != 0 {
+			c, err := p.factory.CreateMetricsToLogs(p.ctx, settings, connectorConfig, logsInterceptor)
+			if ok, err := addConnector(c, err); err != nil {
+				return err
+			} else if ok {
+				metricsConnectors = append(metricsConnectors, c)
+			}
+		}
+
+		if (connectorType & ConnectorLogsToLogs) != 0 {
+			c, err := p.factory.CreateLogsToLogs(p.ctx, settings, connectorConfig, logsInterceptor)
+			if ok, err := addConnector(c, err); err != nil {
+				return err
+			} else if ok {
+				logsConnectors = append(logsConnectors, c)
 			}
 		}
 	}
 
 	if len(components) == 0 {
 		return errors.New("no connectors were created")
+	}
+
+	// A nil consumer makes the lazy consumer reject the signal with
+	// pipeline.ErrSignalNotSupported.
+	var tracesConnector otelconsumer.Traces
+	if len(tracesConnectors) > 0 {
+		tracesConnector = fanoutconsumer.TracesFromConsumers(tracesConnectors)
+	}
+	var metricsConnector otelconsumer.Metrics
+	if len(metricsConnectors) > 0 {
+		metricsConnector = fanoutconsumer.MetricsFromConsumers(metricsConnectors)
+	}
+	var logsConnector otelconsumer.Logs
+	if len(logsConnectors) > 0 {
+		logsConnector = fanoutconsumer.LogsFromConsumers(logsConnectors)
 	}
 
 	updateConsumersFunc := func() {

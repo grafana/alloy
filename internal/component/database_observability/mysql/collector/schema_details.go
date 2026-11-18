@@ -92,6 +92,7 @@ type SchemaDetailsArguments struct {
 	DB              *sql.DB
 	CollectInterval time.Duration
 	ExcludeSchemas  []string
+	IncludeSchemas  []string
 	EntryHandler    loki.EntryHandler
 
 	Logger *slog.Logger
@@ -101,6 +102,7 @@ type SchemaDetails struct {
 	dbConnection    *sql.DB
 	collectInterval time.Duration
 	excludeSchemas  []string
+	includeSchemas  []string
 	entryHandler    loki.EntryHandler
 
 	// lastEmittedAt records the wall-clock time at which OP_CREATE_STATEMENT
@@ -165,6 +167,7 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 		dbConnection:    args.DB,
 		collectInterval: args.CollectInterval,
 		excludeSchemas:  args.ExcludeSchemas,
+		includeSchemas:  args.IncludeSchemas,
 		entryHandler:    args.EntryHandler,
 		lastEmittedAt:   map[string]time.Time{},
 		now:             time.Now,
@@ -230,7 +233,8 @@ func (c *SchemaDetails) Stop() {
 }
 
 func (c *SchemaDetails) extractSchema(ctx context.Context) error {
-	query := fmt.Sprintf(selectTablesTemplate, buildExcludedSchemasClause(c.excludeSchemas))
+	// nosemgrep: go.lang.security.audit.database.string-formatted-query.string-formatted-query
+	query := fmt.Sprintf(selectTablesTemplate, buildSchemaFilterClause(c.excludeSchemas, c.includeSchemas, "TABLE_SCHEMA")) // #nosec G201 -- filter values are quote-escaped before interpolation
 	rs, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to query tables: %w", err)
@@ -270,7 +274,7 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			database_observability.OP_TABLE_DETECTION,
-			fmt.Sprintf(`schema="%s" table="%s"`, schema, tableName),
+			fmt.Sprintf(`schema=%q table=%q`, schema, tableName),
 		)
 	}
 
@@ -355,7 +359,7 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 				logging.LevelInfo,
 				database_observability.OP_CREATE_STATEMENT,
 				fmt.Sprintf(
-					`schema="%s" table="%s" create_statement="%s" table_spec="%s"`,
+					`schema=%q table=%q create_statement=%q table_spec=%q`,
 					table.schema, table.tableName, table.b64CreateStmt, table.b64TableSpec,
 				),
 			)

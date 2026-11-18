@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/faro"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/testutils"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/config/configcompression"
@@ -29,19 +30,15 @@ func TestDefaultArguments(t *testing.T) {
 			Headers:           configopaque.MapList{},
 			Compression:       configcompression.TypeGzip,
 			WriteBufferSize:   512 * 1024,
-			MaxIdleConns:      100,
-			IdleConnTimeout:   90 * time.Second,
+			MaxIdleConns:      100,              //nolint:staticcheck // migrate to confighttp Keepalive
+			IdleConnTimeout:   90 * time.Second, //nolint:staticcheck // migrate to confighttp Keepalive
 			ForceAttemptHTTP2: true,
 		},
 		QueueConfig: configoptional.Some(exporterhelper.QueueBatchConfig{
 			Sizer:        exporterhelper.RequestSizerTypeRequests,
 			QueueSize:    1000,
 			NumConsumers: 10,
-			Batch: configoptional.Default(exporterhelper.BatchConfig{
-				FlushTimeout: 200 * time.Millisecond,
-				Sizer:        exporterhelper.RequestSizerTypeItems,
-				MinSize:      8192,
-			}),
+			Batch:        testutils.DefaultExporterBatch(),
 		}),
 		RetryConfig: configretry.BackOffConfig{
 			Enabled:             true,

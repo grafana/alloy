@@ -61,12 +61,18 @@ You can use the following arguments with `otelcol.receiver.vcenter`:
 | `endpoint`            | `string`   | Endpoint to a vCenter Server or ESXi host which has the SDK path enabled. |         | yes      |
 | `username`            | `string`   | Username to use for authentication.                                       |         | yes      |
 | `password`            | `string`   | Password to use for authentication.                                       |         | yes      |
+| `proxy_url`           | `string`   | URL of the proxy to use when connecting to the vCenter SDK endpoint.      |         | no       |
 | `collection_interval` | `duration` | Defines how often to collect metrics.                                     | `"1m"`  | no       |
 | `initial_delay`       | `duration` | Defines how long this receiver waits before starting.                     | `"1s"`  | no       |
 | `max_query_metrics`   | `int`      | Caps the number of metrics requested per vSphere `QueryPerf` call.        | `256`   | no       |
 | `timeout`             | `duration` | Defines the timeout for the underlying HTTP client.                       | `"0s"`  | no       |
 
 `endpoint` has the format `<protocol>://<hostname>`. For example, `https://vcsa.hostname.localnet`.
+
+`proxy_url` supports the `http`, `https`, `socks5`, and `socks5h` schemes. For example, `socks5://proxy.hostname.localnet:1080`.
+If you don't set `proxy_url`, the standard `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY` environment variables apply.
+If you set it, those environment variables are ignored for this component, and all traffic to the vCenter SDK goes through the proxy.
+Unlike the environment variables, `proxy_url` applies to a single component, so you can use a different proxy for each `otelcol.receiver.vcenter` component.
 
 ## Blocks
 

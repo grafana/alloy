@@ -7,13 +7,13 @@ labels:
   stage: general-availability
   products:
     - oss
-review_date: 2026-09-15
+review_date: 2026-10-01
 title: prometheus.exporter.cadvisor
 ---
 
 # `prometheus.exporter.cadvisor`
 
-The `prometheus.exporter.cadvisor` component collects container metrics with [cAdvisor](https://github.com/google/cadvisor).
+The `prometheus.exporter.cadvisor` component collects container metrics with [cAdvisor][cadvisor].
 
 {{< docs/shared lookup="reference/components/exporter-clustering-warning.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -47,7 +47,9 @@ For Docker, grant permissions using one of these approaches:
 
   {{< admonition type="note" >}}
   The `docker` group grants privileges equivalent to the `root` user.
-  For more information about the security implications, refer to [Docker security](https://docs.docker.com/engine/security/#docker-daemon-attack-surface).
+  For more information about the security implications, refer to [Docker security][docker-security].
+
+  [docker-security]: https://docs.docker.com/engine/security/#docker-daemon-attack-surface
   {{< /admonition >}}
 
 - **Using ACLs**: Grant the `alloy` user read and execute permissions to `/var/lib/docker/`:
@@ -94,7 +96,7 @@ The DaemonSet requires:
 - **Volume mounts**: Access to the container runtime socket and system directories
 - **Security context**: Privileged access or specific capabilities
 
-For detailed guidance, refer to the [Kubernetes DaemonSet example](#kubernetes-daemonset-example) section.
+For detailed guidance, refer to the [Kubernetes DaemonSet example][k8s-daemonset] section.
 
 {{< /tab-content >}}
 {{< tab-content name="Docker container" >}}
@@ -104,10 +106,12 @@ When you run {{< param "PRODUCT_NAME" >}} itself as a Docker container to monito
 - **Privileged mode**: Access to host resources
 - **Volume mounts**: Access to the container runtime socket and system directories
 
-For a complete Docker container deployment example, refer to the [Docker deployment example](#docker-deployment-example) section.
+For a complete Docker container deployment example, refer to the [Docker deployment example][docker-deployment] section.
 
 {{< /tab-content >}}
 {{< /tabs >}}
+
+You can specify multiple `prometheus.exporter.cadvisor` components by giving them different labels.
 
 ## Usage
 
@@ -122,6 +126,7 @@ You can use the following arguments with `prometheus.exporter.cadvisor`:
 
 | Name                           | Type           | Description                                                                                                         | Default                             | Required |
 | ------------------------------ | -------------- | ------------------------------------------------------------------------------------------------------------------- | ----------------------------------- | -------- |
+| `allow_dynamic_housekeeping`   | `bool`         | Let the housekeeping interval grow for containers whose stats don't change.                                         | `true`                              | no       |
 | `allowlisted_container_labels` | `list(string)` | Allowlist of container labels to convert to Prometheus labels.                                                      | `[]`                                | no       |
 | `containerd_host`              | `string`       | The `containerd` endpoint.                                                                                          | `"/run/containerd/containerd.sock"` | no       |
 | `containerd_namespace`         | `string`       | The `containerd` namespace.                                                                                         | `"k8s.io"`                          | no       |
@@ -134,6 +139,8 @@ You can use the following arguments with `prometheus.exporter.cadvisor`:
 | `docker_tls_key`               | `string`       | Path to private key for TLS connection to docker.                                                                   | `"key.pem"`                         | no       |
 | `enabled_metrics`              | `list(string)` | List of metrics to enable. If set, this list overrides `disabled_metrics`.                                          | `[]`                                | no       |
 | `env_metadata_allowlist`       | `list(string)` | Allowlist of environment variable keys, matched by prefix, to collect for containers.                               | `[]`                                | no       |
+| `housekeeping_interval`        | `duration`     | Interval between stats collections for each container.                                                              | `"1s"`                              | no       |
+| `max_housekeeping_interval`    | `duration`     | Maximum interval between stats collections for each container when `allow_dynamic_housekeeping` is `true`.          | `"60s"`                             | no       |
 | `perf_events_config`           | `string`       | Path to a JSON file containing the configuration of performance events to measure.                                  | `""`                                | no       |
 | `raw_cgroup_prefix_allowlist`  | `list(string)` | List of `cgroup` path prefixes to collect, even when you set `docker_only`.                                         | `[]`                                | no       |
 | `resctrl_interval`             | `duration`     | Interval to update `resctrl mon` groups.                                                                            | `"0"`                               | no       |
@@ -142,6 +149,16 @@ You can use the following arguments with `prometheus.exporter.cadvisor`:
 | `use_docker_tls`               | `bool`         | Use TLS to connect to docker.                                                                                       | `false`                             | no       |
 
 For `allowlisted_container_labels` to take effect, set `store_container_labels` to `false`.
+
+`housekeeping_interval` controls how often {{< param "PRODUCT_NAME" >}} collects stats for each container.
+Increasing it reduces CPU usage on hosts with many containers.
+Metrics built from container stats use the timestamp of the collection that produced them, so a longer interval produces fewer distinct samples.
+Set `housekeeping_interval` at or below the scrape interval of the component that scrapes this exporter.
+When `allow_dynamic_housekeeping` is `true`, the interval doubles after each collection where the container stats don't change, up to `max_housekeeping_interval`.
+When the stats change, the interval resets to `housekeeping_interval`.
+When `allow_dynamic_housekeeping` is `false`, the interval stays at `housekeeping_interval` and `max_housekeeping_interval` has no effect.
+`housekeeping_interval` must be greater than `0`.
+When `allow_dynamic_housekeeping` is `true`, `max_housekeeping_interval` must be greater than or equal to `housekeeping_interval`.
 
 If a container uses the `overlayfs` storage driver, set the `containerd_host` attribute correctly to retrieve its metrics.
 
@@ -199,6 +216,9 @@ By default, cAdvisor disables the following metric kinds:
 
 {{< /column-list >}}
 
+The component sets the `instance` label on its exported targets to the `HOSTNAME` environment variable.
+If `HOSTNAME` isn't set, the component uses the operating system hostname, or `unknown` if it can't determine one.
+
 ## Blocks
 
 The `prometheus.exporter.cadvisor` component doesn't support any blocks. You can configure this component with arguments.
@@ -226,7 +246,7 @@ The following examples show you how to configure `prometheus.exporter.cadvisor` 
 
 ### Component configuration
 
-This example uses a [`prometheus.scrape` component][scrape] to collect metrics from `prometheus.exporter.cadvisor`:
+This example uses a [`prometheus.scrape`][scrape] component to collect metrics from `prometheus.exporter.cadvisor`:
 
 ```alloy
 prometheus.exporter.cadvisor "example" {
@@ -402,6 +422,9 @@ Consider using Pod Security Standards and RBAC to limit exposure, and only deplo
 For more information about deploying {{< param "PRODUCT_NAME" >}} on Kubernetes, refer to [Deploy {{< param "FULL_PRODUCT_NAME" >}}][deploy].
 
 [deploy]: ../../../../set-up/deploy/
+[cadvisor]: https://github.com/google/cadvisor
+[k8s-daemonset]: #kubernetes-daemonset-example
+[docker-deployment]: #docker-deployment-example
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

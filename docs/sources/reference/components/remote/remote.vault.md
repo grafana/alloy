@@ -7,7 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
-review_date: 2026-09-11
+review_date: 2026-10-01
 title: remote.vault
 ---
 
@@ -163,7 +163,9 @@ By specifying the namespace argument in `auth.custom`, you can authenticate to a
 
 You can also define Vault environment variables, which the clients used by {{< param "PRODUCT_NAME" >}} automatically load.
 This approach allows you to use certificate-based authentication by setting the `VAULT_CACERT` and `VAULT_CAPATH` environment variables.
-Refer to the [Vault Environment variables](https://developer.hashicorp.com/vault/docs/commands#configure-environment-variables) documentation for more information.
+Refer to the [Vault Environment variables][vault-env-vars] documentation for more information.
+
+[vault-env-vars]: https://developer.hashicorp.com/vault/docs/commands#configure-environment-variables
 
 ### `auth.gcp`
 
@@ -270,7 +272,7 @@ If an individual key stored in `data` doesn't hold sensitive data, you can conve
 convert.nonsensitive(remote.vault.LABEL.data.KEY_NAME)
 ```
 
-Using `convert.nonsensitive` allows for using the exports of `remote.vault` for attributes in components that don't support secrets.
+Use `convert.nonsensitive` to pass the exports of `remote.vault` to attributes in components that don't support secrets.
 
 [convert.nonsensitive]: ../../../stdlib/convert/
 
@@ -290,7 +292,7 @@ Using `convert.nonsensitive` allows for using the exports of `remote.vault` for 
 
 ## Debug metrics
 
-`remote.vault` exposes the following metrics:
+The following Prometheus metrics are exposed:
 
 | Name                                      | Type      | Description                                                                 |
 | ----------------------------------------- | --------- | --------------------------------------------------------------------------- |

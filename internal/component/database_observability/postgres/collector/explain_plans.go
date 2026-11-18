@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
@@ -18,6 +19,8 @@ import (
 
 	"github.com/DataDog/go-sqllexer"
 	"github.com/blang/semver/v4"
+	"github.com/lib/pq"
+	"github.com/lib/pq/pqerror"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -224,7 +227,9 @@ type ExplainPlansArguments struct {
 	ScrapeInterval   time.Duration
 	PerScrapeRatio   float64
 	ExcludeDatabases []string
+	IncludeDatabases []string
 	ExcludeUsers     []string
+	IncludeUsers     []string
 	EntryHandler     loki.EntryHandler
 	DBVersion        string
 	TableRegistry    *TableRegistry
@@ -242,7 +247,9 @@ type ExplainPlans struct {
 	queryDenylist       map[string]struct{}
 	finishedQueryCache  map[string]processedQueryInfo
 	excludeDatabases    []string
+	includeDatabases    []string
 	excludeUsers        []string
+	includeUsers        []string
 	perScrapeRatio      float64
 	currentBatchSize    int
 	entryHandler        loki.EntryHandler
@@ -264,7 +271,9 @@ func NewExplainPlan(args ExplainPlansArguments) (*ExplainPlans, error) {
 		scrapeInterval:      args.ScrapeInterval,
 		perScrapeRatio:      args.PerScrapeRatio,
 		excludeDatabases:    args.ExcludeDatabases,
+		includeDatabases:    args.IncludeDatabases,
 		excludeUsers:        args.ExcludeUsers,
+		includeUsers:        args.IncludeUsers,
 		queryCache:          make(map[string]*queryInfo),
 		queryDenylist:       make(map[string]struct{}),
 		finishedQueryCache:  make(map[string]processedQueryInfo),
@@ -326,8 +335,6 @@ func (c *ExplainPlans) pruneThrottle(seen map[string]struct{}) {
 func (c *ExplainPlans) sendExplainPlansOutput(schemaName string, digest string, generatedAt string, result database_observability.ExplainProcessingResult, reason string, plan *database_observability.ExplainPlanNode) error {
 	output := &database_observability.ExplainPlanOutput{
 		Metadata: database_observability.ExplainPlanMetadataInfo{
-			DatabaseEngine:         "PostgreSQL",
-			DatabaseVersion:        c.dbVersion.String(),
 			QueryIdentifier:        digest,
 			GeneratedAt:            generatedAt,
 			ProcessingResult:       result,
@@ -344,7 +351,7 @@ func (c *ExplainPlans) sendExplainPlansOutput(schemaName string, digest string, 
 	}
 
 	logMessage := fmt.Sprintf(
-		`schema="%s" digest="%s" explain_plan_output="%s"`,
+		`schema=%q digest=%q explain_plan_output=%q`,
 		schemaName,
 		digest,
 		base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
@@ -409,11 +416,12 @@ func (c *ExplainPlans) Stop() {
 func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 	var selectStatement string
 	var resetTS time.Time
-	excludedDatabasesClause := buildExcludedDatabasesClause(c.excludeDatabases)
-	excludedUsersClause := buildExcludedUsersClause(c.excludeUsers, "pg_get_userbyid(s.userid)")
+	databasesClause := buildDatabaseFilterClause(c.excludeDatabases, c.includeDatabases, "d.datname")
+	usersClause := buildUserFilterClause(c.excludeUsers, c.includeUsers, "pg_get_userbyid(s.userid)")
 	version17Plus := semver.MustParseRange(">=17.0.0")(c.dbVersion)
 	if version17Plus {
-		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", excludedDatabasesClause, excludedUsersClause)
+		// nosemgrep: go.lang.security.audit.database.string-formatted-query.string-formatted-query
+		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", databasesClause, usersClause) // #nosec G201 -- filter values are quote-escaped before interpolation
 	} else {
 		statReset := c.dbConnection.QueryRowContext(ctx, "SELECT stats_reset FROM pg_stat_statements_info")
 		if err := statReset.Err(); err != nil {
@@ -422,7 +430,8 @@ func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 		if err := statReset.Scan(&resetTS); err != nil {
 			return fmt.Errorf("failed to scan stats reset time for explain plans: %w", err)
 		}
-		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "NOW() AT TIME ZONE 'UTC' AS stats_since", excludedDatabasesClause, excludedUsersClause)
+		// nosemgrep: go.lang.security.audit.database.string-formatted-query.string-formatted-query
+		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "NOW() AT TIME ZONE 'UTC' AS stats_since", databasesClause, usersClause) // #nosec G201 -- filter values are quote-escaped before interpolation
 	}
 
 	rs, err := c.dbConnection.QueryContext(ctx, selectStatement)
@@ -579,12 +588,7 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 	byteExplainPlanJSON, err := c.fetchExplainPlanJSON(ctx, *qi)
 	if err != nil {
 		logger.Debug("failed to fetch explain plan json bytes", "err", err)
-		for _, code := range unrecoverablePostgresSQLErrors {
-			if strings.Contains(err.Error(), code) {
-				return true
-			}
-		}
-		return false
+		return isUnrecoverablePostgresSQLError(err)
 	}
 
 	if len(byteExplainPlanJSON) == 0 {
@@ -597,9 +601,16 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 		return true
 	}
 
-	redactedByteExplainPlanJSON := database_observability.RedactSql(string(byteExplainPlanJSON))
-
-	logger.Debug("db native explain plan", "db_native_explain_plan", base64.StdEncoding.EncodeToString([]byte(redactedByteExplainPlanJSON)))
+	if logger.Enabled(ctx, slog.LevelDebug) {
+		// Only the SQL expressions in the plan are redacted, so the logged plan
+		// keeps its costs, row estimates, and structure.
+		redactedByteExplainPlanJSON, redactErr := redactExplainPlanJSON(byteExplainPlanJSON)
+		if redactErr != nil {
+			logger.Error("failed to redact explain plan json for the debug log", "err", redactErr)
+		} else {
+			logger.Debug("db native explain plan", "db_native_explain_plan", base64.StdEncoding.EncodeToString(redactedByteExplainPlanJSON))
+		}
+	}
 
 	explainPlanOutput, genErr := newExplainPlanOutput(byteExplainPlanJSON)
 	explainPlanOutputJSON, err := json.Marshal(explainPlanOutput)
@@ -629,6 +640,19 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 	}
 
 	return false
+}
+
+func isUnrecoverablePostgresSQLError(err error) bool {
+	for _, message := range unrecoverablePostgresSQLErrors {
+		if strings.Contains(err.Error(), message) {
+			return true
+		}
+	}
+
+	var pqErr *pq.Error
+	return errors.As(err, &pqErr) &&
+		pqErr.Code == pqerror.UndefinedObject &&
+		strings.HasPrefix(pqErr.Message, "unrecognized configuration parameter ")
 }
 
 // postgresPreparedStatementParamCount returns N for EXECUTE, where N is the highest

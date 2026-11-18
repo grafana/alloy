@@ -43,7 +43,7 @@ func init() {
 // component.
 type Arguments struct {
 	// Where the relabelled metrics should be forwarded to.
-	ForwardTo []storage.Appendable `alloy:"forward_to,attr"`
+	ForwardTo []storage.AppendableV2 `alloy:"forward_to,attr"`
 
 	// The relabelling rules to apply to each metric before it's forwarded.
 	MetricRelabelConfigs []*alloy_relabel.Config `alloy:"rule,block,optional"`
@@ -90,8 +90,8 @@ func (arg *Arguments) Validate() error {
 
 // Exports holds values which are exported by the prometheus.relabel component.
 type Exports struct {
-	Receiver storage.Appendable  `alloy:"receiver,attr"`
-	Rules    alloy_relabel.Rules `alloy:"rules,attr"`
+	Receiver storage.AppendableV2 `alloy:"receiver,attr"`
+	Rules    alloy_relabel.Rules  `alloy:"rules,attr"`
 }
 
 // Component implements the prometheus.relabel component.
@@ -242,6 +242,32 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 			// Since SeriesRefs are tied to the labels, we send zero to indicate the seriesRef should be recalculated downstream.
 			return next.AppendHistogram(0, newLbl, t, h, fh)
+		}),
+		prometheus.WithSTZeroSampleHook(func(ref storage.SeriesRef, l labels.Labels, t, st int64, next storage.Appender) (storage.SeriesRef, error) {
+			if c.exited.Load() {
+				return 0, fmt.Errorf("%s has exited", o.ID)
+			}
+
+			newLbl := c.relabel(0, l)
+			if newLbl.IsEmpty() {
+				return 0, nil
+			}
+
+			// Since SeriesRefs are tied to the labels, we send zero to indicate the seriesRef should be recalculated downstream.
+			return next.AppendSTZeroSample(0, newLbl, t, st)
+		}),
+		prometheus.WithHistogramSTZeroSampleHook(func(ref storage.SeriesRef, l labels.Labels, t, st int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error) {
+			if c.exited.Load() {
+				return 0, fmt.Errorf("%s has exited", o.ID)
+			}
+
+			newLbl := c.relabel(0, l)
+			if newLbl.IsEmpty() {
+				return 0, nil
+			}
+
+			// Since SeriesRefs are tied to the labels, we send zero to indicate the seriesRef should be recalculated downstream.
+			return next.AppendHistogramSTZeroSample(0, newLbl, t, st, h, fh)
 		}),
 	)
 

@@ -32,10 +32,7 @@ func (c *StaticLabelsConfig) Validate() error {
 	return nil
 }
 
-var (
-	_ Stage          = (*staticLabelStage)(nil)
-	_ entryProcessor = (*staticLabelStage)(nil)
-)
+var _ entryProcessor = (*staticLabelStage)(nil)
 
 func newStaticLabelsStage(config StaticLabelsConfig, opts stageOpts) *staticLabelStage {
 	values := make([]string, 0, len(config.Values)*2)
@@ -49,21 +46,10 @@ func newStaticLabelsStage(config StaticLabelsConfig, opts stageOpts) *staticLabe
 	return &staticLabelStage{opts.next, values}
 }
 
-// staticLabelStage implements Stage.
 type staticLabelStage struct {
 	next nextFn
 	// values packs both label names and label values and need to be divisible by 2.
 	values []string
-}
-
-// Run implements Stage.
-func (l *staticLabelStage) Run(in chan Entry) chan Entry {
-	return RunWith(in, func(e Entry) Entry {
-		for i := 0; i < len(l.values); i += 2 {
-			e.Labels[model.LabelName(l.values[i])] = model.LabelValue(l.values[i+1])
-		}
-		return e
-	})
 }
 
 func (l *staticLabelStage) process(ctx context.Context, entries []Entry) error {
@@ -74,6 +60,3 @@ func (l *staticLabelStage) process(ctx context.Context, entries []Entry) error {
 	}
 	return l.next(ctx, entries)
 }
-
-// Cleanup implements Stage.
-func (l *staticLabelStage) Cleanup() {}

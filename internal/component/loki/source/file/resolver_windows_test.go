@@ -18,7 +18,7 @@ import (
 // TestGlobResolverCaseInsensitive verifies that glob patterns are case-insensitive on Windows.
 // An uppercase pattern SHOULD match lowercase files.
 func TestGlobResolverCaseInsensitive(t *testing.T) {
-	resolver := newGlobResolver(logging.NewSlogNop())
+	resolver := newGlobResolver(logging.NewSlogNop(), 0)
 
 	// Use uppercase pattern - SHOULD match the lowercase .log files on Windows
 	targets := []discovery.Target{
@@ -38,7 +38,7 @@ func TestGlobResolverCaseInsensitive(t *testing.T) {
 
 // TestGlobResolverCaseInsensitiveLowercase verifies that lowercase patterns also work.
 func TestGlobResolverCaseInsensitiveLowercase(t *testing.T) {
-	resolver := newGlobResolver(logging.NewSlogNop())
+	resolver := newGlobResolver(logging.NewSlogNop(), 0)
 
 	// Use lowercase pattern - should also match
 	targets := []discovery.Target{
@@ -97,7 +97,7 @@ func TestGlobResolverThroughJunction(t *testing.T) {
 	}
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			resolver := newGlobResolver(logging.NewSlogNop())
+			resolver := newGlobResolver(logging.NewSlogNop(), 0)
 			targets := []discovery.Target{
 				discovery.NewTargetFromLabelSet(model.LabelSet{"__path__": model.LabelValue(tc.pattern)}),
 			}

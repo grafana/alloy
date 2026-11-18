@@ -153,7 +153,7 @@ func (c *Locks) fetchLocks(ctx context.Context) error {
 		// only log if the lock_time is longer than the threshold
 		if waitingLockTime > secondsToPicoseconds(c.lockTimeThreshold.Seconds()) {
 			lockMsg := fmt.Sprintf(
-				`waiting_digest="%s" waiting_digest_text="%s" blocking_digest="%s" blocking_digest_text="%s" waiting_timer_wait="%fms" waiting_lock_time="%fms" blocking_timer_wait="%fms" blocking_lock_time="%fms"`,
+				`waiting_digest=%q waiting_digest_text=%q blocking_digest=%q blocking_digest_text=%q waiting_timer_wait="%fms" waiting_lock_time="%fms" blocking_timer_wait="%fms" blocking_lock_time="%fms"`,
 				waitingDigest.String,
 				waitingDigestText.String,
 				blockingDigest.String,

@@ -13,7 +13,7 @@ title: otelcol.exporter.syslog
 {{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.exporter.syslog` accepts logs from other `otelcol` components and writes them over the network using the syslog protocol.
-It supports syslog protocols [RFC5424][] and [RFC3164][] and can send data over `TCP` or `UDP`.
+It supports syslog protocols [RFC5424][] and [RFC3164][] and can send data over `TCP`, `UDP`, or Unix sockets.
 
 {{< admonition type="note" >}}
 `otelcol.exporter.syslog` is a wrapper over the upstream OpenTelemetry Collector [`syslog`][] exporter.
@@ -68,8 +68,12 @@ You can use the following arguments with `otelcol.exporter.syslog`:
 | `enable_octet_counting` | `bool`     | Whether to enable rfc6587 octet counting.             | `false`     | no       |
 | `timeout`               | `duration` | Time to wait before marking a request as failed.      | `"5s"`      | no       |
 
-The `network` argument specifies if the syslog endpoint is using the TCP or UDP protocol.
-`network` must be one of `tcp`, `udp`.
+The `network` argument specifies the type of connection to the syslog endpoint.
+`network` must be one of `tcp`, `udp`, `unix`, or `unixgram`.
+
+When `network` is `unix` or `unixgram`, `endpoint` is the path of the Unix socket, for example `/dev/log`, and `port` is ignored.
+Use `unix` for stream sockets and `unixgram` for datagram sockets.
+The `tls` block applies only when `network` is `tcp`.
 
 The `protocol` argument specifies the syslog format supported by the endpoint.
 `protocol` must be one of `rfc5424`, `rfc3164`.
@@ -80,19 +84,21 @@ You can use the following blocks with `otelcol.exporter.syslog`:
 
 {{< docs/alloy-config >}}
 
-| Block                                  | Description                                                                    | Required |
-| -------------------------------------- | ------------------------------------------------------------------------------ | -------- |
-| [`debug_metrics`][debug_metrics]       | Configures the metrics that this component generates to monitor its state.     | no       |
-| [`retry_on_failure`][retry_on_failure] | Configures retry mechanism for failed requests.                                | no       |
-| [`sending_queue`][sending_queue]       | Configures batching of data before sending.                                    | no       |
-| `sending_queue` > [`batch`][batch]     | Configures batching requests based on a timeout and a minimum number of items. | no       |
-| [`tls`][tls]                           | Configures TLS for a TCP connection.                                           | no       |
-| `tls` > [`tpm`][tpm]                   | Configures TPM settings for the TLS `key_file`.                                | no       |
+| Block                                                | Description                                                                    | Required |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------ | -------- |
+| [`debug_metrics`][debug_metrics]                     | Configures the metrics that this component generates to monitor its state.     | no       |
+| [`retry_on_failure`][retry_on_failure]               | Configures retry mechanism for failed requests.                                | no       |
+| [`sending_queue`][sending_queue]                     | Configures batching of data before sending.                                    | no       |
+| `sending_queue` > [`batch`][batch]                   | Configures batching requests based on a timeout and a minimum number of items. | no       |
+| `sending_queue` > `batch` > [`partition`][partition] | Configures partitioning of batches by client metadata.                         | no       |
+| [`tls`][tls]                                         | Configures TLS for a TCP connection.                                           | no       |
+| `tls` > [`tpm`][tpm]                                 | Configures TPM settings for the TLS `key_file`.                                | no       |
 
 [tls]: #tls
 [tpm]: #tpm
 [sending_queue]: #sending_queue
 [batch]: #batch
+[partition]: #partition
 [retry_on_failure]: #retry_on_failure
 [debug_metrics]: #debug_metrics
 
@@ -119,6 +125,12 @@ The `sending_queue` block configures queueing and batching for the exporter.
 The `batch` block configures batching requests based on a timeout and a minimum number of items.
 
 {{< docs/shared lookup="reference/components/otelcol-queue-batch-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `partition`
+
+The `partition` block configures how batches are partitioned by client metadata.
+
+{{< docs/shared lookup="reference/components/otelcol-queue-batch-partition-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `tls`
 

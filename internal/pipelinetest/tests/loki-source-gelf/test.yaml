@@ -1,0 +1,144 @@
+config: |
+  loki.relabel "gelf" {
+    forward_to = []
+
+    rule {
+      source_labels = ["__gelf_message_host"]
+      target_label  = "host"
+    }
+
+    rule {
+      source_labels = ["__gelf_message_version"]
+      target_label  = "gelf_version"
+    }
+  }
+
+  loki.source.gelf "default" {
+    listen_address = "127.0.0.1:12201"
+
+    // Use each message's own timestamp, so the test can assert it exactly.
+    use_incoming_timestamp = true
+
+    relabel_rules = loki.relabel.gelf.rules
+    forward_to     = [loki.process.default.receiver]
+  }
+
+  loki.process "default" {
+    stage.structured_metadata {
+      values = {
+        gelf_version = "",
+      }
+    }
+
+    forward_to = [loki.relabel.default.receiver]
+  }
+
+  loki.relabel "default" {
+    forward_to = [pipelinetest.loki.receiver]
+
+    rule {
+      source_labels = ["host"]
+      target_label  = "service_name"
+    }
+
+    rule {
+      action = "labeldrop"
+      regex  = "host"
+    }
+  }
+
+inputs:
+  # Each datagram is one uncompressed GELF message, which is a JSON object.
+  udp:
+    - address: 127.0.0.1:12201
+      wait_for: loki.source.gelf.default
+      datagrams:
+        - '{"version":"1.1","host":"host-1","short_message":"log line 0 from host-1","timestamp":1767225600,"level":6,"_facility":"pipeline-test"}'
+        - '{"version":"1.1","host":"host-1","short_message":"log line 1 from host-1","timestamp":1767225601,"level":6,"_facility":"pipeline-test"}'
+        - '{"version":"1.1","host":"host-1","short_message":"log line 2 from host-1","timestamp":1767225602,"level":6,"_facility":"pipeline-test"}'
+        - '{"version":"1.1","host":"host-2","short_message":"log line 0 from host-2","timestamp":1767225603,"level":6,"_facility":"pipeline-test"}'
+        - '{"version":"1.1","host":"host-2","short_message":"log line 1 from host-2","timestamp":1767225604,"level":6,"_facility":"pipeline-test"}'
+        - '{"version":"1.1","host":"host-2","short_message":"log line 2 from host-2","timestamp":1767225605,"level":6,"_facility":"pipeline-test"}'
+
+assert:
+  loki:
+    # Six messages in, three per host.
+    - type: count
+      count: 6
+    - type: count
+      count: 3
+      match:
+        labels:
+          values:
+            service_name: host-1
+    - type: count
+      count: 3
+      match:
+        labels:
+          values:
+            service_name: host-2
+
+    # Each message arrives as its JSON, with its own timestamp. The host
+    # becomes service_name and is dropped as a label, so an exact match
+    # proves host is not indexed. The GELF version moves to structured
+    # metadata.
+    - type: contains
+      match:
+        line: '{"version":"1.1","host":"host-1","short_message":"log line 0 from host-1","timestamp":1767225600,"level":6,"_facility":"pipeline-test"}'
+        timestamp: "2026-01-01T00:00:00Z"
+        labels:
+          values:
+            service_name: host-1
+        structured_metadata:
+          values:
+            gelf_version: "1.1"
+    - type: contains
+      match:
+        line: '{"version":"1.1","host":"host-1","short_message":"log line 1 from host-1","timestamp":1767225601,"level":6,"_facility":"pipeline-test"}'
+        timestamp: "2026-01-01T00:00:01Z"
+        labels:
+          values:
+            service_name: host-1
+        structured_metadata:
+          values:
+            gelf_version: "1.1"
+    - type: contains
+      match:
+        line: '{"version":"1.1","host":"host-1","short_message":"log line 2 from host-1","timestamp":1767225602,"level":6,"_facility":"pipeline-test"}'
+        timestamp: "2026-01-01T00:00:02Z"
+        labels:
+          values:
+            service_name: host-1
+        structured_metadata:
+          values:
+            gelf_version: "1.1"
+    - type: contains
+      match:
+        line: '{"version":"1.1","host":"host-2","short_message":"log line 0 from host-2","timestamp":1767225603,"level":6,"_facility":"pipeline-test"}'
+        timestamp: "2026-01-01T00:00:03Z"
+        labels:
+          values:
+            service_name: host-2
+        structured_metadata:
+          values:
+            gelf_version: "1.1"
+    - type: contains
+      match:
+        line: '{"version":"1.1","host":"host-2","short_message":"log line 1 from host-2","timestamp":1767225604,"level":6,"_facility":"pipeline-test"}'
+        timestamp: "2026-01-01T00:00:04Z"
+        labels:
+          values:
+            service_name: host-2
+        structured_metadata:
+          values:
+            gelf_version: "1.1"
+    - type: contains
+      match:
+        line: '{"version":"1.1","host":"host-2","short_message":"log line 2 from host-2","timestamp":1767225605,"level":6,"_facility":"pipeline-test"}'
+        timestamp: "2026-01-01T00:00:05Z"
+        labels:
+          values:
+            service_name: host-2
+        structured_metadata:
+          values:
+            gelf_version: "1.1"

@@ -70,6 +70,7 @@ func toFaroExporter(cfg *faroexporter.Config) *faro.Arguments {
 }
 
 func toFaroHTTPClientArguments(cfg confighttp.ClientConfig) faro.HTTPClientArguments {
+	keepalive := effectiveClientKeepalive(cfg)
 	var a *auth.Handler
 	if cfg.Auth.HasValue() {
 		a = &auth.Handler{}
@@ -85,14 +86,11 @@ func toFaroHTTPClientArguments(cfg confighttp.ClientConfig) faro.HTTPClientArgum
 
 		Timeout: cfg.Timeout,
 		Headers: toHeadersMap(cfg.Headers),
-		// Deprecated fields remain the source of truth for an already-unmarshaled ClientConfig.
-		//nolint:staticcheck
-		MaxIdleConns: cfg.MaxIdleConns,
-		//nolint:staticcheck
-		MaxIdleConnsPerHost: cfg.MaxIdleConnsPerHost,
+		// The keepalive settings live in either the keepalive section or the deprecated fields.
+		MaxIdleConns:        keepalive.MaxIdleConns,
+		MaxIdleConnsPerHost: keepalive.MaxIdleConnsPerHost,
 		MaxConnsPerHost:     cfg.MaxConnsPerHost,
-		//nolint:staticcheck
-		IdleConnTimeout: cfg.IdleConnTimeout,
+		IdleConnTimeout:     keepalive.IdleConnTimeout,
 		//nolint:staticcheck
 		DisableKeepAlives:    cfg.DisableKeepAlives,
 		HTTP2PingTimeout:     cfg.HTTP2PingTimeout,

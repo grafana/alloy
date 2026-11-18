@@ -123,7 +123,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						}),
 					},
 				},
-				ErrorMode: ottl.PropagateError,
+				ErrorMode: ottl.IgnoreError,
 			},
 		},
 		{
@@ -166,7 +166,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						}),
 					},
 				},
-				ErrorMode: ottl.PropagateError,
+				ErrorMode: ottl.IgnoreError,
 			},
 		},
 	}

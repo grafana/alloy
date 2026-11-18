@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/grafana/alloy/internal/alloycli/clifeature"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service"
@@ -13,6 +14,7 @@ import (
 	"github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
+	"github.com/grafana/alloy/internal/service/lokipipelinev2"
 	"github.com/grafana/alloy/internal/service/otel"
 	"github.com/grafana/alloy/internal/service/remotecfg"
 	"github.com/grafana/alloy/internal/service/ui"
@@ -20,8 +22,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func validateCommand() *cobra.Command {
+func validateCommand(converter *clifeature.Converter) *cobra.Command {
 	v := &alloyValidate{
+		converter:    converter,
 		configFormat: "alloy",
 		minStability: featuregate.StabilityGenerallyAvailable,
 	}
@@ -38,9 +41,7 @@ func validateCommand() *cobra.Command {
 	}
 
 	// Config flags
-	cmd.Flags().StringVar(&v.configFormat, "config.format", v.configFormat, fmt.Sprintf("The format of the source file. Supported formats: %s.", supportedFormatsList()))
-	cmd.Flags().BoolVar(&v.configBypassConversionErrors, "config.bypass-conversion-errors", v.configBypassConversionErrors, "Enable bypassing errors when converting")
-	cmd.Flags().StringVar(&v.configExtraArgs, "config.extra-args", v.configExtraArgs, "Extra arguments from the original format used by the converter. Multiple arguments can be passed by separating them with a space.")
+	mountConfigFormatFlags(cmd.Flags(), converter, &v.configFormat, &v.configBypassConversionErrors, &v.configExtraArgs)
 
 	// Misc flags
 	cmd.Flags().Var(&v.minStability, "stability.level", fmt.Sprintf("Minimum stability level of features to enable. Supported values: %s", strings.Join(featuregate.AllowedValues(), ", ")))
@@ -50,6 +51,8 @@ func validateCommand() *cobra.Command {
 }
 
 type alloyValidate struct {
+	converter *clifeature.Converter
+
 	configFormat                 string
 	configBypassConversionErrors bool
 	configExtraArgs              string
@@ -59,7 +62,7 @@ type alloyValidate struct {
 }
 
 func (v *alloyValidate) Run(configFile string) error {
-	sources, err := loadSourceFiles(configFile, v.configFormat, v.configBypassConversionErrors, v.configExtraArgs)
+	sources, err := loadSourceFiles(configFile, v.converter, v.configFormat, v.configBypassConversionErrors, v.configExtraArgs)
 	if err != nil {
 		return err
 	}
@@ -72,6 +75,7 @@ func (v *alloyValidate) Run(configFile string) error {
 				&http.Service{},
 				&labelstore.Service{},
 				&livedebugging.Service{},
+				&lokipipelinev2.Service{},
 				&otel.Service{},
 				&remotecfg.Service{},
 				&ui.Service{},
