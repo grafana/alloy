@@ -47,10 +47,14 @@ dist-alloy-binaries: dist/alloy-linux-amd64                    \
                      dist/alloy-linux-arm64                    \
                      dist/alloy-linux-ppc64le                  \
                      dist/alloy-linux-s390x                    \
-                     dist/alloy-darwin-amd64                   \
-                     dist/alloy-darwin-arm64                   \
                      dist/alloy-windows-amd64.exe              \
                      dist/alloy-freebsd-amd64
+
+# Darwin binaries are not part of `dist-alloy-binaries`: the build image
+# compiles cgo with Zig, which can't target macOS without an Apple SDK. They
+# are built on macOS runners (see release-publish-alloy-artifacts.yml).
+dist-alloy-darwin-binaries: dist/alloy-darwin-amd64 \
+                            dist/alloy-darwin-arm64
 
 dist/alloy-linux-amd64: GO_TAGS += netgo embedalloyui promtail_journal_enabled
 dist/alloy-linux-amd64: GOOS    := linux
