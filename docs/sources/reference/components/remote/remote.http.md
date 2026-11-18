@@ -133,6 +133,8 @@ Instances of `remote.http` report as healthy if the most recent HTTP request of 
 
 ## Examples
 
+### Load scrape targets from an endpoint
+
 This example reads a JSON array of objects from an endpoint and uses them as a set of scrape targets:
 
 ```alloy
@@ -151,3 +153,55 @@ prometheus.remote_write "default" {
   }
 }
 ```
+
+### Add Amazon EC2 instance metadata as labels
+
+This example reads the private IPv4 address of an Amazon EC2 instance from the instance metadata service (IMDSv2) and adds it as an external label to every metric that `prometheus.remote_write` sends.
+
+IMDSv2 requires a session token, so the example uses two `remote.http` components:
+
+- `remote.http.imds_token` requests a session token with a `PUT` request.
+  Set `poll_frequency` shorter than the token lifetime in the `X-aws-ec2-metadata-token-ttl-seconds` header so the token is renewed before it expires.
+- `remote.http.private_ip` sends the token in the `X-aws-ec2-metadata-token` header.
+  When the token changes, the arguments of `remote.http.private_ip` get re-evaluated, which triggers a new poll.
+
+```alloy
+remote.http "imds_token" {
+  url            = "http://169.254.169.254/latest/api/token"
+  method         = "PUT"
+  poll_frequency = "1h"
+
+  headers = {
+    "X-aws-ec2-metadata-token-ttl-seconds" = "21600",
+  }
+}
+
+remote.http "private_ip" {
+  url            = "http://169.254.169.254/latest/meta-data/local-ipv4"
+  poll_frequency = "24h"
+
+  headers = {
+    "X-aws-ec2-metadata-token" = remote.http.imds_token.content,
+  }
+}
+
+prometheus.exporter.unix "default" { }
+
+prometheus.scrape "default" {
+  targets    = prometheus.exporter.unix.default.targets
+  forward_to = [prometheus.remote_write.default.receiver]
+}
+
+prometheus.remote_write "default" {
+  endpoint {
+    url = sys.env("PROMETHEUS_URL")
+  }
+
+  external_labels = {
+    private_ip = remote.http.private_ip.content,
+  }
+}
+```
+
+You can read other instance metadata the same way, for example `instance-id` or `placement/availability-zone`.
+For the list of available paths, refer to [Instance metadata categories](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-categories.html).
