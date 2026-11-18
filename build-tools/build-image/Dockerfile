@@ -7,6 +7,7 @@
 # NOTE: GO_RUNTIME pins the Go toolchain image that provides the bundled Go and
 # Go-based tools. It's supplied by the build-image workflow; there's no in-tree default.
 ARG GO_RUNTIME=mustoverride
+ARG TARGETARCH
 
 #
 # Dependencies
@@ -36,6 +37,33 @@ RUN wget -nv https://nsis.sourceforge.io/mediawiki/images/4/4a/AccessControl.zip
  && mkdir -p /usr/share/nsis/Plugins/x86-unicode \
  && cp /usr/share/nsis/Plugins/i386-unicode/AccessControl.dll /usr/share/nsis/Plugins/x86-unicode/
 
+# Dependency: Zig (C/C++ cross compiler for our Cgo dependencies)
+# Checksums are published at https://ziglang.org/download/ (index.json). When bumping the
+# version, also verify the tarballs with minisign (public key from ziglang.org).
+FROM scratch AS zig-amd64
+ARG ZIG_VERSION=0.17.1
+ADD --checksum=sha256:3581863e3cbcfd0fce0efc682ce7e9e93da96668a977791d356a26d2a7e9b17a --unpack \
+    "https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz" /
+
+FROM scratch AS zig-arm64
+ARG ZIG_VERSION=0.17.1
+ADD --checksum=sha256:a1546d5646eb184437918d6635ca6b762a0e889eac09cef720ee7a1ed3fe7795 --unpack \
+    "https://ziglang.org/download/${ZIG_VERSION}/zig-aarch64-linux-${ZIG_VERSION}.tar.xz" /
+
+FROM zig-${TARGETARCH} AS zig
+
+# Dependency: FreeBSD base system (headers and libs for the freebsd/amd64 cgo build).
+# Zig ships only libc for FreeBSD, but node_exporter's devstat collector needs devstat.h,
+# libgeom.h and libdevstat/libkvm/libelf from the base system. FreeBSD 14 is the lowest
+# release Zig can target. The checksum is taken from the release MANIFEST
+# (https://download.freebsd.org/releases/amd64/<version>/MANIFEST).
+# NOTE: FreeBSD removes EOL releases from download.freebsd.org; bump together with Zig.
+FROM scratch AS freebsd-base
+ARG FREEBSD_VERSION=14.4-RELEASE
+ARG FREEBSD_MIRROR=https://download.freebsd.org
+ADD --checksum=sha256:769f60a6eea2938ad6b7943cfbcc17dfaf7d1f7ba59a32b869a00349302df853 --unpack \
+    "${FREEBSD_MIRROR}/releases/amd64/${FREEBSD_VERSION}/base.txz" /
+
 # Dependency: Go and Go dependencies
 FROM ${GO_RUNTIME} as golang
 
@@ -51,18 +79,11 @@ RUN go install sigs.k8s.io/controller-tools/cmd/controller-gen@$CONTROLLER_GEN_V
 # Final image
 #
 
-# rfratto/viceroy contains C cross compilers can be used for our Cgo
-# dependencies.
-FROM rfratto/viceroy:v0.4.0@sha256:7e3f328889b5b0c5c0303dda5e74a89189e6e437d33f609dde98f9a84337e0a2
+# Ubuntu LTS base. C/C++ cross compilation for Cgo dependencies is done with Zig
+# (see zigcc), so no distro cross toolchains are needed.
+FROM ubuntu:24.04@sha256:73b999393d07f2bf65a40373778a44dc9a6d54ad7718d29247d8ff9413c4d6a8
 
-# Fix apt sources - restrict main bullseye to supported architectures.
-# FIXME: Bullseye is EOL, so its packages are only served from archive.debian.org
-# and get no security updates. Move off the bullseye-based viceroy image.
-RUN rm -f /etc/apt/sources.list \
- && rm -rf /etc/apt/sources.list.d/* \
- && echo "deb [arch=amd64,arm64,armhf,i386] https://archive.debian.org/debian bullseye main" > /etc/apt/sources.list \
- && echo "deb https://archive.debian.org/debian bullseye-updates main" >> /etc/apt/sources.list \
- && echo "deb https://archive.debian.org/debian-security bullseye-security main" >> /etc/apt/sources.list
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Install other dependencies.
 #
@@ -71,6 +92,7 @@ RUN rm -f /etc/apt/sources.list \
 RUN apt-get update                                \
  && apt-get install -qy                           \
       build-essential file zip unzip gettext git  \
+      ca-certificates curl wget gnupg xz-utils    \
       jq musl libsystemd-dev nsis                 \
       rpm ruby ruby-dev rubygems yamllint         \
  && gem install --no-document fpm                 \
@@ -82,6 +104,22 @@ COPY --from=helm     /usr/bin/helm                       /usr/bin/helm
 COPY --from=nsis     /usr/share/nsis/Plugins/x86-unicode /usr/share/nsis/Plugins/x86-unicode
 COPY --from=golang   /usr/local/go                       /usr/local/go
 COPY --from=golang   /go/bin                             /go/bin
+COPY --from=zig      /zig-*                              /opt/zig
+
+# FreeBSD sysroot (only the headers and libs the cgo build needs).
+COPY --from=freebsd-base /usr/include /opt/freebsd-sysroot/usr/include
+COPY --from=freebsd-base /usr/lib     /opt/freebsd-sysroot/usr/lib
+COPY --from=freebsd-base /lib         /opt/freebsd-sysroot/lib
+
+# zigcc/zigc++ map GOOS/GOARCH to a Zig target. Zig does not search the system
+# include dirs, so expose only the libsystemd headers (used by
+# loki.source.journal; libsystemd itself is dlopen'd at runtime).
+COPY zigcc /usr/local/bin/zigcc
+RUN chmod +x /usr/local/bin/zigcc \
+ && ln -s zigcc /usr/local/bin/zigc++ \
+ && ln -s /opt/zig/zig /usr/local/bin/zig \
+ && mkdir -p /opt/zigcc/include \
+ && ln -s /usr/include/systemd /opt/zigcc/include/systemd
 
 # Install Node.js 20 directly from NodeSource repository
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
@@ -108,9 +146,10 @@ RUN (type -p wget >/dev/null || (apt update && apt install wget -y)) \
 # Disable that safety check.
 RUN git config --global --add safe.directory \*
 
-# Set CC to viceroycc to ensure that the cross compilers are used for all C
-# compilation.
-ENV CC viceroycc
+# Use Zig for all C/C++ compilation. The wrappers pick the Zig target from
+# GOOS/GOARCH.
+ENV CC=zigcc
+ENV CXX=zigc++
 
 ENV GOPATH /go
 ENV PATH /usr/local/go/bin:/go/bin:$PATH
