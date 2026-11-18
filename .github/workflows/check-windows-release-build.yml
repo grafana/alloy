@@ -1,8 +1,8 @@
 name: Check Windows release build
 
 # Builds alloy-windows-amd64.exe through the same toolchain the real release
-# pipeline uses (grafana/alloy-build-image, cross-compiling from Linux via
-# viceroy), then actually runs it on Windows to make sure it starts
+# pipeline uses (grafana/alloy-build-image, cross-compiling from Linux with
+# Zig), then actually runs it on Windows to make sure it starts
 on:
   push:
     branches:

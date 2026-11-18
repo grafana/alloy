@@ -19,9 +19,11 @@ clean-dist:
 # everything needed is always passed through.
 PACKAGING_VARS = RELEASE_BUILD=1 GO_TAGS="$(GO_TAGS)" GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) GOEXPERIMENT=$(GOEXPERIMENT) CGO_LDFLAGS="$(CGO_LDFLAGS)"
 
-# The alloy-build-image container cross-compiles Windows binaries on Linux.
-# It uses an older mingw-w64 toolchain through viceroy. That toolchain needs
-# -lssp to resolve the __stack_chk_fail symbol.
+# The alloy-build-image container cross-compiles Windows binaries on Linux
+# with Zig (zigcc, x86_64-windows-gnu). Linking statically avoids runtime
+# dependencies on MinGW DLLs such as libssp-0.dll or libwinpthread-1.dll
+# (see grafana/alloy#6972). Zig does not need -lssp, but it is harmless there
+# and kept so the flags match earlier releases.
 #
 # Native Windows runners use a different, newer mingw64 toolchain. For
 # example, the Windows service integration test job builds natively on a
