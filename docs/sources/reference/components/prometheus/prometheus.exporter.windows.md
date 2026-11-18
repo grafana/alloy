@@ -33,6 +33,26 @@ The `blacklist` and `whitelist` configuration arguments are deprecated but remai
 Use the `include` and `exclude` arguments instead.
 {{< /admonition >}}
 
+{{< admonition type="warning" >}}
+Starting with {{< param "PRODUCT_NAME" >}} v1.23.0, this component embeds `windows_exporter` v0.32.
+This release renames many metrics and labels, and changes the units of some metrics.
+Update your dashboards, recording rules, and alerts when you upgrade.
+Refer to the upstream [upgrade guide][upgrade-0.32] for the full list of changes.
+
+The most disruptive changes are metrics that keep their name but switch between a gauge and a counter.
+A query that uses `rate()` on a metric that became a gauge, or that reads a metric that became a counter without `rate()`, returns wrong results.
+Use these sections of the upgrade guide to find and handle those metrics:
+
+- [Changed type, same name][upgrade-type-change] lists the metrics that keep their name but change type.
+- [Renamed metrics][upgrade-renamed] lists the renamed metrics, including those that change type.
+- [Load the compatibility recording rules][upgrade-rules] keeps most existing queries working with the v0.31 names while you migrate.
+{{< /admonition >}}
+
+[upgrade-0.32]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/upgrade/0.32.md
+[upgrade-type-change]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/upgrade/0.32.md#changed-type-same-name
+[upgrade-renamed]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/upgrade/0.32.md#renamed-metrics
+[upgrade-rules]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/upgrade/0.32.md#2-load-the-compatibility-recording-rules
+
 [windows_exporter]: https://github.com/prometheus-community/windows_exporter/tree/{{< param "PROM_WIN_EXP_VERSION" >}}
 
 {{< docs/shared lookup="reference/components/exporter-clustering-warning.md" source="alloy" version="<ALLOY_VERSION>" >}}
