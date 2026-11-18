@@ -280,7 +280,7 @@ prometheus.operator.probes "probes" {
 }
 ```
 
-### Probe with {{% param "PRODUCT_NAME" %}} as the blackbox prober
+### Probe with {{< param "PRODUCT_NAME" >}} as the blackbox prober
 
 `prometheus.operator.probes` scrapes Probe targets by calling a prober (typically blackbox exporter).
 {{< param "PRODUCT_NAME" >}} can act as that prober when you also configure [`prometheus.exporter.blackbox`][blackbox].

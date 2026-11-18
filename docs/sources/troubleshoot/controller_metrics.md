@@ -8,7 +8,7 @@ menuTitle: Monitor the controller
 weight: 100
 ---
 
-# Monitor the {{% param "FULL_PRODUCT_NAME" %}} component controller
+# Monitor the {{< param "FULL_PRODUCT_NAME" >}} component controller
 
 The {{< param "PRODUCT_NAME" >}} [component controller][] exposes Prometheus metrics which you can use to investigate the controller state.
 
