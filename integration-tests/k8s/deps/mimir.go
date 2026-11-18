@@ -13,6 +13,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.yaml.in/yaml/v3"
 
 	"github.com/grafana/alloy/integration-tests/k8s/harness"
 	"github.com/grafana/alloy/integration-tests/k8s/util"
@@ -447,6 +448,35 @@ func (m *Mimir) CheckAlertsConfig(t *testing.T, expectedFile string) {
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		actualMimirConfig := curl(c, m.endpoint("/api/v1/alerts"), nil)
 		require.Equal(c, expectedMimirConfig, actualMimirConfig)
+	}, timeout, retryInterval)
+}
+
+// RuleGroup is the part of a rule group in Mimir's ruler API that tests assert on.
+type RuleGroup struct {
+	Name  string `yaml:"name"`
+	Rules []Rule `yaml:"rules"`
+}
+
+// Rule is a recording or alerting rule in a RuleGroup.
+type Rule struct {
+	Record string `yaml:"record"`
+	Alert  string `yaml:"alert"`
+	Expr   string `yaml:"expr"`
+}
+
+// QueryRules polls Mimir's ruler API for all rule groups and calls assertRules
+// with them, indexed by Mimir namespace. The listing must be valid YAML, as
+// Alloy reads the same listing to sync rules. Assertions are retried, so use
+// the supplied CollectT rather than t.
+func (m *Mimir) QueryRules(t *testing.T, assertRules func(c *assert.CollectT, rules map[string][]RuleGroup)) {
+	t.Helper()
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		resp := curl(c, m.endpoint("/prometheus/config/v1/rules"), nil)
+
+		var parsed map[string][]RuleGroup
+		require.NoError(c, yaml.Unmarshal([]byte(resp), &parsed), "failed to parse mimir rules response: %s", resp)
+		assertRules(c, parsed)
 	}, timeout, retryInterval)
 }
 

@@ -539,3 +539,47 @@ func testNamespaceIndexer() cache.Indexer {
 	)
 	return nsIndexer
 }
+
+func TestConvertCRDRuleGroupTrimsLeadingWhitespace(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		expr string
+		want string
+	}{
+		{
+			// A folded block that starts with a blank line, as in https://github.com/grafana/alloy/issues/7500.
+			name: "leading blank line",
+			expr: "\n# The blank line and nested indentation are intentional.\n  (\n    up\n  )",
+			want: "# The blank line and nested indentation are intentional.\n  (\n    up\n  )",
+		},
+		{
+			name: "leading spaces",
+			expr: "  sum(up)\n  by (job)",
+			want: "sum(up)\n  by (job)",
+		},
+		{
+			name: "no leading whitespace",
+			expr: "sum(up)\n\n  by (job)\n",
+			want: "sum(up)\n\n  by (job)\n",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			spec := v1.PrometheusRuleSpec{Groups: []v1.RuleGroup{{
+				Name:  "group",
+				Rules: []v1.Rule{{Record: "record", Expr: intstr.FromString(tc.expr)}},
+			}}}
+			groups, err := convertCRDRuleGroupToRuleGroup(spec)
+			require.NoError(t, err)
+			require.Equal(t, tc.want, groups[0].Rules[0].Expr)
+
+			// Mimir lists rule groups as YAML encoded by go-yaml, and the client
+			// decodes that listing. The expression must survive the round trip,
+			// or every sync fails.
+			listing, err := yaml.Marshal(map[string][]client.MimirRuleGroup{"namespace": groups})
+			require.NoError(t, err)
+			var got map[string][]client.MimirRuleGroup
+			require.NoError(t, yaml.Unmarshal(listing, &got))
+			require.Equal(t, tc.want, got["namespace"][0].Rules[0].Expr)
+		})
+	}
+}
