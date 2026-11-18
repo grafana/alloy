@@ -18,7 +18,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/component/prometheus/appenders/adapter"
-	"github.com/grafana/alloy/internal/component/prometheus/remotewrite"
+	"github.com/grafana/alloy/internal/component/prometheus/remote_write"
 	"github.com/grafana/alloy/internal/service/labelstore"
 )
 

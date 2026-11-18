@@ -15,7 +15,7 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf"
 	"github.com/grafana/alloy/internal/component/pyroscope/java"
 	"github.com/grafana/alloy/internal/component/pyroscope/testutil"
-	"github.com/grafana/alloy/internal/component/pyroscope/write"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/writer"
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -40,7 +40,7 @@ func parseConfig() *config {
 	return c
 }
 
-func newWrite() (pyroscope.Appendable, *write.Component) {
+func newWrite() (pyroscope.Appendable, *writer.Component) {
 	receiver, c, err := testutil.CreateWriteComponent(l, reg, "http://localhost:4040")
 	if err != nil {
 		l.Error("error creating write component", "err", err)
