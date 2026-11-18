@@ -67,16 +67,22 @@ A block has no effect unless you enable its collector.
 You can use the following blocks with `prometheus.exporter.windows`.
 Each block only takes effect if you include its corresponding collector in `enabled_collectors`.
 
+Windows exporter v0.32 rejects an unknown name in an `enabled_list` or `sources_enabled` attribute.
+The component fails to start and reports the name.
+In earlier versions, the exporter ignored a typo and silently disabled that collector.
+
 {{< docs/alloy-config >}}
 
 | Name                                       | Description                                                               | Required |
 | ------------------------------------------ | ------------------------------------------------------------------------- | -------- |
 | [`container`][container-block]             | Configures the `container` collector.                                     | no       |
 | [`dfsr`][dfsr]                             | Configures the `dfsr` collector.                                          | no       |
+| [`dhcp`][dhcp-block]                       | Configures the `dhcp` collector.                                          | no       |
 | [`dns`][dns]                               | Configures the `dns` collector.                                           | no       |
 | [`exchange`][exchange]                     | Configures the `exchange` collector.                                      | no       |
 | [`file`][file-block]                       | Configures the `file` collector.                                          | no       |
 | [`filetime`][filetime-block]               | Deprecated. Configures the `file` collector.                              | no       |
+| [`hyperv`][hyperv-block]                   | Configures the `hyperv` collector.                                        | no       |
 | [`iis`][iis]                               | Configures the `iis` collector.                                           | no       |
 | [`logical_disk`][logical_disk]             | Configures the `logical_disk` collector.                                  | no       |
 | [`mscluster`][mscluster]                   | Configures the `mscluster` collector.                                     | no       |
@@ -94,6 +100,7 @@ Each block only takes effect if you include its corresponding collector in `enab
 | [`smb`][smb]                               | Deprecated. Add `"smb"` to [`enabled_collectors`][] instead.              | no       |
 | [`smb_client`][smb_client]                 | Deprecated. Add `"smb_client"` to [`enabled_collectors`][] instead.       | no       |
 | [`smtp`][smtp]                             | Configures the `smtp` collector.                                          | no       |
+| [`storage_spaces`][storage_spaces-block]   | Configures the `storage_spaces` collector.                                | no       |
 | [`tcp`][tcp]                               | Configures the `tcp` collector.                                           | no       |
 | [`textfile`][textfile]                     | Configures the `textfile` collector.                                      | no       |
 | [`text_file`][text_file]                   | (Deprecated: use `textfile` instead) Configures the `textfile` collector. | no       |
@@ -103,10 +110,12 @@ Each block only takes effect if you include its corresponding collector in `enab
 
 [container-block]: #container
 [dfsr]: #dfsr
+[dhcp-block]: #dhcp
 [dns]: #dns
 [exchange]: #exchange
 [file-block]: #file
 [filetime-block]: #filetime
+[hyperv-block]: #hyperv
 [iis]: #iis
 [logical_disk]: #logical_disk
 [mscluster]: #mscluster
@@ -127,6 +136,7 @@ Each block only takes effect if you include its corresponding collector in `enab
 [textfile]: #textfile
 [text_file]: #text_file-deprecated-use-textfile-instead
 [tcp]: #tcp
+[storage_spaces-block]: #storage_spaces
 [time]: #time
 [update]: #update
 [wmi-block]: #wmi
@@ -159,6 +169,17 @@ On hosts without a CRI endpoint, the collector exports containers without Kubern
 | Name              | Type           | Description                              | Default                            | Required |
 | ----------------- | -------------- | ---------------------------------------- | ---------------------------------- | -------- |
 | `sources_enabled` | `list(string)` | A list of DFSR `Perflib` sources to use. | `["connection","folder","volume"]` | no       |
+
+### `dhcp`
+
+| Name           | Type           | Description                  | Default                              | Required |
+| -------------- | -------------- | ---------------------------- | ------------------------------------ | -------- |
+| `enabled_list` | `list(string)` | A list of collectors to use. | `["server_metrics","scope_metrics"]` | no       |
+
+The collectors specified by `enabled_list` can include the following:
+
+- `scope_metrics`
+- `server_metrics`
 
 ### `dns`
 
@@ -193,6 +214,39 @@ Metrics with the prefix `windows_filetime` now have the prefix `windows_file`.
 | --------------- | -------------- | ---------------------------------------------------- | ------- | -------- |
 | `file_patterns` | `list(string)` | A list of glob patterns that match files to monitor. | `[]`    | no       |
 
+### `hyperv`
+
+| Name                                 | Type           | Description                                                                    | Default   | Required |
+| ------------------------------------ | -------------- | ------------------------------------------------------------------------------ | --------- | -------- |
+| `enabled_list`                       | `list(string)` | A list of collectors to use.                                                   | See below | no       |
+| `virtual_hard_disk_refresh_interval` | `duration`     | How often the `virtual_hard_disk` collector reads the disks in the background. | `"5m"`    | no       |
+
+The default value of `enabled_list` is every collector in the following list.
+The collectors specified by `enabled_list` can include the following:
+
+- `datastore`
+- `dynamic_memory_balancer`
+- `dynamic_memory_vm`
+- `host`
+- `hypervisor_logical_processor`
+- `hypervisor_root_partition`
+- `hypervisor_root_virtual_processor`
+- `hypervisor_virtual_processor`
+- `legacy_network_adapter`
+- `replica_vm`
+- `virtual_hard_disk`
+- `virtual_machine_health_summary`
+- `virtual_machine_vid_partition`
+- `virtual_network_adapter`
+- `virtual_network_adapter_drop_reasons`
+- `virtual_smb`
+- `virtual_storage_device`
+- `virtual_switch`
+- `vm_state`
+- `wmi_health`
+
+Windows exporter v0.32 added `host`, `replica_vm`, `virtual_hard_disk`, `vm_state` and `wmi_health` to the default list.
+To keep the v0.31 set of metrics, list the collectors you want in `enabled_list`.
 ### `iis`
 
 | Name           | Type     | Description                                      | Default  | Required |
@@ -465,6 +519,20 @@ To collect SMB Client metrics, include `"smb_client"` in [`enabled_collectors`](
 The component includes server names that match the regular expression specified by `include` and don't match the regular expression specified by `exclude`.
 
 The component [wraps][wrap-regex] user-supplied `exclude` and `include` strings in a regular expression.
+
+### `storage_spaces`
+
+The `storage_spaces` collector exposes Storage Spaces pool and virtual disk metrics.
+It works on standalone hosts and doesn't need a failover cluster.
+
+| Name           | Type           | Description                  | Default                     | Required |
+| -------------- | -------------- | ---------------------------- | --------------------------- | -------- |
+| `enabled_list` | `list(string)` | A list of collectors to use. | `["pool","virtual_disk"]`   | no       |
+
+The collectors specified by `enabled_list` can include the following:
+
+- `pool`
+- `virtual_disk`
 
 ### `tcp`
 

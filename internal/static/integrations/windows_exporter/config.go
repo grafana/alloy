@@ -48,6 +48,9 @@ type Config struct {
 	DNS                DNSConfig                `yaml:"dns,omitempty"`
 	Net                NetConfig                `yaml:"net,omitempty"`
 	Time               TimeConfig               `yaml:"time,omitempty"`
+	HyperV             HyperVConfig             `yaml:"hyperv,omitempty"`
+	DHCP               DHCPConfig               `yaml:"dhcp,omitempty"`
+	StorageSpaces      StorageSpacesConfig      `yaml:"storage_spaces,omitempty"`
 }
 
 // Name returns the name used, "windows_explorer"
@@ -237,5 +240,21 @@ type NetConfig struct {
 
 // TimeConfig handles settings for the windows_exporter time collector
 type TimeConfig struct {
+	EnabledList string `yaml:"enabled_list,omitempty"`
+}
+
+// HyperVConfig handles settings for the windows_exporter hyperv collector
+type HyperVConfig struct {
+	EnabledList                    string        `yaml:"enabled_list,omitempty"`
+	VirtualHardDiskRefreshInterval time.Duration `yaml:"virtual_hard_disk_refresh_interval,omitempty"`
+}
+
+// DHCPConfig handles settings for the windows_exporter dhcp collector
+type DHCPConfig struct {
+	EnabledList string `yaml:"enabled_list,omitempty"`
+}
+
+// StorageSpacesConfig handles settings for the windows_exporter storage_spaces collector
+type StorageSpacesConfig struct {
 	EnabledList string `yaml:"enabled_list,omitempty"`
 }

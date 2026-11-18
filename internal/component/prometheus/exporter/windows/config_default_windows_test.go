@@ -56,6 +56,10 @@ func TestAlloyUnmarshalWithDefaultConfig(t *testing.T) {
 	require.Equal(t, defaultArgs.Net.Exclude, args.Net.Exclude)
 	require.Equal(t, defaultArgs.Net.EnabledList, args.Net.EnabledList)
 	require.Equal(t, defaultArgs.Time.EnabledList, args.Time.EnabledList)
+	require.Equal(t, defaultArgs.HyperV.EnabledList, args.HyperV.EnabledList)
+	require.Equal(t, defaultArgs.HyperV.VirtualHardDiskRefreshInterval, args.HyperV.VirtualHardDiskRefreshInterval)
+	require.Equal(t, defaultArgs.DHCP.EnabledList, args.DHCP.EnabledList)
+	require.Equal(t, defaultArgs.StorageSpaces.EnabledList, args.StorageSpaces.EnabledList)
 }
 
 // This is a copy of the getDefaultPath() function in:
@@ -95,6 +99,12 @@ func TestDefaultConfig(t *testing.T) {
 		Update:    UpdateConfig{Online: false, ScrapeInterval: 6 * time.Hour},
 		Net:       NetConfig{Include: "^.+$", Exclude: "^$", EnabledList: []string{"metrics", "nic_info"}},
 		Time:      TimeConfig{EnabledList: []string{"system_time", "clock_source", "ntp", "sync_status"}},
+		HyperV: HyperVConfig{
+			EnabledList:                    []string{"datastore", "dynamic_memory_balancer", "dynamic_memory_vm", "host", "hypervisor_logical_processor", "hypervisor_root_partition", "hypervisor_root_virtual_processor", "hypervisor_virtual_processor", "legacy_network_adapter", "replica_vm", "virtual_hard_disk", "virtual_machine_health_summary", "virtual_machine_vid_partition", "virtual_network_adapter", "virtual_network_adapter_drop_reasons", "virtual_smb", "virtual_storage_device", "virtual_switch", "vm_state", "wmi_health"},
+			VirtualHardDiskRefreshInterval: 5 * time.Minute,
+		},
+		DHCP:          DHCPConfig{EnabledList: []string{"server_metrics", "scope_metrics"}},
+		StorageSpaces: StorageSpacesConfig{EnabledList: []string{"pool", "virtual_disk"}},
 	}
 
 	var args Arguments

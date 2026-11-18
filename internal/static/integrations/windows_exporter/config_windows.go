@@ -189,6 +189,13 @@ func (c *Config) ToWindowsExporterConfig() (collector.Config, error) {
 
 	cfg.Time.CollectorsEnabled = splitNonEmpty(c.Time.EnabledList)
 
+	cfg.HyperV.CollectorsEnabled = splitNonEmpty(c.HyperV.EnabledList)
+	if c.HyperV.VirtualHardDiskRefreshInterval > 0 {
+		cfg.HyperV.VirtualHardDisk.RefreshInterval = c.HyperV.VirtualHardDiskRefreshInterval
+	}
+	cfg.Dhcp.CollectorsEnabled = splitNonEmpty(c.DHCP.EnabledList)
+	cfg.StorageSpaces.CollectorsEnabled = splitNonEmpty(c.StorageSpaces.EnabledList)
+
 	return cfg, errors.Join(errs...)
 }
 
@@ -331,6 +338,16 @@ var DefaultConfig = Config{
 	},
 	Time: TimeConfig{
 		EnabledList: strings.Join(collector.ConfigDefaults.Time.CollectorsEnabled, ","),
+	},
+	HyperV: HyperVConfig{
+		EnabledList:                    strings.Join(collector.ConfigDefaults.HyperV.CollectorsEnabled, ","),
+		VirtualHardDiskRefreshInterval: collector.ConfigDefaults.HyperV.VirtualHardDisk.RefreshInterval,
+	},
+	DHCP: DHCPConfig{
+		EnabledList: strings.Join(collector.ConfigDefaults.Dhcp.CollectorsEnabled, ","),
+	},
+	StorageSpaces: StorageSpacesConfig{
+		EnabledList: strings.Join(collector.ConfigDefaults.StorageSpaces.CollectorsEnabled, ","),
 	},
 }
 

@@ -184,6 +184,16 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 		DNS: windows.DNSConfig{
 			EnabledList: split(config.DNS.EnabledList),
 		},
+		HyperV: windows.HyperVConfig{
+			EnabledList:                    split(config.HyperV.EnabledList),
+			VirtualHardDiskRefreshInterval: config.HyperV.VirtualHardDiskRefreshInterval,
+		},
+		DHCP: windows.DHCPConfig{
+			EnabledList: split(config.DHCP.EnabledList),
+		},
+		StorageSpaces: windows.StorageSpacesConfig{
+			EnabledList: split(config.StorageSpaces.EnabledList),
+		},
 		Update: windows.UpdateConfig{
 			Online:         config.Update.Online,
 			ScrapeInterval: config.Update.ScrapeInterval,

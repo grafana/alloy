@@ -60,6 +60,9 @@ type Arguments struct {
 	DNS                DNSConfig                `alloy:"dns,block,optional"`
 	Net                NetConfig                `alloy:"net,block,optional"`
 	Time               TimeConfig               `alloy:"time,block,optional"`
+	HyperV             HyperVConfig             `alloy:"hyperv,block,optional"`
+	DHCP               DHCPConfig               `alloy:"dhcp,block,optional"`
+	StorageSpaces      StorageSpacesConfig      `alloy:"storage_spaces,block,optional"`
 }
 
 // Convert converts the component's Arguments to the integration's Config.
@@ -100,6 +103,9 @@ func (a *Arguments) Convert(logger *slog.Logger) *windows_integration.Config {
 		DNS:                a.DNS.Convert(),
 		Net:                a.Net.Convert(),
 		Time:               a.Time.Convert(),
+		HyperV:             a.HyperV.Convert(),
+		DHCP:               a.DHCP.Convert(),
+		StorageSpaces:      a.StorageSpaces.Convert(),
 	}
 }
 
@@ -575,6 +581,44 @@ type TimeConfig struct {
 // Convert converts the component's TimeConfig to the integration's TimeConfig.
 func (t TimeConfig) Convert() windows_integration.TimeConfig {
 	return windows_integration.TimeConfig{
+		EnabledList: strings.Join(t.EnabledList, ","),
+	}
+}
+
+// HyperVConfig handles settings for the windows_exporter hyperv collector
+type HyperVConfig struct {
+	EnabledList                    []string      `alloy:"enabled_list,attr,optional"`
+	VirtualHardDiskRefreshInterval time.Duration `alloy:"virtual_hard_disk_refresh_interval,attr,optional"`
+}
+
+// Convert converts the component's HyperVConfig to the integration's HyperVConfig.
+func (t HyperVConfig) Convert() windows_integration.HyperVConfig {
+	return windows_integration.HyperVConfig{
+		EnabledList:                    strings.Join(t.EnabledList, ","),
+		VirtualHardDiskRefreshInterval: t.VirtualHardDiskRefreshInterval,
+	}
+}
+
+// DHCPConfig handles settings for the windows_exporter dhcp collector
+type DHCPConfig struct {
+	EnabledList []string `alloy:"enabled_list,attr,optional"`
+}
+
+// Convert converts the component's DHCPConfig to the integration's DHCPConfig.
+func (t DHCPConfig) Convert() windows_integration.DHCPConfig {
+	return windows_integration.DHCPConfig{
+		EnabledList: strings.Join(t.EnabledList, ","),
+	}
+}
+
+// StorageSpacesConfig handles settings for the windows_exporter storage_spaces collector
+type StorageSpacesConfig struct {
+	EnabledList []string `alloy:"enabled_list,attr,optional"`
+}
+
+// Convert converts the component's StorageSpacesConfig to the integration's StorageSpacesConfig.
+func (t StorageSpacesConfig) Convert() windows_integration.StorageSpacesConfig {
+	return windows_integration.StorageSpacesConfig{
 		EnabledList: strings.Join(t.EnabledList, ","),
 	}
 }
