@@ -21,6 +21,7 @@ import (
 
 const (
 	minimumCleanSegmentsEvery = time.Second
+	maximumCleanSegmentsEvery = 5 * time.Minute
 )
 
 // CleanupEventSubscriber is an interface that objects that want to receive events from the wal Writer can implement. After
@@ -76,11 +77,18 @@ func (wrt *Writer) Start() {
 	// WAL cleanup routine that cleans old segments
 	wrt.wg.Go(func() {
 		// By cleaning every 10th of the configured threshold for considering a segment old, we are allowing a maximum slip
-		// of 10%. If the configured time is 1 hour, that'd be 6 minutes.
-		triggerEvery := wrt.cfg.MaxSegmentAge / 10
-		if triggerEvery < minimumCleanSegmentsEvery {
-			triggerEvery = minimumCleanSegmentsEvery
+		// of 10%. If the configured time is 1 hour, that'd be 6 minutes. The interval is also capped, so that a very
+		// large max_segment_age doesn't translate into very long periods without cleanup: since the ticker is
+		// recreated on every start, frequent restarts would otherwise keep postponing the first cleanup indefinitely.
+		triggerEvery := cleanupInterval(wrt.cfg.MaxSegmentAge)
+
+		// Segments may have expired while the writer wasn't running, e.g. across restarts, so clean up
+		// right away instead of waiting for the first tick.
+		wrt.logger.Debug("Running wal old segments cleanup")
+		if err := wrt.cleanSegments(wrt.cfg.MaxSegmentAge); err != nil {
+			wrt.logger.Error("Error cleaning old segments", "err", err)
 		}
+
 		trigger := time.NewTicker(triggerEvery)
 		defer trigger.Stop()
 		for {
@@ -95,6 +103,21 @@ func (wrt *Writer) Start() {
 			}
 		}
 	})
+}
+
+// cleanupInterval returns how often the WAL cleanup routine runs for the given
+// maximum segment age. Cleaning at a tenth of the configured age allows a
+// maximum slip of 10%, while the bounds keep the cleanup frequent enough both
+// for very small and very large configured ages.
+func cleanupInterval(maxSegmentAge time.Duration) time.Duration {
+	triggerEvery := maxSegmentAge / 10
+	if triggerEvery < minimumCleanSegmentsEvery {
+		triggerEvery = minimumCleanSegmentsEvery
+	}
+	if triggerEvery > maximumCleanSegmentsEvery {
+		triggerEvery = maximumCleanSegmentsEvery
+	}
+	return triggerEvery
 }
 
 func (wrt *Writer) WriteEntry(entry loki.Entry) error {
