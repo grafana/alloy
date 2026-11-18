@@ -72,6 +72,12 @@ var explainPlanIdentifierKeys = map[string]struct{}{
 	"Conflict Arbiter Indexes": {},
 }
 
+// explainPlanSettingsKey is the key EXPLAIN (SETTINGS) puts next to "Plan" for the non-default
+// settings that affect planning, such as "work_mem": "64kB" or "enable_hashjoin": "off". Those
+// are server configuration, not data from the query, so the values are kept as returned. They
+// would otherwise be redacted, because values like "64kB" are not plain words.
+const explainPlanSettingsKey = "Settings"
+
 // plainWordsPattern matches strings made only of letters, underscores, and
 // spaces, such as "Seq Scan" or "orders". Such a string cannot carry a literal:
 // a string literal needs a quote and a numeric literal needs a digit, so a
@@ -108,6 +114,9 @@ type planRedactor struct {
 	// str and enc encode one string at a time. They are reused for the whole plan.
 	str bytes.Buffer
 	enc *json.Encoder
+
+	// inSettings is true while the value of the "Settings" key is being copied.
+	inSettings bool
 }
 
 // value copies the next JSON value to the output. key is the object key the
@@ -129,6 +138,9 @@ func (r *planRedactor) value(key string) error {
 			return fmt.Errorf("unexpected delimiter %q in explain plan json", rune(t))
 		}
 	case string:
+		if r.inSettings {
+			return r.writeString(t)
+		}
 		return r.writeString(redactPlanString(key, t))
 	case json.Number:
 		r.buf.WriteString(t.String())
@@ -164,7 +176,17 @@ func (r *planRedactor) object() error {
 		}
 		r.buf.WriteByte(':')
 
-		if err := r.value(key); err != nil {
+		// Only the call that turns inSettings on turns it off, so the keys inside the Settings
+		// object are all copied as returned.
+		enterSettings := key == explainPlanSettingsKey && !r.inSettings
+		if enterSettings {
+			r.inSettings = true
+		}
+		err = r.value(key)
+		if enterSettings {
+			r.inSettings = false
+		}
+		if err != nil {
 			return err
 		}
 	}

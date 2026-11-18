@@ -41,6 +41,20 @@ func TestRedactExplainPlanJSON(t *testing.T) {
 			want:  `[{"Plan":{"Group Keys":[["a","?::text"],["b"]]}}]`,
 		},
 		{
+			name: "keeps the values of the planner settings and redacts what follows them",
+			input: `[{"Settings":{"work_mem":"64kB","random_page_cost":"1.1","search_path":"\"public\""},` +
+				`"Plan":{"Node Type":"Seq Scan","Filter":"(status = 'open'::text)"}}]`,
+			want: `[{"Settings":{"work_mem":"64kB","random_page_cost":"1.1","search_path":"\"public\""},` +
+				`"Plan":{"Node Type":"Seq Scan","Filter":"(status = ?::text)"}}]`,
+		},
+		{
+			name: "keeps the values of the planner settings when they come after the plan",
+			input: `[{"Plan":{"Node Type":"Seq Scan","Filter":"(status = 'open'::text)"},` +
+				`"Settings":{"enable_hashjoin":"off","effective_cache_size":"4GB"}}]`,
+			want: `[{"Plan":{"Node Type":"Seq Scan","Filter":"(status = ?::text)"},` +
+				`"Settings":{"enable_hashjoin":"off","effective_cache_size":"4GB"}}]`,
+		},
+		{
 			name:  "keeps parameter placeholders",
 			input: `[{"Plan":{"Index Cond":"(id = $1)"}}]`,
 			want:  `[{"Plan":{"Index Cond":"(id = $1)"}}]`,
