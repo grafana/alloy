@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+#
+# zigcc / zigc++: C and C++ compiler wrapper that maps the Go target
+# (GOOS/GOARCH) to a Zig target and execs `zig cc` / `zig c++`.
+#
+# It is used as CC (zigcc) and CXX (zigc++) in the build image so that every
+# cgo dependency is cross-compiled with Zig, regardless of the build host.
+#
+# Overrides:
+#   ZIGCC_OS, ZIGCC_ARCH              Use these instead of GOOS/GOARCH.
+#   ZIGCC_TARGET                      Use this Zig target verbatim.
+#   ZIGCC_GLIBC                       Override the glibc baseline (e.g. 2.17).
+#   ZIGCC_FREEBSD_SYSROOT             FreeBSD base sysroot (default /opt/freebsd-sysroot).
+#   ZIGCC_SYSTEMD_INCLUDE             Dir containing only a systemd/ link to the
+#                                     libsystemd headers (default /opt/zigcc/include).
+#
+# Darwin is intentionally unsupported: it needs an Apple SDK and is built on
+# macOS runners instead.
+set -euo pipefail
+
+case "$(basename "$0")" in
+  *c++ | *cxx) mode=c++ ;;
+  *) mode=cc ;;
+esac
+
+host_arch() {
+  case "$(uname -m)" in
+    x86_64) echo amd64 ;;
+    aarch64 | arm64) echo arm64 ;;
+    ppc64le) echo ppc64le ;;
+    s390x) echo s390x ;;
+    *) uname -m ;;
+  esac
+}
+host_os() {
+  case "$(uname -s)" in
+    Linux) echo linux ;;
+    *) uname -s | tr '[:upper:]' '[:lower:]' ;;
+  esac
+}
+
+os=${ZIGCC_OS:-${GOOS:-$(host_os)}}
+arch=${ZIGCC_ARCH:-${GOARCH:-$(host_arch)}}
+
+die() {
+  echo "zigcc: $*" >&2
+  exit 1
+}
+
+extra=()
+
+if [ -n "${ZIGCC_TARGET:-}" ]; then
+  target=$ZIGCC_TARGET
+else
+  case "$os" in
+    linux)
+      glibc=${ZIGCC_GLIBC:-2.17}
+      case "$arch" in
+        amd64) target=x86_64-linux-gnu.$glibc ;;
+        arm64) target=aarch64-linux-gnu.$glibc ;;
+        ppc64le)
+          # 2.19 is the lowest glibc Zig supports on ppc64le.
+          target=powerpc64le-linux-gnu.${ZIGCC_GLIBC:-2.19}
+          extra+=(-mabi=ibmlongdouble)
+          ;;
+        s390x) target=s390x-linux-gnu.$glibc ;;
+        *) die "unsupported linux architecture: $arch" ;;
+      esac
+      # libsystemd headers (for loki.source.journal). Zig does not search the
+      # system include dirs, and the directory below only exposes systemd/.
+      sd=${ZIGCC_SYSTEMD_INCLUDE:-/opt/zigcc/include}
+      [ -d "$sd/systemd" ] && extra+=(-I "$sd")
+      ;;
+    windows)
+      case "$arch" in
+        amd64) target=x86_64-windows-gnu ;;
+        *) die "unsupported windows architecture: $arch" ;;
+      esac
+      ;;
+    freebsd)
+      case "$arch" in
+        amd64) target=x86_64-freebsd ;;
+        *) die "unsupported freebsd architecture: $arch" ;;
+      esac
+      # Zig ships only libc for FreeBSD. node_exporter's devstat collector
+      # needs headers and libs (devstat, geom, kvm, elf) from the base system.
+      # -idirafter keeps Zig's own headers first. libkvm references a private
+      # libc symbol that Zig's libc stub lacks (it resolves on a real FreeBSD).
+      sr=${ZIGCC_FREEBSD_SYSROOT:-/opt/freebsd-sysroot}
+      [ -d "$sr/usr/include" ] || die "FreeBSD sysroot not found at $sr"
+      extra+=(-idirafter "$sr/usr/include" "-L$sr/usr/lib" "-L$sr/lib"
+        -Wl,--allow-shlib-undefined -Wno-unused-command-line-argument)
+      ;;
+    darwin)
+      die "darwin is not built with Zig; use a macOS runner"
+      ;;
+    *) die "unsupported OS: $os" ;;
+  esac
+fi
+
+exec zig "$mode" -target "$target" "${extra[@]}" "$@"
