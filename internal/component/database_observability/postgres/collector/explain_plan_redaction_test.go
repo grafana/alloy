@@ -42,9 +42,9 @@ func TestRedactExplainPlanJSON(t *testing.T) {
 		},
 		{
 			name: "keeps the values of the planner settings and redacts what follows them",
-			input: `[{"Settings":{"work_mem":"64kB","random_page_cost":"1.1","search_path":"\"public\""},` +
+			input: `[{"Settings":{"work_mem":"64kB","random_page_cost":"1.1"},` +
 				`"Plan":{"Node Type":"Seq Scan","Filter":"(status = 'open'::text)"}}]`,
-			want: `[{"Settings":{"work_mem":"64kB","random_page_cost":"1.1","search_path":"\"public\""},` +
+			want: `[{"Settings":{"work_mem":"64kB","random_page_cost":"1.1"},` +
 				`"Plan":{"Node Type":"Seq Scan","Filter":"(status = ?::text)"}}]`,
 		},
 		{
@@ -53,6 +53,26 @@ func TestRedactExplainPlanJSON(t *testing.T) {
 				`"Settings":{"enable_hashjoin":"off","effective_cache_size":"4GB"}}]`,
 			want: `[{"Plan":{"Node Type":"Seq Scan","Filter":"(status = ?::text)"},` +
 				`"Settings":{"enable_hashjoin":"off","effective_cache_size":"4GB"}}]`,
+		},
+		{
+			name:  "leaves the settings the collector sets itself out of the planner settings",
+			input: `[{"Plan":{"Node Type":"Seq Scan"},"Settings":{"search_path":"\"tenant_a\", \"tenant_b\", public","work_mem":"64kB","plan_cache_mode":"force_generic_plan","enable_partition_pruning":"off"}}]`,
+			want:  `[{"Plan":{"Node Type":"Seq Scan"},"Settings":{"work_mem":"64kB"}}]`,
+		},
+		{
+			name:  "leaves out a collector setting wherever it is in the planner settings",
+			input: `[{"Settings":{"search_path":"public","work_mem":"64kB"}},{"Settings":{"work_mem":"64kB","search_path":"public"}},{"Settings":{"search_path":"public","plan_cache_mode":"auto"}}]`,
+			want:  `[{"Settings":{"work_mem":"64kB"}},{"Settings":{"work_mem":"64kB"}},{"Settings":{}}]`,
+		},
+		{
+			name:  "leaves out a collector setting whatever its value is",
+			input: `[{"Settings":{"search_path":{"a":["x",{"b":1}]},"work_mem":"64kB","plan_cache_mode":["force_generic_plan"]}}]`,
+			want:  `[{"Settings":{"work_mem":"64kB"}}]`,
+		},
+		{
+			name:  "redacts a key named Settings inside the plan",
+			input: `[{"Plan":{"Node Type":"Foreign Scan","Settings":"count 4242","Plans":[{"Node Type":"Result","Settings":{"x":"count 7"}}]}}]`,
+			want:  `[{"Plan":{"Node Type":"Foreign Scan","Settings":"count ?","Plans":[{"Node Type":"Result","Settings":{"x":"count ?"}}]}}]`,
 		},
 		{
 			name:  "keeps parameter placeholders",

@@ -75,8 +75,22 @@ var explainPlanIdentifierKeys = map[string]struct{}{
 // explainPlanSettingsKey is the key EXPLAIN (SETTINGS) puts next to "Plan" for the non-default
 // settings that affect planning, such as "work_mem": "64kB" or "enable_hashjoin": "off". Those
 // are server configuration, not data from the query, so the values are kept as returned. They
-// would otherwise be redacted, because values like "64kB" are not plain words.
+// would otherwise be redacted, because values like "64kB" are not plain words. Only the Settings
+// next to the plan is trusted: a key of that name inside the plan is redacted like any other.
 const explainPlanSettingsKey = "Settings"
+
+// explainPlanKey is the key of the plan tree. Everything below it is plan nodes.
+const explainPlanKey = "Plan"
+
+// explainPlanCollectorSettings are the settings the collector sets on its own explain session.
+// EXPLAIN (SETTINGS) reports them as non-default, but they say nothing about the database, and
+// search_path lists every schema in it, which can be thousands of tenant names, so they are
+// dropped from the logged settings.
+var explainPlanCollectorSettings = map[string]struct{}{
+	"search_path":              {},
+	"plan_cache_mode":          {},
+	"enable_partition_pruning": {},
+}
 
 // plainWordsPattern matches strings made only of letters, underscores, and
 // spaces, such as "Seq Scan" or "orders". Such a string cannot carry a literal:
@@ -115,8 +129,11 @@ type planRedactor struct {
 	str bytes.Buffer
 	enc *json.Encoder
 
-	// inSettings is true while the value of the "Settings" key is being copied.
+	// inSettings is true while the value of the "Settings" key next to the plan is being copied.
 	inSettings bool
+
+	// inPlan is above zero while the value of the "Plan" key is being copied.
+	inPlan int
 }
 
 // value copies the next JSON value to the output. key is the object key the
@@ -156,11 +173,8 @@ func (r *planRedactor) value(key string) error {
 
 func (r *planRedactor) object() error {
 	r.buf.WriteByte('{')
-	for first := true; r.dec.More(); first = false {
-		if !first {
-			r.buf.WriteByte(',')
-		}
-
+	wrote := false
+	for r.dec.More() {
 		tok, err := r.dec.Token()
 		if err != nil {
 			return err
@@ -170,21 +184,43 @@ func (r *planRedactor) object() error {
 			return fmt.Errorf("unexpected object key of type %T in explain plan json", tok)
 		}
 
+		// The settings the collector sets itself are left out of the logged settings.
+		if r.inSettings {
+			if _, own := explainPlanCollectorSettings[key]; own {
+				if err := r.skipValue(); err != nil {
+					return err
+				}
+				continue
+			}
+		}
+
+		if wrote {
+			r.buf.WriteByte(',')
+		}
+		wrote = true
+
 		// Keys are labels chosen by PostgreSQL, not query data.
 		if err := r.writeString(key); err != nil {
 			return err
 		}
 		r.buf.WriteByte(':')
 
-		// Only the call that turns inSettings on turns it off, so the keys inside the Settings
-		// object are all copied as returned.
-		enterSettings := key == explainPlanSettingsKey && !r.inSettings
+		// Only the call that turns a flag on turns it off, so everything inside the object is
+		// handled alike.
+		enterSettings := key == explainPlanSettingsKey && !r.inSettings && r.inPlan == 0
+		enterPlan := key == explainPlanKey
 		if enterSettings {
 			r.inSettings = true
+		}
+		if enterPlan {
+			r.inPlan++
 		}
 		err = r.value(key)
 		if enterSettings {
 			r.inSettings = false
+		}
+		if enterPlan {
+			r.inPlan--
 		}
 		if err != nil {
 			return err
@@ -211,6 +247,33 @@ func (r *planRedactor) array(key string) error {
 		return err
 	}
 	r.buf.WriteByte(']')
+	return nil
+}
+
+// skipValue reads the next JSON value, whatever it is, and writes nothing.
+func (r *planRedactor) skipValue() error {
+	tok, err := r.dec.Token()
+	if err != nil {
+		return err
+	}
+	if d, ok := tok.(json.Delim); !ok || (d != '{' && d != '[') {
+		return nil
+	}
+
+	for depth := 1; depth > 0; {
+		tok, err := r.dec.Token()
+		if err != nil {
+			return err
+		}
+		if d, ok := tok.(json.Delim); ok {
+			switch d {
+			case '{', '[':
+				depth++
+			case '}', ']':
+				depth--
+			}
+		}
+	}
 	return nil
 }
 

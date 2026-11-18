@@ -47,16 +47,28 @@ const selectQueriesForExplainPlanTemplate = `
 
 const selectExplainPlanPrefix = `EXPLAIN (FORMAT JSON) EXECUTE `
 
-// selectDebugExplainPlanPrefix is only used while debug logging is on, for the extra plan that
-// is logged next to the regular one. VERBOSE adds the schema of every relation and the columns
-// each node outputs, SETTINGS adds the non-default settings that affect planning. Neither runs
-// the query. SETTINGS needs PostgreSQL 12, like the plan_cache_mode the collector already sets.
+// selectDebugExplainPlanPrefix is only used when verbose plans are logged, for the extra plan
+// that is logged next to the regular one. VERBOSE adds the schema of every relation and the
+// columns each node outputs, SETTINGS adds the non-default settings that affect planning.
+// Neither runs the query. SETTINGS needs PostgreSQL 12, like the plan_cache_mode the collector
+// already sets.
 const selectDebugExplainPlanPrefix = `EXPLAIN (FORMAT JSON, VERBOSE, SETTINGS) EXECUTE `
 
 // disablePartitionPruning is run before the debug plan. Binding NULL to every parameter makes
 // the executor prune all partitions of a partitioned table when it starts up, which leaves an
 // empty Append node with only "Subplans Removed" in the regular plan.
 const disablePartitionPruning = `SET enable_partition_pruning = off`
+
+// discardPlans drops the cached plans of the session. The first EXECUTE of a prepared statement
+// caches its generic plan, pruning information included, and a later EXECUTE reuses it whatever
+// enable_partition_pruning says, so the plan has to be dropped for the debug plan to be built
+// again with pruning off.
+const discardPlans = `DISCARD PLANS`
+
+// maxVerbosePlanLogBytes bounds the logged verbose plan, measured after redaction and base64
+// encoding. A plan with every partition of a table with a thousand of them is 340 KB, past the
+// 256 KB a Loki entry can be, and an entry that is too large is rejected.
+const maxVerbosePlanLogBytes = 200_000
 
 var unrecoverablePostgresSQLErrors = []string{
 	"pq: permission denied",
@@ -245,6 +257,10 @@ type ExplainPlansArguments struct {
 	DBVersion        string
 	TableRegistry    *TableRegistry
 
+	// LogVerbosePlans makes the collector run a second, verbose plan of every query and log it
+	// at debug level. It has no effect unless the log level is debug.
+	LogVerbosePlans bool
+
 	Logger *slog.Logger
 }
 
@@ -262,6 +278,7 @@ type ExplainPlans struct {
 	excludeUsers        []string
 	includeUsers        []string
 	perScrapeRatio      float64
+	logVerbosePlans     bool
 	currentBatchSize    int
 	entryHandler        loki.EntryHandler
 	tableRegistry       *TableRegistry
@@ -281,6 +298,7 @@ func NewExplainPlan(args ExplainPlansArguments) (*ExplainPlans, error) {
 		dbConnectionFactory: defaultDbConnectionFactory,
 		scrapeInterval:      args.ScrapeInterval,
 		perScrapeRatio:      args.PerScrapeRatio,
+		logVerbosePlans:     args.LogVerbosePlans,
 		excludeDatabases:    args.ExcludeDatabases,
 		includeDatabases:    args.IncludeDatabases,
 		excludeUsers:        args.ExcludeUsers,
@@ -597,7 +615,7 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 	logger = logger.With("datname", qi.datname)
 
 	debugEnabled := logger.Enabled(ctx, slog.LevelDebug)
-	byteExplainPlanJSON, debugExplainPlanJSON, err := c.fetchExplainPlanJSON(ctx, *qi, debugEnabled)
+	byteExplainPlanJSON, debugExplainPlanJSON, err := c.fetchExplainPlanJSON(ctx, *qi, debugEnabled && c.logVerbosePlans)
 	if err != nil {
 		logger.Debug("failed to fetch explain plan json bytes", "err", err)
 		return isUnrecoverablePostgresSQLError(err)
@@ -623,19 +641,7 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 			logger.Debug("db native explain plan", "db_native_explain_plan", base64.StdEncoding.EncodeToString(redactedByteExplainPlanJSON))
 		}
 
-		// The second plan carries the schema, the output columns, and the planner settings, and
-		// lists every partition of a partitioned table. It is only logged: the plan sent to Loki
-		// is always the regular one.
-		if len(debugExplainPlanJSON) > 0 {
-			redactedDebugPlanJSON, redactErr := redactExplainPlanJSON(debugExplainPlanJSON)
-			if redactErr != nil {
-				logger.Error("failed to redact verbose explain plan json for the debug log", "err", redactErr)
-			} else {
-				logger.Debug("db native explain plan verbose",
-					"db_native_explain_plan_verbose", base64.StdEncoding.EncodeToString(redactedDebugPlanJSON),
-					"partition_pruning", "off")
-			}
-		}
+		logVerbosePlan(logger, debugExplainPlanJSON)
 	}
 
 	explainPlanOutput, genErr := newExplainPlanOutput(byteExplainPlanJSON)
@@ -666,6 +672,31 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 	}
 
 	return false
+}
+
+// logVerbosePlan logs the verbose plan, redacted, next to the regular one. The plan carries the
+// schema, the output columns, and the planner settings, and lists every partition of a
+// partitioned table. It is only logged: the plan sent to Loki is always the regular one. A plan
+// that would not fit in a log entry is not logged. Nothing here is worth an error: the plan is
+// extra, and a problem with it is only reported at debug level.
+func logVerbosePlan(logger *slog.Logger, planJSON []byte) {
+	if len(planJSON) == 0 {
+		return
+	}
+
+	redacted, err := redactExplainPlanJSON(planJSON)
+	if err != nil {
+		logger.Debug("failed to redact verbose explain plan json for the debug log", "err", err)
+		return
+	}
+
+	encoded := base64.StdEncoding.EncodeToString(redacted)
+	if len(encoded) > maxVerbosePlanLogBytes {
+		logger.Debug("verbose explain plan is too large to log", "size_bytes", len(encoded), "limit_bytes", maxVerbosePlanLogBytes)
+		return
+	}
+
+	logger.Debug("db native explain plan verbose", "db_native_explain_plan_verbose", encoded, "partition_pruning", "off")
 }
 
 func isUnrecoverablePostgresSQLError(err error) bool {
@@ -741,7 +772,7 @@ func quotePostgresIdentifier(identifier string) string {
 // fetchExplainPlanJSON returns the generic plan of the query. When withDebugPlan is true it
 // also returns a second plan for the debug log, run in the same session after the first one:
 // the same generic plan with VERBOSE and SETTINGS and with partition pruning off. A failure to
-// get the second plan is logged and leaves the first one untouched.
+// get the second plan is logged at debug level and leaves the first one untouched.
 func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo, withDebugPlan bool) ([]byte, []byte, error) {
 	querySpecificDSN, err := replaceDatabaseNameInDSN(c.dbDSN, qi.datname)
 	if err != nil {
@@ -775,29 +806,24 @@ func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo, w
 		return nil, nil, fmt.Errorf("failed to set plan cache mode: %w", err)
 	}
 
-	explainArgs := ""
+	explainTarget := preparedStatementName
 	paramCount := postgresPreparedStatementParamCount(qi.queryText)
 	if paramCount > 0 {
 		nullParams := strings.Repeat("null,", paramCount)
 		nullParams = nullParams[:len(nullParams)-1]
 
-		explainArgs = fmt.Sprintf("(%s)", nullParams)
+		explainTarget = fmt.Sprintf("%s(%s)", preparedStatementName, nullParams)
 	}
-	rsExplain := conn.QueryRowContext(ctx, selectExplainPlanPrefix+preparedStatementName+explainArgs)
-	if err := rsExplain.Err(); err != nil {
-		return nil, nil, fmt.Errorf("failed to run explain plan: %w", err)
-	}
-
-	var byteExplainPlanJSON []byte
-	if err := rsExplain.Scan(&byteExplainPlanJSON); err != nil {
-		return nil, nil, fmt.Errorf("failed to scan explain plan json: %w", err)
+	byteExplainPlanJSON, err := queryExplainPlanJSON(ctx, conn, selectExplainPlanPrefix+explainTarget, "explain plan")
+	if err != nil {
+		return nil, nil, err
 	}
 
 	if !withDebugPlan {
 		return byteExplainPlanJSON, nil, nil
 	}
 
-	debugPlanJSON, err := fetchDebugExplainPlanJSON(ctx, conn, logger, preparedStatementName+"_debug", qi.queryText, explainArgs)
+	debugPlanJSON, err := fetchDebugExplainPlanJSON(ctx, conn, explainTarget)
 	if err != nil {
 		logger.Debug("failed to fetch verbose explain plan json bytes", "err", err)
 		return byteExplainPlanJSON, nil, nil
@@ -806,33 +832,33 @@ func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo, w
 	return byteExplainPlanJSON, debugPlanJSON, nil
 }
 
-// fetchDebugExplainPlanJSON runs the debug EXPLAIN on a session that already has the generic plan
-// cache mode set. It turns partition pruning off for the rest of the session, so it has to run
-// after the regular plan has been fetched. The query is prepared again under its own name: the
-// first EXECUTE of the regular statement cached its generic plan, pruning information included,
-// and a later EXECUTE would reuse it whatever enable_partition_pruning says.
-func fetchDebugExplainPlanJSON(ctx context.Context, conn *sql.DB, logger *slog.Logger, statementName, queryText, explainArgs string) ([]byte, error) {
+// fetchDebugExplainPlanJSON runs the debug EXPLAIN on the statement the regular plan was just
+// built from. It turns partition pruning off for the rest of the session, so it has to run after
+// the regular plan has been fetched, and it drops the cached plans of the session, so the
+// statement is planned again with pruning off.
+func fetchDebugExplainPlanJSON(ctx context.Context, conn *sql.DB, explainTarget string) ([]byte, error) {
 	if _, err := conn.ExecContext(ctx, disablePartitionPruning); err != nil {
 		return nil, fmt.Errorf("failed to disable partition pruning: %w", err)
 	}
 
-	if _, err := conn.ExecContext(ctx, fmt.Sprintf("PREPARE %s AS %s", statementName, queryText)); err != nil {
-		return nil, fmt.Errorf("failed to prepare verbose explain plan: %w", err)
+	if _, err := conn.ExecContext(ctx, discardPlans); err != nil {
+		return nil, fmt.Errorf("failed to discard cached plans: %w", err)
 	}
-	defer func() {
-		if _, err := conn.ExecContext(ctx, fmt.Sprintf("DEALLOCATE %s", statementName)); err != nil {
-			logger.Error("failed to deallocate verbose explain plan", "err", err)
-		}
-	}()
 
-	rs := conn.QueryRowContext(ctx, selectDebugExplainPlanPrefix+statementName+explainArgs)
+	return queryExplainPlanJSON(ctx, conn, selectDebugExplainPlanPrefix+explainTarget, "verbose explain plan")
+}
+
+// queryExplainPlanJSON runs an EXPLAIN that returns the plan as a single JSON value and returns
+// it. what names the plan in the errors.
+func queryExplainPlanJSON(ctx context.Context, conn *sql.DB, statement, what string) ([]byte, error) {
+	rs := conn.QueryRowContext(ctx, statement)
 	if err := rs.Err(); err != nil {
-		return nil, fmt.Errorf("failed to run verbose explain plan: %w", err)
+		return nil, fmt.Errorf("failed to run %s: %w", what, err)
 	}
 
 	var planJSON []byte
 	if err := rs.Scan(&planJSON); err != nil {
-		return nil, fmt.Errorf("failed to scan verbose explain plan json: %w", err)
+		return nil, fmt.Errorf("failed to scan %s json: %w", what, err)
 	}
 
 	return planJSON, nil
