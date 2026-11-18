@@ -89,7 +89,7 @@ PARENT_MAKEFILE := $(firstword $(MAKEFILE_LIST))
 # through to the container. USE_CONTAINER should never get propagated.
 define RERUN_IN_CONTAINER
 	docker run $(DOCKER_OPTS) --init --rm $(DOCKER_OPTS)       \
-		-e "CC=viceroycc"                                        \
+		-e "CC=zigcc" -e "CXX=zigc++"                            \
 		-v "$(shell pwd):/src"                                   \
 		-w "/src"                                                \
 		-v "/var/run/docker.sock:/var/run/docker.sock"           \
