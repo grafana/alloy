@@ -292,7 +292,9 @@ If you forget to escape, you get `unknown escape sequence` errors.
 {{< /admonition >}}
 
 {{< admonition type="note" >}}
-Refer to [Limit to only Pods on the same node](../../reference/components/discovery/discovery.kubernetes/#limit-to-only-pods-on-the-same-node) for more information about restricting to Pods on the same node.
+Refer to [] for more information about restricting to Pods on the same node.
+
+[discovery.kubernetes_samenode]: ../../reference/components/discovery/discovery.kubernetes/#limit-to-only-pods-on-the-same-node
 {{< /admonition >}}
 
 ### Kubernetes Cluster Events

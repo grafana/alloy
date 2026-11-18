@@ -70,7 +70,9 @@ Refer to the documentation for [run][] for more information about the options av
 
 {{< admonition type="note" >}}
 Make sure you pass `--server.http.listen-addr=0.0.0.0:12345` as an argument as shown in the example.
-If you don't pass this argument, the [debugging UI](../../../troubleshoot/debug/) won't be available outside of the Podman container.
+If you don't pass this argument, the [debugging UI][UI] won't be available outside of the Podman container.
+
+[UI]: ../../../troubleshoot/debug/
 {{< /admonition >}}
 
 ## Run a Podman container with root privileges
