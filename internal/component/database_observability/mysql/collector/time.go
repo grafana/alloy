@@ -14,11 +14,10 @@ const (
 // calculateWallTime calculates the wall-clock timestamp for an event.
 // The timerPicoseconds indicates event timing since server startup.
 // Since this value can overflow after approximately ~213 days (column type of bigint unsigned),
-// this function accounts for overflows by calculating the number of previous overflows and
-// compensating accordingly. Returns the timestamp in milliseconds when the event occurred.
-func calculateWallTime(serverStartTimeSeconds, timerPicoseconds, uptimeSeconds float64) float64 {
+// this function compensates for the given number of overflows that occurred before the event.
+// Returns the timestamp in milliseconds when the event occurred.
+func calculateWallTime(serverStartTimeSeconds, timerPicoseconds float64, previousOverflows int) float64 {
 	// Knowing the number of overflows that occurred, we can calculate how much overflow time to compensate
-	previousOverflows := calculateNumberOfOverflows(uptimeSeconds)
 	overflowTime := float64(previousOverflows) * picosecondsOverflowInSeconds
 
 	// We then add this overflow compensation to the server start time, and also add the timer value (remember this is counted from server start).

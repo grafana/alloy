@@ -37,6 +37,31 @@ SELECT unix_timestamp() AS now,
 FROM performance_schema.global_status
 WHERE variable_name = 'UPTIME'`
 
+// selectLatestTimerEnd returns the latest performance_schema timer value in (bookmark, ceiling] among the rows
+// of events_statements_current. That table holds each instrumented thread's latest statement and reports the
+// current timer value as the TIMER_END of a statement still in progress, so the result is no later than the
+// moment the query runs, and no earlier than the end of any statement in events_statements_history after the
+// bookmark. It doesn't depend on the polling connection being instrumented.
+const selectLatestTimerEnd = `
+SELECT MAX(TIMER_END)
+FROM performance_schema.events_statements_current
+WHERE TIMER_END > ? AND TIMER_END <= ?`
+
+// selectLatestTimerEndAcrossOverflow is selectLatestTimerEnd for when the timer may have overflowed since the
+// bookmark: a value up to the ceiling comes after the overflow, so it is later than any value above the bookmark.
+const selectLatestTimerEndAcrossOverflow = `
+SELECT COALESCE(
+	MAX(CASE WHEN TIMER_END <= ? THEN TIMER_END END),
+	MAX(CASE WHEN TIMER_END > ? THEN TIMER_END END))
+FROM performance_schema.events_statements_current`
+
+// timerCeilingMarginSeconds is how far ahead of UPTIME the performance_schema timer is assumed to be at most.
+// UPTIME is a whole number of seconds, and the timer starts counting when performance_schema initializes rather
+// than when the server records its start time, so the timer can be up to about a second ahead of UPTIME. The
+// margin only caps which timer values count as recent, so that a statement from before a timer overflow is not
+// taken for one after it.
+const timerCeilingMarginSeconds = 10
+
 const selectQuerySamples = `
 SELECT
 	statements.CURRENT_SCHEMA,
@@ -137,8 +162,26 @@ type QuerySamples struct {
 	cancel  context.CancelFunc
 	wg      sync.WaitGroup
 
-	timerBookmark float64
-	lastUptime    float64
+	timerBookmark          float64
+	timerBookmarkOverflows int
+	lastUptime             float64
+}
+
+// timerWindow is the range of the performance_schema timer that a poll collects statements from: after the
+// bookmark, up to and including limit.
+type timerWindow struct {
+	clause    string  // endOfTimeline, or beginningAndEndOfTimeline when the window spans a timer overflow
+	limit     float64 // timer value in picoseconds since the last overflow
+	overflows int     // number of timer overflows before limit
+}
+
+// overflowsBefore returns the number of timer overflows before a statement in the window ended.
+func (w timerWindow) overflowsBefore(timerEnd float64) int {
+	if w.clause == beginningAndEndOfTimeline && timerEnd > w.limit {
+		// the statement ended before the overflow that the window spans
+		return w.overflows - 1
+	}
+	return w.overflows
 }
 
 func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
@@ -252,8 +295,8 @@ func (c *QuerySamples) runSetupConsumersCheck() {
 	}
 }
 
-// initializeBookmark queries the database for the uptime since overflow (if any) so that upon startup we don't collect
-// samples that may have been collected previously.
+// initializeBookmark sets the bookmark to the latest performance_schema timer value, so that upon startup we don't
+// collect samples that may have been collected previously, nor skip ones that end right after startup.
 func (c *QuerySamples) initializeBookmark(ctx context.Context) error {
 	rs := c.dbConnection.QueryRowContext(ctx, selectUptime)
 
@@ -264,7 +307,21 @@ func (c *QuerySamples) initializeBookmark(ctx context.Context) error {
 	}
 
 	c.lastUptime = uptime
-	c.timerBookmark = uptimeSinceOverflow(uptime)
+
+	// Look for the latest timer value from somewhat before UPTIME, as the timer can be behind it. If no statement
+	// has ended since then, nothing before startup is left to skip.
+	since := max(uptime-timerCeilingMarginSeconds, 0)
+	c.timerBookmark = uptimeSinceOverflow(since)
+	c.timerBookmarkOverflows = calculateNumberOfOverflows(since)
+
+	window, err := c.determineTimerWindow(ctx, uptime)
+	if err != nil {
+		return err
+	}
+	if window != nil {
+		c.timerBookmark = window.limit
+		c.timerBookmarkOverflows = window.overflows
+	}
 	return nil
 }
 
@@ -276,7 +333,21 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 		return fmt.Errorf("failed to scan now and uptime info: %w", err)
 	}
 
-	timerClause, limit := c.determineTimerClauseAndLimit(uptime)
+	if uptime < c.lastUptime {
+		// server has restarted
+		c.timerBookmark = 0
+		c.timerBookmarkOverflows = 0
+	}
+
+	window, err := c.determineTimerWindow(ctx, uptime)
+	if err != nil {
+		return err
+	}
+	if window == nil {
+		// no statement has ended since the bookmark
+		c.lastUptime = uptime
+		return nil
+	}
 
 	schemaFilterClause := buildSchemaFilterClause(c.excludeSchemas, c.includeSchemas, "statements.CURRENT_SCHEMA")
 
@@ -294,22 +365,23 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 
 	query := ""
 	if semver.MustParseRange("<8.0.28")(c.engineVersion) {
-		query = fmt.Sprintf(selectQuerySamples, "", waitDurationClause, nestedWaitDurationClause, schemaFilterClause, sampleDurationClause, timerClause)
+		query = fmt.Sprintf(selectQuerySamples, "", waitDurationClause, nestedWaitDurationClause, schemaFilterClause, sampleDurationClause, window.clause)
 	} else if semver.MustParseRange("<8.0.31")(c.engineVersion) {
-		query = fmt.Sprintf(selectQuerySamples, cpuTimeField, waitDurationClause, nestedWaitDurationClause, schemaFilterClause, sampleDurationClause, timerClause)
+		query = fmt.Sprintf(selectQuerySamples, cpuTimeField, waitDurationClause, nestedWaitDurationClause, schemaFilterClause, sampleDurationClause, window.clause)
 	} else {
 		additionalFields := cpuTimeField + maxControlledMemoryField + maxTotalMemoryField
-		query = fmt.Sprintf(selectQuerySamples, additionalFields, waitDurationClause, nestedWaitDurationClause, schemaFilterClause, sampleDurationClause, timerClause)
+		query = fmt.Sprintf(selectQuerySamples, additionalFields, waitDurationClause, nestedWaitDurationClause, schemaFilterClause, sampleDurationClause, window.clause)
 	}
 
-	rs, err := c.dbConnection.QueryContext(ctx, query, c.timerBookmark, limit)
+	rs, err := c.dbConnection.QueryContext(ctx, query, c.timerBookmark, window.limit)
 	if err != nil {
 		return fmt.Errorf("failed to fetch query samples: %w", err)
 	}
 	defer rs.Close()
 
 	// set the new bookmarks
-	c.timerBookmark = limit
+	c.timerBookmark = window.limit
+	c.timerBookmarkOverflows = window.overflows
 	c.lastUptime = uptime
 
 	lastThreadIDLogged := ""
@@ -420,7 +492,7 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 		}
 
 		serverStartTime := now - uptime
-		endMilliseconds := calculateWallTime(serverStartTime, row.TimerEndPicoseconds.Float64, uptime)
+		endMilliseconds := calculateWallTime(serverStartTime, row.TimerEndPicoseconds.Float64, window.overflowsBefore(row.TimerEndPicoseconds.Float64))
 		elapsedTime := picosecondsToMilliseconds(row.ElapsedTimePicoseconds.Float64)
 		row.TimestampMilliseconds = endMilliseconds - elapsedTime
 		cpuTime := picosecondsToMilliseconds(row.CPUTime)
@@ -566,22 +638,44 @@ func (c *QuerySamples) updateSetupConsumersSettings(ctx context.Context) error {
 	return nil
 }
 
-func (c *QuerySamples) determineTimerClauseAndLimit(uptime float64) (string, float64) {
-	timerClause := endOfTimeline
-	currentOverflows := calculateNumberOfOverflows(uptime)
-	previousOverflows := calculateNumberOfOverflows(c.lastUptime)
-	switch {
-	case currentOverflows > previousOverflows:
-		// if we have just overflowed, collect both the beginning and end of the timeline
-		timerClause = beginningAndEndOfTimeline
-	case uptime < c.lastUptime:
-		// server has restarted
-		c.timerBookmark = 0
+// determineTimerWindow returns the window of the performance_schema timer to collect statements from, or nil if
+// no statement has ended since the bookmark.
+//
+// The window ends at the latest timer value read from events_statements_current, not at UPTIME. UPTIME is in
+// whole seconds and its origin differs from the timer's by a fraction of a second, so a limit derived from it
+// lands up to a second before or after the moment of the poll. Too early, and statements that have already ended
+// wait for a later poll, by when their rows are gone if their client has disconnected. Too late, and statements
+// that end after the poll but before the limit are not in events_statements_history yet, and the next window
+// starts after them.
+func (c *QuerySamples) determineTimerWindow(ctx context.Context, uptime float64) (*timerWindow, error) {
+	// No statement can have ended after the ceiling.
+	ceiling := uptimeSinceOverflow(uptime + timerCeilingMarginSeconds)
+	ceilingOverflows := calculateNumberOfOverflows(uptime + timerCeilingMarginSeconds)
+
+	var latest sql.NullFloat64
+	var err error
+	if ceilingOverflows > c.timerBookmarkOverflows {
+		err = c.dbConnection.QueryRowContext(ctx, selectLatestTimerEndAcrossOverflow, ceiling, c.timerBookmark).Scan(&latest)
+	} else {
+		err = c.dbConnection.QueryRowContext(ctx, selectLatestTimerEnd, c.timerBookmark, ceiling).Scan(&latest)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch latest statement timer: %w", err)
+	}
+	if !latest.Valid {
+		return nil, nil
 	}
 
-	limit := uptimeSinceOverflow(uptime)
-
-	return timerClause, limit
+	window := &timerWindow{clause: endOfTimeline, limit: latest.Float64, overflows: ceilingOverflows}
+	if latest.Float64 > ceiling {
+		// the latest statement ended before the overflow that the ceiling is past
+		window.overflows--
+	}
+	if window.overflows > c.timerBookmarkOverflows {
+		// the timer has overflowed since the bookmark: collect both the end and the beginning of the timeline
+		window.clause = beginningAndEndOfTimeline
+	}
+	return window, nil
 }
 
 var mysqlSynchReplicationSymbolPrefixes = []string{
