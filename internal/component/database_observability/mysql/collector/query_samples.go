@@ -47,8 +47,8 @@ SELECT MAX(TIMER_END)
 FROM performance_schema.events_statements_current
 WHERE TIMER_END > ? AND TIMER_END <= ?`
 
-// selectLatestTimerEndAcrossOverflow is selectLatestTimerEnd for when the timer may have overflowed since the
-// bookmark: a value up to the ceiling comes after the overflow, so it is later than any value above the bookmark.
+// selectLatestTimerEndAcrossOverflow is selectLatestTimerEnd for when the timer has overflowed since the bookmark:
+// a value up to the ceiling comes after the overflow, so it is later than any value above the bookmark.
 const selectLatestTimerEndAcrossOverflow = `
 SELECT COALESCE(
 	MAX(CASE WHEN TIMER_END <= ? THEN TIMER_END END),
@@ -58,9 +58,15 @@ FROM performance_schema.events_statements_current`
 // timerCeilingMarginSeconds is how far ahead of UPTIME the performance_schema timer is assumed to be at most.
 // UPTIME is a whole number of seconds, and the timer starts counting when performance_schema initializes rather
 // than when the server records its start time, so the timer can be up to about a second ahead of UPTIME. The
-// margin only caps which timer values count as recent, so that a statement from before a timer overflow is not
-// taken for one after it.
+// margin only caps which timer values count as recent: a thread that has been idle since before a timer overflow
+// keeps a statement whose TIMER_END is from the previous period, and the ceiling keeps that value from extending
+// the window far past the poll.
 const timerCeilingMarginSeconds = 10
+
+// timerMaxLagSeconds is how far behind UPTIME the performance_schema timer can be. UPTIME counts whole seconds
+// from the second in which the server recorded its start. The timer counts from when performance_schema
+// initialized, which happens earlier, so it is less than a second behind UPTIME. The extra second is a safety margin.
+const timerMaxLagSeconds = 2
 
 const selectQuerySamples = `
 SELECT
@@ -647,14 +653,26 @@ func (c *QuerySamples) updateSetupConsumersSettings(ctx context.Context) error {
 // wait for a later poll, by when their rows are gone if their client has disconnected. Too late, and statements
 // that end after the poll but before the limit are not in events_statements_history yet, and the next window
 // starts after them.
+//
+// The window crosses a timer overflow only once UPTIME shows that the timer is past it. Until then, a small timer
+// value can be the latest statement of a thread that has been idle since early in the current period, rather than
+// one that ended after the overflow. Statements that end in the first seconds after the overflow wait for a later
+// poll instead.
 func (c *QuerySamples) determineTimerWindow(ctx context.Context, uptime float64) (*timerWindow, error) {
 	// No statement can have ended after the ceiling.
 	ceiling := uptimeSinceOverflow(uptime + timerCeilingMarginSeconds)
 	ceilingOverflows := calculateNumberOfOverflows(uptime + timerCeilingMarginSeconds)
 
+	acrossOverflow := calculateNumberOfOverflows(max(uptime-timerMaxLagSeconds, 0)) > c.timerBookmarkOverflows
+	if !acrossOverflow && ceilingOverflows > c.timerBookmarkOverflows {
+		// the ceiling is past an overflow that the timer may not have reached: stop the window at the overflow
+		ceiling = timerMaxPicoseconds
+		ceilingOverflows = c.timerBookmarkOverflows
+	}
+
 	var latest sql.NullFloat64
 	var err error
-	if ceilingOverflows > c.timerBookmarkOverflows {
+	if acrossOverflow {
 		err = c.dbConnection.QueryRowContext(ctx, selectLatestTimerEndAcrossOverflow, ceiling, c.timerBookmark).Scan(&latest)
 	} else {
 		err = c.dbConnection.QueryRowContext(ctx, selectLatestTimerEnd, c.timerBookmark, ceiling).Scan(&latest)

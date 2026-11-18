@@ -3294,6 +3294,55 @@ func TestQuerySamples_initializeTimer(t *testing.T) {
 		assert.Equal(t, 1, c.timerBookmarkOverflows)
 	})
 
+	t.Run("uptime shows that the timer has just overflowed: timerBookmark is the latest timer value after the overflow", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		overflowSeconds := picosecondsToSeconds(math.MaxUint64)
+
+		mock.ExpectQuery(selectUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow(overflowSeconds + 5))
+		expectLatestTimerEndAcrossOverflow(mock,
+			15e12, // ceiling: uptime plus margin, after the overflow
+			secondsToPicoseconds(overflowSeconds-5), // a margin before uptime, before the overflow
+			3.2e12,
+		)
+
+		c, err := NewQuerySamples(QuerySamplesArguments{DB: db, Logger: util.TestAlloyLogger(t).Slog()})
+		require.NoError(t, err)
+
+		require.NoError(t, c.initializeBookmark(t.Context()))
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		assert.Equal(t, 3.2e12, c.timerBookmark)
+		assert.Equal(t, 1, c.timerBookmarkOverflows)
+	})
+
+	t.Run("uptime is close to an overflow: timerBookmark is the latest timer value before the overflow", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		overflow := float64(math.MaxUint64)
+		overflowSeconds := picosecondsToSeconds(overflow)
+
+		mock.ExpectQuery(selectUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow(overflowSeconds - 3))
+		expectLatestTimerEnd(mock,
+			secondsToPicoseconds(overflowSeconds-13), // a margin before uptime
+			overflow, // ceiling: the overflow, as the timer may not have reached it
+			overflow-1e12,
+		)
+
+		c, err := NewQuerySamples(QuerySamplesArguments{DB: db, Logger: util.TestAlloyLogger(t).Slog()})
+		require.NoError(t, err)
+
+		require.NoError(t, c.initializeBookmark(t.Context()))
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		assert.Equal(t, overflow-1e12, c.timerBookmark)
+		assert.Equal(t, 0, c.timerBookmarkOverflows)
+	})
+
 	t.Run("no statement ended recently: timerBookmark is a margin before uptime", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
@@ -3749,12 +3798,13 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 		serverStart := 1000.0
 
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(
-			sqlmock.NewRows([]string{"now", "uptime"}).AddRow(serverStart+overflowSeconds+1, overflowSeconds+1),
+			sqlmock.NewRows([]string{"now", "uptime"}).AddRow(serverStart+overflowSeconds+2, overflowSeconds+2),
 		)
-		mock.ExpectQuery(selectLatestTimerEndAcrossOverflow).WithArgs(
-			11e12,         // ceiling: uptime plus margin, after the overflow
+		expectLatestTimerEndAcrossOverflow(mock,
+			12e12,         // ceiling: uptime plus margin, after the overflow
 			overflow-2e12, // timerBookmark, before the overflow
-		).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"latest"}).AddRow(0.8e12))
+			0.8e12,
+		)
 		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", beginningAndEndOfTimeline)).WithArgs(
 			overflow-2e12,
 			0.8e12,
@@ -3778,7 +3828,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 
 		assert.Equal(t, 0.8e12, c.timerBookmark)
 		assert.Equal(t, 1, c.timerBookmarkOverflows)
-		assert.Equal(t, overflowSeconds+1, c.lastUptime)
+		assert.Equal(t, overflowSeconds+2, c.lastUptime)
 
 		lokiClient.Stop()
 		require.Eventually(t, func() bool { return len(lokiClient.Received()) == 2 }, 5*time.Second, 100*time.Millisecond)
@@ -3824,7 +3874,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 		assert.Equal(t, 1, c.timerBookmarkOverflows)
 	})
 
-	t.Run("uptime passes an overflow before the timer does: the window ends before the overflow", func(t *testing.T) {
+	t.Run("uptime reaches an overflow the timer may not have: the window stops at the overflow", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
@@ -3836,10 +3886,11 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(
 			sqlmock.NewRows([]string{"now", "uptime"}).AddRow(serverStart+overflowSeconds, overflowSeconds),
 		)
-		mock.ExpectQuery(selectLatestTimerEndAcrossOverflow).WithArgs(
-			10e12,         // ceiling: uptime plus margin, after the overflow
+		expectLatestTimerEnd(mock,
 			overflow-3e12, // timerBookmark
-		).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"latest"}).AddRow(overflow - 0.4e12))
+			overflow,      // ceiling: the overflow, as the timer may not have reached it
+			overflow-0.4e12,
+		)
 		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			overflow-3e12,
 			overflow-0.4e12,
@@ -3898,6 +3949,36 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 
 		assert.EqualValues(t, 10, c.lastUptime)
 		assert.Equal(t, 9.7e12, c.timerBookmark)
+		assert.Equal(t, 0, c.timerBookmarkOverflows)
+	})
+
+	t.Run("server restarts and no statement has ended since: the reset bookmark is kept", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(
+			sqlmock.NewRows([]string{"now", "uptime"}).AddRow(picosecondsToSeconds(math.MaxUint64)+15, 10),
+		)
+		expectLatestTimerEnd(mock,
+			float64(0), // timerBookmark is reset
+			20e12,      // ceiling: uptime plus margin
+			nil,
+		)
+
+		c := &QuerySamples{
+			dbConnection:           db,
+			engineVersion:          latestCompatibleVersion,
+			logger:                 util.TestAlloyLogger(t).Slog(),
+			timerBookmark:          3e12,
+			timerBookmarkOverflows: 1,
+			lastUptime:             picosecondsToSeconds(math.MaxUint64) + 11,
+		}
+		require.NoError(t, c.fetchQuerySamples(t.Context()))
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		assert.EqualValues(t, 10, c.lastUptime)
+		assert.Equal(t, float64(0), c.timerBookmark)
 		assert.Equal(t, 0, c.timerBookmarkOverflows)
 	})
 
@@ -4208,6 +4289,13 @@ func expectLatestTimerEnd(mock sqlmock.Sqlmock, bookmark, ceiling float64, lates
 		WillReturnRows(sqlmock.NewRows([]string{"MAX(TIMER_END)"}).AddRow(latest))
 }
 
+// expectLatestTimerEndAcrossOverflow is expectLatestTimerEnd for selectLatestTimerEndAcrossOverflow, which takes
+// the ceiling before the bookmark.
+func expectLatestTimerEndAcrossOverflow(mock sqlmock.Sqlmock, ceiling, bookmark float64, latest any) {
+	mock.ExpectQuery(selectLatestTimerEndAcrossOverflow).WithArgs(ceiling, bookmark).RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows([]string{"latest"}).AddRow(latest))
+}
+
 // querySamplesRows returns rows of the query samples query, one statement per TIMER_END value, each lasting 1ms.
 func querySamplesRows(timerEnds ...float64) *sqlmock.Rows {
 	rows := sqlmock.NewRows([]string{
@@ -4288,29 +4376,44 @@ func TestQuerySamples_determineTimerWindow(t *testing.T) {
 			latest:   nil,
 			expected: nil,
 		},
-		"uptime is close to an overflow, the timer has not overflowed yet": {
-			bookmark:       overflow - 7e12,
-			uptime:         overflowSeconds - 5,
-			acrossOverflow: true,
-			ceiling:        5e12,
-			latest:         overflow - 4e12,
-			expected:       &timerWindow{clause: endOfTimeline, limit: overflow - 4e12},
+		"uptime plus margin is past an overflow: the window stops at the overflow": {
+			bookmark: overflow - 7e12,
+			uptime:   overflowSeconds - 5,
+			ceiling:  overflow,
+			latest:   overflow - 4e12,
+			expected: &timerWindow{clause: endOfTimeline, limit: overflow - 4e12},
 		},
-		"the timer has overflowed since the bookmark": {
+		"the timer may have overflowed before uptime does: the window stops at the overflow": {
+			// A small timer value could be from after the overflow, or the latest statement of a thread that has
+			// been idle since early in the current period, so the window doesn't look past the overflow yet.
+			bookmark: overflow - 7e12,
+			uptime:   overflowSeconds - 1,
+			ceiling:  overflow,
+			latest:   overflow - 0.5e12,
+			expected: &timerWindow{clause: endOfTimeline, limit: overflow - 0.5e12},
+		},
+		"uptime is past an overflow by less than the timer can lag: the window stops at the overflow": {
+			bookmark: overflow - 7e12,
+			uptime:   overflowSeconds + 1,
+			ceiling:  overflow,
+			latest:   overflow - 0.2e12,
+			expected: &timerWindow{clause: endOfTimeline, limit: overflow - 0.2e12},
+		},
+		"uptime shows that the timer has overflowed since the bookmark": {
 			bookmark:       overflow - 7e12,
-			uptime:         overflowSeconds + 1,
+			uptime:         overflowSeconds + 2,
 			acrossOverflow: true,
-			ceiling:        11e12,
+			ceiling:        12e12,
 			latest:         1.5e12,
 			expected:       &timerWindow{clause: beginningAndEndOfTimeline, limit: 1.5e12, overflows: 1},
 		},
-		"the timer has overflowed before uptime does": {
+		"the timer has overflowed, but no statement has ended since the overflow": {
 			bookmark:       overflow - 7e12,
-			uptime:         overflowSeconds - 1,
+			uptime:         overflowSeconds + 2,
 			acrossOverflow: true,
-			ceiling:        9e12,
-			latest:         0.5e12,
-			expected:       &timerWindow{clause: beginningAndEndOfTimeline, limit: 0.5e12, overflows: 1},
+			ceiling:        12e12,
+			latest:         overflow - 1e12,
+			expected:       &timerWindow{clause: endOfTimeline, limit: overflow - 1e12},
 		},
 		"already overflowed once": {
 			bookmark:          1.5e12,
@@ -4323,9 +4426,9 @@ func TestQuerySamples_determineTimerWindow(t *testing.T) {
 		"second overflow occurs": {
 			bookmark:          overflow - 7e12,
 			bookmarkOverflows: 1,
-			uptime:            overflowSeconds*2 + 1,
+			uptime:            overflowSeconds*2 + 2,
 			acrossOverflow:    true,
-			ceiling:           11e12,
+			ceiling:           12e12,
 			latest:            1.5e12,
 			expected:          &timerWindow{clause: beginningAndEndOfTimeline, limit: 1.5e12, overflows: 2},
 		},
@@ -4338,8 +4441,7 @@ func TestQuerySamples_determineTimerWindow(t *testing.T) {
 			defer db.Close()
 
 			if tc.acrossOverflow {
-				mock.ExpectQuery(selectLatestTimerEndAcrossOverflow).WithArgs(tc.ceiling, tc.bookmark).RowsWillBeClosed().
-					WillReturnRows(sqlmock.NewRows([]string{"latest"}).AddRow(tc.latest))
+				expectLatestTimerEndAcrossOverflow(mock, tc.ceiling, tc.bookmark, tc.latest)
 			} else {
 				expectLatestTimerEnd(mock, tc.bookmark, tc.ceiling, tc.latest)
 			}

@@ -2,7 +2,10 @@ package collector
 
 import "math"
 
-var picosecondsOverflowInSeconds = picosecondsToSeconds(float64(math.MaxUint64))
+// timerMaxPicoseconds is the largest performance_schema timer value, after which the timer overflows.
+const timerMaxPicoseconds = float64(math.MaxUint64)
+
+var picosecondsOverflowInSeconds = picosecondsToSeconds(timerMaxPicoseconds)
 
 const (
 	picosecondsPerSecond      float64 = 1e12
