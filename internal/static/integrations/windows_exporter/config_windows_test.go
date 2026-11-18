@@ -2,6 +2,7 @@ package windows_exporter
 
 import (
 	"testing"
+	"time"
 
 	"github.com/prometheus-community/windows_exporter/pkg/collector"
 	"github.com/stretchr/testify/require"
@@ -151,4 +152,26 @@ func TestConfig_RegistryAndWMIAcceptEmptyDocuments(t *testing.T) {
 		require.Empty(t, cfg.Registry.Keys)
 		require.Empty(t, cfg.WMI.Queries)
 	}
+}
+
+func TestConfig_HyperVDHCPAndStorageSpaces(t *testing.T) {
+	c := &Config{
+		HyperV:        HyperVConfig{EnabledList: "host,vm_state", VirtualHardDiskRefreshInterval: 10 * time.Minute},
+		DHCP:          DHCPConfig{EnabledList: "server_metrics"},
+		StorageSpaces: StorageSpacesConfig{EnabledList: "pool"},
+	}
+
+	cfg, err := c.ToWindowsExporterConfig()
+	require.NoError(t, err)
+	require.Equal(t, []string{"host", "vm_state"}, cfg.HyperV.CollectorsEnabled)
+	require.Equal(t, 10*time.Minute, cfg.HyperV.VirtualHardDisk.RefreshInterval)
+	require.Equal(t, []string{"server_metrics"}, cfg.Dhcp.CollectorsEnabled)
+	require.Equal(t, []string{"pool"}, cfg.StorageSpaces.CollectorsEnabled)
+}
+
+func TestConfig_HyperVDefaultsWhenUnset(t *testing.T) {
+	cfg, err := (&Config{}).ToWindowsExporterConfig()
+	require.NoError(t, err)
+	require.Equal(t, collector.ConfigDefaults.HyperV.CollectorsEnabled, cfg.HyperV.CollectorsEnabled)
+	require.Equal(t, collector.ConfigDefaults.HyperV.VirtualHardDisk.RefreshInterval, cfg.HyperV.VirtualHardDisk.RefreshInterval)
 }

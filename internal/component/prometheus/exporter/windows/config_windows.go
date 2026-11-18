@@ -114,5 +114,15 @@ func (a *Arguments) SetToDefault() {
 		Time: TimeConfig{
 			EnabledList: slices.Clone(col.ConfigDefaults.Time.CollectorsEnabled),
 		},
+		HyperV: HyperVConfig{
+			EnabledList:                    slices.Clone(col.ConfigDefaults.HyperV.CollectorsEnabled),
+			VirtualHardDiskRefreshInterval: col.ConfigDefaults.HyperV.VirtualHardDisk.RefreshInterval,
+		},
+		DHCP: DHCPConfig{
+			EnabledList: slices.Clone(col.ConfigDefaults.Dhcp.CollectorsEnabled),
+		},
+		StorageSpaces: StorageSpacesConfig{
+			EnabledList: slices.Clone(col.ConfigDefaults.StorageSpaces.CollectorsEnabled),
+		},
 	}
 }
