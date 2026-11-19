@@ -1,6 +1,9 @@
+kind: pipelinetest
+version: 1
+
 config: |
   import.file "module" {
-    filename = "./tests/modules/loki_pipeline.alloy"
+    filename = "../modules/loki_pipeline.alloy"
   }
 
   module.loki_pipeline "p" {

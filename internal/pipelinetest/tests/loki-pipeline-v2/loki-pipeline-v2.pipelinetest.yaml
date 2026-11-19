@@ -1,3 +1,6 @@
+kind: pipelinetest
+version: 1
+
 flags:
   feature.loki.pipeline-v2.enabled: true
 
@@ -5,7 +8,7 @@ config: |
   loki.source.file "f" {
     targets = [
       {
-        __path__     = "./tests/loki-pipeline-v2/app.log",
+        __path__     = "./app.log",
         service_name = "app",
       },
     ]
