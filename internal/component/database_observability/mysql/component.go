@@ -143,6 +143,7 @@ type ExplainPlansArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 	PerCollectRatio float64       `alloy:"per_collect_ratio,attr,optional"`
 	InitialLookback time.Duration `alloy:"initial_lookback,attr,optional"`
+	LogWarnings     bool          `alloy:"log_explain_warnings,attr,optional"`
 }
 
 type LocksArguments struct {
@@ -1142,6 +1143,7 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 			DB:              inst.dbConnection,
 			ScrapeInterval:  c.args.ExplainPlansArguments.CollectInterval,
 			PerScrapeRatio:  c.args.ExplainPlansArguments.PerCollectRatio,
+			LogWarnings:     c.args.ExplainPlansArguments.LogWarnings,
 			ExcludeSchemas:  excludeSchemas,
 			IncludeSchemas:  includeSchemas,
 			InitialLookback: time.Now().Add(-c.args.ExplainPlansArguments.InitialLookback),
