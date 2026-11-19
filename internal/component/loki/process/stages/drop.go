@@ -65,6 +65,12 @@ func (c *DropConfig) Validate() error {
 	if c.Value != "" && c.Source == "" {
 		return errDropStageNoSourceWithValue
 	}
+	if c.Value != "" {
+		_, err := regexp.Compile("^" + regexp.QuoteMeta(c.Value) + "$")
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
