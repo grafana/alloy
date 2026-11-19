@@ -82,7 +82,10 @@ func newStageWithOpts(
 			return nil, err
 		}
 	case cfg.DropConfig != nil:
-		s = newDropStage(*cfg.DropConfig, opts)
+		s, err = newDropStage(*cfg.DropConfig, opts)
+		if err != nil {
+			return nil, err
+		}
 	case cfg.MultilineConfig != nil:
 		s = newMultilineStage(*cfg.MultilineConfig, opts)
 	case cfg.PackConfig != nil:

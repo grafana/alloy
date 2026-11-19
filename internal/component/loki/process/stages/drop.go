@@ -77,7 +77,7 @@ func (c *DropConfig) Validate() error {
 var _ entryProcessor = (*dropStage)(nil)
 
 // newDropStage creates a DropStage from config
-func newDropStage(config DropConfig, opts stageOpts) *dropStage {
+func newDropStage(config DropConfig, opts stageOpts) (*dropStage, error) {
 	// The first step to exclude `value` and fully replace it with the `expression`.
 	// It will simplify code and less confusing for the end-user on which option to choose.
 	var regex *regexp.Regexp
@@ -89,8 +89,9 @@ func newDropStage(config DropConfig, opts stageOpts) *dropStage {
 	}
 
 	dropCount, err := getDropCountMetric(opts.registerer)
+
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	return &dropStage{
@@ -99,7 +100,7 @@ func newDropStage(config DropConfig, opts stageOpts) *dropStage {
 		cfg:       &config,
 		regex:     regex,
 		dropCount: dropCount,
-	}
+	}, nil
 }
 
 // dropStage applies Label matchers to determine if the include stages should be run
