@@ -12,6 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/storage"
 	promremote "github.com/prometheus/prometheus/storage/remote"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
@@ -43,6 +44,8 @@ type Arguments struct {
 	EnableTypeAndUnitLabels bool `alloy:"enable_type_and_unit_labels,attr,optional"`
 	// Supported remote write protobuf message types. Valid values are "prometheus.WriteRequest" and "io.prometheus.write.v2.Request".
 	AcceptedRemoteWriteProtobufMessages []string `alloy:"accepted_remote_write_protobuf_messages,attr,optional"`
+	// Whether to accept metrics pushed with the Pushgateway API.
+	EnablePushgatewayEndpoint bool `alloy:"enable_pushgateway_endpoint,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -62,6 +65,12 @@ type Component struct {
 	updateMut sync.RWMutex
 	args      Arguments
 	server    *fnet.TargetServer
+
+	// pushArgs is read by the push handler without updateMut, because Update
+	// holds updateMut while a server shutdown waits for in-flight requests.
+	pushArgs     atomic.Pointer[Arguments]
+	pushSamples  prometheus.Counter
+	pushFailures *prometheus.CounterVec
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -101,6 +110,16 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		}
 	}
 
+	pushSamples := prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "prometheus_receive_http_pushgateway_samples_total",
+		Help: "Total number of samples received with the Pushgateway API.",
+	})
+	pushFailures := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "prometheus_receive_http_pushgateway_failed_requests_total",
+		Help: "Total number of failed requests to the Pushgateway API, by reason.",
+	}, []string{"reason"})
+	opts.Registerer.MustRegister(pushSamples, pushFailures)
+
 	c := &Component{
 		opts: opts,
 		handler: promremote.NewWriteHandler(
@@ -115,6 +134,8 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		),
 		fanout:             fanout,
 		uncheckedCollector: uncheckedCollector,
+		pushSamples:        pushSamples,
+		pushFailures:       pushFailures,
 	}
 
 	if err := c.Update(args); err != nil {
@@ -140,12 +161,20 @@ func (c *Component) Run(ctx context.Context) error {
 // Update satisfies the Component interface.
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
+	if newArgs.EnablePushgatewayEndpoint && !c.opts.MinStability.Permits(featuregate.StabilityExperimental) {
+		return fmt.Errorf("enable_pushgateway_endpoint is an experimental feature, and must be enabled by setting the stability.level flag to experimental")
+	}
+
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
+	c.pushArgs.Store(&newArgs)
 
 	c.updateMut.Lock()
 	defer c.updateMut.Unlock()
 
-	serverNeedsUpdate := !reflect.DeepEqual(c.args.Server, newArgs.Server)
+	// The push endpoint is only mounted when enabled, so toggling it restarts
+	// the server.
+	serverNeedsUpdate := !reflect.DeepEqual(c.args.Server, newArgs.Server) ||
+		c.args.EnablePushgatewayEndpoint != newArgs.EnablePushgatewayEndpoint
 	if !serverNeedsUpdate {
 		c.args = newArgs
 		return nil
@@ -159,7 +188,14 @@ func (c *Component) Update(args component.Arguments) error {
 	c.server = s
 
 	err = c.server.MountAndRun(func(router *mux.Router) {
-		router.Path("/api/v1/metrics/write").Methods("POST").Handler(c.handler)
+		router.Path("/api/v1/metrics/write").Methods(http.MethodPost).Handler(c.handler)
+		if newArgs.EnablePushgatewayEndpoint {
+			// The Pushgateway API puts the grouping labels in the path, so everything
+			// below /metrics/ is routed to the push handler and parsed there.
+			router.Path(fmt.Sprintf("/metrics/{%s:.+}", pushPathVar)).
+				Methods(http.MethodPost, http.MethodPut).
+				HandlerFunc(c.handlePush)
+		}
 	})
 	if err != nil {
 		return err
