@@ -1,0 +1,40 @@
+otelcol.receiver.awscloudwatch "default" {
+	region = "us-west-1"
+
+	logs {
+		groups {
+			autodiscover {
+				pattern                 = "/aws/lambda/.*"
+				limit                   = 100
+				account_identifiers     = ["123456789012", "987654321098"]
+				include_linked_accounts = true
+			}
+		}
+		start_from = "2025-06-25T00:00:00Z"
+	}
+
+	metrics {
+		collection_interval = "10m0s"
+		period              = "1m0s"
+		delay               = "15m0s"
+
+		discovery {
+			filters {
+				namespace = "AWS/EC2"
+			}
+			limit = 200
+			stats = ["Average"]
+		}
+	}
+
+	output {
+		metrics = [otelcol.exporter.otlp.default.input]
+		logs    = [otelcol.exporter.otlp.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+	}
+}
