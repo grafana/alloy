@@ -280,7 +280,10 @@ The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they
 | `per_collect_ratio` | `float64`  | The ratio of queries to collect explain plans for.       | `1.0`   | no       |
 | `log_verbose_plans` | `bool`     | Log a second, verbose plan of each query at debug level. | `false` | no       |
 
-When `log_verbose_plans` is `true` and the log level is `debug`, the collector runs a second `EXPLAIN` for each query on the monitored database and logs its plan next to the regular one. The verbose plan adds the schema of each table, the columns each step returns, and the planner settings that differ from the defaults, and lists every partition of a partitioned table. The plan sent to Loki doesn't change. The setting has no effect at other log levels.
+When `log_verbose_plans` is `true` and the log level is `debug`, the collector runs a second `EXPLAIN` for each query on the monitored database and logs its plan next to the regular one.
+The verbose plan adds the schema of each table, the columns each step returns, and the planner settings that differ from the defaults, and lists every partition of a partitioned table.
+The plan sent to Loki doesn't change.
+The setting has no effect at other log levels.
 
 ### `logs`
 
