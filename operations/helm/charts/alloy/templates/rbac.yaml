@@ -44,9 +44,9 @@ metadata:
     {{- include "alloy.labels" . | nindent 4 }}
     app.kubernetes.io/component: rbac
 rules:
-  {{- if or .Values.rbac.rules .Values.rbac.clusterRules }}
-  {{- .Values.rbac.rules | toYaml | nindent 2 }}
-  {{- .Values.rbac.clusterRules | toYaml | nindent 2 }}
+  {{- $rules := concat (.Values.rbac.rules | default list) (.Values.rbac.clusterRules | default list) }}
+  {{- if $rules }}
+  {{- $rules | toYaml | nindent 2 }}
   {{- else }}
   []
   {{- end }}
