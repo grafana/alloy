@@ -74,8 +74,12 @@ var _ entryProcessor = (*dropStage)(nil)
 func newDropStage(config DropConfig, opts stageOpts) *dropStage {
 	// The first step to exclude `value` and fully replace it with the `expression`.
 	// It will simplify code and less confusing for the end-user on which option to choose.
-	if config.Value != "" {
-		config.Expression = *regexp.MustCompile("^" + regexp.QuoteMeta(config.Value) + "$")
+	var regex *regexp.Regexp
+	switch {
+	case config.Value != "":
+		regex = regexp.MustCompile("^" + regexp.QuoteMeta(config.Value) + "$")
+	case !config.Expression.IsEmpty():
+		regex = &config.Expression
 	}
 
 	dropCount, err := getDropCountMetric(opts.registerer)
@@ -87,6 +91,7 @@ func newDropStage(config DropConfig, opts stageOpts) *dropStage {
 		next:      opts.next,
 		logger:    opts.slogger.With("stage", "drop"),
 		cfg:       &config,
+		regex:     regex,
 		dropCount: dropCount,
 	}
 }
@@ -96,6 +101,7 @@ type dropStage struct {
 	next      nextFn
 	logger    *slog.Logger
 	cfg       *DropConfig
+	regex     *regexp.Regexp
 	dropCount *prometheus.CounterVec
 }
 
@@ -149,7 +155,7 @@ func (d *dropStage) shouldDrop(e Entry) bool {
 			return false
 		}
 	}
-	if d.cfg.Source != "" && d.cfg.Expression.IsEmpty() {
+	if d.cfg.Source != "" && d.regex == nil {
 		var match bool
 		match = true
 		for _, src := range splitSource(d.cfg.Source) {
@@ -170,8 +176,8 @@ func (d *dropStage) shouldDrop(e Entry) bool {
 		}
 	}
 
-	if d.cfg.Source == "" && !d.cfg.Expression.IsEmpty() {
-		if !d.cfg.Expression.MatchString(e.Line) {
+	if d.cfg.Source == "" && d.regex != nil {
+		if !d.regex.MatchString(e.Line) {
 			// Not a match to the regex, don't drop
 			if debugEnabled(d.logger) {
 				d.logger.Debug("line will not be dropped, the provided regular expression did not match the log line")
@@ -183,7 +189,7 @@ func (d *dropStage) shouldDrop(e Entry) bool {
 		}
 	}
 
-	if d.cfg.Source != "" && !d.cfg.Expression.IsEmpty() {
+	if d.cfg.Source != "" && d.regex != nil {
 		var extractedData []string
 		for _, src := range splitSource(d.cfg.Source) {
 			if e, ok := e.Extracted[src]; ok {
@@ -197,7 +203,7 @@ func (d *dropStage) shouldDrop(e Entry) bool {
 				extractedData = append(extractedData, s)
 			}
 		}
-		if !d.cfg.Expression.MatchString(strings.Join(extractedData, d.cfg.Separator)) {
+		if !d.regex.MatchString(strings.Join(extractedData, d.cfg.Separator)) {
 			// Not a match to the regex, don't drop
 			if debugEnabled(d.logger) {
 				d.logger.Debug("line will not be dropped, the provided regular expression did not match the log line")
