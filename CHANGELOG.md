@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.23.0](https://github.com/grafana/alloy/compare/v1.22.0...v1.23.0) (2026-11-19)
+
+
+### Features 🌟
+
+* **database_observability.mysql:** Log the warnings of the explain plan at debug level ([#7753](https://github.com/grafana/alloy/issues/7753)) ([094faa0](https://github.com/grafana/alloy/commit/094faa09c0514d103815576feaa44889b8125c46))
+* **database_observability.postgres:** Enable default instance and database metrics collectors ([#7682](https://github.com/grafana/alloy/issues/7682)) ([d61cd8c](https://github.com/grafana/alloy/commit/d61cd8ccce07d1528dd5525d33dea72820bffcf2))
+* **database_observability.postgres:** Log a verbose, unpruned plan at debug level ([#7752](https://github.com/grafana/alloy/issues/7752)) ([450872d](https://github.com/grafana/alloy/commit/450872de8c7193e8b3f39bcc01d5dc04506223b9))
+
+
+### Bug Fixes 🐛
+
+* **converter:** Use Promtail defaults for unset multiline, metrics and pack stage fields ([#7649](https://github.com/grafana/alloy/issues/7649)) ([ead11a5](https://github.com/grafana/alloy/commit/ead11a58526daefe89f4f6408c68561c2bcf0ccd))
+* **database_observability.mysql:** Stop query_samples from missing statements around each poll ([#7751](https://github.com/grafana/alloy/issues/7751)) ([64f2c2e](https://github.com/grafana/alloy/commit/64f2c2e324cc86b485f40136cac41d4670f55c46))
+* **database_observability.postgres:** Redact only SQL expressions in debug plans ([#7742](https://github.com/grafana/alloy/issues/7742)) ([038d56c](https://github.com/grafana/alloy/commit/038d56c449a6ad6f06267c9e94ac5ae267cf605a))
+* **database_observability:** Avoid duplicate collection while a new cluster is forming ([#7722](https://github.com/grafana/alloy/issues/7722)) ([2ef3de2](https://github.com/grafana/alloy/commit/2ef3de2c40545763e7006d905a3b2c887b77d9e2))
+* **loki.process:** Move structured_metadata to syntax.Validator ([#7517](https://github.com/grafana/alloy/issues/7517)) ([28530d4](https://github.com/grafana/alloy/commit/28530d4056295531fd8c3b4b98ef0a6cbd1fee38))
+* **loki.process:** Mv stage.pattern to Valdiator ([#7692](https://github.com/grafana/alloy/issues/7692)) ([23f83f9](https://github.com/grafana/alloy/commit/23f83f93c0aad1cc03dfdaec02794f48c3a8a480))
+* **loki.process:** Use upstream logql package for selector ([#7676](https://github.com/grafana/alloy/issues/7676)) ([dd17a5e](https://github.com/grafana/alloy/commit/dd17a5e811a6385711db9580501eacc707033adc))
+* **loki.source.file:** Drain deleted file on removal ([#7661](https://github.com/grafana/alloy/issues/7661)) ([9595eec](https://github.com/grafana/alloy/commit/9595eec39eda9b6e0aea899a9f35dc2429f14003))
+* **loki.source.file:** Release pending buffer after long lines ([#7693](https://github.com/grafana/alloy/issues/7693)) ([c3e1ae8](https://github.com/grafana/alloy/commit/c3e1ae85298ba073c112115a692f8f458a5bcb56))
+* **loki.source.file:** Stop tailing files that exceed ignore_older_than ([#7721](https://github.com/grafana/alloy/issues/7721)) ([12f899e](https://github.com/grafana/alloy/commit/12f899ee4ba2075e8e5ca623611e9ab6d2bf1bc3))
+* **prometheus.operator:** Handle tombstones in CRD delete handlers ([#7714](https://github.com/grafana/alloy/issues/7714)) ([c68ceab](https://github.com/grafana/alloy/commit/c68ceab34638e8d435475c7cee3ffc0a73b2d299))
+* **pyroscope.ebpf:** Keep probes referenced while Run executes ([#7688](https://github.com/grafana/alloy/issues/7688)) ([6d7f1c5](https://github.com/grafana/alloy/commit/6d7f1c536e4abddfd9be88d202c332685bc2b2f3))
+
 ## [1.22.0](https://github.com/grafana/alloy/compare/v1.21.0...v1.22.0) (2026-11-12)
 
 
