@@ -106,8 +106,9 @@ func (s *server) Run(ctx context.Context) error {
 	riHandler := ri.Wrap(r)
 
 	srv := &http.Server{
-		Addr:    fmt.Sprintf("%s:%d", s.args.Host, s.args.Port),
-		Handler: mw.Wrap(riHandler),
+		Addr:        fmt.Sprintf("%s:%d", s.args.Host, s.args.Port),
+		Handler:     mw.Wrap(riHandler),
+		ReadTimeout: s.args.ReadTimeout,
 	}
 
 	errCh := make(chan error, 1)

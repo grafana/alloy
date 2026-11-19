@@ -41,6 +41,8 @@ type ServerArguments struct {
 	CORSAllowedOrigins    []string          `alloy:"cors_allowed_origins,attr,optional"`
 	APIKey                alloytypes.Secret `alloy:"api_key,attr,optional"`
 	MaxAllowedPayloadSize units.Base2Bytes  `alloy:"max_allowed_payload_size,attr,optional"`
+	ReadTimeout           time.Duration     `alloy:"read_timeout,attr,optional"`
+	RequestTimeout        time.Duration     `alloy:"request_timeout,attr,optional"`
 
 	RateLimiting    RateLimitingArguments `alloy:"rate_limiting,block,optional"`
 	IncludeMetadata bool                  `alloy:"include_metadata,attr,optional"`
