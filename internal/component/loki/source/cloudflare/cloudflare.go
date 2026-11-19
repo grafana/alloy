@@ -78,6 +78,9 @@ func (c *Arguments) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (c *Arguments) Validate() error {
+	if c.APIToken == "" {
+		return fmt.Errorf("api_token must not be empty")
+	}
 	if c.PullRange < 0 {
 		return fmt.Errorf("pull_range must be a positive duration")
 	}
