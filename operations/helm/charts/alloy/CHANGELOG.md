@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.17.0](https://github.com/grafana/alloy/compare/helm-chart/1.16.0...helm-chart/1.17.0) (2026-11-19)
+
+
+### Features 🌟
+
+* **helm:** Update to Grafana Alloy v1.23.0
+
 ## [1.16.0](https://github.com/grafana/alloy/compare/helm-chart/1.15.0...helm-chart/1.16.0) (2026-11-12)
 
 
