@@ -1,6 +1,8 @@
 package client
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"slices"
 	"sync"
 	"testing"
@@ -224,5 +226,39 @@ func TestShards(t *testing.T) {
 		s.stop()
 
 		require.Len(t, tracker.sent(), 0)
+	})
+
+	t.Run("should update marker when a batch fails to encode", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		var url flagext.URLValue
+		require.NoError(t, url.Set(server.URL))
+
+		tracker := &recordingTracker{}
+
+		s, err := newShards(newMetrics(prometheus.NewRegistry()), logging.NewSlogNop(), tracker, Config{
+			URL:       url,
+			BatchSize: 1,
+			Timeout:   time.Minute,
+			Client:    config.DefaultHTTPClientConfig,
+			QueueConfig: QueueConfig{
+				Capacity:     1,
+				DrainTimeout: time.Minute,
+			},
+		})
+		require.NoError(t, err)
+		s.start(1)
+
+		// Protobuf timestamps can't represent years after 9999, so encoding fails.
+		unencodable := loki.Entry{Labels: model.LabelSet{}, Entry: push.Entry{Timestamp: time.Date(10001, 1, 1, 0, 0, 0, 0, time.UTC), Line: "line"}}
+		require.NoError(t, s.enqueue("", unencodable, 1))
+
+		s.stop()
+
+		// The dropped batch must still advance the marker, or the WAL segment is never cleaned up.
+		require.Equal(t, []sentData{{segment: 1, count: 1}}, tracker.sent())
 	})
 }

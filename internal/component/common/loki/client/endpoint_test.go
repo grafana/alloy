@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"runtime"
@@ -57,7 +58,12 @@ func TestEndpoint(t *testing.T) {
 		inputDelay           time.Duration
 		expectedReqs         []util.RemoteWriteRequest
 		expectedMetrics      string
+		// extraMetricNames are gathered and compared in addition to the sent and dropped entries.
+		extraMetricNames []string
 	}
+
+	// Protobuf timestamps can't represent years after 9999, so encoding fails.
+	unencodableEntry := loki.Entry{Labels: model.LabelSet{}, Entry: push.Entry{Timestamp: time.Date(10001, 1, 1, 0, 0, 0, 0, time.UTC), Line: "line1"}}
 
 	tests := []testCase{
 		{
@@ -82,9 +88,10 @@ func TestEndpoint(t *testing.T) {
                                # HELP loki_write_sent_entries_total Number of log entries sent.
                                # TYPE loki_write_sent_entries_total counter
                                loki_write_sent_entries_total{host="__HOST__"} 3.0
-                               # HELP loki_write_dropped_entries_total Number of log entries dropped because all retries exhausted.
+                               # HELP loki_write_dropped_entries_total Number of log entries dropped because they couldn't be delivered to the ingester.
                                # TYPE loki_write_dropped_entries_total counter
                                loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large"} 0
+                               loki_write_dropped_entries_total{host="__HOST__",reason="encoding_failed"} 0
                                loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error"} 0
                                loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full"} 0
                                loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited"} 0
@@ -123,9 +130,10 @@ func TestEndpoint(t *testing.T) {
                               # HELP loki_write_sent_entries_total Number of log entries sent.
                               # TYPE loki_write_sent_entries_total counter
                               loki_write_sent_entries_total{host="__HOST__"} 2.0
-                              # HELP loki_write_dropped_entries_total Number of log entries dropped because all retries exhausted.
+                              # HELP loki_write_dropped_entries_total Number of log entries dropped because they couldn't be delivered to the ingester.
                               # TYPE loki_write_dropped_entries_total counter
                               loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="encoding_failed"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited"} 0
@@ -155,9 +163,10 @@ func TestEndpoint(t *testing.T) {
 				},
 			},
 			expectedMetrics: `
-                              # HELP loki_write_dropped_entries_total Number of log entries dropped because all retries exhausted.
+                              # HELP loki_write_dropped_entries_total Number of log entries dropped because they couldn't be delivered to the ingester.
                               # TYPE loki_write_dropped_entries_total counter
                               loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="encoding_failed"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error"} 1
                               loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited"} 0
@@ -182,9 +191,10 @@ func TestEndpoint(t *testing.T) {
 				},
 			},
 			expectedMetrics: `
-                              # HELP loki_write_dropped_entries_total Number of log entries dropped because all retries exhausted.
+                              # HELP loki_write_dropped_entries_total Number of log entries dropped because they couldn't be delivered to the ingester.
                               # TYPE loki_write_dropped_entries_total counter
                               loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="encoding_failed"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error"} 1
                               loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited"} 0
@@ -217,9 +227,10 @@ func TestEndpoint(t *testing.T) {
 				},
 			},
 			expectedMetrics: `
-                              # HELP loki_write_dropped_entries_total Number of log entries dropped because all retries exhausted.
+                              # HELP loki_write_dropped_entries_total Number of log entries dropped because they couldn't be delivered to the ingester.
                               # TYPE loki_write_dropped_entries_total counter
                               loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="encoding_failed"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited"} 1
@@ -245,9 +256,10 @@ func TestEndpoint(t *testing.T) {
 				},
 			},
 			expectedMetrics: `
-                              # HELP loki_write_dropped_entries_total Number of log entries dropped because all retries exhausted.
+                              # HELP loki_write_dropped_entries_total Number of log entries dropped because they couldn't be delivered to the ingester.
                               # TYPE loki_write_dropped_entries_total counter
                               loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="encoding_failed"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited"} 1
@@ -276,9 +288,10 @@ func TestEndpoint(t *testing.T) {
                               # HELP loki_write_sent_entries_total Number of log entries sent.
                               # TYPE loki_write_sent_entries_total counter
                               loki_write_sent_entries_total{host="__HOST__"} 2.0
-                              # HELP loki_write_dropped_entries_total Number of log entries dropped because all retries exhausted.
+                              # HELP loki_write_dropped_entries_total Number of log entries dropped because they couldn't be delivered to the ingester.
                               # TYPE loki_write_dropped_entries_total counter
                               loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="encoding_failed"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited"} 0
@@ -312,14 +325,47 @@ func TestEndpoint(t *testing.T) {
                               # HELP loki_write_sent_entries_total Number of log entries sent.
                               # TYPE loki_write_sent_entries_total counter
                               loki_write_sent_entries_total{host="__HOST__"} 4.0
-                              # HELP loki_write_dropped_entries_total Number of log entries dropped because all retries exhausted.
+                              # HELP loki_write_dropped_entries_total Number of log entries dropped because they couldn't be delivered to the ingester.
                               # TYPE loki_write_dropped_entries_total counter
                               loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="encoding_failed"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited"} 0
                        `,
+		},
+		{
+			name: "drop a batch that fails to encode",
+			endpointConfig: Config{
+				BatchSize: 10,
+				BatchWait: 10 * time.Millisecond,
+			},
+			serverResponseStatus: 200,
+			inputEntries:         []loki.Entry{unencodableEntry},
+			expectedReqs:         []util.RemoteWriteRequest{},
+			extraMetricNames:     []string{"loki_write_dropped_bytes_total"},
+			expectedMetrics: fmt.Sprintf(`
+                              # HELP loki_write_sent_entries_total Number of log entries sent.
+                              # TYPE loki_write_sent_entries_total counter
+                              loki_write_sent_entries_total{host="__HOST__"} 0
+                              # HELP loki_write_dropped_entries_total Number of log entries dropped because they couldn't be delivered to the ingester.
+                              # TYPE loki_write_dropped_entries_total counter
+                              loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="encoding_failed"} 1
+                              loki_write_dropped_entries_total{host="__HOST__",reason="ingester_error"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited"} 0
+                              loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited"} 0
+                              # HELP loki_write_dropped_bytes_total Number of bytes dropped because they couldn't be delivered to the ingester.
+                              # TYPE loki_write_dropped_bytes_total counter
+                              loki_write_dropped_bytes_total{host="__HOST__",reason="batch_too_large"} 0
+                              loki_write_dropped_bytes_total{host="__HOST__",reason="encoding_failed"} %d
+                              loki_write_dropped_bytes_total{host="__HOST__",reason="ingester_error"} 0
+                              loki_write_dropped_bytes_total{host="__HOST__",reason="queue_is_full"} 0
+                              loki_write_dropped_bytes_total{host="__HOST__",reason="rate_limited"} 0
+                              loki_write_dropped_bytes_total{host="__HOST__",reason="stream_limited"} 0
+                       `, unencodableEntry.Size()),
 		},
 	}
 
@@ -380,7 +426,7 @@ func TestEndpoint(t *testing.T) {
 			assert.ElementsMatch(t, tt.expectedReqs, receivedReqs)
 
 			expectedMetrics := strings.ReplaceAll(tt.expectedMetrics, "__HOST__", serverURL.Host)
-			err = testutil.GatherAndCompare(reg, strings.NewReader(expectedMetrics), "loki_write_sent_entries_total", "loki_write_dropped_entries_total")
+			err = testutil.GatherAndCompare(reg, strings.NewReader(expectedMetrics), append([]string{"loki_write_sent_entries_total", "loki_write_dropped_entries_total"}, tt.extraMetricNames...)...)
 			assert.NoError(t, err)
 		})
 	}

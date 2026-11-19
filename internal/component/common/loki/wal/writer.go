@@ -106,6 +106,7 @@ func (wrt *Writer) WriteEntry(entry loki.Entry) error {
 	}
 
 	if err := wrt.entryWriter.writeEntry(entry, wrt.wal); err != nil {
+		wrt.metrics.failures.WithLabelValues().Inc()
 		return err
 	}
 
