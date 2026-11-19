@@ -1,0 +1,92 @@
+config: |
+  infinity.source "default" {
+    interval = "1s"
+    timeout  = "500ms"
+
+    query "status" {
+      type   = "json"
+      source = "inline"
+      data   = `[{"service":"api","healthy":true,"latency_ms":12},{"service":"db","healthy":false,"latency_ms":40}]`
+
+      metrics {
+        prefix = "status_"
+      }
+    }
+
+    query "events" {
+      type   = "csv"
+      source = "inline"
+      format = "logs"
+      data   = "level,body\nerror,disk full\n"
+    }
+
+    forward_to {
+      metrics = [prometheus.relabel.default.receiver]
+      logs    = [loki.write.default.receiver]
+    }
+  }
+
+  prometheus.relabel "default" {
+    forward_to = [prometheus.remote_write.default.receiver]
+
+    rule {
+      target_label = "env"
+      replacement  = "test"
+    }
+  }
+
+  prometheus.remote_write "default" {
+    endpoint {
+      url = pipelinetest.prometheus.url
+
+      queue_config {
+        batch_send_deadline = "500ms"
+      }
+    }
+  }
+
+  loki.write "default" {
+    endpoint {
+      url = pipelinetest.loki.url
+    }
+  }
+
+assert:
+  prometheus:
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            __name__: status_latency_ms
+            service: api
+            job: infinity.source.default
+            instance: status
+            env: test
+        value: 12
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            __name__: status_healthy
+            service: db
+        value: 0
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            __name__: up
+            instance: status
+        value: 1
+  loki:
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            job: infinity.source.default
+            instance: events
+            level: error
+        line: disk full
