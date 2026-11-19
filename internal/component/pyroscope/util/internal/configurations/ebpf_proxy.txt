@@ -33,11 +33,6 @@ pyroscope.ebpf "default" {
 	forward_to   = [pyroscope.write.local_proxy.receiver]
 	demangle     = "full"
 	go_enabled   = false
-
-	debug_info {
-		upload                  = true
-		on_target_symbolization = false
-	}
 }
 
 pyroscope.receive_http "proxy" {

@@ -1,18 +1,31 @@
 # Changelog
 
-> _Contributors should read our [contributors guide][] for instructions on how
-> to update the changelog._
-
-This document contains a historical list of changes between releases. Only
-changes that impact end-user behavior are listed; changes to documentation or
-internal API changes are not present.
-
 Unreleased
 ----------
 
 ### Enhancements
 
 - Add support to provide extraLabels to alloy pdb (@jfengupgrade)
+
+## [1.16.0](https://github.com/grafana/alloy/compare/helm-chart/1.15.0...helm-chart/1.16.0) (2026-11-12)
+
+
+### Features 🌟
+
+* **helm:** Update to Grafana Alloy v1.22.0
+
+## [1.15.0](https://github.com/grafana/alloy/compare/helm-chart/1.14.4...helm-chart/1.15.0) (2026-10-29)
+
+### Enhancements
+
+- Add `image.distroless` option to use the distroless variant of the Alloy image. Has no effect when `image.digest` is set. (@x1unix)
+
+1.14.4 (2026-10-28)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.21.3 (@ptodev)
 
 1.14.3 (2026-10-22)
 ----------

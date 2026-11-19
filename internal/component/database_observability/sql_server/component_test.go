@@ -282,6 +282,58 @@ func TestQueryMetricsEnabledByDefault(t *testing.T) {
 	assert.False(t, collectors[collector.QueryMetricsCollector])
 }
 
+func TestServerMetricsEnabledByDefault(t *testing.T) {
+	var args Arguments
+	args.SetToDefault()
+
+	collectors := enableOrDisableCollectors(args)
+	assert.True(t, collectors[collector.ServerMetricsCollector])
+
+	args.DisableCollectors = []string{collector.ServerMetricsCollector}
+	collectors = enableOrDisableCollectors(args)
+	assert.False(t, collectors[collector.ServerMetricsCollector])
+}
+
+func TestServerConfiguration(t *testing.T) {
+	t.Run("defaults and enablement", func(t *testing.T) {
+		var args Arguments
+		args.SetToDefault()
+
+		assert.Equal(t, 10*time.Minute, args.ServerConfigurationArguments.CollectInterval)
+		assert.True(t, enableOrDisableCollectors(args)[collector.ServerConfigurationCollector])
+
+		args.DisableCollectors = []string{collector.ServerConfigurationCollector}
+		assert.False(t, enableOrDisableCollectors(args)[collector.ServerConfigurationCollector])
+	})
+
+	t.Run("configuration is parsed", func(t *testing.T) {
+		config := `
+			data_source_name = "sqlserver://user:pass@localhost:1433"
+			forward_to       = []
+
+			server_configuration {
+				collect_interval = "5m"
+			}
+		`
+
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(config), &args))
+		assert.Equal(t, 5*time.Minute, args.ServerConfigurationArguments.CollectInterval)
+	})
+
+	t.Run("non-positive collect interval is rejected when enabled", func(t *testing.T) {
+		var args Arguments
+		args.SetToDefault()
+		args.DataSourceName = "sqlserver://user:pass@localhost:1433"
+		args.ServerConfigurationArguments.CollectInterval = 0
+
+		require.ErrorContains(t, args.Validate(), "server_configuration.collect_interval")
+
+		args.DisableCollectors = []string{collector.ServerConfigurationCollector}
+		require.NoError(t, args.Validate())
+	})
+}
+
 func TestValidateQueryMetrics(t *testing.T) {
 	base := func() Arguments {
 		var args Arguments
@@ -433,6 +485,10 @@ func TestQuerySamplesDefaults(t *testing.T) {
 
 	assert.Equal(t, 10*time.Second, args.QuerySamplesArguments.CollectInterval)
 	assert.False(t, args.QuerySamplesArguments.DisableQueryRedaction)
+	assert.Equal(t, time.Duration(0), args.QuerySamplesArguments.SampleMinDuration)
+	assert.Equal(t, time.Millisecond, args.QuerySamplesArguments.WaitEventMinDuration)
+	assert.Equal(t, 5, args.QuerySamplesArguments.MaxSamplesPerQuery)
+	assert.Equal(t, 50, args.QuerySamplesArguments.MaxSamplesPerCollect)
 	assert.True(t, args.ExcludeCurrentUser)
 	assert.Equal(t, []string{
 		"azuresu",
@@ -473,23 +529,58 @@ func TestValidateQuerySamples(t *testing.T) {
 		require.ErrorContains(t, args.Validate(), "query_samples.collect_interval")
 	})
 
+	t.Run("negative sample_min_duration is rejected", func(t *testing.T) {
+		args := base()
+		args.QuerySamplesArguments.SampleMinDuration = -time.Millisecond
+		require.ErrorContains(t, args.Validate(), "query_samples.sample_min_duration")
+	})
+
+	t.Run("negative wait_event_min_duration is rejected", func(t *testing.T) {
+		args := base()
+		args.QuerySamplesArguments.WaitEventMinDuration = -time.Millisecond
+		require.ErrorContains(t, args.Validate(), "query_samples.wait_event_min_duration")
+	})
+
+	t.Run("negative max_samples_per_query is rejected", func(t *testing.T) {
+		args := base()
+		args.QuerySamplesArguments.MaxSamplesPerQuery = -1
+		require.ErrorContains(t, args.Validate(), "query_samples.max_samples_per_query")
+	})
+
+	t.Run("negative max_samples_per_collect is rejected", func(t *testing.T) {
+		args := base()
+		args.QuerySamplesArguments.MaxSamplesPerCollect = -1
+		require.ErrorContains(t, args.Validate(), "query_samples.max_samples_per_collect")
+	})
+
 	t.Run("invalid values are ignored when disabled", func(t *testing.T) {
 		args := base()
 		args.DisableCollectors = []string{collector.QuerySamplesCollector}
 		args.QuerySamplesArguments.CollectInterval = 0
+		args.QuerySamplesArguments.SampleMinDuration = -time.Second
+		args.QuerySamplesArguments.WaitEventMinDuration = -time.Second
+		args.QuerySamplesArguments.MaxSamplesPerQuery = -1
+		args.QuerySamplesArguments.MaxSamplesPerCollect = -1
 		require.NoError(t, args.Validate())
 	})
 }
 
 func TestQuerySamplesConfigParsing(t *testing.T) {
 	config := `
-		data_source_name    = "sqlserver://user:pass@localhost:1433"
-		forward_to          = []
-		exclude_users       = ["app_reader", "batch_user"]
+		data_source_name     = "sqlserver://user:pass@localhost:1433"
+		forward_to           = []
+		include_schemas      = ["dbo", "sales"]
+		include_databases    = ["orders_db"]
+		include_users        = ["app_writer"]
+		exclude_users        = ["app_reader", "batch_user"]
 		exclude_current_user = false
 		query_samples {
 			collect_interval        = "5s"
 			disable_query_redaction = true
+			sample_min_duration     = "25ms"
+			wait_event_min_duration = "5ms"
+			max_samples_per_query   = 10
+			max_samples_per_collect = 100
 		}
 	`
 
@@ -497,12 +588,98 @@ func TestQuerySamplesConfigParsing(t *testing.T) {
 	require.NoError(t, syntax.Unmarshal([]byte(config), &args))
 	assert.Equal(t, 5*time.Second, args.QuerySamplesArguments.CollectInterval)
 	assert.True(t, args.QuerySamplesArguments.DisableQueryRedaction)
+	assert.Equal(t, 25*time.Millisecond, args.QuerySamplesArguments.SampleMinDuration)
+	assert.Equal(t, 5*time.Millisecond, args.QuerySamplesArguments.WaitEventMinDuration)
+	assert.Equal(t, 10, args.QuerySamplesArguments.MaxSamplesPerQuery)
+	assert.Equal(t, 100, args.QuerySamplesArguments.MaxSamplesPerCollect)
+	assert.Equal(t, []string{"dbo", "sales"}, args.IncludeSchemas)
+	assert.Equal(t, []string{"orders_db"}, args.IncludeDatabases)
+	assert.Equal(t, []string{"app_writer"}, args.IncludeUsers)
 	assert.Equal(t, []string{"app_reader", "batch_user"}, args.ExcludeUsers)
 	assert.False(t, args.ExcludeCurrentUser)
 }
 
+func TestValidate_IncludeAndExcludeOverlap(t *testing.T) {
+	t.Run("rejects overlapping include_schemas and exclude_schemas case-insensitively", func(t *testing.T) {
+		config := `
+			data_source_name = "sqlserver://user:pass@localhost:1433"
+			forward_to       = []
+			include_schemas  = ["dbo", "Shared"]
+			exclude_schemas  = ["shared"]
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(config), &args)
+		require.EqualError(t, err, `include_schemas and exclude_schemas cannot both contain "Shared"`)
+	})
+
+	t.Run("rejects overlapping include_databases and exclude_databases case-insensitively", func(t *testing.T) {
+		config := `
+			data_source_name  = "sqlserver://user:pass@localhost:1433"
+			forward_to        = []
+			include_databases = ["Orders_DB"]
+			exclude_databases = ["orders_db"]
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(config), &args)
+		require.EqualError(t, err, `include_databases and exclude_databases cannot both contain "Orders_DB"`)
+	})
+
+	t.Run("rejects overlapping include_users and exclude_users case-insensitively", func(t *testing.T) {
+		config := `
+			data_source_name = "sqlserver://user:pass@localhost:1433"
+			forward_to       = []
+			include_users    = ["App_User"]
+			exclude_users    = ["app_user"]
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(config), &args)
+		require.EqualError(t, err, `include_users and exclude_users cannot both contain "App_User"`)
+	})
+
+	t.Run("rejects include_schemas overlapping always-excluded schemas case-insensitively", func(t *testing.T) {
+		for _, excluded := range []string{"sys", "SYS", "information_schema", "INFORMATION_SCHEMA"} {
+			config := `
+				data_source_name = "sqlserver://user:pass@localhost:1433"
+				forward_to       = []
+				include_schemas  = ["dbo", "` + excluded + `"]
+			`
+			var args Arguments
+			err := syntax.Unmarshal([]byte(config), &args)
+			require.EqualError(t, err, `include_schemas and exclude_schemas cannot both contain "`+excluded+`"`)
+		}
+	})
+
+	t.Run("rejects include_databases overlapping always-excluded databases case-insensitively", func(t *testing.T) {
+		for _, excluded := range []string{"Master", "tempdb"} {
+			config := `
+				data_source_name  = "sqlserver://user:pass@localhost:1433"
+				forward_to        = []
+				include_databases = ["orders_db", "` + excluded + `"]
+			`
+			var args Arguments
+			err := syntax.Unmarshal([]byte(config), &args)
+			require.EqualError(t, err, `include_databases and exclude_databases cannot both contain "`+excluded+`"`)
+		}
+	})
+
+	t.Run("accepts include lists overriding default exclusions when not explicitly excluded", func(t *testing.T) {
+		config := `
+			data_source_name  = "sqlserver://user:pass@localhost:1433"
+			forward_to        = []
+			include_schemas   = ["dbo", "rdsadmin"]
+			include_databases = ["orders_db", "RDSAdmin"]
+			include_users     = ["app_user", "RDSAdmin"]
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(config), &args))
+		require.Equal(t, []string{"dbo", "rdsadmin"}, args.IncludeSchemas)
+		require.Equal(t, []string{"orders_db", "RDSAdmin"}, args.IncludeDatabases)
+		require.Equal(t, []string{"app_user", "RDSAdmin"}, args.IncludeUsers)
+	})
+}
+
 func TestResolveExcludeUsers(t *testing.T) {
-	t.Run("merges original login without mutating configured users", func(t *testing.T) {
+	t.Run("merges default users and original login without mutating configured users", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
@@ -511,9 +688,9 @@ func TestResolveExcludeUsers(t *testing.T) {
 		mock.ExpectQuery(collector.SelectOriginalLogin).
 			WillReturnRows(sqlmock.NewRows([]string{"original_login"}).AddRow("alloy_monitor"))
 
-		effective, err := resolveExcludeUsers(context.Background(), db, defaultQueryTimeout, configured, true)
+		effective, err := resolveExcludeUsers(context.Background(), db, defaultQueryTimeout, configured, nil, true)
 		require.NoError(t, err)
-		assert.Equal(t, []string{"app_reader", "alloy_monitor"}, effective)
+		assert.Equal(t, []string{"azuresu", "cloudsqladmin", "db-o11y", "rdsadmin", "app_reader", "alloy_monitor"}, effective)
 		assert.Equal(t, []string{"app_reader"}, configured)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -526,20 +703,31 @@ func TestResolveExcludeUsers(t *testing.T) {
 		mock.ExpectQuery(collector.SelectOriginalLogin).
 			WillReturnRows(sqlmock.NewRows([]string{"original_login"}).AddRow("Alloy_Monitor"))
 
-		effective, err := resolveExcludeUsers(context.Background(), db, defaultQueryTimeout, []string{"alloy_monitor"}, true)
+		effective, err := resolveExcludeUsers(context.Background(), db, defaultQueryTimeout, []string{"alloy_monitor"}, nil, true)
 		require.NoError(t, err)
-		assert.Equal(t, []string{"alloy_monitor", "Alloy_Monitor"}, effective)
+		assert.Equal(t, []string{"azuresu", "cloudsqladmin", "db-o11y", "rdsadmin", "alloy_monitor", "Alloy_Monitor"}, effective)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	t.Run("disabled skips original login query", func(t *testing.T) {
+	t.Run("disabled skips original login query while keeping default users", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
 
-		effective, err := resolveExcludeUsers(context.Background(), db, defaultQueryTimeout, []string{"app_reader"}, false)
+		effective, err := resolveExcludeUsers(context.Background(), db, defaultQueryTimeout, []string{"app_reader"}, nil, false)
 		require.NoError(t, err)
-		assert.Equal(t, []string{"app_reader"}, effective)
+		assert.Equal(t, []string{"azuresu", "cloudsqladmin", "db-o11y", "rdsadmin", "app_reader"}, effective)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("include_users removes matching default excluded user", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		effective, err := resolveExcludeUsers(context.Background(), db, defaultQueryTimeout, defaultExcludedUsers(), []string{"RDSAdmin"}, false)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"azuresu", "cloudsqladmin", "db-o11y"}, effective)
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -549,7 +737,7 @@ func TestResolveExcludeUsers(t *testing.T) {
 		defer db.Close()
 
 		mock.ExpectQuery(collector.SelectOriginalLogin).WillReturnError(errors.New("permission denied"))
-		_, err = resolveExcludeUsers(context.Background(), db, defaultQueryTimeout, nil, true)
+		_, err = resolveExcludeUsers(context.Background(), db, defaultQueryTimeout, nil, nil, true)
 		require.ErrorContains(t, err, "failed to query original login")
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
@@ -562,8 +750,8 @@ func TestConnectAndStartCollectorsFailsWhenCurrentUserCannotBeResolved(t *testin
 
 	mock.ExpectQuery("SELECT " + collector.QueryMarker + " 1").WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(1))
 	mock.ExpectQuery(collector.SelectServerInfo).
-		WillReturnRows(sqlmock.NewRows([]string{"server_name", "machine_name", "instance_name", "product_version", "engine_edition"}).
-			AddRow("server", "machine", nil, "16.0", 3))
+		WillReturnRows(sqlmock.NewRows([]string{"server_name", "machine_name", "instance_name", "product_version", "product_level", "product_build", "engine_edition", "compatibility_level"}).
+			AddRow("server", "machine", nil, "16.0", "RTM", "1000", 3, "160"))
 	mock.ExpectQuery(collector.SelectOriginalLogin).WillReturnError(errors.New("permission denied"))
 
 	var args Arguments
@@ -879,9 +1067,10 @@ func testGetServiceData(name string) (any, error) {
 // fakeCluster is a cluster.Cluster implementation with controllable
 // readiness and per-key ownership.
 type fakeCluster struct {
-	ready bool
-	owned map[shard.Key]bool
-	err   error
+	ready    bool
+	disabled bool
+	owned    map[shard.Key]bool
+	err      error
 }
 
 func (f *fakeCluster) Lookup(key shard.Key, _ int, _ shard.Op) ([]peer.Peer, error) {
@@ -895,7 +1084,7 @@ func (f *fakeCluster) Peers() []peer.Peer { return nil }
 
 func (f *fakeCluster) Ready() bool { return f.ready }
 
-func (f *fakeCluster) Enabled() bool { return true }
+func (f *fakeCluster) Enabled() bool { return !f.disabled }
 
 var (
 	clusterKeyDB1 = shard.StringKey("127.0.0.1:1433/db1")
@@ -928,7 +1117,7 @@ func clusteringTestArgs() Arguments {
 			{Name: "db2", DataSourceName: "sqlserver://user:pass@127.0.0.1:1433?database=db2"},
 		},
 		QueryTimeout:         10 * time.Second,
-		DisableCollectors:    []string{"schema_details", "query_metrics", "query_samples", "query_details", "explain_plans"},
+		DisableCollectors:    []string{"schema_details", "server_configuration", "server_metrics", "query_metrics", "query_samples", "query_details", "explain_plans"},
 		Clustering:           cluster.ComponentBlock{Enabled: true},
 		HealthCheckArguments: HealthCheckArguments{CollectInterval: 1 * time.Hour},
 	}
@@ -950,8 +1139,8 @@ func componentTestMockDB(t *testing.T, serverName string, instanceName any) *sql
 
 	mock.ExpectQuery("SELECT " + collector.QueryMarker + " 1").WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(1))
 	mock.ExpectQuery(collector.SelectServerInfo).
-		WillReturnRows(sqlmock.NewRows([]string{"server_name", "machine_name", "instance_name", "product_version", "engine_edition"}).
-			AddRow(serverName, "machine", instanceName, "16.0", 3))
+		WillReturnRows(sqlmock.NewRows([]string{"server_name", "machine_name", "instance_name", "product_version", "product_level", "product_build", "engine_edition", "compatibility_level"}).
+			AddRow(serverName, "machine", instanceName, "16.0", "RTM", "1000", 3, "160"))
 	return db
 }
 
@@ -987,7 +1176,7 @@ func TestSqlServer_NamedInstancesHaveDistinctServerIDs(t *testing.T) {
 			{Name: "two", DataSourceName: "sqlserver://user:pass@same-host/INST_TWO?database=db1"},
 		},
 		QueryTimeout:         10 * time.Second,
-		DisableCollectors:    []string{"schema_details", "query_metrics", "query_samples", "query_details", "explain_plans"},
+		DisableCollectors:    []string{"schema_details", "server_configuration", "server_metrics", "query_metrics", "query_samples", "query_details", "explain_plans"},
 		HealthCheckArguments: HealthCheckArguments{CollectInterval: 1 * time.Hour},
 	}
 	require.NoError(t, args.Validate())
@@ -1256,10 +1445,56 @@ func TestSqlServer_Clustering_UpdateRecomputesOwnership(t *testing.T) {
 		[]string{instances[0].instanceKey, instances[1].instanceKey})
 }
 
-func TestSqlServer_Clustering_LookupErrorFailsOpen(t *testing.T) {
-	// Ownership lookup errors fail open to local ownership, so a broken
-	// cluster degrades to collecting everything rather than nothing.
+func TestSqlServer_Clustering_LookupErrorOwnsNothing(t *testing.T) {
+	// A lookup only errors while no peer is eligible to own a key, as on a
+	// node that hasn't joined as a participant yet. Failing open there would
+	// make every node of a freshly started cluster connect to every database.
 	fake := &fakeCluster{ready: true, err: assert.AnError}
+	var gotExports cmp.Exports
+
+	c, err := newComponent(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, _ string) (*sql.DB, error) {
+		t.Error("unexpected database connection while no peer is eligible to own databases")
+		return nil, assert.AnError
+	})
+	require.NoError(t, err)
+
+	assert.Empty(t, c.loadInstances())
+
+	h := c.CurrentHealth()
+	assert.Equal(t, cmp.HealthTypeHealthy, h.Health)
+	assert.Contains(t, h.Message, "no databases are currently owned")
+}
+
+func TestSqlServer_Clustering_ReconcilePicksUpDatabasesAfterLookupError(t *testing.T) {
+	fake := &fakeCluster{ready: true, err: assert.AnError}
+	var gotExports cmp.Exports
+
+	c, err := newComponent(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, dsn string) (*sql.DB, error) {
+		switch {
+		case strings.Contains(dsn, "database=db1"):
+			return clusteringTestMockDB(t, "system-a"), nil
+		default:
+			return clusteringTestMockDB(t, "system-b"), nil
+		}
+	})
+	require.NoError(t, err)
+	require.Empty(t, c.loadInstances())
+
+	// The node becomes a participant: lookups succeed and it owns db1.
+	fake.err = nil
+	fake.owned = map[shard.Key]bool{clusterKeyDB1: true, clusterKeyDB2: false}
+	c.reconcileCluster()
+
+	instances := c.loadInstances()
+	require.Len(t, instances, 1)
+	assert.Equal(t, "127.0.0.1:1433/db1", instances[0].instanceKey)
+}
+
+func TestSqlServer_Clustering_ClusterServiceDisabledOwnsEverything(t *testing.T) {
+	// With the cluster service disabled, the component's clustering block must
+	// be ignored. Lookups error until the node has joined as a participant after
+	// its initial load, and that must not leave every database unowned.
+	fake := &fakeCluster{ready: true, disabled: true, err: assert.AnError}
 	var gotExports cmp.Exports
 
 	c, err := newComponent(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, dsn string) (*sql.DB, error) {
@@ -1285,7 +1520,7 @@ func TestSqlServer_Clustering_SingleDatabaseStandby(t *testing.T) {
 		DataSourceName:    "sqlserver://user:pass@127.0.0.1:1433?database=db",
 		QueryTimeout:      10 * time.Second,
 		Clustering:        cluster.ComponentBlock{Enabled: true},
-		DisableCollectors: []string{"schema_details", "query_metrics", "query_samples", "query_details", "explain_plans"},
+		DisableCollectors: []string{"schema_details", "server_configuration", "server_metrics", "query_metrics", "query_samples", "query_details", "explain_plans"},
 	}
 
 	c, err := newComponent(clusteringTestOptions(t, fake, &gotExports), args, func(_ string, _ string) (*sql.DB, error) {

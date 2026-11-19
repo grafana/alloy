@@ -34,13 +34,23 @@ const requiredSchemaPermission = "VIEW DEFINITION"
 // as a distinct permission name by sys.fn_my_permissions.
 var queryStoreAccessPermissions = []string{"VIEW DATABASE STATE", "VIEW DATABASE PERFORMANCE STATE"}
 
-const noAccessibleDatabasesValue = "no accessible databases"
+// serverStatePermissions are the server-scoped permissions that grant access to
+// server-level DMVs used by server_metrics and query_samples; either satisfies
+// the requirement on editions other than Azure SQL Database.
+var serverStatePermissions = []string{"VIEW SERVER STATE", "VIEW SERVER PERFORMANCE STATE"}
+
+const (
+	noAccessibleDatabasesValue = "no accessible databases"
+	missingServerGrantValue    = "missing server grant: VIEW SERVER STATE or VIEW SERVER PERFORMANCE STATE"
+)
 
 type HealthCheckArguments struct {
 	DB               *sql.DB
 	CollectInterval  time.Duration
 	QueryTimeout     time.Duration
+	EngineEdition    int
 	ExcludeDatabases []string
+	IncludeDatabases []string
 	EntryHandler     loki.EntryHandler
 
 	Logger *slog.Logger
@@ -50,7 +60,9 @@ type HealthCheck struct {
 	dbConnection     *sql.DB
 	collectInterval  time.Duration
 	queryTimeout     time.Duration
+	engineEdition    int
 	excludeDatabases []string
+	includeDatabases []string
 	entryHandler     loki.EntryHandler
 	logger           *slog.Logger
 
@@ -65,7 +77,9 @@ func NewHealthCheck(args HealthCheckArguments) (*HealthCheck, error) {
 		dbConnection:     args.DB,
 		collectInterval:  args.CollectInterval,
 		queryTimeout:     queryTimeoutOrDefault(args.QueryTimeout),
+		engineEdition:    args.EngineEdition,
 		excludeDatabases: args.ExcludeDatabases,
+		includeDatabases: args.IncludeDatabases,
 		entryHandler:     args.EntryHandler,
 		logger:           args.Logger.With("collector", HealthCheckCollector),
 		running:          &atomic.Bool{},
@@ -172,7 +186,7 @@ func checkAlloyVersion() healthCheckResult {
 // would fail the whole health check for a legitimately low-traffic database,
 // so this check passes if any non-excluded database has rows.
 func (c *HealthCheck) runPerDatabaseChecks(ctx context.Context) ([]healthCheckResult, error) {
-	databases, err := listDatabases(ctx, c.dbConnection, c.queryTimeout, c.excludeDatabases)
+	databases, err := listDatabases(ctx, c.dbConnection, c.queryTimeout, c.excludeDatabases, c.includeDatabases)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list databases: %w", err)
 	}
@@ -182,7 +196,9 @@ func (c *HealthCheck) runPerDatabaseChecks(ctx context.Context) ([]healthCheckRe
 	queryStoreHasRowsResult := healthCheckResult{name: "QueryStoreHasRows", result: false}
 
 	if len(databases) == 0 {
+		grantsResult.result = false
 		grantsResult.value = noAccessibleDatabasesValue
+		queryStoreEnabledResult.result = false
 		queryStoreEnabledResult.value = noAccessibleDatabasesValue
 		queryStoreHasRowsResult.value = noAccessibleDatabasesValue
 		return []healthCheckResult{grantsResult, queryStoreEnabledResult, queryStoreHasRowsResult}, nil
@@ -198,8 +214,21 @@ func (c *HealthCheck) runPerDatabaseChecks(ctx context.Context) ([]healthCheckRe
 	}
 	defer conn.Close()
 
+	var serverGrantMissing bool
+	var serverPermErr error
+	if c.engineEdition != azureSQLDatabaseEngineEdition {
+		ok, err := hasRequiredServerPermissions(ctx, conn, c.queryTimeout)
+		if err != nil {
+			c.logger.Error("failed to check server permissions", "err", err)
+			serverPermErr = err
+		} else if !ok {
+			serverGrantMissing = true
+		}
+	}
+
 	var missingGrants, queryStoreDisabled, skippedDatabases []string
 	var grantsCheckSkipped, queryStoreCheckSkipped []string
+	var grantsEvaluatedCount, queryStoreStateEvaluatedCount, queryStoreRowsEvaluatedCount int
 	hasRows := false
 
 	for _, db := range databases {
@@ -221,39 +250,67 @@ func (c *HealthCheck) runPerDatabaseChecks(ctx context.Context) ([]healthCheckRe
 			// two, or a transient failure reads as a persistent setup problem.
 			c.logger.Error("failed to check permissions", "database", db.name, "err", err)
 			grantsCheckSkipped = append(grantsCheckSkipped, db.name)
-		} else if !ok {
-			missingGrants = append(missingGrants, db.name)
+		} else {
+			grantsEvaluatedCount++
+			if !ok {
+				missingGrants = append(missingGrants, db.name)
+			}
 		}
 
 		enabled, err := isQueryStoreEnabled(ctx, conn, c.queryTimeout)
 		if err != nil {
 			c.logger.Error("failed to check Query Store state", "database", db.name, "err", err)
 			queryStoreCheckSkipped = append(queryStoreCheckSkipped, db.name)
-		} else if !enabled {
-			queryStoreDisabled = append(queryStoreDisabled, db.name)
+		} else {
+			queryStoreStateEvaluatedCount++
+			if !enabled {
+				queryStoreDisabled = append(queryStoreDisabled, db.name)
+			}
 		}
 
 		if !hasRows {
 			rows, err := queryStoreHasRows(ctx, conn, c.queryTimeout)
 			if err != nil {
 				c.logger.Error("failed to check Query Store rows", "database", db.name, "err", err)
-			} else if rows {
-				hasRows = true
+			} else {
+				queryStoreRowsEvaluatedCount++
+				if rows {
+					hasRows = true
+				}
 			}
 		}
 	}
 
+	var grantFailureReasons []string
+	if serverGrantMissing {
+		grantFailureReasons = append(grantFailureReasons, missingServerGrantValue)
+	}
 	if v := formatDatabaseList("missing grants on: ", "", missingGrants); v != "" {
+		grantFailureReasons = append(grantFailureReasons, v)
+	}
+	if len(grantFailureReasons) > 0 {
 		grantsResult.result = false
-		grantsResult.value = v
+		grantsResult.value = strings.Join(grantFailureReasons, "; ")
+		if serverPermErr != nil {
+			grantsCheckSkipped = append(grantsCheckSkipped, "server")
+		}
+	} else if serverPermErr != nil {
+		grantsResult.err = fmt.Errorf("failed to check server permissions: %w", serverPermErr)
+	} else if grantsEvaluatedCount == 0 {
+		grantsResult.err = errors.New("could not check permissions on any database")
 	}
 
 	if v := formatDatabaseList("query store not enabled on: ", "", queryStoreDisabled); v != "" {
 		queryStoreEnabledResult.result = false
 		queryStoreEnabledResult.value = v
+	} else if queryStoreStateEvaluatedCount == 0 {
+		queryStoreEnabledResult.err = errors.New("could not check Query Store state on any database")
 	}
 
 	queryStoreHasRowsResult.result = hasRows
+	if !hasRows && queryStoreRowsEvaluatedCount == 0 {
+		queryStoreHasRowsResult.err = errors.New("could not check Query Store rows on any database")
+	}
 
 	if note := formatDatabaseList(" (could not check: ", ")", skippedDatabases, grantsCheckSkipped); note != "" {
 		grantsResult.value += note
@@ -290,14 +347,48 @@ func formatDatabaseList(prefix, suffix string, lists ...[]string) string {
 	return prefix + strings.Join(deduped, ", ") + suffix
 }
 
+// hasRequiredServerPermissions checks that the login has at least one of
+// serverStatePermissions at the server level.
+func hasRequiredServerPermissions(ctx context.Context, conn *sql.Conn, queryTimeout time.Duration) (bool, error) {
+	granted, err := queryGrantedPermissions(ctx, conn, queryTimeout, selectMyServerPermissionsQuery)
+	if err != nil {
+		return false, err
+	}
+
+	for _, alternative := range serverStatePermissions {
+		if granted[alternative] {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // hasRequiredPermissions checks that the login has requiredSchemaPermission
 // and at least one of queryStoreAccessPermissions, on the database currently
 // active on conn (set via a prior USE statement).
 func hasRequiredPermissions(ctx context.Context, conn *sql.Conn, queryTimeout time.Duration) (bool, error) {
+	granted, err := queryGrantedPermissions(ctx, conn, queryTimeout, selectMyPermissionsQuery)
+	if err != nil {
+		return false, err
+	}
+
+	if !granted[requiredSchemaPermission] {
+		return false, nil
+	}
+
+	for _, alternative := range queryStoreAccessPermissions {
+		if granted[alternative] {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func queryGrantedPermissions(ctx context.Context, conn *sql.Conn, queryTimeout time.Duration, query string) (map[string]bool, error) {
 	granted := map[string]bool{}
 
 	err := withQueryTimeout(ctx, queryTimeout, func(queryCtx context.Context) error {
-		rows, err := conn.QueryContext(queryCtx, selectMyPermissionsQuery)
+		rows, err := conn.QueryContext(queryCtx, query)
 		if err != nil {
 			return err
 		}
@@ -313,19 +404,9 @@ func hasRequiredPermissions(ctx context.Context, conn *sql.Conn, queryTimeout ti
 		return rows.Err()
 	})
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-
-	if !granted[requiredSchemaPermission] {
-		return false, nil
-	}
-
-	for _, alternative := range queryStoreAccessPermissions {
-		if granted[alternative] {
-			return true, nil
-		}
-	}
-	return false, nil
+	return granted, nil
 }
 
 // isQueryStoreEnabled checks whether Query Store is usable (READ_WRITE) on

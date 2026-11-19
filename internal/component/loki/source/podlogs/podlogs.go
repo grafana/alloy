@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"sync"
-	"time"
 
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -109,8 +108,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 	positionsFile, err := positions.New(o.Logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
-		PositionsFile: filepath.Join(o.DataPath, "positions.yml"),
+		Path: filepath.Join(o.DataPath, "positions.yml"),
 	})
 	if err != nil {
 		return nil, err

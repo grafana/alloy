@@ -15,7 +15,6 @@ import (
 
 	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/common/model"
-	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -23,6 +22,7 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/lokipipelinev2"
 )
 
 func init() {
@@ -205,12 +205,18 @@ type Component struct {
 
 	fanout *loki.Fanout
 
-	stopping atomic.Bool
+	pipelineV2 bool
+	fanoutV2   *loki.FanoutV2
 }
 
 // New creates a new loki.source.file component.
 func New(o component.Options, args Arguments) (*Component, error) {
-	err := os.MkdirAll(o.DataPath, 0750)
+	svc, err := o.GetServiceData(lokipipelinev2.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
+	err = os.MkdirAll(o.DataPath, 0750)
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}
@@ -222,23 +228,26 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		}
 	}
 	positionsFile, err := positions.New(o.Logger, positions.Config{
-		SyncPeriod:        10 * time.Second,
-		PositionsFile:     newPositionsPath,
-		IgnoreInvalidYaml: false,
-		ReadOnly:          false,
+		Path: newPositionsPath,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	c := &Component{
-		opts:      o,
-		metrics:   newMetrics(o.Registerer),
-		handler:   loki.NewLogsReceiver(),
-		fanout:    loki.NewFanout(args.ForwardTo),
-		posFile:   positionsFile,
-		scheduler: source.NewScheduler[positions.Entry](),
-		watcher:   time.NewTicker(args.FileMatch.SyncPeriod),
+		opts:       o,
+		metrics:    newMetrics(o.Registerer),
+		pipelineV2: svc.(lokipipelinev2.Data).PipelineV2Enabled(),
+		posFile:    positionsFile,
+		scheduler:  source.NewScheduler[positions.Entry](),
+		watcher:    time.NewTicker(args.FileMatch.SyncPeriod),
+	}
+
+	if c.pipelineV2 {
+		c.fanoutV2 = loki.NewFanoutV2(args.ForwardTo)
+	} else {
+		c.fanout = loki.NewFanout(args.ForwardTo)
+		c.handler = loki.NewLogsReceiver()
 	}
 
 	// Call to Update() to start sources and set receivers once at the start.
@@ -253,8 +262,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		c.opts.Logger.Info("loki.source.file component shutting down, stopping sources and positions file")
-		c.stopping.Store(true)
-
 		c.mut.Lock()
 		defer c.mut.Unlock()
 		c.watcher.Stop()
@@ -264,8 +271,10 @@ func (c *Component) Run(ctx context.Context) error {
 
 	var wg sync.WaitGroup
 
-	// Start consume and fanout loop
-	wg.Go(func() { loki.Consume(ctx, c.handler, c.fanout) })
+	if !c.pipelineV2 {
+		// Start consume and fanout loop
+		wg.Go(func() { loki.Consume(ctx, c.handler, c.fanout) })
+	}
 
 	wg.Go(func() {
 		for {
@@ -297,11 +306,15 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
+	if c.pipelineV2 {
+		c.fanoutV2.UpdateChildren(newArgs.ForwardTo)
+	} else {
+		c.fanout.UpdateChildren(newArgs.ForwardTo)
+	}
 
 	// Choose resolver on FileMatch.
 	if newArgs.FileMatch.Enabled {
-		c.resolver = newGlobResolver(c.opts.Logger)
+		c.resolver = newGlobResolver(c.opts.Logger, newArgs.FileMatch.IgnoreOlderThan)
 	} else {
 		c.resolver = newStaticResolver()
 	}
@@ -337,10 +350,6 @@ func (c *Component) scheduleSources() {
 			if fi.IsDir() {
 				c.metrics.totalBytes.DeleteLabelValues(target.Path)
 				return nil, errors.New("failed to tail file, is directory")
-			}
-
-			if c.args.FileMatch.Enabled && c.args.FileMatch.IgnoreOlderThan != 0 && fi.ModTime().Before(time.Now().Add(-c.args.FileMatch.IgnoreOlderThan)) {
-				return nil, source.ErrSkip
 			}
 
 			c.metrics.totalBytes.WithLabelValues(target.Path).Set(float64(fi.Size()))
@@ -402,9 +411,8 @@ func (c *Component) newSource(opts sourceOptions) (source.Source[positions.Entry
 	tailer := newTailer(
 		c.metrics,
 		c.opts.Logger,
-		c.handler,
+		c.newBatcher,
 		c.posFile,
-		c.IsStopping,
 		opts,
 	)
 
@@ -419,6 +427,11 @@ func (c *Component) newSource(opts sourceOptions) (source.Source[positions.Entry
 	}), nil
 }
 
-func (c *Component) IsStopping() bool {
-	return c.stopping.Load()
+func (c *Component) newBatcher(labels model.LabelSet) loki.StreamBatcher {
+	if c.pipelineV2 {
+		// FIXME(kalleep): This should be configurable https://github.com/grafana/alloy/issues/7630
+		const maxBatchSize = 100
+		return loki.NewStreamBatcherV2(c.opts.Logger, c.fanoutV2, labels, maxBatchSize)
+	}
+	return loki.NewStreamBatcherV1(c.handler, labels)
 }

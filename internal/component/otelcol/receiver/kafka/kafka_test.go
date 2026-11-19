@@ -28,6 +28,7 @@ func defaultExpected() kafkareceiver.Config {
 			RackID:          "",
 			UseLeaderEpoch:  true,
 			ConnIdleTimeout: 9 * time.Minute,
+			DialTimeout:     10 * time.Second,
 			Metadata: configkafka.MetadataConfig{
 				Full:            true,
 				RefreshInterval: 10 * time.Minute,
@@ -49,6 +50,7 @@ func defaultExpected() kafkareceiver.Config {
 			MinFetchSize:             1,
 			MaxFetchSize:             1048576,
 			MaxPartitionFetchSize:    1048576,
+			MaxDecompressBatchBytes:  1 << 30,
 			MaxFetchWait:             250 * time.Millisecond,
 			GroupRebalanceStrategies: []configkafka.GroupRebalanceStrategy{"range"},
 		},
@@ -69,7 +71,8 @@ func defaultExpected() kafkareceiver.Config {
 			Encoding: "otlp_proto",
 		},
 		PartitionProcessing: kafkareceiver.PartitionProcessing{
-			MaxBufferedBatches: 1,
+			MaxPrefetch: kafkareceiver.MaxPrefetchConfig{Batches: 1},
+			MaxInFlight: kafkareceiver.MaxInFlightConfig{Records: 1, Window: kafkareceiver.InFlightWindowPerFetch},
 		},
 		HeaderExtraction: kafkareceiver.HeaderExtraction{
 			ExtractHeaders: false,
@@ -110,7 +113,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				heartbeat_interval = "4s"
 				group_id = "test_group_id"
 				client_id = "test_client_id"
-				initial_offset = "test_offset"
+				initial_offset = "earliest"
 				group_rebalance_strategy = "roundrobin"
 				max_fetch_wait = "2s"
 				logs {
@@ -181,7 +184,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					Encoding: "otlp_proto",
 				},
 				PartitionProcessing: kafkareceiver.PartitionProcessing{
-					MaxBufferedBatches: 1,
+					MaxPrefetch: kafkareceiver.MaxPrefetchConfig{Batches: 1},
+					MaxInFlight: kafkareceiver.MaxInFlightConfig{Records: 1, Window: kafkareceiver.InFlightWindowPerFetch},
 				},
 				ClientConfig: configkafka.ClientConfig{
 					Brokers:         []string{"10.10.10.10:9092"},
@@ -190,6 +194,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					RackID:          "test-rack",
 					UseLeaderEpoch:  true,
 					ConnIdleTimeout: 9 * time.Minute,
+					DialTimeout:     10 * time.Second,
 					Metadata: configkafka.MetadataConfig{
 						Full:            true,
 						RefreshInterval: 10 * time.Minute,
@@ -203,7 +208,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					SessionTimeout:    11 * time.Second,
 					HeartbeatInterval: 4 * time.Second,
 					GroupID:           "test_group_id",
-					InitialOffset:     "test_offset",
+					InitialOffset:     "earliest",
 					AutoCommit: configkafka.AutoCommitConfig{
 						Enable:   true,
 						Interval: 12 * time.Second,
@@ -211,6 +216,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					MinFetchSize:             2,
 					MaxFetchSize:             20,
 					MaxPartitionFetchSize:    30000,
+					MaxDecompressBatchBytes:  1 << 30,
 					MaxFetchWait:             2 * time.Second,
 					GroupRebalanceStrategies: []configkafka.GroupRebalanceStrategy{"roundrobin"},
 				},
@@ -343,7 +349,7 @@ func TestArguments_Auth(t *testing.T) {
 					sasl {
 						username = "test_username"
 						password = "test_password"
-						mechanism = "test_mechanism"
+						mechanism = "SCRAM-SHA-512"
 						version = 9
 						aws_msk {
 							region = "test_region"
@@ -410,7 +416,7 @@ func TestArguments_Auth(t *testing.T) {
 					"sasl": map[string]any{
 						"username":  "test_username",
 						"password":  "test_password",
-						"mechanism": "test_mechanism",
+						"mechanism": "SCRAM-SHA-512",
 						"version":   9,
 						"aws_msk": map[string]any{
 							"region": "test_region",
@@ -782,9 +788,11 @@ func TestGroupRebalanceStrategies(t *testing.T) {
 }
 
 func TestPartitionProcessing(t *testing.T) {
-	convert := func(t *testing.T, cfg string) (*kafkareceiver.Config, error) {
+	convert := func(cfg string) (*kafkareceiver.Config, error) {
 		var args kafka.Arguments
-		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		if err := syntax.Unmarshal([]byte(cfg), &args); err != nil {
+			return nil, err
+		}
 		converted, err := args.Convert()
 		if err != nil {
 			return nil, err
@@ -793,34 +801,128 @@ func TestPartitionProcessing(t *testing.T) {
 	}
 
 	t.Run("defaults to disabled with max_buffered_batches of 1", func(t *testing.T) {
-		otelObj, err := convert(t, `
+		otelObj, err := convert(`
 			brokers          = ["broker:9092"]
 			protocol_version = "2.0.0"
 
 			output {}
 		`)
 		require.NoError(t, err)
-		require.Equal(t, kafkareceiver.PartitionProcessing{MaxBufferedBatches: 1}, otelObj.PartitionProcessing)
+		require.Equal(t, kafkareceiver.PartitionProcessing{
+			MaxPrefetch: kafkareceiver.MaxPrefetchConfig{Batches: 1},
+			MaxInFlight: kafkareceiver.MaxInFlightConfig{Records: 1, Window: kafkareceiver.InFlightWindowPerFetch},
+		}, otelObj.PartitionProcessing)
 	})
 
 	t.Run("independent processing can be enabled", func(t *testing.T) {
-		otelObj, err := convert(t, `
+		otelObj, err := convert(`
 			brokers          = ["broker:9092"]
 			protocol_version = "2.0.0"
 
 			partition_processing {
 				independent          = true
-				max_buffered_batches = 10
+				max_prefetch { batches = 10 }
 			}
 
 			output {}
 		`)
 		require.NoError(t, err)
-		require.Equal(t, kafkareceiver.PartitionProcessing{Independent: true, MaxBufferedBatches: 10}, otelObj.PartitionProcessing)
+		require.Equal(t, kafkareceiver.PartitionProcessing{
+			Independent: true,
+			MaxPrefetch: kafkareceiver.MaxPrefetchConfig{Batches: 10},
+			MaxInFlight: kafkareceiver.MaxInFlightConfig{Records: 1, Window: kafkareceiver.InFlightWindowPerFetch},
+		}, otelObj.PartitionProcessing)
+	})
+
+	t.Run("partially set nested blocks keep their defaults", func(t *testing.T) {
+		otelObj, err := convert(`
+			brokers          = ["broker:9092"]
+			protocol_version = "2.0.0"
+
+			partition_processing {
+				independent = true
+				max_prefetch {
+					bytes = 1000
+				}
+				max_in_flight {
+					bytes = 2000
+				}
+			}
+
+			output {}
+		`)
+		require.NoError(t, err)
+		require.Equal(t, kafkareceiver.PartitionProcessing{
+			Independent: true,
+			MaxPrefetch: kafkareceiver.MaxPrefetchConfig{Batches: 1, Bytes: 1000},
+			MaxInFlight: kafkareceiver.MaxInFlightConfig{Records: 1, Bytes: 2000, Window: kafkareceiver.InFlightWindowPerFetch},
+		}, otelObj.PartitionProcessing)
+	})
+
+	t.Run("deprecated max_buffered_batches is still honored", func(t *testing.T) {
+		otelObj, err := convert(`
+			brokers          = ["broker:9092"]
+			protocol_version = "2.0.0"
+
+			partition_processing {
+				independent          = true
+				max_buffered_batches = 7
+			}
+
+			output {}
+		`)
+		require.NoError(t, err)
+		require.Equal(t, 7, otelObj.PartitionProcessing.MaxPrefetch.Batches)
+	})
+
+	t.Run("max_buffered_batches and max_prefetch batches are mutually exclusive", func(t *testing.T) {
+		_, err := convert(`
+			brokers          = ["broker:9092"]
+			protocol_version = "2.0.0"
+
+			partition_processing {
+				independent          = true
+				max_buffered_batches = 7
+				max_prefetch {
+					batches = 3
+				}
+			}
+
+			output {}
+		`)
+		require.ErrorContains(t, err, "mutually exclusive")
+	})
+
+	t.Run("max_prefetch and max_in_flight are passed through", func(t *testing.T) {
+		otelObj, err := convert(`
+			brokers          = ["broker:9092"]
+			protocol_version = "2.0.0"
+
+			partition_processing {
+				independent = true
+				max_prefetch {
+					batches = 4
+					bytes   = 1000
+				}
+				max_in_flight {
+					records = 8
+					bytes   = 2000
+					window  = "cross_fetch"
+				}
+			}
+
+			output {}
+		`)
+		require.NoError(t, err)
+		require.Equal(t, kafkareceiver.PartitionProcessing{
+			Independent: true,
+			MaxPrefetch: kafkareceiver.MaxPrefetchConfig{Batches: 4, Bytes: 1000},
+			MaxInFlight: kafkareceiver.MaxInFlightConfig{Records: 8, Bytes: 2000, Window: kafkareceiver.InFlightWindowCrossFetch},
+		}, otelObj.PartitionProcessing)
 	})
 
 	t.Run("independent processing without autocommit is rejected by upstream validation", func(t *testing.T) {
-		_, err := convert(t, `
+		_, err := convert(`
 			brokers          = ["broker:9092"]
 			protocol_version = "2.0.0"
 
@@ -830,7 +932,7 @@ func TestPartitionProcessing(t *testing.T) {
 
 			partition_processing {
 				independent          = true
-				max_buffered_batches = 10
+				max_prefetch { batches = 10 }
 			}
 
 			output {}
@@ -909,4 +1011,23 @@ func TestArguments_LogDeprecations(t *testing.T) {
 	require.NotPanics(t, func() {
 		args.LogDeprecations(nil)
 	})
+}
+
+func TestArguments_InvalidClientLimits(t *testing.T) {
+	for name, tc := range map[string]struct{ attr, errMsg string }{
+		"zero dial_timeout":               {`dial_timeout = "0s"`, "dial_timeout"},
+		"zero max_decompress_batch_bytes": {`max_decompress_batch_bytes = 0`, "max_decompress_batch_bytes"},
+		"huge max_decompress_batch_bytes": {`max_decompress_batch_bytes = 3000000000`, "max_decompress_batch_bytes"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			var args kafka.Arguments
+			err := syntax.Unmarshal([]byte(`
+				brokers          = ["broker:9092"]
+				protocol_version = "2.0.0"
+				`+tc.attr+`
+				output {}
+			`), &args)
+			require.ErrorContains(t, err, tc.errMsg)
+		})
+	}
 }
