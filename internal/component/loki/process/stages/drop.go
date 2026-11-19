@@ -83,6 +83,8 @@ func newDropStage(config DropConfig, opts stageOpts) (*dropStage, error) {
 	var regex *regexp.Regexp
 	switch {
 	case config.Value != "":
+		// Validate() already compiled this exact pattern and rejected the config
+		// if it failed, so MustCompile cannot panic here.
 		regex = regexp.MustCompile("^" + regexp.QuoteMeta(config.Value) + "$")
 	case !config.Expression.IsEmpty():
 		regex = &config.Expression
