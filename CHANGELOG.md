@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.22.1](https://github.com/grafana/alloy/compare/v1.22.0...v1.22.1) (2026-11-19)
+
+
+### Bug Fixes 🐛
+
+* **converter:** Use Promtail defaults for unset multiline, metrics and pack stage fields [backport] ([#7728](https://github.com/grafana/alloy/issues/7728)) ([80a9d20](https://github.com/grafana/alloy/commit/80a9d20bd06eb2469a838244ecbcbf76067fbda7))
+* **database_observability:** Avoid duplicate collection while a new cluster is forming [backport] ([#7726](https://github.com/grafana/alloy/issues/7726)) ([c08ccad](https://github.com/grafana/alloy/commit/c08ccad046d94987fbf9f84afe744d1b178d2886))
+* **loki.source.file:** Release pending buffer after long lines [backport] ([#7729](https://github.com/grafana/alloy/issues/7729)) ([6f80cf1](https://github.com/grafana/alloy/commit/6f80cf18f5e0def3dc23bdbbd204d73efc37be96))
+
 ## [1.22.0](https://github.com/grafana/alloy/compare/v1.21.0...v1.22.0) (2026-11-12)
 
 
