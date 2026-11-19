@@ -778,9 +778,18 @@ func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo, w
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to replace database name in DSN: %w", err)
 	}
-	conn, err := c.dbConnectionFactory(querySpecificDSN)
+	db, err := c.dbConnectionFactory(querySpecificDSN)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get connection: %w", err)
+	}
+	defer db.Close()
+
+	// The prepared statement, the plan cache mode, and the partition pruning setting only exist on
+	// the session that ran them, and a *sql.DB may run each call on any connection of its pool, for
+	// example after it retries on a dropped one. Every statement below runs on this one connection.
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to pin a connection: %w", err)
 	}
 	defer conn.Close()
 
@@ -836,7 +845,7 @@ func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo, w
 // built from. It turns partition pruning off for the rest of the session, so it has to run after
 // the regular plan has been fetched, and it drops the cached plans of the session, so the
 // statement is planned again with pruning off.
-func fetchDebugExplainPlanJSON(ctx context.Context, conn *sql.DB, explainTarget string) ([]byte, error) {
+func fetchDebugExplainPlanJSON(ctx context.Context, conn *sql.Conn, explainTarget string) ([]byte, error) {
 	if _, err := conn.ExecContext(ctx, disablePartitionPruning); err != nil {
 		return nil, fmt.Errorf("failed to disable partition pruning: %w", err)
 	}
@@ -850,7 +859,7 @@ func fetchDebugExplainPlanJSON(ctx context.Context, conn *sql.DB, explainTarget 
 
 // queryExplainPlanJSON runs an EXPLAIN that returns the plan as a single JSON value and returns
 // it. what names the plan in the errors.
-func queryExplainPlanJSON(ctx context.Context, conn *sql.DB, statement, what string) ([]byte, error) {
+func queryExplainPlanJSON(ctx context.Context, conn *sql.Conn, statement, what string) ([]byte, error) {
 	rs := conn.QueryRowContext(ctx, statement)
 	if err := rs.Err(); err != nil {
 		return nil, fmt.Errorf("failed to run %s: %w", what, err)
