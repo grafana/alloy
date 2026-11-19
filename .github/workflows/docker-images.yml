@@ -8,6 +8,7 @@ on:
       - Dockerfile.windows
       - Makefile
       - 'build-tools/make/*'
+      - '.github/workflows/docker-images.yml'
 
 permissions:
   contents: read
@@ -42,7 +43,7 @@ jobs:
           make ALLOY_IMAGE_DISTROLESS=alloy-test:distroless alloy-image-distroless
 
   windows:
-    runs-on: windows-2025
+    runs-on: github-hosted-windows-x64-large
     steps:
       - name: Ensure Docker is running (Docker issue workaround)
         id: docker-workaround
