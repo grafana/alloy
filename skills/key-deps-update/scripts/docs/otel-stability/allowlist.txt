@@ -1,0 +1,13 @@
+# otelcol components whose Alloy stage doesn't match the upstream stability mapping
+# (development/alpha -> experimental, beta -> public-preview, stable -> general-availability).
+#
+# Format: <component> <alloy-stage> <highest-upstream-level>
+#
+# These are grandfathered. Most are GA components that predate the mapping, and downgrading them
+# would break users. Add a new entry only with maintainer approval.
+
+otelcol.auth.basic general-availability beta
+otelcol.connector.spanmetrics general-availability alpha
+otelcol.exporter.loadbalancing general-availability beta
+otelcol.extension.jaeger_remote_sampling general-availability alpha
+otelcol.processor.tail_sampling general-availability beta
