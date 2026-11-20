@@ -143,6 +143,11 @@ func (c *Config) ToWindowsExporterConfig() (collector.Config, error) {
 
 	cfg.Time.CollectorsEnabled = strings.Split(c.Time.EnabledList, ",")
 
+	cfg.Update.Online = c.Update.Online
+	if c.Update.ScrapeInterval > 0 {
+		cfg.Update.ScrapeInterval = c.Update.ScrapeInterval
+	}
+
 	return cfg, errors.Join(errs...)
 }
 
