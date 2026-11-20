@@ -1,0 +1,21 @@
+package {{.Package}}
+
+import (
+{{- range .StubStdImports}}
+	"{{.}}"
+{{- end}}
+{{if .StubStdImports}}
+{{end}}
+{{- range .StubImports}}
+	"{{.}}"
+{{- end}}
+)
+{{range .CustomFields}}
+func {{lowerFirst .ArgName}}ToUpstream(v {{.Type}}) {{.UpstreamGoType}} {
+	panic("TODO: convert {{.AlloyName}} to upstream")
+}
+
+func {{lowerFirst .ArgName}}FromUpstream(v {{.UpstreamGoType}}) {{.Type}} {
+	panic("TODO: convert {{.AlloyName}} from upstream")
+}
+{{end}}

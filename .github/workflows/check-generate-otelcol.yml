@@ -1,0 +1,36 @@
+name: Check generate-otelcol
+
+permissions:
+  contents: read
+on: pull_request
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up tools
+        uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
+        with:
+          version: v2026.5.18
+          sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
+          install_args: go
+
+      - name: Run generate-otelcol
+        run: |
+          make generate-otelcol
+
+      - name: Check for generated file changes
+        run: |
+          if [ -n "$(git status --porcelain -- internal/component/otelcol/)" ]; then
+            echo "Error: generated otelcol files are out of sync."
+            echo "  Run: make generate-otelcol and commit the generated files"
+            git status -- internal/component/otelcol/
+            git diff -- internal/component/otelcol/
+            exit 1
+          fi
