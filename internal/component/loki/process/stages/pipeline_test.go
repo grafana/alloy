@@ -352,8 +352,8 @@ func TestNewPipelineStopsOnFailure(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
 	cfgs := loadConfig(`
-	stage.drop {
-		expression = "[unclosed"
+	stage.json {
+		regex = "[unclosed"
 	}
 	stage.match {
 		selector = "{app=\"x\"}"
