@@ -86,7 +86,7 @@ If you use the process or service collectors in the integrated Windows Exporter,
 
 ## Process command-line label
 
-To collect the `cmdline` label on `windows_process_info` metrics, the account running {{< param "PRODUCT_NAME" >}} needs `PROCESS_QUERY_INFORMATION` and `PROCESS_VM_READ` access to the target processes.
+To collect the `cmdline` label on `windows_process_info` metrics, the service account needs `PROCESS_QUERY_INFORMATION` and `PROCESS_VM_READ` access to the target processes.
 
 Without sufficient access, the process collector can still emit process metrics, but the `cmdline` label can be empty.
 Access can differ between processes, so collecting command-line details for one process doesn't guarantee access to others.
