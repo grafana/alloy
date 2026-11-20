@@ -21,6 +21,7 @@ import (
 	"time"
 
 	otelcomponent "go.opentelemetry.io/collector/component"
+	otelconnector "go.opentelemetry.io/collector/connector"
 	otelprocessor "go.opentelemetry.io/collector/processor"
 
 	"github.com/grafana/alloy/internal/component/otelcol/otelgen"
@@ -89,7 +90,7 @@ func generate(c otelgen.Component, root string, updateTests bool) error {
 			return nil
 		}
 	}
-	return render(kind+"_test.go.tmpl", data, testFile)
+	return render("test.go.tmpl", data, testFile)
 }
 
 func render(tmpl string, data templateData, out string) error {
@@ -138,6 +139,8 @@ type templateData struct {
 	// need.
 	StubStdImports []string
 	StubImports    []string
+	// ConnectorSignals are the signal pairs a connector supports.
+	ConnectorSignals []signal
 	// Signals are the upstream stability levels of each signal, Undefined when
 	// the factory does not support it.
 	Signals []signal
@@ -208,12 +211,18 @@ type block struct {
 	Fields       []field
 }
 
-// signal is the upstream stability of a signal, Level is a
-// component.StabilityLevel constant name.
+// signal is the upstream stability of a signal, or a signal pair such as
+// TracesToMetrics for connectors.
 type signal struct {
-	Name  string
-	Level string
+	Name      string
+	Stability otelcomponent.StabilityLevel
 }
+
+// Level returns the component.StabilityLevel constant name of the stability.
+func (s signal) Level() string { return "StabilityLevel" + s.Stability.String() }
+
+// Supported reports whether the factory supports the signal.
+func (s signal) Supported() bool { return s.Stability != otelcomponent.StabilityLevelUndefined }
 
 // rename is an upstream mapstructure name From that Alloy calls To.
 type rename struct {
@@ -233,12 +242,38 @@ var stabilityConsts = map[featuregate.Stability]string{
 	featuregate.StabilityGenerallyAvailable: "StabilityGenerallyAvailable",
 }
 
+// signals returns the upstream stability of each signal, or signal pair for
+// connectors, that f can support.
+func signals(f otelcomponent.Factory) ([]signal, error) {
+	switch f := f.(type) {
+	case otelprocessor.Factory:
+		return []signal{
+			{"Traces", f.TracesStability()},
+			{"Metrics", f.MetricsStability()},
+			{"Logs", f.LogsStability()},
+		}, nil
+	case otelconnector.Factory:
+		return []signal{
+			{"TracesToTraces", f.TracesToTracesStability()},
+			{"TracesToMetrics", f.TracesToMetricsStability()},
+			{"TracesToLogs", f.TracesToLogsStability()},
+			{"MetricsToTraces", f.MetricsToTracesStability()},
+			{"MetricsToMetrics", f.MetricsToMetricsStability()},
+			{"MetricsToLogs", f.MetricsToLogsStability()},
+			{"LogsToTraces", f.LogsToTracesStability()},
+			{"LogsToMetrics", f.LogsToMetricsStability()},
+			{"LogsToLogs", f.LogsToLogsStability()},
+		}, nil
+	}
+	return nil, fmt.Errorf("unsupported factory %T", f)
+}
+
 // stability returns the Alloy stability for the lowest upstream stability of
-// the signals f supports.
-func stability(f otelprocessor.Factory) (featuregate.Stability, error) {
+// the supported signals.
+func stability(signals []signal) (featuregate.Stability, error) {
 	lowest := otelcomponent.StabilityLevelUndefined
-	for _, l := range []otelcomponent.StabilityLevel{f.TracesStability(), f.MetricsStability(), f.LogsStability()} {
-		if l != otelcomponent.StabilityLevelUndefined && (lowest == otelcomponent.StabilityLevelUndefined || l < lowest) {
+	for _, s := range signals {
+		if l := s.Stability; l != otelcomponent.StabilityLevelUndefined && (lowest == otelcomponent.StabilityLevelUndefined || l < lowest) {
 			lowest = l
 		}
 	}
@@ -254,11 +289,11 @@ func stability(f otelprocessor.Factory) (featuregate.Stability, error) {
 }
 
 func buildData(c otelgen.Component, pkg string) (templateData, error) {
-	f, ok := c.Factory().(otelprocessor.Factory)
-	if !ok {
-		return templateData{}, fmt.Errorf("unsupported factory %T", c.Factory())
+	sigs, err := signals(c.Factory())
+	if err != nil {
+		return templateData{}, err
 	}
-	s, err := stability(f)
+	s, err := stability(sigs)
 	if err != nil && c.Stability() == featuregate.StabilityUndefined {
 		return templateData{}, err
 	}
@@ -352,10 +387,11 @@ func buildData(c otelgen.Component, pkg string) (templateData, error) {
 		Overrides:       w.overrides,
 		OverridesDoc:    commentLines("Alloy defaults differ from upstream: " + c.DefaultArgumentsReason()),
 	}
-	data.Signals = []signal{
-		{"Traces", "StabilityLevel" + f.TracesStability().String()},
-		{"Metrics", "StabilityLevel" + f.MetricsStability().String()},
-		{"Logs", "StabilityLevel" + f.LogsStability().String()},
+	data.Signals = sigs
+	for _, s := range sigs {
+		if s.Supported() {
+			data.ConnectorSignals = append(data.ConnectorSignals, s)
+		}
 	}
 	imports, testImports := w.imports, w.testImports
 

@@ -1,6 +1,11 @@
 // Package specs lists the components otelgen generates.
 package specs
 
-import "github.com/grafana/alloy/internal/component/otelcol/otelgen/specs/processors"
+import (
+	"slices"
 
-var All = processors.All
+	"github.com/grafana/alloy/internal/component/otelcol/otelgen/specs/connectors"
+	"github.com/grafana/alloy/internal/component/otelcol/otelgen/specs/processors"
+)
+
+var All = slices.Concat(processors.All, connectors.All)

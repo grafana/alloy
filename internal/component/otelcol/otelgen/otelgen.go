@@ -8,13 +8,17 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 
 	otelcomponent "go.opentelemetry.io/collector/component"
+	otelconnector "go.opentelemetry.io/collector/connector"
 	otelprocessor "go.opentelemetry.io/collector/processor"
 )
 
 // Kind is the component kind, also the otelcol subdirectory and name segment.
 type Kind string
 
-const KindProcessor Kind = "processor"
+const (
+	KindProcessor Kind = "processor"
+	KindConnector Kind = "connector"
+)
 
 // Component describes an Alloy component wrapping an upstream factory. Create
 // one with a kind constructor such as Processor.
@@ -46,6 +50,15 @@ type Option func(*Component)
 // Processor describes otelcol.processor.<name>.
 func Processor(name string, newFactory func() otelprocessor.Factory, opts ...Option) Component {
 	c := Component{kind: KindProcessor, name: name, factory: newFactory(), newFactory: newFactory}
+	for _, opt := range opts {
+		opt(&c)
+	}
+	return c
+}
+
+// Connector describes otelcol.connector.<name>.
+func Connector(name string, newFactory func() otelconnector.Factory, opts ...Option) Component {
+	c := Component{kind: KindConnector, name: name, factory: newFactory(), newFactory: newFactory}
 	for _, opt := range opts {
 		opt(&c)
 	}
