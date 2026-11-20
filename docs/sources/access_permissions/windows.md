@@ -92,7 +92,7 @@ Without this access, the process collector still emits process metrics, but the 
 Windows doesn't grant these access rights on [protected processes][], so the `cmdline` label is always empty for them.
 
 Command lines can contain credentials or other sensitive information.
-Consider this exposure when granting access and forwarding metrics.
+To remove the label before you forward metrics, use a `labeldrop` rule in [`prometheus.relabel`][prometheus-relabel].
 
 ## Restrict the HTTP server
 
