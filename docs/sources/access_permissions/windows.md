@@ -84,7 +84,7 @@ The default port is `12345`.
 Some components write temporary files in the system temp directories.
 If you use the process or service collectors in the integrated Windows Exporter, the service account also needs permission to enumerate processes and services.
 
-### Process command-line labels
+## Process command-line label
 
 To collect the `cmdline` label on `windows_process_info` metrics, the account running {{< param "PRODUCT_NAME" >}} needs `PROCESS_QUERY_INFORMATION` and `PROCESS_VM_READ` access to the target processes.
 
