@@ -114,3 +114,5 @@ Refer to the [`http` block][http-block] for configuration options.
 [acl]: https://learn.microsoft.com/windows/win32/secauthz/access-control-lists
 [registry-security]: https://learn.microsoft.com/windows/win32/sysinfo/registry-key-security-and-access-rights
 [firewall-rules]: https://learn.microsoft.com/windows/security/operating-system-security/network-security/windows-firewall/rules
+[protected-processes]: https://learn.microsoft.com/windows/win32/procthread/process-security-and-access-rights#protected-processes
+[prometheus-relabel]: ../../reference/components/prometheus/prometheus.relabel/
