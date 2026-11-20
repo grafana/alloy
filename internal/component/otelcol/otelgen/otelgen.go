@@ -39,9 +39,9 @@ type Component struct {
 	argumentTypes     map[string]reflect.Type
 	argumentGoNames   map[string]string
 
-	defaultArguments       func(any)
-	defaultArgumentsType   reflect.Type
-	defaultArgumentsReason string
+	defaultArguments []DefaultArguments
+
+	extraArguments bool
 }
 
 // Option changes how a Component is generated.
@@ -107,11 +107,16 @@ func (c Component) ArgumentGoNames() map[string]string { return c.argumentGoName
 // OverrideArgumentRequired.
 func (c Component) RequiredArguments() map[string]bool { return c.requiredArguments }
 
-// DefaultArguments returns the function set with OverrideDefaultArguments and
-// the config type it expects, or nil when none is set.
-func (c Component) DefaultArguments() (func(any), reflect.Type) {
-	return c.defaultArguments, c.defaultArgumentsType
+// DefaultArguments is a default set with OverrideDefaultArguments. Fn changes
+// a value of Type.
+type DefaultArguments struct {
+	Fn     func(any)
+	Type   reflect.Type
+	Reason string
 }
 
-// DefaultArgumentsReason returns the reason given to OverrideDefaultArguments.
-func (c Component) DefaultArgumentsReason() string { return c.defaultArgumentsReason }
+// HasExtraArguments reports whether ExtraArguments is set.
+func (c Component) HasExtraArguments() bool { return c.extraArguments }
+
+// DefaultArguments returns the defaults set with OverrideDefaultArguments.
+func (c Component) DefaultArguments() []DefaultArguments { return c.defaultArguments }

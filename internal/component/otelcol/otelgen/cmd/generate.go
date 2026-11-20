@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"embed"
+	"encoding"
 	"fmt"
 	"go/ast"
 	"go/format"
@@ -33,6 +34,7 @@ var templateFS embed.FS
 
 var templates = template.Must(template.New("").Funcs(template.FuncMap{
 	"lowerFirst": lowerFirst,
+	"canFail":    canFail,
 }).ParseFS(templateFS, "templates/*.tmpl"))
 
 func isBasic(k reflect.Kind) bool {
@@ -80,6 +82,13 @@ func generate(c otelgen.Component, root string, updateTests bool) error {
 	convertFile := filepath.Join(dir, "convert.go")
 	if _, err := os.Stat(convertFile); len(data.CustomFields) > 0 && os.IsNotExist(err) {
 		if err := render("convert.go.tmpl", data, convertFile); err != nil {
+			return err
+		}
+	}
+
+	extraFile := filepath.Join(dir, "extra.go")
+	if _, err := os.Stat(extraFile); data.ExtraArguments && os.IsNotExist(err) {
+		if err := render("extra.go.tmpl", data, extraFile); err != nil {
 			return err
 		}
 	}
@@ -139,6 +148,11 @@ type templateData struct {
 	// need.
 	StubStdImports []string
 	StubImports    []string
+	// ExtraArguments is set with ExtraArguments.
+	ExtraArguments bool
+	// HasText is set when a field is converted through its text form, which
+	// needs the marshalText helper.
+	HasText bool
 	// ConnectorSignals are the signal pairs a connector supports.
 	ConnectorSignals []signal
 	// Signals are the upstream stability levels of each signal, Undefined when
@@ -172,6 +186,15 @@ type field struct {
 	UpstreamType string
 	// Custom is set with OverrideArgumentType, converted by hand-written functions.
 	Custom bool
+	// Slice is set for slices of structs, which become repeated Alloy blocks.
+	Slice bool
+	// Optional and Pointer are set for configoptional.Optional and pointers
+	// to structs, which become pointer blocks, nil when unset.
+	Optional bool
+	Pointer  bool
+	// Text is set for upstream types converted through their text form,
+	// which Arguments holds as a string.
+	Text bool
 	// UpstreamGoType is the upstream type of a Custom field.
 	UpstreamGoType string
 }
@@ -179,8 +202,16 @@ type field struct {
 // ToAlloy returns expr, an upstream value of f, as its Arguments type.
 func (f field) ToAlloy(expr string) string {
 	switch {
+	case f.Text:
+		return "marshalText(&" + expr + ")"
 	case f.Custom:
 		return lowerFirst(f.ArgName) + "FromUpstream(" + expr + ")"
+	case f.Slice:
+		return lowerFirst(f.Block.Name) + "SliceFromUpstream(" + expr + ")"
+	case f.Optional:
+		return lowerFirst(f.Block.Name) + "OptionalFromUpstream(" + expr + ")"
+	case f.Pointer:
+		return lowerFirst(f.Block.Name) + "PtrFromUpstream(" + expr + ")"
 	case f.Block != nil:
 		return lowerFirst(f.Block.Name) + "FromUpstream(" + expr + ")"
 	case f.UpstreamType != "":
@@ -189,11 +220,42 @@ func (f field) ToAlloy(expr string) string {
 	return expr
 }
 
+// Assign returns the statement setting dst, an upstream value of f, from src,
+// an Arguments value. Conversions that can fail return errRet.
+func (f field) Assign(dst, src, errRet string) string {
+	switch {
+	case f.Text:
+		return "if err = (&" + dst + ").UnmarshalText([]byte(" + src + ")); err != nil {\n\treturn " + errRet + "\n}"
+	case f.CanFail():
+		return "if " + dst + ", err = " + f.ToUpstream(src) + "; err != nil {\n\treturn " + errRet + "\n}"
+	}
+	return dst + " = " + f.ToUpstream(src)
+}
+
+// CanFail reports whether converting f to upstream can return an error.
+func (f field) CanFail() bool { return f.Text || (f.Block != nil && f.Block.CanFail) }
+
+func canFail(fields []field) bool {
+	for _, f := range fields {
+		if f.CanFail() {
+			return true
+		}
+	}
+	return false
+}
+
 // ToUpstream returns expr, an Arguments value of f, as its upstream type.
+// Blocks return the value and an error.
 func (f field) ToUpstream(expr string) string {
 	switch {
 	case f.Custom:
 		return lowerFirst(f.ArgName) + "ToUpstream(" + expr + ")"
+	case f.Slice:
+		return lowerFirst(f.Block.Name) + "SliceToUpstream(" + expr + ")"
+	case f.Optional:
+		return lowerFirst(f.Block.Name) + "OptionalToUpstream(" + expr + ")"
+	case f.Pointer:
+		return lowerFirst(f.Block.Name) + "PtrToUpstream(" + expr + ")"
 	case f.Block != nil:
 		return expr + ".Convert()"
 	case f.UpstreamType != "":
@@ -209,6 +271,23 @@ type block struct {
 	// UpstreamType is the qualified upstream type, e.g. pkg.PassThrough.
 	UpstreamType string
 	Fields       []field
+	// InSlice is set when a field holds a slice of the block, which needs
+	// slice conversion helpers.
+	InSlice bool
+	// InOptional and InPointer are set when a field holds the block as
+	// configoptional.Optional or a pointer upstream, which need conversion
+	// helpers.
+	InOptional bool
+	InPointer  bool
+	// CanFail is set when converting a field of the block can fail, so its
+	// conversions return an error.
+	CanFail bool
+	// InPlain is set when a field holds the block by value.
+	InPlain bool
+	// Defaults are the fields OverrideDefaultArguments sets when the block is
+	// set, DefaultsDoc its reason as // lines.
+	Defaults    []override
+	DefaultsDoc string
 }
 
 // signal is the upstream stability of a signal, or a signal pair such as
@@ -316,17 +395,27 @@ func buildData(c otelgen.Component, pkg string) (templateData, error) {
 	if base.Kind() != reflect.Pointer || base.Elem().Kind() != reflect.Struct {
 		return templateData{}, fmt.Errorf("default config must be a pointer to a struct, got %s", base.Type())
 	}
-	if fn, t := c.DefaultArguments(); fn != nil {
-		if t != base.Type() {
-			return templateData{}, fmt.Errorf("OverrideDefaultArguments: takes %s, config is %s", t, base.Type())
-		}
-		if strings.TrimSpace(c.DefaultArgumentsReason()) == "" {
+	var root *otelgen.DefaultArguments
+	var blockDefaults []otelgen.DefaultArguments
+	for _, d := range c.DefaultArguments() {
+		if strings.TrimSpace(d.Reason) == "" {
 			return templateData{}, fmt.Errorf("OverrideDefaultArguments: reason is required")
+		}
+		switch {
+		case d.Type == base.Type():
+			if root != nil {
+				return templateData{}, fmt.Errorf("OverrideDefaultArguments: %s set twice", d.Type)
+			}
+			root = &d
+		case d.Type.Kind() == reflect.Pointer && d.Type.Elem().Kind() == reflect.Struct:
+			blockDefaults = append(blockDefaults, d)
+		default:
+			return templateData{}, fmt.Errorf("OverrideDefaultArguments: takes %s, want a pointer to the config or a block type", d.Type)
 		}
 	}
 	def := c.Factory().CreateDefaultConfig()
-	if fn, _ := c.DefaultArguments(); fn != nil {
-		fn(def)
+	if root != nil {
+		root.Fn(def)
 	}
 	cfg := reflect.ValueOf(def).Elem()
 
@@ -385,9 +474,31 @@ func buildData(c otelgen.Component, pkg string) (templateData, error) {
 		Fields:          fields,
 		Blocks:          w.blocks,
 		Overrides:       w.overrides,
-		OverridesDoc:    commentLines("Alloy defaults differ from upstream: " + c.DefaultArgumentsReason()),
+	}
+	if root != nil {
+		data.OverridesDoc = commentLines("Alloy defaults differ from upstream: " + root.Reason)
+	}
+	for _, d := range blockDefaults {
+		b := w.blockOf(d.Type.Elem())
+		if b == nil {
+			return templateData{}, fmt.Errorf("OverrideDefaultArguments: no block of type %s", d.Type.Elem())
+		}
+		if b.InPlain || !(b.InSlice || b.InOptional || b.InPointer) {
+			return templateData{}, fmt.Errorf("OverrideDefaultArguments: %s is a plain block, set its defaults on the config", d.Type.Elem())
+		}
+		if b.Defaults != nil {
+			return templateData{}, fmt.Errorf("OverrideDefaultArguments: %s set twice", d.Type.Elem())
+		}
+		v := reflect.New(d.Type.Elem())
+		d.Fn(v.Interface())
+		b.Defaults = diffDefaults(reflect.New(d.Type.Elem()).Elem(), v.Elem(), "", w.imports)
+		if len(b.Defaults) == 0 {
+			return templateData{}, fmt.Errorf("OverrideDefaultArguments: %s changes no field", d.Type.Elem())
+		}
+		b.DefaultsDoc = commentLines("Alloy defaults when the block is set: " + d.Reason)
 	}
 	data.Signals = sigs
+	data.ExtraArguments = c.HasExtraArguments()
 	for _, s := range sigs {
 		if s.Supported() {
 			data.ConnectorSignals = append(data.ConnectorSignals, s)
@@ -401,6 +512,10 @@ func buildData(c otelgen.Component, pkg string) (templateData, error) {
 		data.Renames = w.renames
 		imports["errors"] = struct{}{}
 		imports["strings"] = struct{}{}
+	}
+	if w.hasText {
+		data.HasText = true
+		imports["encoding"] = struct{}{}
 	}
 	data.StdImports, data.Imports = splitImports(imports, upstreamPath)
 	data.TestStdImports, data.TestImports = splitImports(testImports, upstreamPath)
@@ -422,11 +537,66 @@ type walker struct {
 	usedGoNames   map[string]bool
 	usedArguments map[string]bool
 	customFields  []field
+	hasText       bool
 	stubImports   map[string]struct{}
 	imports       map[string]struct{}
 	testImports   map[string]struct{}
 	blocks        []*block
 	overrides     []override
+}
+
+// block returns the block for struct type t, found at the dotted Go path
+// prefix and mapstructure path tagPrefix. A type used at several paths gets one
+// block, so every path must generate the same fields.
+func (w *walker) block(t reflect.Type, def, base reflect.Value, prefix, tagPrefix string) (*block, error) {
+	sub, err := w.fields(t, def, base, prefix, tagPrefix)
+	if err != nil {
+		return nil, err
+	}
+	for _, b := range w.blocks {
+		if b.UpstreamType != t.String() {
+			continue
+		}
+		if !reflect.DeepEqual(b.Fields, sub) {
+			return nil, fmt.Errorf("type %s generates different fields at %s, overrides must apply to every use", t, strings.TrimSuffix(tagPrefix, "."))
+		}
+		return b, nil
+	}
+	b := &block{Name: t.Name(), UpstreamType: t.String(), Fields: sub, CanFail: canFail(sub)}
+	w.blocks = append(w.blocks, b)
+	w.imports[t.PkgPath()] = struct{}{}
+	return b, nil
+}
+
+// blockOf returns the block generated for upstream struct type t, or nil.
+func (w *walker) blockOf(t reflect.Type) *block {
+	for _, b := range w.blocks {
+		if b.UpstreamType == t.String() {
+			return b
+		}
+	}
+	return nil
+}
+
+// diffDefaults returns assignments for the fields of struct b that differ from
+// a, recursing into nested structs. prefix is the dotted Go path of a and b.
+func diffDefaults(a, b reflect.Value, prefix string, imports map[string]struct{}) []override {
+	var out []override
+	for i := range a.NumField() {
+		sf := a.Type().Field(i)
+		if !sf.IsExported() {
+			continue
+		}
+		av, bv := a.Field(i), b.Field(i)
+		if _, ok := optionalElem(sf.Type); !ok && sf.Type.Kind() == reflect.Struct {
+			out = append(out, diffDefaults(av, bv, prefix+sf.Name+".", imports)...)
+			continue
+		}
+		if !reflect.DeepEqual(av.Interface(), bv.Interface()) {
+			out = append(out, override{Path: prefix + sf.Name, Value: literal(bv, imports)})
+		}
+	}
+	return out
 }
 
 // fields returns the fields of struct type t with Alloy defaults def and
@@ -498,15 +668,71 @@ func (w *walker) fields(t reflect.Type, def, base reflect.Value, prefix, tagPref
 			continue
 		}
 
-		if sf.Type.Kind() == reflect.Struct {
-			sub, err := w.fields(sf.Type, v, base.Field(i), prefix+sf.Name+".", tagPath+".")
+		if isText(sf.Type) {
+			w.hasText = true
+			f.Text = true
+			f.Type = "string"
+			out = append(out, f)
+			continue
+		}
+		if elem, ok := optionalElem(sf.Type); ok {
+			if elem.Kind() != reflect.Struct {
+				return nil, fmt.Errorf("field %s%s: unsupported type %s", prefix, sf.Name, sf.Type)
+			}
+			zero := reflect.New(elem).Elem()
+			b, err := w.block(elem, zero, zero, prefix+sf.Name+".", tagPath+".")
 			if err != nil {
 				return nil, err
 			}
-			f.Block = &block{Name: sf.Type.Name(), UpstreamType: sf.Type.String(), Fields: sub}
-			f.Type = sf.Type.Name()
-			w.blocks = append(w.blocks, f.Block)
-			w.imports[sf.Type.PkgPath()] = struct{}{}
+			b.InOptional = true
+			w.imports[optionalPkg] = struct{}{}
+			f.Block = b
+			f.Optional = true
+			f.Type = "*" + b.Name
+			out = append(out, f)
+			continue
+		}
+		if sf.Type.Kind() == reflect.Pointer && sf.Type.Elem().Kind() == reflect.Struct {
+			elem := sf.Type.Elem()
+			d, bs := reflect.New(elem).Elem(), reflect.New(elem).Elem()
+			if !v.IsNil() {
+				d = v.Elem()
+			}
+			if !base.Field(i).IsNil() {
+				bs = base.Field(i).Elem()
+			}
+			b, err := w.block(elem, d, bs, prefix+sf.Name+".", tagPath+".")
+			if err != nil {
+				return nil, err
+			}
+			b.InPointer = true
+			f.Block = b
+			f.Pointer = true
+			f.Type = "*" + b.Name
+			out = append(out, f)
+			continue
+		}
+		if sf.Type.Kind() == reflect.Struct {
+			b, err := w.block(sf.Type, v, base.Field(i), prefix+sf.Name+".", tagPath+".")
+			if err != nil {
+				return nil, err
+			}
+			f.Block = b
+			b.InPlain = true
+			f.Type = b.Name
+			out = append(out, f)
+			continue
+		}
+		if sf.Type.Kind() == reflect.Slice && sf.Type.Elem().Kind() == reflect.Struct {
+			elem := reflect.New(sf.Type.Elem()).Elem()
+			b, err := w.block(sf.Type.Elem(), elem, elem, prefix+sf.Name+".", tagPath+".")
+			if err != nil {
+				return nil, err
+			}
+			b.InSlice = true
+			f.Block = b
+			f.Slice = true
+			f.Type = "[]" + b.Name
 			out = append(out, f)
 			continue
 		}
@@ -572,7 +798,71 @@ var intLimits = map[reflect.Kind]map[uint64]string{
 
 // literal returns v as a readable Go literal and adds the packages it uses to
 // imports. Values it does not recognize fall back to %#v.
+var (
+	textMarshaler   = reflect.TypeFor[encoding.TextMarshaler]()
+	textUnmarshaler = reflect.TypeFor[encoding.TextUnmarshaler]()
+)
+
+// isText reports whether t is converted through its text form. Named string
+// types are left out, they convert directly and configopaque.String redacts its
+// text.
+func isText(t reflect.Type) bool {
+	if t.Kind() == reflect.String || t.Kind() == reflect.Pointer {
+		return false
+	}
+	p := reflect.PointerTo(t)
+	return p.Implements(textMarshaler) && p.Implements(textUnmarshaler)
+}
+
+const optionalPkg = "go.opentelemetry.io/collector/config/configoptional"
+
+// optionalElem returns T for configoptional.Optional[T].
+func optionalElem(t reflect.Type) (reflect.Type, bool) {
+	if t.Kind() != reflect.Struct || t.PkgPath() != optionalPkg || !strings.HasPrefix(t.Name(), "Optional[") {
+		return nil, false
+	}
+	get, _ := reflect.PointerTo(t).MethodByName("Get")
+	return get.Type.Out(0).Elem(), true
+}
+
 func literal(v reflect.Value, imports map[string]struct{}) string {
+	if _, ok := optionalElem(v.Type()); ok {
+		p := reflect.New(v.Type())
+		p.Elem().Set(v)
+		imports[optionalPkg] = struct{}{}
+		if p.MethodByName("HasValue").Call(nil)[0].Bool() {
+			return "configoptional.Some(" + literal(p.MethodByName("Get").Call(nil)[0].Elem(), imports) + ")"
+		}
+		if v.IsZero() {
+			return "configoptional.None[" + v.Type().Name()[len("Optional["):len(v.Type().Name())-1] + "]()"
+		}
+		return "configoptional.Default(" + literal(p.MethodByName("GetOrInsertDefault").Call(nil)[0].Elem(), imports) + ")"
+	}
+	if v.Kind() == reflect.Slice && !v.IsNil() {
+		var parts []string
+		for i := range v.Len() {
+			parts = append(parts, literal(v.Index(i), imports))
+		}
+		if p := v.Type().Elem().PkgPath(); p != "" {
+			imports[p] = struct{}{}
+		}
+		return v.Type().String() + "{" + strings.Join(parts, ", ") + "}"
+	}
+	if v.Kind() == reflect.Pointer && !v.IsNil() {
+		if v.Type().Elem().Kind() == reflect.Struct {
+			return "&" + literal(v.Elem(), imports)
+		}
+		lit := literal(v.Elem(), imports)
+		// Untyped constants default to these types, others need a conversion.
+		switch t := v.Type().Elem(); {
+		case t == durationType, t == reflect.TypeFor[int](), t == reflect.TypeFor[float64](),
+			t == reflect.TypeFor[string](), t == reflect.TypeFor[bool]():
+		default:
+			lit = t.String() + "(" + lit + ")"
+		}
+		return "new(" + lit + ")"
+	}
+
 	if v.Type() == durationType {
 		d := time.Duration(v.Int())
 		for _, u := range durationUnits {

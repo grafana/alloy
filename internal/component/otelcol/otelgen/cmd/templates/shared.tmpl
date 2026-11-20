@@ -1,0 +1,162 @@
+{{define "fields"}}
+{{- range .}}
+{{- if .Doc}}
+{{.Doc}}
+{{- end}}
+	{{.ArgName}} {{.Type}} `alloy:"{{.AlloyName}},{{if .Block}}block{{else}}attr{{end}}{{if not .Required}},optional{{end}}"`
+{{- end}}
+{{- end}}
+
+{{define "blocks"}}
+{{- range .}}
+type {{.Name}} struct {
+{{- template "fields" .Fields}}
+}
+
+// Convert converts b into the upstream type.
+func (b {{.Name}}) Convert() {{if .CanFail}}({{.UpstreamType}}, error){{else}}{{.UpstreamType}}{{end}} {
+	var out {{.UpstreamType}}
+{{- if canFail .Fields}}
+	var err error
+{{- end}}
+{{- range .Fields}}
+	{{.Assign (print "out." .Name) (print "b." .ArgName) "out, err"}}
+{{- end}}
+	return out{{if .CanFail}}, nil{{end}}
+}
+
+{{if .Defaults -}}
+// SetToDefault implements syntax.Defaulter.
+func (b *{{.Name}}) SetToDefault() {
+	var u {{.UpstreamType}}
+{{.DefaultsDoc}}
+{{- range .Defaults}}
+	u.{{.Path}} = {{.Value}}
+{{- end}}
+	*b = {{lowerFirst .Name}}FromUpstream(u)
+}
+
+{{end -}}
+func {{lowerFirst .Name}}FromUpstream(u {{.UpstreamType}}) {{.Name}} {
+	return {{.Name}}{
+{{- range .Fields}}
+		{{.ArgName}}: {{.ToAlloy (print "u." .Name)}},
+{{- end}}
+	}
+}
+{{- if .InSlice}}
+
+{{if .CanFail -}}
+func {{lowerFirst .Name}}SliceToUpstream(s []{{.Name}}) ([]{{.UpstreamType}}, error) {
+	if len(s) == 0 {
+		return nil, nil
+	}
+	out := make([]{{.UpstreamType}}, 0, len(s))
+	for _, b := range s {
+		u, err := b.Convert()
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, u)
+	}
+	return out, nil
+}
+{{- else}}
+func {{lowerFirst .Name}}SliceToUpstream(s []{{.Name}}) []{{.UpstreamType}} {
+	if len(s) == 0 {
+		return nil
+	}
+	out := make([]{{.UpstreamType}}, 0, len(s))
+	for _, b := range s {
+		out = append(out, b.Convert())
+	}
+	return out
+}
+{{- end}}
+
+func {{lowerFirst .Name}}SliceFromUpstream(s []{{.UpstreamType}}) []{{.Name}} {
+	if len(s) == 0 {
+		return nil
+	}
+	out := make([]{{.Name}}, 0, len(s))
+	for _, u := range s {
+		out = append(out, {{lowerFirst .Name}}FromUpstream(u))
+	}
+	return out
+}
+{{- end}}
+{{- if .InOptional}}
+
+{{if .CanFail -}}
+func {{lowerFirst .Name}}OptionalToUpstream(b *{{.Name}}) (configoptional.Optional[{{.UpstreamType}}], error) {
+	if b == nil {
+		return configoptional.None[{{.UpstreamType}}](), nil
+	}
+	u, err := b.Convert()
+	if err != nil {
+		return configoptional.None[{{.UpstreamType}}](), err
+	}
+	return configoptional.Some(u), nil
+}
+{{- else}}
+func {{lowerFirst .Name}}OptionalToUpstream(b *{{.Name}}) configoptional.Optional[{{.UpstreamType}}] {
+	if b == nil {
+		return configoptional.None[{{.UpstreamType}}]()
+	}
+	return configoptional.Some(b.Convert())
+}
+{{- end}}
+
+func {{lowerFirst .Name}}OptionalFromUpstream(o configoptional.Optional[{{.UpstreamType}}]) *{{.Name}} {
+	if !o.HasValue() {
+		return nil
+	}
+	b := {{lowerFirst .Name}}FromUpstream(*o.Get())
+	return &b
+}
+{{- end}}
+{{- if .InPointer}}
+
+{{if .CanFail -}}
+func {{lowerFirst .Name}}PtrToUpstream(b *{{.Name}}) (*{{.UpstreamType}}, error) {
+	if b == nil {
+		return nil, nil
+	}
+	u, err := b.Convert()
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+{{- else}}
+func {{lowerFirst .Name}}PtrToUpstream(b *{{.Name}}) *{{.UpstreamType}} {
+	if b == nil {
+		return nil
+	}
+	u := b.Convert()
+	return &u
+}
+{{- end}}
+
+func {{lowerFirst .Name}}PtrFromUpstream(u *{{.UpstreamType}}) *{{.Name}} {
+	if u == nil {
+		return nil
+	}
+	b := {{lowerFirst .Name}}FromUpstream(*u)
+	return &b
+}
+{{- end}}
+{{end}}
+{{- end}}
+
+{{define "marshalText"}}
+{{- if .HasText}}
+
+// marshalText returns the text form of an upstream value, whose type can be
+// internal to its module.
+func marshalText(m encoding.TextMarshaler) string {
+	b, _ := m.MarshalText()
+	return string(b)
+}
+{{- end}}
+{{- end}}

@@ -48,6 +48,11 @@ type Arguments struct {
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
+{{- if .ExtraArguments}}
+
+	// Extra holds the arguments that only exist in Alloy, written by hand.
+	Extra ExtraArguments `alloy:",squash"`
+{{- end}}
 }
 
 var (
@@ -55,28 +60,7 @@ var (
 	_ syntax.Defaulter    = (*Arguments)(nil)
 	_ syntax.Validator    = (*Arguments)(nil)
 )
-{{range .Blocks}}
-type {{.Name}} struct {
-{{- template "fields" .Fields}}
-}
-
-// Convert converts b into the upstream type.
-func (b {{.Name}}) Convert() {{.UpstreamType}} {
-	return {{.UpstreamType}}{
-{{- range .Fields}}
-		{{.Name}}: {{.ToUpstream (print "b." .ArgName)}},
-{{- end}}
-	}
-}
-
-func {{lowerFirst .Name}}FromUpstream(u {{.UpstreamType}}) {{.Name}} {
-	return {{.Name}}{
-{{- range .Fields}}
-		{{.ArgName}}: {{.ToAlloy (print "u." .Name)}},
-{{- end}}
-	}
-}
-{{end}}
+{{template "blocks" .Blocks}}
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 {{- if .Fields}}
@@ -94,6 +78,9 @@ func (args *Arguments) SetToDefault() {
 {{- end}}
 	}
 	args.DebugMetrics.SetToDefault()
+{{- if .ExtraArguments}}
+	args.Extra.SetToDefault()
+{{- end}}
 }
 
 // Validate implements syntax.Validator.
@@ -132,11 +119,20 @@ func alloyArgumentNames(err error) error {
 // Convert implements processor.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 	cfg := {{.UpstreamPackage}}.NewFactory().CreateDefaultConfig().(*{{.UpstreamPackage}}.Config)
+{{- if canFail .Fields}}
+	var err error
+{{- end}}
 {{- range .Fields}}
-	cfg.{{.Name}} = {{.ToUpstream (print "args." .ArgName)}}
+	{{.Assign (print "cfg." .Name) (print "args." .ArgName) "nil, err"}}
+{{- end}}
+{{- if .ExtraArguments}}
+	if err := args.Extra.Convert(cfg); err != nil {
+		return nil, err
+	}
 {{- end}}
 	return cfg, nil
 }
+{{- template "marshalText" .}}
 
 // Extensions implements processor.Arguments.
 func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
@@ -157,12 +153,3 @@ func (args Arguments) NextConsumers() *otelcol.ConsumerArguments {
 func (args Arguments) DebugMetricsConfig() otelcolCfg.DebugMetricsArguments {
 	return args.DebugMetrics
 }
-
-{{define "fields"}}
-{{- range .}}
-{{- if .Doc}}
-{{.Doc}}
-{{- end}}
-	{{.ArgName}} {{.Type}} `alloy:"{{.AlloyName}},{{if .Block}}block{{else}}attr{{end}}{{if not .Required}},optional{{end}}"`
-{{- end}}
-{{- end}}

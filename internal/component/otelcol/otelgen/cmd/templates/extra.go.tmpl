@@ -1,0 +1,14 @@
+package {{.Package}}
+
+import "{{.UpstreamPath}}"
+
+// ExtraArguments are the arguments that only exist in Alloy.
+type ExtraArguments struct{}
+
+// SetToDefault implements syntax.Defaulter.
+func (e *ExtraArguments) SetToDefault() {}
+
+// Convert applies the extra arguments to cfg.
+func (e ExtraArguments) Convert(cfg *{{.UpstreamPackage}}.Config) error {
+	panic("TODO: apply extra arguments to cfg")
+}
