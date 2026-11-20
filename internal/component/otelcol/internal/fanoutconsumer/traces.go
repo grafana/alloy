@@ -27,6 +27,14 @@ func Traces(in []otelcol.Consumer) otelconsumer.Traces {
 // TracesFromConsumers creates a new fanout consumer for traces from
 // traces-only consumers.
 func TracesFromConsumers(in []otelconsumer.Traces) otelconsumer.Traces {
+	var valid []otelconsumer.Traces
+	for _, c := range in {
+		if c != nil {
+			valid = append(valid, c)
+		}
+	}
+	in = valid
+
 	if len(in) == 0 {
 		return &tracesFanout{}
 	} else if len(in) == 1 {
@@ -38,9 +46,6 @@ func TracesFromConsumers(in []otelconsumer.Traces) otelconsumer.Traces {
 	// Iterate through all the consumers besides the last.
 	for i := 0; i < len(in)-1; i++ {
 		consumer := in[i]
-		if consumer == nil {
-			continue
-		}
 
 		if consumer.Capabilities().MutatesData {
 			clone = append(clone, consumer)

@@ -27,6 +27,14 @@ func Logs(in []otelcol.Consumer) otelconsumer.Logs {
 // LogsFromConsumers creates a new fanout consumer for logs from
 // logs-only consumers.
 func LogsFromConsumers(in []otelconsumer.Logs) otelconsumer.Logs {
+	var valid []otelconsumer.Logs
+	for _, c := range in {
+		if c != nil {
+			valid = append(valid, c)
+		}
+	}
+	in = valid
+
 	if len(in) == 0 {
 		return &logsFanout{}
 	} else if len(in) == 1 {
@@ -39,10 +47,6 @@ func LogsFromConsumers(in []otelconsumer.Logs) otelconsumer.Logs {
 	for i := 0; i < len(in)-1; i++ {
 		consumer := in[i]
 
-		if consumer == nil {
-			continue
-		}
-
 		if consumer.Capabilities().MutatesData {
 			clone = append(clone, consumer)
 		} else {
@@ -54,12 +58,10 @@ func LogsFromConsumers(in []otelconsumer.Logs) otelconsumer.Logs {
 
 	// The final consumer can be given to the passthrough list regardless of
 	// whether it mutates as long as there's no other read-only consumers.
-	if last != nil {
-		if len(passthrough) == 0 || !last.Capabilities().MutatesData {
-			passthrough = append(passthrough, last)
-		} else {
-			clone = append(clone, last)
-		}
+	if len(passthrough) == 0 || !last.Capabilities().MutatesData {
+		passthrough = append(passthrough, last)
+	} else {
+		clone = append(clone, last)
 	}
 
 	return &logsFanout{
