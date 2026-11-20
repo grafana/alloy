@@ -8,6 +8,7 @@ import (
 
 // Arguments configures the Beyla component.
 type Arguments struct {
+	Exceptions *Exceptions `alloy:"exceptions,block,optional"`
 	// Deprecated: Use discovery.services instead.
 	Port string `alloy:"open_port,attr,optional"`
 	// Deprecated: Use discovery.services instead.

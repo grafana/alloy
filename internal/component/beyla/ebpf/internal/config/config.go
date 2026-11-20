@@ -27,6 +27,7 @@ func (a Arguments) Convert(rt Runtime) map[string]any {
 	cfg := make(map[string]any)
 
 	// Generated section translations.
+	set(cfg, "exceptions", a.Exceptions.Convert())
 	set(cfg, "discovery", a.Discovery.Convert())
 	set(cfg, "ebpf", a.EBPF.Convert())
 	set(cfg, "injector", a.Injector.Convert())
@@ -72,6 +73,10 @@ func (a Arguments) Convert(rt Runtime) map[string]any {
 	}
 	if export := a.otelMetricsExport(rt); len(export) > 0 {
 		cfg["otel_metrics_export"] = export
+	}
+
+	if a.Output != nil && len(a.Output.Logs) > 0 && rt.OTLPAddr != "" {
+		cfg["otel_logs_export"] = map[string]any{"endpoint": "unix://" + rt.OTLPAddr, "protocol": "http/protobuf"}
 	}
 
 	// internal_metrics always carries the proxy port, so it is emitted unconditionally.
