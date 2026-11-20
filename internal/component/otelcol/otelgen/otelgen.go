@@ -41,7 +41,8 @@ type Component struct {
 
 	defaultArguments []DefaultArguments
 
-	extraArguments bool
+	extraArguments  bool
+	extraValidation bool
 }
 
 // Option changes how a Component is generated.
@@ -114,6 +115,9 @@ type DefaultArguments struct {
 	Type   reflect.Type
 	Reason string
 }
+
+// HasExtraValidation reports whether ExtraValidation is set.
+func (c Component) HasExtraValidation() bool { return c.extraValidation }
 
 // HasExtraArguments reports whether ExtraArguments is set.
 func (c Component) HasExtraArguments() bool { return c.extraArguments }

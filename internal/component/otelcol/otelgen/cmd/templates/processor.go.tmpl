@@ -61,22 +61,26 @@ var (
 	_ syntax.Validator    = (*Arguments)(nil)
 )
 {{template "blocks" .Blocks}}
+// ArgumentsFromUpstream converts an upstream config into Arguments.
+// Output{{if .ExtraArguments}}, DebugMetrics and Extra{{else}} and DebugMetrics{{end}} are left zero.
+func ArgumentsFromUpstream(cfg *{{.UpstreamPackage}}.Config) Arguments {
+	return Arguments{
+{{- range .Fields}}
+		{{.ArgName}}: {{.ToAlloy (print "cfg." .Name)}},
+{{- end}}
+	}
+}
+
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
-{{- if .Fields}}
 	cfg := {{.UpstreamPackage}}.NewFactory().CreateDefaultConfig().(*{{.UpstreamPackage}}.Config)
-{{- end}}
 {{- if .Overrides}}
 {{.OverridesDoc}}
 {{- end}}
 {{- range .Overrides}}
 	cfg.{{.Path}} = {{.Value}}
 {{- end}}
-	*args = Arguments{
-{{- range .Fields}}
-		{{.ArgName}}: {{.ToAlloy (print "cfg." .Name)}},
-{{- end}}
-	}
+	*args = ArgumentsFromUpstream(cfg)
 	args.DebugMetrics.SetToDefault()
 {{- if .ExtraArguments}}
 	args.Extra.SetToDefault()
@@ -85,6 +89,11 @@ func (args *Arguments) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
+{{- if .ExtraValidation}}
+	if err := args.validate(); err != nil {
+		return err
+	}
+{{- end}}
 	cfg, err := args.Convert()
 	if err != nil {
 		return err
@@ -126,7 +135,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	{{.Assign (print "cfg." .Name) (print "args." .ArgName) "nil, err"}}
 {{- end}}
 {{- if .ExtraArguments}}
-	if err := args.Extra.Convert(cfg); err != nil {
+	if err := args.Extra.ApplyTo(cfg); err != nil {
 		return nil, err
 	}
 {{- end}}

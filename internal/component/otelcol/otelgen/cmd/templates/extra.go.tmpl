@@ -1,4 +1,5 @@
 package {{.Package}}
+{{- if .ExtraArguments}}
 
 import "{{.UpstreamPath}}"
 
@@ -8,7 +9,15 @@ type ExtraArguments struct{}
 // SetToDefault implements syntax.Defaulter.
 func (e *ExtraArguments) SetToDefault() {}
 
-// Convert applies the extra arguments to cfg.
-func (e ExtraArguments) Convert(cfg *{{.UpstreamPackage}}.Config) error {
+// ApplyTo applies the extra arguments to cfg.
+func (e ExtraArguments) ApplyTo(cfg *{{.UpstreamPackage}}.Config) error {
 	panic("TODO: apply extra arguments to cfg")
 }
+{{- end}}
+{{- if .ExtraValidation}}
+
+// validate checks what upstream validation does not.
+func (args *Arguments) validate() error {
+	panic("TODO: validate arguments")
+}
+{{- end}}

@@ -84,10 +84,10 @@ var (
 	_ syntax.Validator    = (*Arguments)(nil)
 )
 
-// SetToDefault implements syntax.Defaulter.
-func (args *Arguments) SetToDefault() {
-	cfg := memorylimiterprocessor.NewFactory().CreateDefaultConfig().(*memorylimiterprocessor.Config)
-	*args = Arguments{
+// ArgumentsFromUpstream converts an upstream config into Arguments.
+// Output and DebugMetrics are left zero.
+func ArgumentsFromUpstream(cfg *memorylimiterprocessor.Config) Arguments {
+	return Arguments{
 		CheckInterval:                cfg.CheckInterval,
 		MinGCIntervalWhenSoftLimited: cfg.MinGCIntervalWhenSoftLimited,
 		MinGCIntervalWhenHardLimited: cfg.MinGCIntervalWhenHardLimited,
@@ -98,6 +98,12 @@ func (args *Arguments) SetToDefault() {
 		MemoryLimitPercentage:        cfg.MemoryLimitPercentage,
 		MemorySpikePercentage:        cfg.MemorySpikePercentage,
 	}
+}
+
+// SetToDefault implements syntax.Defaulter.
+func (args *Arguments) SetToDefault() {
+	cfg := memorylimiterprocessor.NewFactory().CreateDefaultConfig().(*memorylimiterprocessor.Config)
+	*args = ArgumentsFromUpstream(cfg)
 	args.DebugMetrics.SetToDefault()
 }
 

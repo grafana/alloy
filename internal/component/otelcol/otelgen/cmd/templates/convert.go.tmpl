@@ -1,5 +1,7 @@
 package {{.Package}}
 
+{{- if or .StubStdImports .StubImports}}
+
 import (
 {{- range .StubStdImports}}
 	"{{.}}"
@@ -10,6 +12,7 @@ import (
 	"{{.}}"
 {{- end}}
 )
+{{- end}}
 {{range .CustomFields}}
 func {{lowerFirst .ArgName}}ToUpstream(v {{.Type}}) {{.UpstreamGoType}} {
 	panic("TODO: convert {{.AlloyName}} to upstream")

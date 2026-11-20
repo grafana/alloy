@@ -63,18 +63,6 @@ func OverrideArgumentGoName(path, goName string) Option {
 	}
 }
 
-// ExtraArguments adds arguments that only exist in Alloy. The package defines
-// them by hand in an ExtraArguments struct, squashed into Arguments:
-//
-//	func (e *ExtraArguments) SetToDefault()
-//	func (e ExtraArguments) Convert(cfg *<upstream>.Config) error
-//
-// SetToDefault runs after the generated defaults and Convert after the
-// generated conversions, so it can change any upstream field.
-func ExtraArguments() Option {
-	return func(c *Component) { c.extraArguments = true }
-}
-
 // OverrideArgumentRequired makes the argument for the upstream field at path,
 // its mapstructure names joined by dots, required instead of optional.
 func OverrideArgumentRequired(path string) Option {

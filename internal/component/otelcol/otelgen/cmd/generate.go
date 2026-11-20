@@ -87,7 +87,7 @@ func generate(c otelgen.Component, root string, updateTests bool) error {
 	}
 
 	extraFile := filepath.Join(dir, "extra.go")
-	if _, err := os.Stat(extraFile); data.ExtraArguments && os.IsNotExist(err) {
+	if _, err := os.Stat(extraFile); (data.ExtraArguments || data.ExtraValidation) && os.IsNotExist(err) {
 		if err := render("extra.go.tmpl", data, extraFile); err != nil {
 			return err
 		}
@@ -150,6 +150,8 @@ type templateData struct {
 	StubImports    []string
 	// ExtraArguments is set with ExtraArguments.
 	ExtraArguments bool
+	// ExtraValidation is set with ExtraValidation.
+	ExtraValidation bool
 	// HasText is set when a field is converted through its text form, which
 	// needs the marshalText helper.
 	HasText bool
@@ -499,6 +501,7 @@ func buildData(c otelgen.Component, pkg string) (templateData, error) {
 	}
 	data.Signals = sigs
 	data.ExtraArguments = c.HasExtraArguments()
+	data.ExtraValidation = c.HasExtraValidation()
 	for _, s := range sigs {
 		if s.Supported() {
 			data.ConnectorSignals = append(data.ConnectorSignals, s)
@@ -647,6 +650,18 @@ func (w *walker) fields(t reflect.Type, def, base reflect.Value, prefix, tagPref
 			f.Default = literal(v, w.testImports)
 		}
 
+		// Plain blocks diff their own fields when walked, every other field is
+		// one value.
+		_, custom := w.argumentTypes[tagPath]
+		_, optional := optionalElem(sf.Type)
+		plain := sf.Type.Kind() == reflect.Struct && !custom && !optional && !isText(sf.Type)
+		if !plain && !reflect.DeepEqual(v.Interface(), base.Field(i).Interface()) {
+			w.overrides = append(w.overrides, override{
+				Path:  prefix + sf.Name,
+				Value: literal(v, w.imports),
+			})
+		}
+
 		if t, ok := w.argumentTypes[tagPath]; ok {
 			w.usedArguments[tagPath] = true
 			f.Custom = true
@@ -743,12 +758,6 @@ func (w *walker) fields(t reflect.Type, def, base reflect.Value, prefix, tagPref
 		if sf.Type.PkgPath() != "" && sf.Type != reflect.TypeFor[time.Duration]() && isBasic(sf.Type.Kind()) {
 			f.UpstreamType = sf.Type.String()
 			f.Type = sf.Type.Kind().String()
-		}
-		if !reflect.DeepEqual(v.Interface(), base.Field(i).Interface()) {
-			w.overrides = append(w.overrides, override{
-				Path:  prefix + sf.Name,
-				Value: literal(v, w.imports),
-			})
 		}
 		out = append(out, f)
 	}
