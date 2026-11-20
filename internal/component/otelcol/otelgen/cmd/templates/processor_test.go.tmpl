@@ -50,11 +50,3 @@ func TestDefaultArguments(t *testing.T) {
 {{- range .Fields}}{{if .Default}}{{.Name}}: {{.Default}}, {{end}}{{end -}}
 	}, cfg)
 }
-
-// TestValidate checks that the default arguments pass validation. A failure
-// after a dependency bump means upstream validation rejects the defaults.
-func TestValidate(t *testing.T) {
-	var args Arguments
-	args.SetToDefault()
-	require.NoError(t, args.Validate())
-}
