@@ -11,7 +11,7 @@ weight: 100
 
 # `remote`
 
-The `remote` components retrieve content from sources outside of your {{< param "PRODUCT_NAME" >}} configuration, such as files in object storage, secrets in HashiCorp Vault, and Kubernetes ConfigMaps and Secrets, and expose that content to other components.
+The `remote` components retrieve content from sources outside of your {{< param "PRODUCT_NAME" >}} configuration, such as files in object storage, secrets in AWS Secrets Manager, secrets in HashiCorp Vault, and Kubernetes ConfigMaps and Secrets, and expose that content to other components.
 
 Use a `remote` component when a value your configuration depends on, for example, a credential or a list of scrape targets, is managed somewhere else and can change independently of your configuration.
 
