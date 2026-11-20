@@ -34,7 +34,8 @@ func TestConfigConversion(t *testing.T) {
 						Prefix:       "workload.googleapis.com",
 						KnownDomains: []string{"googleapis.com", "kubernetes.io", "istio.io", "knative.dev"},
 						ClientConfig: collector.ClientConfig{
-							Endpoint: "monitoring.googleapis.com:443",
+							Endpoint:       "monitoring.googleapis.com:443",
+							UniverseDomain: "googleapis.com",
 						},
 						InstrumentationLibraryLabels:     true,
 						CreateMetricDescriptorBufferSize: 10,
@@ -44,13 +45,15 @@ func TestConfigConversion(t *testing.T) {
 					},
 					TraceConfig: collector.TraceConfig{
 						ClientConfig: collector.ClientConfig{
-							Endpoint: "cloudtrace.googleapis.com:443",
+							Endpoint:       "cloudtrace.googleapis.com:443",
+							UniverseDomain: "googleapis.com",
 						},
 						AttributeMappings: make([]collector.AttributeMapping, 0),
 					},
 					LogConfig: collector.LogConfig{
 						ClientConfig: collector.ClientConfig{
-							Endpoint: "logging.googleapis.com:443",
+							Endpoint:       "logging.googleapis.com:443",
+							UniverseDomain: "googleapis.com",
 						},
 						ResourceFilters:       make([]collector.ResourceFilter, 0),
 						ServiceResourceLabels: true,
@@ -78,6 +81,7 @@ func TestConfigConversion(t *testing.T) {
 				metric {
 					prefix = "custom-prefix.example.com"
 					endpoint = "monitoring.example.com:443"
+					universe_domain = "example.com"
 					compression = "gzip"
 					grpc_pool_size = 5
 					use_insecure = true
@@ -100,6 +104,7 @@ func TestConfigConversion(t *testing.T) {
 
 				trace {
 					endpoint = "cloudtrace.example.com:443"
+					universe_domain = "example.com"
 					grpc_pool_size = 7
 					use_insecure = true
 					attribute_mappings = [
@@ -109,6 +114,7 @@ func TestConfigConversion(t *testing.T) {
 
 				log {
 					endpoint = "logging.example.com:443"
+					universe_domain = "example.com"
 					compression = "gzip"
 					grpc_pool_size = 8
 					use_insecure = true
@@ -137,10 +143,11 @@ func TestConfigConversion(t *testing.T) {
 					MetricConfig: collector.MetricConfig{
 						Prefix: "custom-prefix.example.com",
 						ClientConfig: collector.ClientConfig{
-							Endpoint:     "monitoring.example.com:443",
-							Compression:  "gzip",
-							UseInsecure:  true,
-							GRPCPoolSize: 5,
+							Endpoint:       "monitoring.example.com:443",
+							UniverseDomain: "example.com",
+							Compression:    "gzip",
+							UseInsecure:    true,
+							GRPCPoolSize:   5,
 						},
 						KnownDomains:                     []string{"googleapis.com", "example.com"},
 						SkipCreateMetricDescriptor:       true,
@@ -160,9 +167,10 @@ func TestConfigConversion(t *testing.T) {
 					},
 					TraceConfig: collector.TraceConfig{
 						ClientConfig: collector.ClientConfig{
-							Endpoint:     "cloudtrace.example.com:443",
-							GRPCPoolSize: 7,
-							UseInsecure:  true,
+							Endpoint:       "cloudtrace.example.com:443",
+							UniverseDomain: "example.com",
+							GRPCPoolSize:   7,
+							UseInsecure:    true,
 						},
 						AttributeMappings: []collector.AttributeMapping{
 							{Key: "baz", Replacement: "qux"},
@@ -170,10 +178,11 @@ func TestConfigConversion(t *testing.T) {
 					},
 					LogConfig: collector.LogConfig{
 						ClientConfig: collector.ClientConfig{
-							Endpoint:     "logging.example.com:443",
-							Compression:  "gzip",
-							UseInsecure:  true,
-							GRPCPoolSize: 8,
+							Endpoint:       "logging.example.com:443",
+							UniverseDomain: "example.com",
+							Compression:    "gzip",
+							UseInsecure:    true,
+							GRPCPoolSize:   8,
 						},
 						DefaultLogName: "my-default-log-name",
 						ResourceFilters: []collector.ResourceFilter{
