@@ -97,6 +97,7 @@ You can use the following arguments with the `endpoint` block:
 | `proxy_url`              | `string`            | HTTP proxy to send requests through.                                                             |           | no       |
 | `remote_timeout`         | `duration`          | Timeout for requests made to the URL.                                                            | `"10s"`   | no       |
 | `retry_on_http_429`      | `bool`              | Retry when the server returns an HTTP 429 status code.                                           | `true`    | no       |
+| `unix_socket_path`       | `string`            | Path of a unix-domain socket to send profiles over instead of TCP.                               |           | no       |
 
 You can provide at most one of the following:
 
