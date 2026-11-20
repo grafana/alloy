@@ -31,7 +31,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.113.4
 	github.com/aws/aws-sdk-go-v2/service/servicediscovery v1.49.1
 	github.com/blang/semver/v4 v4.0.0
-	github.com/bmatcuk/doublestar/v4 v4.10.2
+	github.com/bmatcuk/doublestar/v4 v4.10.3
 	github.com/boynux/squid-exporter v1.13.0
 	github.com/buger/jsonparser v1.6.1
 	github.com/burningalchemist/sql_exporter v0.0.0-20260928100718-e19ac2aef3d7
@@ -202,7 +202,7 @@ require (
 	github.com/prometheus-community/elasticsearch_exporter v1.5.0
 	github.com/prometheus-community/postgres_exporter v0.19.0
 	github.com/prometheus-community/stackdriver_exporter v0.18.0
-	github.com/prometheus-community/windows_exporter v0.31.3 // if you update the windows_exporter version, make sure to update the PROM_WIN_EXP_VERSION in _index
+	github.com/prometheus-community/windows_exporter v0.32.1 // if you update the windows_exporter version, make sure to update the PROM_WIN_EXP_VERSION in _index
 	github.com/prometheus-community/yet-another-cloudwatch-exporter v0.64.0
 	github.com/prometheus-operator/prometheus-operator v0.93.0
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.93.0
@@ -218,7 +218,7 @@ require (
 	github.com/prometheus/mysqld_exporter v0.18.0
 	github.com/prometheus/node_exporter v1.10.2
 	github.com/prometheus/otlptranslator v1.0.0
-	github.com/prometheus/procfs v0.22.0
+	github.com/prometheus/procfs v0.23.0
 	github.com/prometheus/prometheus v0.315.0
 	github.com/prometheus/sigv4 v0.5.0
 	github.com/prometheus/snmp_exporter v0.29.0 // if you update the snmp_exporter version, make sure to update the SNMP_VERSION in _index
@@ -796,7 +796,7 @@ require (
 	github.com/mdlayher/genetlink v1.3.2 // indirect
 	github.com/mdlayher/kobject v0.0.0-20200520190114-19ca17470d7d // indirect
 	github.com/mdlayher/netlink v1.7.2 // indirect
-	github.com/mdlayher/socket v0.7.0 // indirect
+	github.com/mdlayher/socket v0.8.0 // indirect
 	github.com/mdlayher/vsock v1.3.0 // indirect
 	github.com/mdlayher/wifi v0.1.0 // indirect
 	github.com/metalmatze/signal v0.0.0-20210307161603-1c9aa721a97a // indirect
@@ -992,7 +992,7 @@ require (
 	github.com/xdg/stringprep v1.0.3 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
-	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
+	github.com/xhit/go-str2duration/v2 v2.2.0 // indirect
 	github.com/xo/dburl v0.24.2 // indirect
 	github.com/xo/terminfo v1.0.0 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect

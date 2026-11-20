@@ -674,8 +674,8 @@ github.com/bitfield/gotestdox v0.2.2/go.mod h1:D+gwtS0urjBrzguAkTM2wodsTQYFHdpx8
 github.com/blang/semver/v4 v4.0.0 h1:1PFHFE6yCCTv8C1TeyNNarDzntLi7wMI5i/pzqYIsAM=
 github.com/blang/semver/v4 v4.0.0/go.mod h1:IbckMUScFkM3pff0VJDNKRiT6TG/YpiHIM2yvyW5YoQ=
 github.com/bmatcuk/doublestar v1.1.1/go.mod h1:UD6OnuiIn0yFxxA2le/rnRU1G4RaI4UvFv1sNto9p6w=
-github.com/bmatcuk/doublestar/v4 v4.10.2 h1:eF7W7HWKg3z9NrWV9pTLnNeoXaqq3Tq9DNKXVMfoCnw=
-github.com/bmatcuk/doublestar/v4 v4.10.2/go.mod h1:xBQ8jztBU6kakFMg+8WGxn0c6z1fTSPVIjEY1Wr7jzc=
+github.com/bmatcuk/doublestar/v4 v4.10.3 h1:1UIv1+fqH3++ViVkpnaPTB+Pi1UHycnPFAq14zgK+gI=
+github.com/bmatcuk/doublestar/v4 v4.10.3/go.mod h1:xBQ8jztBU6kakFMg+8WGxn0c6z1fTSPVIjEY1Wr7jzc=
 github.com/bodgit/plumbing v1.3.0 h1:pf9Itz1JOQgn7vEOE7v7nlEfBykYqvUYioC61TwWCFU=
 github.com/bodgit/plumbing v1.3.0/go.mod h1:JOTb4XiRu5xfnmdnDJo6GmSbSbtSyufrsyZFByMtKEs=
 github.com/bodgit/sevenzip v1.6.1 h1:kikg2pUMYC9ljU7W9SaqHXhym5HyKm8/M/jd31fYan4=
@@ -1722,8 +1722,8 @@ github.com/mdlayher/netlink v1.0.0/go.mod h1:KxeJAFOFLG6AjpyDkQ/iIhxygIUKD+vcwqc
 github.com/mdlayher/netlink v1.1.0/go.mod h1:H4WCitaheIsdF9yOYu8CFmCgQthAPIWZmcKp9uZHgmY=
 github.com/mdlayher/netlink v1.7.2 h1:/UtM3ofJap7Vl4QWCPDGXY8d3GIY2UGSDbK+QWmY8/g=
 github.com/mdlayher/netlink v1.7.2/go.mod h1:xraEF7uJbxLhc5fpHL4cPe221LI2bdttWlU+ZGLfQSw=
-github.com/mdlayher/socket v0.7.0 h1:qVREPVwtUMg17pwvveQxpurq0PVisMxi3FGgpsorMYQ=
-github.com/mdlayher/socket v0.7.0/go.mod h1:f7iKql2EK/rfsWYDKofKjk2Ig7I+6HQWdMIdn1tO4A4=
+github.com/mdlayher/socket v0.8.0 h1:1lIVvHAs3sT623kPkPDa+I0nLVusskwnpWzp6ZUcNyc=
+github.com/mdlayher/socket v0.8.0/go.mod h1:EhNb63aXqexVoTJDblxvDOSuIGIJinC4H5ZktnaJ6Rk=
 github.com/mdlayher/vsock v1.3.0 h1:bqQfZ1OznI03y6YiXp2sze05RVdzLn/zsfjnjd4+ivI=
 github.com/mdlayher/vsock v1.3.0/go.mod h1:WsuksavOvwCnV5UqGHUkvAvCy+Dqy81y4goKQTzxxNY=
 github.com/mdlayher/wifi v0.1.0 h1:y8wYRUXwok5CtUZOXT3egghYesX0O79E3ALl+SIDm9Q=
@@ -2229,8 +2229,8 @@ github.com/prometheus-community/prom-label-proxy v0.15.0 h1:Bv844Ry/FM9bCZrbsbWi
 github.com/prometheus-community/prom-label-proxy v0.15.0/go.mod h1:e2hJkx3xjVqcc/8b2SVOLLgXN3Rv16OznmNDCXw2T88=
 github.com/prometheus-community/stackdriver_exporter v0.18.0 h1:nB7JwloiBziunaujql5XEjB06WOo0ePgBTCJxFeaOhY=
 github.com/prometheus-community/stackdriver_exporter v0.18.0/go.mod h1:f7T7XXRVc390sVc7rk2yNflf+RkClE4mlfsaSsW2K5Q=
-github.com/prometheus-community/windows_exporter v0.31.3 h1:v5HRhiSL/AgFtp96GjUATrtRMedNhjaMHogJBecgFSE=
-github.com/prometheus-community/windows_exporter v0.31.3/go.mod h1:tlw5aYgPu1kFassCBSBwnDBFHUlwznekAVJ0xiDuIko=
+github.com/prometheus-community/windows_exporter v0.32.1 h1:d0zLDVGM0ZLxLN0aIZ+uyllD1aXedjlVPNr+0TSe/SU=
+github.com/prometheus-community/windows_exporter v0.32.1/go.mod h1:z8z0LwiT6oUDC3M85scDgYgq1TWz9FWKB1bR4sAlphg=
 github.com/prometheus-operator/prometheus-operator v0.93.0 h1:AohlYJT+En8TmNpAcEUJ3GsaJTAqfEBwHmGTVpRm/Io=
 github.com/prometheus-operator/prometheus-operator v0.93.0/go.mod h1:vIOrkhlJ4B9R///ir5dY0VvzOx/Q8X/Aks3kdn5xYYY=
 github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.93.0 h1:ZIouJCjC8R/XHxzGpOw+/czH9pVzg6wteYhLjJ80XGQ=
@@ -2290,8 +2290,8 @@ github.com/prometheus/procfs v0.0.8/go.mod h1:7Qr8sr6344vo1JqZ6HhLceV9o3AJ1Ff+Gx
 github.com/prometheus/procfs v0.1.3/go.mod h1:lV6e/gmhEcM9IjHGsFOCxxuZ+z1YqCvr4OA4YeYWdaU=
 github.com/prometheus/procfs v0.6.0/go.mod h1:cz+aTbrPOrUb4q7XlbU9ygM+/jj0fzG6c1xBZuNvfVA=
 github.com/prometheus/procfs v0.7.3/go.mod h1:cz+aTbrPOrUb4q7XlbU9ygM+/jj0fzG6c1xBZuNvfVA=
-github.com/prometheus/procfs v0.22.0 h1:6q9+/JL9IKAPbCmBrv9n5O5Ty3NKnciV5X7YGw0oics=
-github.com/prometheus/procfs v0.22.0/go.mod h1:CvmFr/GVhIjIvWJZW3tgkODBQMRIf0EyWMQLHCHab58=
+github.com/prometheus/procfs v0.23.0 h1:ad+S6FTkzwaMgacKLM5h6bNKExS+DMH0YiUwXItH/o4=
+github.com/prometheus/procfs v0.23.0/go.mod h1:3AVXO0FqLafyYFU/V/IQRZlC8Rgqz8Dm/x6pKLK+RIk=
 github.com/prometheus/sigv4 v0.5.0 h1:WWZDeiCPFTBJIniIa+pv3edYtPHtZxDAa5w5Tmp+UuQ=
 github.com/prometheus/sigv4 v0.5.0/go.mod h1:oLsQ72mP5bVxsIrFgv/gT2jY1devyRLZhAvrsWG4SEk=
 github.com/prometheus/snmp_exporter v0.29.0 h1:COShgBj1tmWvA5pAkWQgO/lB3+bL/MFqUIqOELSZaBw=
@@ -2597,8 +2597,8 @@ github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 h1:EzJWgHo
 github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415/go.mod h1:GwrjFmJcFw6At/Gs6z4yjiIwzuJ1/+UwLxMQDVQXShQ=
 github.com/xeipuuv/gojsonschema v1.2.0 h1:LhYJRs+L4fBtjZUfuSZIKGeVu0QRy8e5Xi7D17UxZ74=
 github.com/xeipuuv/gojsonschema v1.2.0/go.mod h1:anYRn/JVcOK2ZgGU+IjEV4nwlhoK5sQluxsYJ78Id3Y=
-github.com/xhit/go-str2duration/v2 v2.1.0 h1:lxklc02Drh6ynqX+DdPyp5pCKLUQpRT8bp8Ydu2Bstc=
-github.com/xhit/go-str2duration/v2 v2.1.0/go.mod h1:ohY8p+0f07DiV6Em5LKB0s2YpLtXVyJfNt1+BlmyAsU=
+github.com/xhit/go-str2duration/v2 v2.2.0 h1:SofrD1D+8IuhhkP+OiG1ij4Zq+FiiYSEY/sORBanDG0=
+github.com/xhit/go-str2duration/v2 v2.2.0/go.mod h1:ohY8p+0f07DiV6Em5LKB0s2YpLtXVyJfNt1+BlmyAsU=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
 github.com/xo/dburl v0.24.2 h1:aK6ASamrFjKl76h/UCBecc0BPBi97+IVmw4YWxx0rno=
 github.com/xo/dburl v0.24.2/go.mod h1:uazlaAQxj4gkshhfuuYyvwCBouOmNnG2aDxTCFZpmL4=

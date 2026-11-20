@@ -19,30 +19,38 @@ func init() {
 type Config struct {
 	EnabledCollectors string `yaml:"enabled_collectors"`
 
-	Dfsr               DfsrConfig               `yaml:"dfsr,omitempty"`
-	Exchange           ExchangeConfig           `yaml:"exchange,omitempty"`
-	MSCluster          MSClusterConfig          `yaml:"mscluster,omitempty"`
-	NetFramework       NetFrameworkConfig       `yaml:"netframework,omitempty"`
-	IIS                IISConfig                `yaml:"iis,omitempty"`
-	TextFile           TextFileConfig           `yaml:"text_file,omitempty"`
-	SMTP               SMTPConfig               `yaml:"smtp,omitempty"`
-	Service            ServiceConfig            `yaml:"service,omitempty"`
-	PhysicalDisk       PhysicalDiskConfig       `yaml:"physical_disk,omitempty"`
-	Process            ProcessConfig            `yaml:"process,omitempty"`
-	Network            NetworkConfig            `yaml:"network,omitempty"`
-	MSSQL              MSSQLConfig              `yaml:"mssql,omitempty"`
-	LogicalDisk        LogicalDiskConfig        `yaml:"logical_disk,omitempty"`
-	ScheduledTask      ScheduledTaskConfig      `yaml:"scheduled_task,omitempty"`
-	Printer            PrinterConfig            `yaml:"printer,omitempty"`
-	SMB                SMBConfig                `yaml:"smb,omitempty"`
-	SMBClient          SMBClientConfig          `yaml:"smb_client,omitempty"`
-	TCP                TCPConfig                `yaml:"tcp,omitempty"`
-	Update             UpdateConfig             `yaml:"update,omitempty"`
+	Dfsr          DfsrConfig          `yaml:"dfsr,omitempty"`
+	Exchange      ExchangeConfig      `yaml:"exchange,omitempty"`
+	MSCluster     MSClusterConfig     `yaml:"mscluster,omitempty"`
+	NetFramework  NetFrameworkConfig  `yaml:"netframework,omitempty"`
+	IIS           IISConfig           `yaml:"iis,omitempty"`
+	TextFile      TextFileConfig      `yaml:"text_file,omitempty"`
+	SMTP          SMTPConfig          `yaml:"smtp,omitempty"`
+	Service       ServiceConfig       `yaml:"service,omitempty"`
+	PhysicalDisk  PhysicalDiskConfig  `yaml:"physical_disk,omitempty"`
+	Process       ProcessConfig       `yaml:"process,omitempty"`
+	Network       NetworkConfig       `yaml:"network,omitempty"`
+	MSSQL         MSSQLConfig         `yaml:"mssql,omitempty"`
+	LogicalDisk   LogicalDiskConfig   `yaml:"logical_disk,omitempty"`
+	ScheduledTask ScheduledTaskConfig `yaml:"scheduled_task,omitempty"`
+	Printer       PrinterConfig       `yaml:"printer,omitempty"`
+	SMB           SMBConfig           `yaml:"smb,omitempty"`
+	SMBClient     SMBClientConfig     `yaml:"smb_client,omitempty"`
+	TCP           TCPConfig           `yaml:"tcp,omitempty"`
+	Update        UpdateConfig        `yaml:"update,omitempty"`
+	File          FileConfig          `yaml:"file,omitempty"`
+	// Filetime is deprecated. The upstream filetime collector is now the file collector.
 	Filetime           FiletimeConfig           `yaml:"filetime,omitempty"`
 	PerformanceCounter PerformanceCounterConfig `yaml:"performancecounter,omitempty"`
+	Container          ContainerConfig          `yaml:"container,omitempty"`
+	Registry           RegistryConfig           `yaml:"registry,omitempty"`
+	WMI                WMIConfig                `yaml:"wmi,omitempty"`
 	DNS                DNSConfig                `yaml:"dns,omitempty"`
 	Net                NetConfig                `yaml:"net,omitempty"`
 	Time               TimeConfig               `yaml:"time,omitempty"`
+	HyperV             HyperVConfig             `yaml:"hyperv,omitempty"`
+	DHCP               DHCPConfig               `yaml:"dhcp,omitempty"`
+	StorageSpaces      StorageSpacesConfig      `yaml:"storage_spaces,omitempty"`
 }
 
 // Name returns the name used, "windows_explorer"
@@ -95,9 +103,32 @@ type UpdateConfig struct {
 	ScrapeInterval time.Duration `yaml:"scrape_interval,omitempty"`
 }
 
-// FiletimeConfig handles settings for the windows_exporter filetime collector
+// FileConfig handles settings for the windows_exporter file collector
+type FileConfig struct {
+	FilePatterns []string `yaml:"file_patterns,omitempty"`
+}
+
+// FiletimeConfig handles settings for the removed windows_exporter filetime collector.
+// Its patterns are passed to the file collector.
 type FiletimeConfig struct {
 	FilePatterns []string `yaml:"file_patterns,omitempty"`
+}
+
+// ContainerConfig handles settings for the windows_exporter container collector
+type ContainerConfig struct {
+	CRIEndpoint string `yaml:"cri_endpoint,omitempty"`
+}
+
+// RegistryConfig handles settings for the windows_exporter registry collector
+type RegistryConfig struct {
+	// Keys is a YAML list of registry keys to export.
+	Keys string `yaml:"keys,omitempty"`
+}
+
+// WMIConfig handles settings for the windows_exporter wmi collector
+type WMIConfig struct {
+	// Queries is a YAML list of WMI queries to export.
+	Queries string `yaml:"queries,omitempty"`
 }
 
 // PerformanceCounterConfig handles settings for the windows_exporter performance counter collector
@@ -143,7 +174,8 @@ type ProcessConfig struct {
 	Include                string `yaml:"include,omitempty"`
 	Exclude                string `yaml:"exclude,omitempty"`
 	EnableIISWorkerProcess bool   `yaml:"enable_iis_worker_process,omitempty"`
-	CounterVersion         uint8  `yaml:"counter_version,omitempty"` // 0 for autoselect, 1 for v1, 2 for v2
+	// CounterVersion is not used. windows_exporter v0.32 removed the option.
+	CounterVersion uint8 `yaml:"counter_version,omitempty"`
 }
 
 // NetworkConfig handles settings for the windows_exporter network collector
@@ -170,8 +202,9 @@ type LogicalDiskConfig struct {
 
 // ScheduledTaskConfig handles settings for the windows_exporter scheduled_task collector
 type ScheduledTaskConfig struct {
-	Include string `yaml:"include,omitempty"`
-	Exclude string `yaml:"exclude,omitempty"`
+	Include    string `yaml:"include,omitempty"`
+	Exclude    string `yaml:"exclude,omitempty"`
+	MissedRuns bool   `yaml:"missed_runs,omitempty"`
 }
 
 // PhysicalDiskConfig handles settings for the windows_exporter physical disk collector
@@ -207,5 +240,21 @@ type NetConfig struct {
 
 // TimeConfig handles settings for the windows_exporter time collector
 type TimeConfig struct {
+	EnabledList string `yaml:"enabled_list,omitempty"`
+}
+
+// HyperVConfig handles settings for the windows_exporter hyperv collector
+type HyperVConfig struct {
+	EnabledList                    string        `yaml:"enabled_list,omitempty"`
+	VirtualHardDiskRefreshInterval time.Duration `yaml:"virtual_hard_disk_refresh_interval,omitempty"`
+}
+
+// DHCPConfig handles settings for the windows_exporter dhcp collector
+type DHCPConfig struct {
+	EnabledList string `yaml:"enabled_list,omitempty"`
+}
+
+// StorageSpacesConfig handles settings for the windows_exporter storage_spaces collector
+type StorageSpacesConfig struct {
 	EnabledList string `yaml:"enabled_list,omitempty"`
 }

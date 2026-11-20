@@ -3,6 +3,7 @@ package windows
 import (
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
@@ -82,8 +83,41 @@ var (
 			file_patterns = ["example"]
 		}
 
+		file {
+			file_patterns = ["C:\\logs\\*.log"]
+		}
+
+		container {
+			cri_endpoint = "npipe:////./pipe/custom"
+		}
+
+		scheduled_task {
+			missed_runs = true
+		}
+
+		registry {
+			keys = "- name: example"
+		}
+
+		wmi {
+			queries = "- name: example"
+		}
+
 		time {
 			enabled_list = ["example"]
+		}
+
+		hyperv {
+			enabled_list = ["host"]
+			virtual_hard_disk_refresh_interval = "10m"
+		}
+
+		dhcp {
+			enabled_list = ["server_metrics"]
+		}
+
+		storage_spaces {
+			enabled_list = ["pool"]
 		}
 
 		performancecounter {
@@ -132,7 +166,16 @@ func TestAlloyUnmarshal(t *testing.T) {
 
 	require.Equal(t, []string{"example"}, args.TCP.EnabledList)
 	require.Equal(t, []string{"example"}, args.Filetime.FilePatterns)
+	require.Equal(t, []string{`C:\logs\*.log`}, args.File.FilePatterns)
+	require.Equal(t, "npipe:////./pipe/custom", args.Container.CRIEndpoint)
+	require.True(t, args.ScheduledTask.MissedRuns)
+	require.Equal(t, "- name: example", args.Registry.Keys)
+	require.Equal(t, "- name: example", args.WMI.Queries)
 	require.Equal(t, []string{"example"}, args.Time.EnabledList)
+	require.Equal(t, []string{"host"}, args.HyperV.EnabledList)
+	require.Equal(t, 10*time.Minute, args.HyperV.VirtualHardDiskRefreshInterval)
+	require.Equal(t, []string{"server_metrics"}, args.DHCP.EnabledList)
+	require.Equal(t, []string{"pool"}, args.StorageSpaces.EnabledList)
 	// This isn't a real example, and the recommendation would be to use a file rather than a raw string
 	require.Equal(t, "---\t- name: \"Processor\"\t\tcounters:\t\t\t- name: \"% Processor Time\"\t\t\t  instance: \"_Total\"\t\t\t  type: \"counter\"\t\t\t  labels:\t\t\t\t  state: idle", args.PerformanceCounter.Objects)
 }
@@ -170,5 +213,14 @@ func TestConvert(t *testing.T) {
 	require.Equal(t, "^(?:.+)$", conf.LogicalDisk.Include)
 	require.Equal(t, "example", conf.TCP.EnabledList)
 	require.Equal(t, []string{"example"}, conf.Filetime.FilePatterns)
+	require.Equal(t, []string{`C:\logs\*.log`}, conf.File.FilePatterns)
+	require.Equal(t, "npipe:////./pipe/custom", conf.Container.CRIEndpoint)
+	require.True(t, conf.ScheduledTask.MissedRuns)
+	require.Equal(t, "- name: example", conf.Registry.Keys)
+	require.Equal(t, "- name: example", conf.WMI.Queries)
 	require.Equal(t, "example", conf.Time.EnabledList)
+	require.Equal(t, "host", conf.HyperV.EnabledList)
+	require.Equal(t, 10*time.Minute, conf.HyperV.VirtualHardDiskRefreshInterval)
+	require.Equal(t, "server_metrics", conf.DHCP.EnabledList)
+	require.Equal(t, "pool", conf.StorageSpaces.EnabledList)
 }

@@ -1,0 +1,28 @@
+// The CI runner runs as a Windows service, so Alloy would log to the Event Log by default.
+logging {
+  destination = "stderr"
+}
+
+prometheus.exporter.windows "test" {
+  enabled_collectors = ["cpu", "registry", "wmi"]
+
+  registry {
+    keys = `
+- name: windows_nt
+  key: HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion
+  values:
+    - name: CurrentMajorVersionNumber
+      metric: windows_registry_windows_major_version
+`
+  }
+
+  wmi {
+    queries = `
+- name: os
+  class: Win32_OperatingSystem
+  properties:
+    - name: NumberOfProcesses
+      metric: windows_wmi_os_processes
+`
+  }
+}

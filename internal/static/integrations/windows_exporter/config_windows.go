@@ -2,6 +2,7 @@ package windows_exporter
 
 import (
 	"errors"
+	"io"
 	"maps"
 	"regexp"
 	"slices"
@@ -30,35 +31,58 @@ var msclusterCollectors = map[string]struct{}{
 	"mscluster_resourcegroup": {},
 }
 
-func (c *Config) ToWindowsExporterConfig() (collector.Config, error) {
-	var err error
-
-	enabledCollectors := make(map[string][]string, len(c.EnabledCollectors))
-	for _, coll := range strings.Split(c.EnabledCollectors, ",") {
+// normalizeCollectors translates the configured collector names to the names that
+// windows_exporter accepts. It returns the top-level names and the sub-collectors
+// for the grouped netframework and mscluster collectors. It does not change the config.
+func normalizeCollectors(input string) (names []string, subCollectors map[string][]string) {
+	enabled := map[string]struct{}{}
+	subCollectors = map[string][]string{}
+	for _, coll := range strings.Split(input, ",") {
+		coll = strings.TrimSpace(coll)
+		if coll == "" {
+			continue
+		}
+		// windows_exporter v0.32 renamed filetime to file and removed thermalzone.
+		// Stopping at startup would break existing configs, so translate or drop them.
+		switch coll {
+		case "filetime":
+			coll = "file"
+		case "thermalzone":
+			continue
+		}
 		if _, ok := netframeworkCollectors[coll]; ok {
-			enabledCollectors["netframework"] = append(enabledCollectors["netframework"], strings.TrimPrefix(coll, "netframework_"))
+			enabled["netframework"] = struct{}{}
+			subCollectors["netframework"] = append(subCollectors["netframework"], strings.TrimPrefix(coll, "netframework_"))
 			continue
 		}
 		if _, ok := msclusterCollectors[coll]; ok {
-			enabledCollectors["mscluster"] = append(enabledCollectors["mscluster"], strings.TrimPrefix(coll, "mscluster_"))
+			enabled["mscluster"] = struct{}{}
+			subCollectors["mscluster"] = append(subCollectors["mscluster"], strings.TrimPrefix(coll, "mscluster_"))
 			continue
 		}
-		enabledCollectors[coll] = []string{}
+		enabled[coll] = struct{}{}
 	}
-	c.EnabledCollectors = strings.Join(slices.Collect(maps.Keys(enabledCollectors)), ",")
+	names = slices.Sorted(maps.Keys(enabled))
+	return names, subCollectors
+}
+
+func (c *Config) ToWindowsExporterConfig() (collector.Config, error) {
+	var err error
+
+	_, enabledCollectors := normalizeCollectors(c.EnabledCollectors)
 
 	errs := make([]error, 0, 18)
 
 	cfg := collector.ConfigDefaults
-	cfg.DFSR.CollectorsEnabled = strings.Split(c.Dfsr.SourcesEnabled, ",")
-	cfg.Exchange.CollectorsEnabled = strings.Split(c.Exchange.EnabledList, ",")
+	cfg.DFSR.CollectorsEnabled = splitNonEmpty(c.Dfsr.SourcesEnabled)
+	cfg.Exchange.CollectorsEnabled = splitNonEmpty(c.Exchange.EnabledList)
 
 	if len(c.MSCluster.EnabledList) > 0 || len(enabledCollectors["mscluster"]) > 0 {
-		cfg.MSCluster.CollectorsEnabled = append(strings.Split(c.MSCluster.EnabledList, ","), enabledCollectors["mscluster"]...)
+		cfg.MSCluster.CollectorsEnabled = append(splitNonEmpty(c.MSCluster.EnabledList), enabledCollectors["mscluster"]...)
 	}
 
 	if len(c.NetFramework.EnabledList) > 0 || len(enabledCollectors["netframework"]) > 0 {
-		cfg.NetFramework.CollectorsEnabled = append(strings.Split(c.NetFramework.EnabledList, ","), enabledCollectors["netframework"]...)
+		cfg.NetFramework.CollectorsEnabled = append(splitNonEmpty(c.NetFramework.EnabledList), enabledCollectors["netframework"]...)
 	}
 
 	cfg.IIS.SiteInclude, err = regexp.Compile(coalesceString(c.IIS.SiteInclude, c.IIS.SiteWhiteList))
@@ -99,30 +123,32 @@ func (c *Config) ToWindowsExporterConfig() (collector.Config, error) {
 	cfg.Process.ProcessInclude, err = regexp.Compile(coalesceString(c.Process.Include, c.Process.WhiteList))
 	errs = append(errs, err)
 	cfg.Process.EnableWorkerProcess = c.Process.EnableIISWorkerProcess
-	cfg.Process.CounterVersion = c.Process.CounterVersion
 
 	cfg.Net.NicExclude, err = regexp.Compile(coalesceString(c.Network.Exclude, c.Network.BlackList))
 	errs = append(errs, err)
 	cfg.Net.NicInclude, err = regexp.Compile(coalesceString(c.Network.Include, c.Network.WhiteList))
 	errs = append(errs, err)
 
-	cfg.Mssql.CollectorsEnabled = strings.Split(c.MSSQL.EnabledClasses, ",")
+	cfg.Mssql.CollectorsEnabled = splitNonEmpty(c.MSSQL.EnabledClasses)
 
 	cfg.LogicalDisk.VolumeInclude, err = regexp.Compile(coalesceString(c.LogicalDisk.Include, c.LogicalDisk.WhiteList))
 	errs = append(errs, err)
 	cfg.LogicalDisk.VolumeExclude, err = regexp.Compile(coalesceString(c.LogicalDisk.Exclude, c.LogicalDisk.BlackList))
 	errs = append(errs, err)
 
-	cfg.LogicalDisk.CollectorsEnabled = strings.Split(c.LogicalDisk.EnabledList, ",")
+	cfg.LogicalDisk.CollectorsEnabled = splitNonEmpty(c.LogicalDisk.EnabledList)
 
 	cfg.ScheduledTask.TaskInclude, err = regexp.Compile(c.ScheduledTask.Include)
 	errs = append(errs, err)
 	cfg.ScheduledTask.TaskExclude, err = regexp.Compile(c.ScheduledTask.Exclude)
 	errs = append(errs, err)
 
-	cfg.Filetime.FilePatterns = c.Filetime.FilePatterns
+	// The deprecated filetime patterns use the same glob syntax as the file collector.
+	filePatterns := slices.Concat(c.File.FilePatterns, c.Filetime.FilePatterns)
+	slices.Sort(filePatterns)
+	cfg.File.FilePatterns = slices.Compact(filePatterns)
 
-	cfg.TCP.CollectorsEnabled = strings.Split(c.TCP.EnabledList, ",")
+	cfg.TCP.CollectorsEnabled = splitNonEmpty(c.TCP.EnabledList)
 
 	// These objects are all internal and the best way to handle is to accept as a string and unmarshal
 	// into the config struct
@@ -133,17 +159,67 @@ func (c *Config) ToWindowsExporterConfig() (collector.Config, error) {
 		}
 	}
 
-	cfg.DNS.CollectorsEnabled = strings.Split(c.DNS.EnabledList, ",")
+	cfg.ScheduledTask.MissedRuns = c.ScheduledTask.MissedRuns
 
-	cfg.Net.CollectorsEnabled = strings.Split(c.Net.EnabledList, ",")
+	if c.Container.CRIEndpoint != "" {
+		cfg.Container.CRIEndpoint = c.Container.CRIEndpoint
+	}
+
+	if c.Registry.Keys != "" {
+		err = decodeStrict(c.Registry.Keys, &cfg.Registry.Keys)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if c.WMI.Queries != "" {
+		err = decodeStrict(c.WMI.Queries, &cfg.WMI.Queries)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	cfg.DNS.CollectorsEnabled = splitNonEmpty(c.DNS.EnabledList)
+
+	cfg.Net.CollectorsEnabled = splitNonEmpty(c.Net.EnabledList)
 	cfg.Net.NicExclude, err = regexp.Compile(c.Net.Exclude)
 	errs = append(errs, err)
 	cfg.Net.NicInclude, err = regexp.Compile(c.Net.Include)
 	errs = append(errs, err)
 
-	cfg.Time.CollectorsEnabled = strings.Split(c.Time.EnabledList, ",")
+	cfg.Time.CollectorsEnabled = splitNonEmpty(c.Time.EnabledList)
+
+	cfg.HyperV.CollectorsEnabled = splitNonEmpty(c.HyperV.EnabledList)
+	if c.HyperV.VirtualHardDiskRefreshInterval > 0 {
+		cfg.HyperV.VirtualHardDisk.RefreshInterval = c.HyperV.VirtualHardDiskRefreshInterval
+	}
+	cfg.Dhcp.CollectorsEnabled = splitNonEmpty(c.DHCP.EnabledList)
+	cfg.StorageSpaces.CollectorsEnabled = splitNonEmpty(c.StorageSpaces.EnabledList)
 
 	return cfg, errors.Join(errs...)
+}
+
+// splitNonEmpty splits a comma-separated list and drops empty items.
+// windows_exporter v0.32 rejects an empty sub-collector name.
+func splitNonEmpty(list string) []string {
+	items := make([]string, 0)
+	for _, item := range strings.Split(list, ",") {
+		if item = strings.TrimSpace(item); item != "" {
+			items = append(items, item)
+		}
+	}
+	return items
+}
+
+// decodeStrict decodes a YAML document and rejects unknown keys, like windows_exporter does.
+// An empty document, or one with only comments, is valid and leaves out unchanged.
+func decodeStrict(doc string, out any) error {
+	dec := yaml.NewDecoder(strings.NewReader(doc))
+	dec.KnownFields(true)
+	if err := dec.Decode(out); err != nil && !errors.Is(err, io.EOF) {
+		return err
+	}
+	return nil
 }
 
 func coalesceString(v ...string) string {
@@ -210,11 +286,11 @@ var DefaultConfig = Config{
 		Include:                collector.ConfigDefaults.Process.ProcessInclude.String(),
 		Exclude:                collector.ConfigDefaults.Process.ProcessExclude.String(),
 		EnableIISWorkerProcess: collector.ConfigDefaults.Process.EnableWorkerProcess,
-		CounterVersion:         collector.ConfigDefaults.Process.CounterVersion,
 	},
 	ScheduledTask: ScheduledTaskConfig{
-		Include: collector.ConfigDefaults.ScheduledTask.TaskInclude.String(),
-		Exclude: collector.ConfigDefaults.ScheduledTask.TaskExclude.String(),
+		Include:    collector.ConfigDefaults.ScheduledTask.TaskInclude.String(),
+		Exclude:    collector.ConfigDefaults.ScheduledTask.TaskExclude.String(),
+		MissedRuns: collector.ConfigDefaults.ScheduledTask.MissedRuns,
 	},
 	Service: ServiceConfig{
 		Include: collector.ConfigDefaults.Service.ServiceInclude.String(),
@@ -242,11 +318,15 @@ var DefaultConfig = Config{
 		Online:         collector.ConfigDefaults.Update.Online,
 		ScrapeInterval: collector.ConfigDefaults.Update.ScrapeInterval,
 	},
-	Filetime: FiletimeConfig{
-		FilePatterns: collector.ConfigDefaults.Filetime.FilePatterns,
+	File: FileConfig{
+		FilePatterns: collector.ConfigDefaults.File.FilePatterns,
 	},
+
 	PerformanceCounter: PerformanceCounterConfig{
 		Objects: "", // default is empty, we yaml unmarshal the config
+	},
+	Container: ContainerConfig{
+		CRIEndpoint: collector.ConfigDefaults.Container.CRIEndpoint,
 	},
 	DNS: DNSConfig{
 		EnabledList: strings.Join(collector.ConfigDefaults.DNS.CollectorsEnabled, ","),
@@ -258,6 +338,16 @@ var DefaultConfig = Config{
 	},
 	Time: TimeConfig{
 		EnabledList: strings.Join(collector.ConfigDefaults.Time.CollectorsEnabled, ","),
+	},
+	HyperV: HyperVConfig{
+		EnabledList:                    strings.Join(collector.ConfigDefaults.HyperV.CollectorsEnabled, ","),
+		VirtualHardDiskRefreshInterval: collector.ConfigDefaults.HyperV.VirtualHardDisk.RefreshInterval,
+	},
+	DHCP: DHCPConfig{
+		EnabledList: strings.Join(collector.ConfigDefaults.Dhcp.CollectorsEnabled, ","),
+	},
+	StorageSpaces: StorageSpacesConfig{
+		EnabledList: strings.Join(collector.ConfigDefaults.StorageSpaces.CollectorsEnabled, ","),
 	},
 }
 

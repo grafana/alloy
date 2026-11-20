@@ -1,0 +1,12 @@
+// The CI runner runs as a Windows service, so Alloy would log to the Event Log by default.
+logging {
+  destination = "stderr"
+}
+
+prometheus.exporter.windows "test" {
+  enabled_collectors = ["scheduled_task"]
+
+  scheduled_task {
+    exclude = "^$"
+  }
+}
