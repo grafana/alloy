@@ -44,6 +44,7 @@ require (
 	github.com/dimchansky/utfbom v1.1.1
 	github.com/drone/envsubst/v2 v2.0.0-20210730161058-179042472c46
 	github.com/elastic/go-freelru v0.16.0
+	github.com/euank/go-kmsg-parser v2.0.0+incompatible
 	github.com/fatih/color v1.19.0
 	github.com/fortytw2/leaktest v1.3.0
 	github.com/fsnotify/fsnotify v1.10.1
