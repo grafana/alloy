@@ -23,8 +23,8 @@ Bug reports or feature requests will be redirected to the upstream repository, i
 {{< /admonition >}}
 
 {{< admonition type="warning" >}}
-`otelcol.processor.tail_sampling` reassembles spans into new batches, causing them to lose their original request context.
-This processor must be placed in pipelines after any processors that rely on context, such as `otelcol.processor.k8sattributes`.
+`otelcol.processor.tail_sampling` reassembles spans into new batches, so the spans lose their original request context.
+Connect components that read request context, such as `otelcol.processor.k8sattributes`, before this component.
 {{< /admonition >}}
 
 You can specify multiple `otelcol.processor.tail_sampling` components by giving them different labels.
