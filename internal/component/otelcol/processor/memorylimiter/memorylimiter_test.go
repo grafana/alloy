@@ -246,7 +246,7 @@ func TestMiBRounding(t *testing.T) {
 		},
 		{
 			name:  "a fractional limit rounds down",
-			cfg:   `check_interval = "1s"` + "\n" + `limit = "102912KiB"` + "\n" + `output {}`,
+			cfg:   `check_interval = "1s"` + "\n" + `limit = "102912KiB"` + "\n" + `spike_limit = "20992KiB"` + "\n" + `output {}`,
 			limit: 100,
 			spike: 20,
 		},

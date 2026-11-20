@@ -3,7 +3,6 @@ package otelcolconvert
 import (
 	"fmt"
 
-	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/memorylimiter"
 	"github.com/grafana/alloy/internal/converter/diag"
@@ -52,22 +51,12 @@ func toMemoryLimiterProcessor(state *State, id componentstatus.InstanceID, cfg *
 		nextTraces  = state.Next(id, pipeline.SignalTraces)
 	)
 
-	return &memorylimiter.Arguments{
-		CheckInterval:         cfg.CheckInterval,
-		MemoryLimit:           units.Base2Bytes(cfg.MemoryLimitMiB) * units.MiB,
-		MemorySpikeLimit:      units.Base2Bytes(cfg.MemorySpikeLimitMiB) * units.MiB,
-		MemoryLimitPercentage: cfg.MemoryLimitPercentage,
-		MemorySpikePercentage: cfg.MemorySpikePercentage,
-
-		MinGCIntervalWhenSoftLimited: cfg.MinGCIntervalWhenSoftLimited,
-		MinGCIntervalWhenHardLimited: cfg.MinGCIntervalWhenHardLimited,
-		MaxGCIntervalWhenSoftLimited: cfg.MaxGCIntervalWhenSoftLimited,
-		MaxGCIntervalWhenHardLimited: cfg.MaxGCIntervalWhenHardLimited,
-		Output: &otelcol.ConsumerArguments{
-			Metrics: ToTokenizedConsumers(nextMetrics),
-			Logs:    ToTokenizedConsumers(nextLogs),
-			Traces:  ToTokenizedConsumers(nextTraces),
-		},
-		DebugMetrics: common.DefaultValue[memorylimiter.Arguments]().DebugMetrics,
+	args := memorylimiter.ArgumentsFromUpstream(cfg)
+	args.Output = &otelcol.ConsumerArguments{
+		Metrics: ToTokenizedConsumers(nextMetrics),
+		Logs:    ToTokenizedConsumers(nextLogs),
+		Traces:  ToTokenizedConsumers(nextTraces),
 	}
+	args.DebugMetrics = common.DefaultValue[memorylimiter.Arguments]().DebugMetrics
+	return &args
 }

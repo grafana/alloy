@@ -52,6 +52,7 @@
 ##   generate-helm-tests       Generate Helm chart tests.
 ##   generate-ui               Generate the UI assets.
 ##   generate-graphql          Generate the GraphQL assets.
+##   generate-otelcol          Generate otelcol component wrappers. Set OTELGEN_UPDATE_TESTS=1 to rewrite generated tests.
 ##   generate-winmanifest      Generate the Windows application manifest.
 ##   generate-snmp             Generate SNMP modules from prometheus/snmp_exporter for prometheus.exporter.snmp and bumps SNMP version in _index.md.t.
 ##   generate-source-code      Wrapper for collector distro codegen (skips when CI=true or SKIP_CODE_GENERATION=1).
@@ -382,14 +383,21 @@ alloy-image-windows:
 # Targets for generating assets
 #
 
-.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-source-code generate-otel-collector-distro generate-graphql
-generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-otel-collector-distro generate-graphql
+.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-source-code generate-otel-collector-distro generate-graphql generate-otelcol
+generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-otel-collector-distro generate-graphql generate-otelcol
 
 generate-graphql:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
 	cd ./internal/service/graphql && GOOS= GOARCH= go generate ./...
+endif
+
+generate-otelcol:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	GOOS= GOARCH= go run ./internal/component/otelcol/otelgen/cmd $(if $(OTELGEN_UPDATE_TESTS),-update-tests) ./internal/component/otelcol
 endif
 
 generate-helm-docs:
