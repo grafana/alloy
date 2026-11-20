@@ -62,7 +62,9 @@ Set `custom_queries_config_path` to expose additional metrics from a configurati
 Set `disable_default_metrics` to `true` to expose only the metrics from `custom_queries_config_path`.
 That makes `custom_queries_config_path` required, and you can't set `enabled_collectors`.
 
-Set `enabled_collectors` to control a subset of the metrics collectors.
+Set `enabled_collectors` to replace the default collector list with an explicit list.
+Set `disable_settings_metrics` to `true` to remove `settings` from either list.
+If this removes the only selected collector, no standalone collectors run.
 The following collectors are available for selection:
 
 {{< column-list >}}
@@ -75,13 +77,17 @@ The following collectors are available for selection:
 * `postmaster`
 * `process_idle`
 * `replication`
-* `replication_slot`
+* `replication_slots`
 * `roles`
+* `settings`
+* `stat_activity`
 * `stat_activity_autovacuum`
+* `stat_archiver`
 * `stat_bgwriter`
 * `stat_checkpointer` - Only supported in PostgreSQL 17 and later
 * `stat_database`
 * `stat_progress_vacuum`
+* `stat_replication`
 * `stat_statements`
 * `stat_user_tables`
 * `stat_wal_receiver`
@@ -99,11 +105,15 @@ The component enables the following collectors by default:
 * `database`
 * `locks`
 * `replication`
-* `replication_slot`
+* `replication_slots`
 * `roles`
+* `settings`
+* `stat_activity`
+* `stat_archiver`
 * `stat_bgwriter`
 * `stat_database`
 * `stat_progress_vacuum`
+* `stat_replication`
 * `stat_user_tables`
 * `statio_user_tables`
 * `wal`
@@ -118,6 +128,29 @@ The component sets the `instance` label on its exported targets to a simplified 
 The component omits the port when the data source name specifies a host without a port.
 When the data source name omits the host, the component uses `localhost:5432`.
 When you configure more than one data source name, the component sets the `instance` label to the component ID.
+
+## Upgrading to postgres_exporter v0.20.1
+
+The embedded exporter follows the upstream v0.20.1 collector behavior.
+When upgrading from earlier versions, review these changes:
+
+- Change `replication_slot` to `replication_slots` in `enabled_collectors` and in filters on the `collector` label of scrape diagnostic metrics.
+- The `settings`, `stat_activity`, `stat_archiver`, and `stat_replication` metric groups move to standalone collectors. Replication-slot active and lag metrics move into `replication_slots`.
+  These groups are enabled by default, but an explicit `enabled_collectors` list must include them to keep collecting them.
+- These migrated metrics no longer include the legacy exporter's `server` label. Their existing database, table, and replication labels remain available.
+- `disable_default_metrics = true` suppresses all standalone collectors, including settings. Previously, settings were controlled independently by `disable_settings_metrics`.
+- The migrated groups now run only for the first configured data source. `autodiscovery` continues to affect the legacy and custom-query exporter, but doesn't expand standalone collection. Use separate components for separate servers.
+- Custom queries no longer replace the migrated default queries automatically. To avoid overlapping metrics, omit the corresponding standalone collector from `enabled_collectors` when a custom query supplies those metrics.
+
+Update dashboards, alerts, and recording rules for these upstream metric renames:
+
+| Previous metric | Metric in v0.20.1 |
+| --- | --- |
+| `pg_replication_slot_slot_current_wal_lsn` | `pg_replication_slots_slot_current_wal_lsn` |
+| `pg_replication_slot_slot_confirmed_flush_lsn` | `pg_replication_slots_slot_confirmed_flush_lsn` |
+| `pg_replication_slot_slot_is_active` | `pg_replication_slots_slot_is_active` |
+| `pg_replication_slot_safe_wal_size_bytes` | `pg_replication_slots_safe_wal_size_bytes` |
+| `pg_replication_slot_wal_status` | `pg_replication_slots_wal_status` |
 
 ## Blocks
 

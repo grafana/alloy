@@ -805,7 +805,7 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20260805114148-88456608a4f6 // indirect
 	github.com/prometheus-community/elasticsearch_exporter v1.5.0 // indirect
 	github.com/prometheus-community/go-runit v0.1.0 // indirect
-	github.com/prometheus-community/postgres_exporter v0.19.0 // indirect
+	github.com/prometheus-community/postgres_exporter v0.20.1 // indirect
 	github.com/prometheus-community/prom-label-proxy v0.15.0 // indirect
 	github.com/prometheus-community/stackdriver_exporter v0.18.0 // indirect
 	github.com/prometheus-community/windows_exporter v0.31.3 // indirect
@@ -1131,7 +1131,7 @@ replace github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-2026102
 
 replace github.com/google/cadvisor/lib => github.com/grafana/cadvisor/lib v0.0.0-20261027180521-39c571fbfcf6
 
-replace github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20260225165717-9c2c77e3702a
+replace github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.20.2-0.20261111192754-3ee30dcdcc1a
 
 replace github.com/prometheus/mysqld_exporter => github.com/grafana/mysqld_exporter v0.0.0-20260319134024-e0461af8db16
 
