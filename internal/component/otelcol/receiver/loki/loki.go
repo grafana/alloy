@@ -3,6 +3,7 @@ package loki
 
 import (
 	"context"
+	"fmt"
 	"path"
 	"slices"
 	"strings"
@@ -22,6 +23,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingpublisher"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/livedebugging"
+	"github.com/grafana/alloy/internal/service/lokipipelinev2"
 )
 
 func init() {
@@ -53,7 +55,8 @@ type Exports struct {
 
 // Component is the otelcol.receiver.loki component.
 type Component struct {
-	opts component.Options
+	opts       component.Options
+	pipelineV2 bool
 
 	mut      sync.RWMutex
 	stopped  bool
@@ -76,16 +79,26 @@ func New(o component.Options, c Arguments) (*Component, error) {
 		return nil, err
 	}
 
+	lokiSvc, err := o.GetServiceData(lokipipelinev2.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
 	// TODO(@tpaschalis) Create a metrics struct to count
 	// total/successful/errored log entries?
 	res := &Component{
 		opts:               o,
+		pipelineV2:         lokiSvc.(lokipipelinev2.Data).PipelineV2Enabled(),
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
 	// Create and immediately export the receiver which remains the same for
 	// the component's lifetime.
-	res.receiver = loki.NewLogsReceiver(loki.WithComponentID(o.ID))
+	if res.pipelineV2 {
+		res.receiver = loki.NewLogsReceiverV2(res, o.ID)
+	} else {
+		res.receiver = loki.NewLogsReceiver(loki.WithComponentID(o.ID))
+	}
 	o.OnStateChange(Exports{Receiver: res.receiver})
 
 	if err := res.Update(c); err != nil {
@@ -101,6 +114,11 @@ func (c *Component) Run(ctx context.Context) error {
 		defer c.mut.Unlock()
 		c.stopped = true
 	}()
+
+	if c.pipelineV2 {
+		<-ctx.Done()
+		return nil
+	}
 
 	for {
 		select {
@@ -140,10 +158,11 @@ func (c *Component) Update(args component.Arguments) error {
 // Consume implements loki.Consumer.
 func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
 	c.mut.RLock()
-	defer c.mut.RUnlock()
+	stopped, sink := c.stopped, c.logsSink
+	c.mut.RUnlock()
 
-	if c.stopped {
-		return loki.ErrConsumerStopped
+	if stopped {
+		return fmt.Errorf("%s: %w", c.opts.ID, loki.ErrConsumerStopped)
 	}
 
 	if batch.EntryLen() == 0 {
@@ -158,7 +177,8 @@ func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
 		appendToLogRecords(logRecords, stream.Labels, stream.Entries...)
 	}
 
-	return c.logsSink.ConsumeLogs(ctx, logs)
+	// Not holding c.mut here so Update is never blocked behind a slow downstream.
+	return sink.ConsumeLogs(ctx, logs)
 }
 
 func (c *Component) String() string {
