@@ -18,6 +18,100 @@ import (
 	"github.com/grafana/loki/pkg/push"
 )
 
+func TestLabelsAsResourceAttributes(t *testing.T) {
+	lokitest.Test(t, func(t *testing.T, env lokitest.Env) {
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(`
+			labels_as_resource_attributes = true
+			output {}
+		`), &args))
+
+		recv := make(chan plog.Logs, 10)
+		args.Output = makeLogsOutput(recv)
+
+		ctrl, _ := env.Run(t, "otelcol.receiver.loki", args)
+		require.NoError(t, ctrl.WaitExports(time.Second))
+		receiver := ctrl.Exports().(Exports).Receiver
+
+		now := time.Now()
+		send(t, receiver,
+			loki.NewStream(
+				model.LabelSet{"env": "dev", "filename": "/var/log/app.log", "__tenant_id__": "tenant"},
+				push.Entry{Line: "1", Timestamp: now, StructuredMetadata: push.LabelsAdapter{{Name: "trace_id", Value: "abc"}}},
+				push.Entry{Line: "2", Timestamp: now},
+			),
+			loki.NewStream(
+				model.LabelSet{"env": "prod"},
+				push.Entry{Line: "3", Timestamp: now},
+			),
+		)
+
+		devResource := map[string]any{"env": "dev", "filename": "/var/log/app.log"}
+		want := []resourceLogRecord{
+			{resource: devResource, body: "1", attributes: map[string]any{"trace_id": "abc"}},
+			{resource: devResource, body: "2", attributes: map[string]any{}},
+			{resource: map[string]any{"env": "prod"}, body: "3", attributes: map[string]any{}},
+		}
+		require.Equal(t, want, collectResourceLogRecords(t, recv, len(want)))
+	})
+}
+
+// send delivers streams to receiver through Consume for pipeline v2, or entry by entry over Chan for v1.
+func send(t *testing.T, receiver loki.LogsReceiver, streams ...loki.Stream) {
+	t.Helper()
+
+	if c, ok := receiver.(loki.Consumer); ok {
+		batch := loki.NewBatch()
+		for _, s := range streams {
+			batch.Add(s)
+		}
+		require.NoError(t, c.Consume(t.Context(), batch))
+		return
+	}
+
+	for _, s := range streams {
+		for _, e := range s.Entries {
+			select {
+			case receiver.Chan() <- loki.NewEntry(s.Labels, e):
+			case <-time.After(time.Second):
+				require.FailNow(t, "timed out sending entry")
+			}
+		}
+	}
+}
+
+type resourceLogRecord struct {
+	resource   map[string]any
+	body       string
+	attributes map[string]any
+}
+
+// collectResourceLogRecords reads from recv until n log records arrived and flattens them with their resource.
+func collectResourceLogRecords(t *testing.T, recv chan plog.Logs, n int) []resourceLogRecord {
+	t.Helper()
+
+	var got []resourceLogRecord
+	for len(got) < n {
+		select {
+		case logs := <-recv:
+			for _, rl := range logs.ResourceLogs().All() {
+				for _, sl := range rl.ScopeLogs().All() {
+					for _, lr := range sl.LogRecords().All() {
+						got = append(got, resourceLogRecord{
+							resource:   rl.Resource().Attributes().AsRaw(),
+							body:       lr.Body().AsString(),
+							attributes: lr.Attributes().AsRaw(),
+						})
+					}
+				}
+			}
+		case <-time.After(2 * time.Second):
+			require.FailNowf(t, "timeout", "got %d of %d log records", len(got), n)
+		}
+	}
+	return got
+}
+
 func TestComponent(t *testing.T) {
 	lokitest.TestV1(t, func(t *testing.T, env lokitest.Env) {
 		t.Run("LogReceiver", func(t *testing.T) {

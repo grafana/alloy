@@ -32,7 +32,30 @@ otelcol.receiver.loki "<LABEL>" {
 
 ## Arguments
 
-The `otelcol.receiver.loki` component doesn't support any arguments. You can configure this component with blocks.
+You can use the following argument with `otelcol.receiver.loki`:
+
+| Name                            | Type   | Description                                                       | Default | Required |
+|---------------------------------|--------|-------------------------------------------------------------------|---------|----------|
+| `labels_as_resource_attributes` | `bool` | Convert labels to resource attributes instead of log attributes. | `false` | no       |
+
+By default, `otelcol.receiver.loki` converts every label to a log attribute and adds a `loki.attribute.labels` attribute that lists them, so [`otelcol.exporter.loki`][otelcol.exporter.loki] can convert them back to labels.
+If a log has a `filename` label, the component also sets the `log.file.path` and `log.file.name` log attributes from it.
+
+When you set `labels_as_resource_attributes` to `true`, each set of labels becomes the resource attributes of the logs that have those labels:
+
+* Labels that start with `__`, such as `__tenant_id__`, are dropped.
+* The component doesn't add the `loki.attribute.labels` attribute.
+
+Apart from dropping labels that start with `__`, the component maps labels to resource attributes as they are and doesn't rename or add any.
+To choose which labels become resource attributes, use [`loki.relabel`][loki.relabel] or [`loki.process`][loki.process] before `otelcol.receiver.loki`.
+To rename resource attributes to OpenTelemetry semantic convention names, such as `service_name` to `service.name`, use [`otelcol.processor.transform`][otelcol.processor.transform] after `otelcol.receiver.loki`.
+To move a value that can differ between log records, such as structured metadata, to the resource, you also need [`otelcol.processor.groupbyattrs`][otelcol.processor.groupbyattrs] to regroup the logs.
+
+[otelcol.exporter.loki]: ../otelcol.exporter.loki/
+[otelcol.processor.transform]: ../otelcol.processor.transform/
+[otelcol.processor.groupbyattrs]: ../otelcol.processor.groupbyattrs/
+[loki.relabel]: ../../loki/loki.relabel/
+[loki.process]: ../../loki/loki.process/
 
 ## Blocks
 
@@ -70,7 +93,9 @@ The following fields are exported and can be referenced by other components:
 
 `otelcol.receiver.loki` doesn't expose any component-specific debug information.
 
-## Example
+## Examples
+
+### Bridge Loki and OpenTelemetry
 
 This example uses the `otelcol.receiver.loki` component as a bridge between the Loki and OpenTelemetry ecosystems.
 The component exposes a receiver which the `loki.source.file` component uses to send Loki log entries to.
@@ -86,6 +111,50 @@ loki.source.file "default" {
 }
 
 otelcol.receiver.loki "default" {
+  output {
+    logs = [otelcol.exporter.otlphttp.default.input]
+  }
+}
+
+otelcol.exporter.otlphttp "default" {
+  client {
+    endpoint = sys.env("<OTLP_ENDPOINT>")
+  }
+}
+```
+
+### Map labels to resource attributes
+
+This example converts the labels of each log stream to resource attributes.
+The `otelcol.processor.transform` component then renames the `service_name` resource attribute to the OpenTelemetry semantic convention name `service.name` before the logs are sent to an OTLP-capable endpoint:
+
+```alloy
+loki.source.file "default" {
+  targets = [
+    {__path__ = "/var/log/checkout.log", service_name = "checkout", env = "prod"},
+  ]
+  forward_to = [otelcol.receiver.loki.default.receiver]
+}
+
+otelcol.receiver.loki "default" {
+  labels_as_resource_attributes = true
+
+  output {
+    logs = [otelcol.processor.transform.default.input]
+  }
+}
+
+otelcol.processor.transform "default" {
+  error_mode = "ignore"
+
+  log_statements {
+    context = "resource"
+    statements = [
+      `set(attributes["service.name"], attributes["service_name"])`,
+      `delete_key(attributes, "service_name")`,
+    ]
+  }
+
   output {
     logs = [otelcol.exporter.otlphttp.default.input]
   }
