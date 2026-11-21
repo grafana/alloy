@@ -409,6 +409,61 @@ func TestUnmarshalAlloyWithInlineConfig(t *testing.T) {
 	require.Contains(t, "private", args.Targets[1].WalkParams)
 	require.Contains(t, "public_v2", args.Targets[1].Auth)
 }
+func TestUnmarshalAlloyWithMultipleInlineConfigs(t *testing.T) {
+	alloyCfg := `
+		configs = [
+      "{ modules: {if_mib: {walk: [1.3.6.1.2.1.2], get: [1.3.6.1.2.1.1.3.0], metrics: [{name: sysUpTime, oid: 1.3.6.1.2.1.1.3, type: gauge}]}}, auths: { public_v1: { community: public, security_level: noAuthNoPriv, auth_protocol: MD5, priv_protocol: DES, version: 1 } } }",
+      "{ modules: {other_mib: {walk: [1.3.6.1.2.1.2], get: [1.3.6.1.2.1.1.3.0], metrics: [{name: sysUpTimeOther, oid: 1.3.6.1.2.1.1.3, type: gauge}]}}, auths: { public_v2c: { community: public, version: 2 } } }",
+    ]
+
+		target "network_switch_1" {
+			address = "192.168.1.2"
+			module = "if_mib"
+			walk_params = "public"
+			auth = "public_v1"
+		}
+		target "network_router_2" {
+			address = "192.168.1.3"
+			module = "if_mib"
+			walk_params = "private"
+		}
+`
+	var args Arguments
+	err := syntax.Unmarshal([]byte(alloyCfg), &args)
+	require.NoError(t, err)
+	require.Equal(t, "", args.ConfigFile)
+	require.Equal(t, args.ConfigStruct.Modules["if_mib"].Walk, []string{"1.3.6.1.2.1.2"})
+	require.Equal(t, args.ConfigStruct.Modules["if_mib"].Get, []string{"1.3.6.1.2.1.1.3.0"})
+	require.Equal(t, args.ConfigStruct.Modules["if_mib"].Metrics[0].Name, "sysUpTime")
+	require.Equal(t, args.ConfigStruct.Modules["if_mib"].Metrics[0].Oid, "1.3.6.1.2.1.1.3")
+	require.Equal(t, args.ConfigStruct.Modules["if_mib"].Metrics[0].Type, "gauge")
+	require.Equal(t, args.ConfigStruct.Modules["other_mib"].Walk, []string{"1.3.6.1.2.1.2"})
+	require.Equal(t, args.ConfigStruct.Modules["other_mib"].Get, []string{"1.3.6.1.2.1.1.3.0"})
+	require.Equal(t, args.ConfigStruct.Modules["other_mib"].Metrics[0].Name, "sysUpTimeOther")
+	require.Equal(t, args.ConfigStruct.Modules["other_mib"].Metrics[0].Oid, "1.3.6.1.2.1.1.3")
+	require.Equal(t, args.ConfigStruct.Modules["other_mib"].Metrics[0].Type, "gauge")
+
+	require.Equal(t, args.ConfigStruct.Auths["public_v1"].Community, config.Secret("public"))
+	require.Equal(t, args.ConfigStruct.Auths["public_v1"].SecurityLevel, "noAuthNoPriv")
+	require.Equal(t, args.ConfigStruct.Auths["public_v1"].AuthProtocol, "MD5")
+	require.Equal(t, args.ConfigStruct.Auths["public_v1"].PrivProtocol, "DES")
+	require.Equal(t, args.ConfigStruct.Auths["public_v1"].Version, 1)
+	require.Equal(t, args.ConfigStruct.Auths["public_v2c"].Community, config.Secret("public"))
+	require.Equal(t, args.ConfigStruct.Auths["public_v2c"].Version, 2)
+
+	require.Equal(t, 2, len(args.Targets))
+	require.Contains(t, "network_switch_1", args.Targets[0].Name)
+	require.Contains(t, "192.168.1.2", args.Targets[0].Target)
+	require.Contains(t, "if_mib", args.Targets[0].Module)
+	require.Contains(t, "public", args.Targets[0].WalkParams)
+	require.Contains(t, "public_v1", args.Targets[0].Auth)
+
+	require.Contains(t, "network_router_2", args.Targets[1].Name)
+	require.Contains(t, "192.168.1.3", args.Targets[1].Target)
+	require.Contains(t, "if_mib", args.Targets[1].Module)
+	require.Contains(t, "private", args.Targets[1].WalkParams)
+	require.Contains(t, "public_v2", args.Targets[1].Auth)
+}
 func TestUnmarshalAlloyWithInvalidInlineConfig(t *testing.T) {
 	var tests = []struct {
 		testname      string
@@ -457,7 +512,7 @@ func TestUnmarshalAlloyWithInvalidInlineConfig(t *testing.T) {
 				auth = "public_v2"
 			}
 			`,
-			`config and config_files are mutually exclusive`,
+			`inline config and config_files are mutually exclusive`,
 		},
 		{
 			"Define config_file and config_files",
@@ -466,6 +521,22 @@ func TestUnmarshalAlloyWithInvalidInlineConfig(t *testing.T) {
 				config_files = ["config1.yaml", "config2.yaml"]
 				`,
 			`config_files and config_file are mutually exclusive`,
+		},
+		{
+			"Define configs and config",
+			`
+				config = "#todo"
+				configs = ["#one", "#two"]
+				`,
+			`configs and config are mutually exclusive`,
+		},
+		{
+			"Define configs and config_file",
+			`
+				configs = ["#one", "#two"]
+				config_file = "config.yaml"
+				`,
+			`inline config and config_files are mutually exclusive`,
 		},
 	}
 	for _, tt := range tests {
