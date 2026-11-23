@@ -88,7 +88,7 @@ func TestEndpoint(t *testing.T) {
                                # HELP loki_write_sent_entries_total Number of log entries sent.
                                # TYPE loki_write_sent_entries_total counter
                                loki_write_sent_entries_total{host="__HOST__"} 3.0
-                               # HELP loki_write_dropped_entries_total Number of log entries dropped because they couldn't be delivered to the ingester.
+                               # HELP loki_write_dropped_entries_total Number of log entries dropped because they couldn't be delivered.
                                # TYPE loki_write_dropped_entries_total counter
                                loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large"} 0
                                loki_write_dropped_entries_total{host="__HOST__",reason="encoding_failed"} 0
@@ -130,7 +130,7 @@ func TestEndpoint(t *testing.T) {
                               # HELP loki_write_sent_entries_total Number of log entries sent.
                               # TYPE loki_write_sent_entries_total counter
                               loki_write_sent_entries_total{host="__HOST__"} 2.0
-                              # HELP loki_write_dropped_entries_total Number of log entries dropped because they couldn't be delivered to the ingester.
+                              # HELP loki_write_dropped_entries_total Number of log entries dropped because they couldn't be delivered.
                               # TYPE loki_write_dropped_entries_total counter
                               loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="encoding_failed"} 0
@@ -163,7 +163,7 @@ func TestEndpoint(t *testing.T) {
 				},
 			},
 			expectedMetrics: `
-                              # HELP loki_write_dropped_entries_total Number of log entries dropped because they couldn't be delivered to the ingester.
+                              # HELP loki_write_dropped_entries_total Number of log entries dropped because they couldn't be delivered.
                               # TYPE loki_write_dropped_entries_total counter
                               loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="encoding_failed"} 0
@@ -191,7 +191,7 @@ func TestEndpoint(t *testing.T) {
 				},
 			},
 			expectedMetrics: `
-                              # HELP loki_write_dropped_entries_total Number of log entries dropped because they couldn't be delivered to the ingester.
+                              # HELP loki_write_dropped_entries_total Number of log entries dropped because they couldn't be delivered.
                               # TYPE loki_write_dropped_entries_total counter
                               loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="encoding_failed"} 0
@@ -227,7 +227,7 @@ func TestEndpoint(t *testing.T) {
 				},
 			},
 			expectedMetrics: `
-                              # HELP loki_write_dropped_entries_total Number of log entries dropped because they couldn't be delivered to the ingester.
+                              # HELP loki_write_dropped_entries_total Number of log entries dropped because they couldn't be delivered.
                               # TYPE loki_write_dropped_entries_total counter
                               loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="encoding_failed"} 0
@@ -256,7 +256,7 @@ func TestEndpoint(t *testing.T) {
 				},
 			},
 			expectedMetrics: `
-                              # HELP loki_write_dropped_entries_total Number of log entries dropped because they couldn't be delivered to the ingester.
+                              # HELP loki_write_dropped_entries_total Number of log entries dropped because they couldn't be delivered.
                               # TYPE loki_write_dropped_entries_total counter
                               loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="encoding_failed"} 0
@@ -288,7 +288,7 @@ func TestEndpoint(t *testing.T) {
                               # HELP loki_write_sent_entries_total Number of log entries sent.
                               # TYPE loki_write_sent_entries_total counter
                               loki_write_sent_entries_total{host="__HOST__"} 2.0
-                              # HELP loki_write_dropped_entries_total Number of log entries dropped because they couldn't be delivered to the ingester.
+                              # HELP loki_write_dropped_entries_total Number of log entries dropped because they couldn't be delivered.
                               # TYPE loki_write_dropped_entries_total counter
                               loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="encoding_failed"} 0
@@ -325,7 +325,7 @@ func TestEndpoint(t *testing.T) {
                               # HELP loki_write_sent_entries_total Number of log entries sent.
                               # TYPE loki_write_sent_entries_total counter
                               loki_write_sent_entries_total{host="__HOST__"} 4.0
-                              # HELP loki_write_dropped_entries_total Number of log entries dropped because they couldn't be delivered to the ingester.
+                              # HELP loki_write_dropped_entries_total Number of log entries dropped because they couldn't be delivered.
                               # TYPE loki_write_dropped_entries_total counter
                               loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="encoding_failed"} 0
@@ -349,7 +349,7 @@ func TestEndpoint(t *testing.T) {
                               # HELP loki_write_sent_entries_total Number of log entries sent.
                               # TYPE loki_write_sent_entries_total counter
                               loki_write_sent_entries_total{host="__HOST__"} 0
-                              # HELP loki_write_dropped_entries_total Number of log entries dropped because they couldn't be delivered to the ingester.
+                              # HELP loki_write_dropped_entries_total Number of log entries dropped because they couldn't be delivered.
                               # TYPE loki_write_dropped_entries_total counter
                               loki_write_dropped_entries_total{host="__HOST__",reason="batch_too_large"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="encoding_failed"} 1
@@ -357,7 +357,7 @@ func TestEndpoint(t *testing.T) {
                               loki_write_dropped_entries_total{host="__HOST__",reason="queue_is_full"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="rate_limited"} 0
                               loki_write_dropped_entries_total{host="__HOST__",reason="stream_limited"} 0
-                              # HELP loki_write_dropped_bytes_total Number of bytes dropped because they couldn't be delivered to the ingester.
+                              # HELP loki_write_dropped_bytes_total Number of bytes dropped because they couldn't be delivered.
                               # TYPE loki_write_dropped_bytes_total counter
                               loki_write_dropped_bytes_total{host="__HOST__",reason="batch_too_large"} 0
                               loki_write_dropped_bytes_total{host="__HOST__",reason="encoding_failed"} %d

@@ -198,8 +198,8 @@ The following fields are exported and can be referenced by other components:
 ## Debug metrics
 
 - `loki_write_batch_retries_total` (counter): Number of times batches have had to be retried.
-- `loki_write_dropped_bytes_total` (counter): Number of bytes that `loki.write` dropped because it couldn't deliver them to the ingester.
-- `loki_write_dropped_entries_total` (counter): Number of log entries that `loki.write` dropped because it couldn't deliver them to the ingester.
+- `loki_write_dropped_bytes_total` (counter): Number of bytes that `loki.write` dropped because it couldn't deliver them.
+- `loki_write_dropped_entries_total` (counter): Number of log entries that `loki.write` dropped because it couldn't deliver them.
 - `loki_write_sent_bytes_total` (counter): Number of bytes sent.
 - `loki_write_sent_entries_total` (counter): Number of log entries sent to the ingester.
 - `loki_write_batch_size_bytes` (histogram): Number of uncompressed bytes of log lines in a batch when it's sent, to be compared against the configured `batch_size`.
