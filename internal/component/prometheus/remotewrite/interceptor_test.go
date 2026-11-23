@@ -6,6 +6,7 @@ import (
 
 	promclient "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/exemplar"
+	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/storage"
@@ -141,6 +142,63 @@ func TestInterceptorMetadataDebuggingRespectsActivity(t *testing.T) {
 	}
 }
 
+func TestInterceptorSTZeroSampleHooksUseLocalRef(t *testing.T) {
+	const componentID = "prometheus.remote_write.test"
+	metricLabels := labels.FromStrings("__name__", "test_metric")
+
+	for _, hook := range []struct {
+		name   string
+		append func(storage.Appender, storage.SeriesRef) (storage.SeriesRef, error)
+	}{
+		{
+			name: "st_zero_sample",
+			append: func(appender storage.Appender, ref storage.SeriesRef) (storage.SeriesRef, error) {
+				return appender.AppendSTZeroSample(ref, metricLabels, 123, 100)
+			},
+		},
+		{
+			name: "histogram_st_zero_sample",
+			append: func(appender storage.Appender, ref storage.SeriesRef) (storage.SeriesRef, error) {
+				return appender.AppendHistogramSTZeroSample(ref, metricLabels, 123, 100, &histogram.Histogram{}, nil)
+			},
+		},
+	} {
+		t.Run(hook.name, func(t *testing.T) {
+			// Global and local refs are counted separately, so passing the
+			// global ref through would make the next appender resolve it to
+			// a different series.
+			t.Run("linked series", func(t *testing.T) {
+				ls := labelstore.New(nil, promclient.NewRegistry())
+				globalRef := ls.GetOrAddGlobalRefID(metricLabels)
+				ls.AddLocalLink(componentID, globalRef, 42)
+				child := &refRecordingAppender{returnRef: 42}
+				interceptor := NewInterceptor(componentID, &atomic.Bool{}, &debugDataPublisherSpy{}, ls, interceptorTestStorage{appender: child})
+
+				ref, err := hook.append(interceptor.Appender(t.Context()), storage.SeriesRef(globalRef))
+				require.NoError(t, err)
+				require.Equal(t, storage.SeriesRef(42), child.gotRef)
+				require.Equal(t, storage.SeriesRef(globalRef), ref)
+			})
+
+			// A series with no local link is passed on with ref 0, so the
+			// next appender looks it up by labels, and the ref it returns is
+			// linked.
+			t.Run("unlinked series", func(t *testing.T) {
+				ls := labelstore.New(nil, promclient.NewRegistry())
+				globalRef := ls.GetOrAddGlobalRefID(metricLabels)
+				child := &refRecordingAppender{returnRef: 7}
+				interceptor := NewInterceptor(componentID, &atomic.Bool{}, &debugDataPublisherSpy{}, ls, interceptorTestStorage{appender: child})
+
+				ref, err := hook.append(interceptor.Appender(t.Context()), storage.SeriesRef(globalRef))
+				require.NoError(t, err)
+				require.Zero(t, child.gotRef)
+				require.Equal(t, storage.SeriesRef(globalRef), ref)
+				require.Equal(t, uint64(7), ls.GetLocalRefID(componentID, globalRef))
+			})
+		})
+	}
+}
+
 type debugDataPublisherSpy struct {
 	active        bool
 	isActiveCalls int
@@ -159,6 +217,25 @@ func (p *debugDataPublisherSpy) IsActive(componentID livedebugging.ComponentID) 
 func (p *debugDataPublisherSpy) PublishIfActive(data livedebugging.Data) {
 	p.publishCalls++
 	p.publishedData = data
+}
+
+// refRecordingAppender records the ref passed to the ST zero sample methods
+// and returns returnRef from them.
+type refRecordingAppender struct {
+	appenders.Noop
+
+	returnRef storage.SeriesRef
+	gotRef    storage.SeriesRef
+}
+
+func (a *refRecordingAppender) AppendSTZeroSample(ref storage.SeriesRef, _ labels.Labels, _, _ int64) (storage.SeriesRef, error) {
+	a.gotRef = ref
+	return a.returnRef, nil
+}
+
+func (a *refRecordingAppender) AppendHistogramSTZeroSample(ref storage.SeriesRef, _ labels.Labels, _, _ int64, _ *histogram.Histogram, _ *histogram.FloatHistogram) (storage.SeriesRef, error) {
+	a.gotRef = ref
+	return a.returnRef, nil
 }
 
 type interceptorTestStorage struct {

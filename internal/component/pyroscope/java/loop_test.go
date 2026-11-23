@@ -18,8 +18,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
-	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 )
 
 type mockProfiler struct {
@@ -38,14 +36,6 @@ func (m *mockProfiler) Execute(argv []string) (string, string, error) {
 
 type mockAppendable struct {
 	mock.Mock
-}
-
-func (m *mockAppendable) Upload(j debuginfo.UploadJob) {
-
-}
-
-func (m *mockAppendable) DebugInfoClients() []*debuginfoclient.Client {
-	return nil
 }
 
 func (m *mockAppendable) Appender() pyroscope.Appender {

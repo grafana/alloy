@@ -1,0 +1,73 @@
+// Instruments the Mimir pod in this test's namespace. Alloy's remote write
+// and the test's queries are the HTTP traffic.
+beyla.ebpf "default" {
+  discovery {
+    instrument {
+      open_ports = "9009"
+
+      kubernetes {
+        namespace = "test-beyla-ebpf"
+      }
+    }
+  }
+
+  attributes {
+    kubernetes {
+      enable = "true"
+    }
+  }
+
+  metrics {
+    features = ["application"]
+  }
+
+  output {
+    traces = [otelcol.connector.spanmetrics.beyla.input]
+  }
+}
+
+// Turns Beyla's spans into metrics, so Mimir can show that spans for the
+// instrumented service were produced.
+otelcol.connector.spanmetrics "beyla" {
+  histogram {
+    explicit {}
+  }
+
+  metrics_flush_interval = "1s"
+
+  output {
+    metrics = [otelcol.exporter.prometheus.beyla_traces.input]
+  }
+}
+
+otelcol.exporter.prometheus "beyla_traces" {
+  forward_to = [prometheus.remote_write.beyla_traces.receiver]
+}
+
+prometheus.remote_write "beyla_traces" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+  }
+
+  external_labels = {
+    alloy_test_name = "beyla-traces",
+  }
+}
+
+prometheus.scrape "beyla" {
+  targets         = beyla.ebpf.default.targets
+  honor_labels    = true
+  scrape_interval = "1s"
+  scrape_timeout  = "500ms"
+  forward_to      = [prometheus.remote_write.beyla.receiver]
+}
+
+prometheus.remote_write "beyla" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+  }
+
+  external_labels = {
+    alloy_test_name = "beyla",
+  }
+}

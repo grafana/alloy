@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/exp/slices"
 )
 
 func TestFieldsForType(t *testing.T) {
@@ -49,6 +50,22 @@ func TestFieldsForType(t *testing.T) {
 			result, err := fieldsForType(test.fieldsType, test.additionalFields)
 			assert.NoError(t, err)
 			assert.ElementsMatch(t, test.expected, result)
+		})
+	}
+}
+
+func TestFieldsForTypeKeepsPresets(t *testing.T) {
+	for fieldsType, preset := range map[FieldsType][]string{
+		FieldsTypeDefault:  defaultFields,
+		FieldsTypeMinimal:  minimalFields,
+		FieldsTypeExtended: extendedFields,
+		FieldsTypeAll:      allFields,
+	} {
+		t.Run(string(fieldsType), func(t *testing.T) {
+			before := slices.Clone(preset)
+			_, err := fieldsForType(fieldsType, []string{"ClientRegionCode"})
+			assert.NoError(t, err)
+			assert.Equal(t, before, preset)
 		})
 	}
 }

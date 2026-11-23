@@ -30,10 +30,8 @@ func buildYAML(t *testing.T, args Arguments, rt Runtime) map[string]any {
 func TestYAMLGeneration(t *testing.T) {
 	args := Arguments{
 		Discovery: Discovery{
-			Survey: Services{
-				{
-					Path: ".*testserver.*",
-				},
+			Survey: SurveyServices{
+				{Service: Service{Path: ".*testserver.*"}},
 			},
 		},
 		Metrics: Metrics{
@@ -294,12 +292,11 @@ func TestYAMLGeneration_Beyla338Options(t *testing.T) {
 		"kafka_consumer_group_ttl":        "6m0s",
 	}, cfg["ebpf"])
 	require.Equal(t, map[string]any{"sampling_interval": "2s", "timeout": "15s"}, cfg["dotnet_runtime_metrics"])
-	require.Equal(t, map[string]any{"cluster_name": "ecs-production", "region": "ca-central-1"}, cfg["cloud_metadata"])
+	require.Equal(t, map[string]any{"cluster_name": "ecs-production", "region": "ca-central-1", "refresh_interval": "45s"}, cfg["cloud_metadata"])
 	require.Equal(t, map[string]any{
 		"sources":      []any{"k8s", "rdns", "ecs"},
 		"cache_len":    2048,
 		"cache_expiry": "10m0s",
-		"ecs":          map[string]any{"refresh_interval": "45s"},
 	}, cfg["name_resolver"])
 	prom := cfg["prometheus_export"].(map[string]any)
 	require.Equal(t, []any{"application_red", "application_sizes", "application_runtime", "stats_tcp_successful_connections"}, prom["features"])

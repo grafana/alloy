@@ -34,8 +34,10 @@ You can use the following arguments with `database_observability.postgres`:
 | `targets`            | `list(map(string))`  | List of external targets to scrape for Prometheus metrics.  |         | no       |
 | `disable_collectors` | `list(string)`       | A list of collectors to disable from the default set.       |         | no       |
 | `enable_collectors`  | `list(string)`       | A list of collectors to enable on top of the default set.   |         | no       |
-| `exclude_databases`  | `list(string)`       | A list of databases to exclude from monitoring.             | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
-| `exclude_users`      | `list(string)`       | A list of users to exclude from monitoring.                 | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
+| `exclude_databases`  | `list(string)`       | A list of databases to exclude from monitoring on top of the default exclusions. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
+| `include_databases`  | `list(string)`       | A list of databases to monitor. When empty, all non-excluded databases are monitored. Items in `include_databases` override the default exclusions, but cannot overlap with `exclude_databases` or `azure_maintenance`. | `[]` | no       |
+| `exclude_users`      | `list(string)`       | A list of users to exclude from monitoring on top of the default exclusions.     | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
+| `include_users`      | `list(string)`       | A list of users to monitor. When empty, all non-excluded users are monitored. Items in `include_users` override the default exclusions, but cannot overlap with `exclude_users`. `exclude_current_user` still takes precedence. | `[]` | no       |
 | `exclude_current_user` | `bool`             | Exclude from activity monitoring the user that Alloy uses to connect to the database. The resolved username is automatically added to `exclude_users`, if not already present. | `true` | no       |
 
 [Data Source Name]: https://pkg.go.dev/github.com/lib/pq#hdr-URL_connection_strings-NewConfig
@@ -257,7 +259,7 @@ If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the blo
 | `collect_interval`        | `duration` | How frequently to collect information from database.          | `"10s"` | no       |
 | `disable_query_redaction` | `bool`     | Collect unredacted SQL query text (might include parameters). | `false` | no       |
 | `exclude_current_user`    | `bool`     | Deprecated. Use the top-level `exclude_current_user` argument instead. This setting takes precedence over the top-level setting. | (unset) | no       |
-| `enable_pre_classified_wait_events`   | `boolean`  | When `true`, emits telemetry data with pre-classified wait event information. | `false` | no       |
+| `enable_pre_classified_wait_events`   | `boolean`  | When `true`, emits telemetry data with pre-classified wait event information. | `true` | no       |
 
 ### `schema_details`
 
@@ -272,10 +274,16 @@ The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they
 
 ### `explain_plans`
 
-| Name                | Type           | Description                                          | Default | Required |
-|---------------------|----------------|------------------------------------------------------|---------|----------|
-| `collect_interval`  | `duration`     | How frequently to collect information from database. | `"1m"`  | no       |
-| `per_collect_ratio` | `float64`      | The ratio of queries to collect explain plans for.   | `1.0`   | no       |
+| Name                | Type       | Description                                              | Default | Required |
+|---------------------|------------|----------------------------------------------------------|---------|----------|
+| `collect_interval`  | `duration` | How frequently to collect information from database.     | `"1m"`  | no       |
+| `per_collect_ratio` | `float64`  | The ratio of queries to collect explain plans for.       | `1.0`   | no       |
+| `log_verbose_plans` | `bool`     | Log a second, verbose plan of each query at debug level. | `false` | no       |
+
+When `log_verbose_plans` is `true` and the log level is `debug`, the collector runs a second `EXPLAIN` for each query on the monitored database and logs its plan next to the regular one.
+The verbose plan adds the schema of each table, the columns each step returns, and the planner settings that differ from the defaults, and lists every partition of a partitioned table.
+The plan sent to Loki doesn't change.
+The setting has no effect at other log levels.
 
 ### `logs`
 
@@ -295,7 +303,13 @@ The `logs` collector is always enabled and counts server errors from the Postgre
 
 The `prometheus_exporter` block configures the embedded `postgres_exporter` scrapers.
 The `data_source_name` is inherited from the parent block.
-Only the `stat_statements` collector is enabled by default.
+By default the embedded exporter enables the `database`, `database_wraparound`, `postmaster`, `replication`, `stat_bgwriter`, `stat_checkpointer`, `stat_statements`, and `wal` collectors.
+Setting `enabled_collectors` replaces the default set instead of adding to it, so the embedded exporter runs only the collectors you list. To keep a default collector, include it in the list. If you set `enabled_collectors`, it is highly recommended to always include `stat_statements` in the list.
+
+The embedded exporter inherits the top-level `exclude_databases` list in both `autodiscovery > database_denylist` and `stat_statements > exclude_databases`, inherits `include_databases` in `autodiscovery > database_allowlist`, and inherits the effective top-level `exclude_users` list in `stat_statements > exclude_users`.
+Setting these nested filter lists in `prometheus_exporter` is discouraged because it can cause the embedded exporter and the component's collectors to monitor different databases or users.
+Configure the top-level `exclude_databases`, `include_databases`, and `exclude_users` arguments instead.
+The embedded `stat_statements` collector doesn't support `include_databases` or `include_users`, so those filters apply to `database_observability.postgres` collectors (and `autodiscovery` for `include_databases`) only.
 
 Refer to [`prometheus.exporter.postgres`](../../prometheus/prometheus.exporter.postgres/) docs for the full list of supported arguments and sub-blocks.
 
@@ -321,17 +335,11 @@ Refer to the [PostgreSQL setup documentation](https://grafana.com/docs/grafana-c
 database_observability.postgres "orders_db" {
   data_source_name = "postgres://user:pass@localhost:5432/dbname"
   forward_to       = [loki.relabel.orders_db.receiver]
-  targets          = prometheus.exporter.postgres.orders_db.targets
 
   // Enable per-query error telemetry from the processed PostgreSQL logs.
   logs {
     enable_error_logs_processing = true
   }
-}
-
-prometheus.exporter.postgres "orders_db" {
-  data_source_name   = "postgres://user:pass@localhost:5432/dbname"
-  enabled_collectors = ["stat_statements"]
 }
 
 // OPTIONAL: read PostgreSQL log files and forward to logs collector

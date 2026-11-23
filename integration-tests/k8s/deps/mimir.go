@@ -50,6 +50,16 @@ type instantQueryResponse struct {
 	} `json:"data"`
 }
 
+type rangeVectorQueryResponse struct {
+	Status string `json:"status"`
+	Data   struct {
+		Result []struct {
+			Metric map[string]string `json:"metric"`
+			Values [][]any           `json:"values"`
+		} `json:"result"`
+	} `json:"data"`
+}
+
 type seriesResponse struct {
 	Status string              `json:"status"`
 	Data   []map[string]string `json:"data"`
@@ -205,6 +215,45 @@ func (m *Mimir) QueryPositive(t *testing.T, testName string, metrics []string) {
 				}
 			}
 			require.Greaterf(c, maxValue, 0.0, "%s: expected a positive sample", metric)
+		}
+	}, timeout, retryInterval)
+}
+
+// QuerySampleTimestamps polls an instant query for the raw samples of metric
+// (scoped to testName and matchLabels) over window, for example "1m". It calls
+// assertSeries with the sample timestamps, in seconds, of each returned series.
+// Assertions are retried, so use the supplied CollectT rather than t.
+func (m *Mimir) QuerySampleTimestamps(t *testing.T, testName, metric, window string, matchLabels map[string]string, assertSeries func(c *assert.CollectT, labels map[string]string, timestamps []float64)) {
+	t.Helper()
+	base := m.endpoint("/prometheus/api/v1/query")
+
+	selector := testNameLabel + "=\"" + testName + "\""
+	for _, name := range slices.Sorted(maps.Keys(matchLabels)) {
+		selector += "," + name + "=\"" + matchLabels[name] + "\""
+	}
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		queryURL, err := url.Parse(base)
+		require.NoError(c, err)
+		values := queryURL.Query()
+		values.Set("query", metric+"{"+selector+"}["+window+"]")
+		queryURL.RawQuery = values.Encode()
+		resp := curl(c, queryURL.String(), nil)
+
+		var parsed rangeVectorQueryResponse
+		require.NoError(c, json.Unmarshal([]byte(resp), &parsed), "failed to parse query response: %s", resp)
+		require.Equal(c, "success", parsed.Status, "mimir query failed: %s", resp)
+		require.NotEmptyf(c, parsed.Data.Result, "%s: no samples for {%s}", metric, selector)
+
+		for _, result := range parsed.Data.Result {
+			timestamps := make([]float64, 0, len(result.Values))
+			for _, sample := range result.Values {
+				require.Lenf(c, sample, 2, "%s: unexpected sample shape %v", metric, sample)
+				ts, ok := sample[0].(float64)
+				require.Truef(c, ok, "%s: unexpected timestamp %v", metric, sample[0])
+				timestamps = append(timestamps, ts)
+			}
+			assertSeries(c, result.Metric, timestamps)
 		}
 	}, timeout, retryInterval)
 }

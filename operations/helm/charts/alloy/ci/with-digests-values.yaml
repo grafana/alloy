@@ -1,6 +1,8 @@
 image:
   registry: "docker.io"
   repository: "grafana/agent"
+  tag: "v1.21.2"
+  distroless: true
   digest: "sha256:82575a7be3e4770e53f620298e58bcc4cdb0fd0338e01c4b206cae9e3ca46ebf"
 
 configReloader:

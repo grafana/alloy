@@ -3,6 +3,7 @@ package write
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"net/url"
 	"time"
 
@@ -155,7 +156,7 @@ func (args Arguments) convertEndpointConfigs() []client.Config {
 		cc := client.Config{
 			Name:      cfg.Name,
 			URL:       flagext.URLValue{URL: url},
-			Headers:   cfg.Headers,
+			Headers:   maps.Clone(cfg.Headers),
 			BatchWait: cfg.BatchWait,
 			BatchSize: int(cfg.BatchSize),
 			Client:    *cfg.HTTPClientConfig.Convert(),

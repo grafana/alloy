@@ -155,6 +155,17 @@ collect_interval = 3s"
 	}
 }
 
+func TestRejectDebugInfoConfig(t *testing.T) {
+	var args Arguments
+	err := syntax.Unmarshal([]byte(`
+forward_to = []
+debug_info {
+	upload = true
+}
+`), &args)
+	require.ErrorContains(t, err, `unrecognized block name "debug_info"`)
+}
+
 func TestConvertNoKernelVersionCheck(t *testing.T) {
 	args := NewDefaultArguments()
 	cfg, err := args.Convert()
