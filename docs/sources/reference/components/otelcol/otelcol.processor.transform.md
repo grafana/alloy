@@ -164,7 +164,9 @@ You can use the following blocks with `otelcol.processor.transform`:
 
 {{< badge text="Required" >}}
 
-{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/output-block-with-profiles.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+`otelcol.processor.transform` forwards profiles unchanged. You can configure transform statements for metrics, logs, and traces.
 
 ### `debug_metrics`
 

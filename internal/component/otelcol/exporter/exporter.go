@@ -5,6 +5,7 @@ package exporter
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/prometheus/client_golang/prometheus"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -256,7 +257,7 @@ func (e *Exporter) Update(args component.Arguments) error {
 	if supportedSignals.SupportsProfiles() {
 		profilesFactory, ok := e.factory.(xexporter.Factory)
 		if !ok {
-			return pipeline.ErrSignalNotSupported
+			return fmt.Errorf("profiles are not supported by %s: %w", e.factory.Type(), pipeline.ErrSignalNotSupported)
 		}
 
 		profilesExporter, err = profilesFactory.CreateProfiles(e.ctx, settings, exporterConfig)

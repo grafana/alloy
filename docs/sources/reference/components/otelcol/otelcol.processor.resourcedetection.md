@@ -215,7 +215,7 @@ When `max_elapsed_time` is `"0s"`, `timeout` bounds the whole detection instead,
 
 {{< badge text="Required" >}}
 
-{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/output-block-with-profiles.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `akamai`
 
