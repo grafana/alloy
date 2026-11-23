@@ -82,10 +82,9 @@ func Test_Update(t *testing.T) {
 	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.processor.batch")
 	require.NoError(t, err)
 
-	args := batch.Arguments{
-		Timeout: 10 * time.Millisecond,
-	}
+	var args batch.Arguments
 	args.SetToDefault()
+	args.Config.Timeout = 10 * time.Millisecond
 
 	// Override our arguments so traces get forwarded to traceCh.
 	traceCh := make(chan ptrace.Traces)
@@ -101,7 +100,7 @@ func Test_Update(t *testing.T) {
 	require.NoError(t, ctrl.WaitExports(time.Second), "component never exported anything")
 
 	// Update the args
-	args.Timeout = 20 * time.Millisecond
+	args.Config.Timeout = 20 * time.Millisecond
 	require.NoError(t, ctrl.Update(args))
 
 	// Verify running
@@ -180,20 +179,23 @@ func createTestTraces() ptrace.Traces {
 }
 
 func TestArguments_UnmarshalAlloy(t *testing.T) {
+	var defaults batch.Arguments
+	defaults.SetToDefault()
+
 	tests := []struct {
 		cfg               string
-		expectedArguments batch.Arguments
+		expectedArguments batchprocessor.Config
 	}{
 		{
 			cfg: `
 			output {}
 			`,
-			expectedArguments: batch.Arguments{
-				Timeout:                  batch.DefaultArguments.Timeout,
-				SendBatchSize:            batch.DefaultArguments.SendBatchSize,
-				SendBatchMaxSize:         batch.DefaultArguments.SendBatchMaxSize,
+			expectedArguments: batchprocessor.Config{
+				Timeout:                  defaults.Config.Timeout,
+				SendBatchSize:            defaults.Config.SendBatchSize,
+				SendBatchMaxSize:         defaults.Config.SendBatchMaxSize,
 				MetadataKeys:             nil,
-				MetadataCardinalityLimit: batch.DefaultArguments.MetadataCardinalityLimit,
+				MetadataCardinalityLimit: defaults.Config.MetadataCardinalityLimit,
 			},
 		},
 		{
@@ -203,12 +205,12 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			send_batch_max_size = 10000
 			output {}
 			`,
-			expectedArguments: batch.Arguments{
+			expectedArguments: batchprocessor.Config{
 				Timeout:                  11 * time.Second,
 				SendBatchSize:            8000,
 				SendBatchMaxSize:         10000,
 				MetadataKeys:             nil,
-				MetadataCardinalityLimit: batch.DefaultArguments.MetadataCardinalityLimit,
+				MetadataCardinalityLimit: defaults.Config.MetadataCardinalityLimit,
 			},
 		},
 		{
@@ -220,7 +222,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			metadata_cardinality_limit = 123
 			output {}
 			`,
-			expectedArguments: batch.Arguments{
+			expectedArguments: batchprocessor.Config{
 				Timeout:                  11 * time.Second,
 				SendBatchSize:            8000,
 				SendBatchMaxSize:         10000,

@@ -211,11 +211,12 @@ func (d *decoder) decode(val Value, into reflect.Value) (err error) {
 		return nil
 	case TypeString:
 		// Call convVal.Text() to get the final string value, since convVal.rv
-		// might not be a string.
-		into.Set(reflect.ValueOf(convVal.Text()))
+		// might not be a string. Convert it so named string types (such as
+		// `type Action string`) can be decoded into.
+		into.Set(reflect.ValueOf(convVal.Text()).Convert(into.Type()))
 		return nil
 	case TypeBool:
-		into.Set(reflect.ValueOf(convVal.Bool()))
+		into.Set(reflect.ValueOf(convVal.Bool()).Convert(into.Type()))
 		return nil
 	case TypeArray:
 		return d.decodeArray(convVal, into)

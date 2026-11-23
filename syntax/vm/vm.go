@@ -134,14 +134,14 @@ func (vm *Evaluator) evaluateDecode(scope *Scope, assoc map[value.Value]ast.Node
 	if rv.Kind() == reflect.Interface {
 		var anyMap map[string]any
 		into := reflect.MakeMap(reflect.TypeOf(anyMap))
-		if err := vm.evaluateMap(scope, assoc, node, into); err != nil {
+		if err := vm.evaluateMap(scope, assoc, node, into, false); err != nil {
 			return err
 		}
 
 		rv.Set(into)
 		return nil
 	} else if rv.Kind() == reflect.Map {
-		return vm.evaluateMap(scope, assoc, node, rv)
+		return vm.evaluateMap(scope, assoc, node, rv, rv.Type() == blockMapType)
 	} else if rv.Kind() != reflect.Struct {
 		panic(fmt.Sprintf("syntax/vm: can only evaluate blocks into structs, got %s", rv.Kind()))
 	}
@@ -171,8 +171,18 @@ func (vm *Evaluator) evaluateDecode(scope *Scope, assoc map[value.Value]ast.Node
 	return sd.Decode(stmts, rv)
 }
 
-// evaluateMap evaluates a block or a body into a map.
-func (vm *Evaluator) evaluateMap(scope *Scope, assoc map[value.Value]ast.Node, node ast.Node, rv reflect.Value) error {
+// BlockMap is a map which a block or body can be evaluated into without a
+// schema. Unlike other map types, a BlockMap permits nested blocks: each nested
+// block is evaluated into a nested map[string]any, and a block name used more
+// than once is evaluated into a []any of those maps, in source order.
+// Attribute values are decoded into plain Go values.
+type BlockMap map[string]any
+
+var blockMapType = reflect.TypeFor[BlockMap]()
+
+// evaluateMap evaluates a block or a body into a map. Nested blocks are only
+// permitted when nestedBlocks is true.
+func (vm *Evaluator) evaluateMap(scope *Scope, assoc map[value.Value]ast.Node, node ast.Node, rv reflect.Value, nestedBlocks bool) error {
 	var stmts ast.Body
 
 	switch node := node.(type) {
@@ -196,6 +206,9 @@ func (vm *Evaluator) evaluateMap(scope *Scope, assoc map[value.Value]ast.Node, n
 		rv.Set(reflect.MakeMap(rv.Type()))
 	}
 
+	// blockCount tracks how many times each nested block name has been seen.
+	blockCount := make(map[string]int)
+
 	for _, stmt := range stmts {
 		switch stmt := stmt.(type) {
 		case *ast.AttributeStmt:
@@ -213,8 +226,36 @@ func (vm *Evaluator) evaluateMap(scope *Scope, assoc map[value.Value]ast.Node, n
 			rv.SetMapIndex(reflect.ValueOf(stmt.Name.Name), target)
 
 		case *ast.BlockStmt:
+			if nestedBlocks {
+				inner := reflect.MakeMap(reflect.TypeFor[map[string]any]())
+				if err := vm.evaluateMap(scope, assoc, stmt, inner, true); err != nil {
+					return err
+				}
+
+				name := strings.Join(stmt.Name, ".")
+				key := reflect.ValueOf(name)
+				existing := rv.MapIndex(key)
+				switch {
+				case !existing.IsValid():
+					rv.SetMapIndex(key, inner)
+				case blockCount[name] == 0:
+					return diag.Diagnostic{
+						Severity: diag.SeverityLevelError,
+						StartPos: ast.StartPos(stmt).Position(),
+						EndPos:   ast.EndPos(stmt).Position(),
+						Message:  fmt.Sprintf("%q is used as both an attribute and a block", name),
+					}
+				case blockCount[name] == 1:
+					rv.SetMapIndex(key, reflect.ValueOf([]any{existing.Interface(), inner.Interface()}))
+				default:
+					rv.SetMapIndex(key, reflect.ValueOf(append(existing.Interface().([]any), inner.Interface())))
+				}
+				blockCount[name]++
+				continue
+			}
+
 			// TODO(rfratto): potentially relax this restriction where nested blocks
-			// are permitted when decoding to a map.
+			// are permitted when decoding to other map types.
 			return diag.Diagnostic{
 				Severity: diag.SeverityLevelError,
 				StartPos: ast.StartPos(stmt).Position(),
