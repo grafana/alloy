@@ -39,19 +39,20 @@ This release renames many metrics and labels, and changes the units of some metr
 Update your dashboards, recording rules, and alerts when you upgrade.
 Refer to the upstream [upgrade guide][upgrade-0.32] for the full list of changes.
 
-The most disruptive changes are metrics that keep their name but switch between a gauge and a counter.
-A query that uses `rate()` on a metric that became a gauge, or that reads a metric that became a counter without `rate()`, returns wrong results.
+Some metrics keep their name but switch between a gauge and a counter.
+A query that uses `rate()` on a metric that became a gauge returns wrong results.
 Use these sections of the upgrade guide to find and handle those metrics:
 
 - [Changed type, same name][upgrade-type-change] lists the metrics that keep their name but change type.
 - [Renamed metrics][upgrade-renamed] lists the renamed metrics, including those that change type.
-- [Load the compatibility recording rules][upgrade-rules] keeps most existing queries working with the v0.31 names while you migrate.
-{{< /admonition >}}
+- [Load the compatibility recording rules][upgrade-rules] keeps most queries that use the v0.31 names working while you migrate.
 
 [upgrade-0.32]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/upgrade/0.32.md
 [upgrade-type-change]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/upgrade/0.32.md#changed-type-same-name
 [upgrade-renamed]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/upgrade/0.32.md#renamed-metrics
 [upgrade-rules]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/upgrade/0.32.md#2-load-the-compatibility-recording-rules
+
+{{< /admonition >}}
 
 [windows_exporter]: https://github.com/prometheus-community/windows_exporter/tree/{{< param "PROM_WIN_EXP_VERSION" >}}
 
@@ -87,10 +88,6 @@ A block has no effect unless you enable its collector.
 You can use the following blocks with `prometheus.exporter.windows`.
 Each block only takes effect if you include its corresponding collector in `enabled_collectors`.
 
-Windows exporter v0.32 rejects an unknown name in an `enabled_list` or `sources_enabled` attribute.
-The component fails to start and reports the name.
-In earlier versions, the exporter ignored a typo and silently disabled that collector.
-
 {{< docs/alloy-config >}}
 
 | Name                                       | Description                                                               | Required |
@@ -101,7 +98,7 @@ In earlier versions, the exporter ignored a typo and silently disabled that coll
 | [`dns`][dns]                               | Configures the `dns` collector.                                           | no       |
 | [`exchange`][exchange]                     | Configures the `exchange` collector.                                      | no       |
 | [`file`][file-block]                       | Configures the `file` collector.                                          | no       |
-| [`filetime`][filetime-block]               | Deprecated. Configures the `file` collector.                              | no       |
+| [`filetime`][filetime-block]               | Deprecated. Use `file` instead. Configures the `file` collector.          | no       |
 | [`hyperv`][hyperv-block]                   | Configures the `hyperv` collector.                                        | no       |
 | [`iis`][iis]                               | Configures the `iis` collector.                                           | no       |
 | [`logical_disk`][logical_disk]             | Configures the `logical_disk` collector.                                  | no       |
@@ -174,6 +171,10 @@ The `msmq` block is deprecated as of {{< param "PRODUCT_NAME" >}} v1.9.0.
 You can still include this block in your configuration files, but it has no effect.
 {{< /admonition >}}
 
+Windows exporter v0.32 rejects an unknown name in an `enabled_list` or `sources_enabled` attribute.
+The component fails to start and reports the name.
+In earlier versions, the exporter ignored a typo in these blocks and silently disabled that collector.
+
 ### `container`
 
 | Name           | Type     | Description                                                        | Default                                   | Required |
@@ -222,13 +223,13 @@ The collectors specified by `enabled_list` can include the following:
 ### `filetime`
 
 {{< admonition type="caution" >}}
-Windows exporter v0.32 replaced the `filetime` collector with the `file` collector.
-{{< param "PRODUCT_NAME" >}} deprecates the `filetime` block and will remove it in a future version.
-Migrate to the [`file`][file-block] block.
+Starting with {{< param "PRODUCT_NAME" >}} v1.23.0, the `filetime` block is deprecated.
+It will be removed in a future release.
+`windows_exporter` v0.32 replaced the `filetime` collector with the `file` collector, and metrics with the prefix `windows_filetime` have the prefix `windows_file`.
+Use the [`file`][file-block] block instead.
 {{< /admonition >}}
 
 The `filetime` block configures the `file` collector.
-Metrics with the prefix `windows_filetime` now have the prefix `windows_file`.
 
 | Name            | Type           | Description                                          | Default | Required |
 | --------------- | -------------- | ---------------------------------------------------- | ------- | -------- |
@@ -265,8 +266,9 @@ The collectors specified by `enabled_list` can include the following:
 - `vm_state`
 - `wmi_health`
 
-Windows exporter v0.32 added `host`, `replica_vm`, `virtual_hard_disk`, `vm_state` and `wmi_health` to the default list.
+Windows exporter v0.32 added `host`, `replica_vm`, `virtual_hard_disk`, `vm_state`, and `wmi_health` to the default list.
 To keep the v0.31 set of metrics, list the collectors you want in `enabled_list`.
+
 ### `iis`
 
 | Name           | Type     | Description                                      | Default  | Required |
@@ -446,9 +448,8 @@ The component [wraps][wrap-regex] user-supplied `exclude` and `include` strings 
 | `include`                   | `string` | Regular expression of processes to include. | `"^.+$"` | no       |
 
 {{< admonition type="caution" >}}
-The `counter_version` attribute has no effect.
-{{< param "PRODUCT_NAME" >}} deprecates it and will remove it in a future version.
-Remove it from your configuration.
+Starting with {{< param "PRODUCT_NAME" >}} v1.23.0, the `counter_version` attribute is deprecated and has no effect.
+It will be removed in a future release.
 {{< /admonition >}}
 
 The component includes processes that match the regular expression specified by `include` and don't match the regular expression specified by `exclude`.
@@ -465,7 +466,8 @@ The upstream collector warns that `enable_iis_worker_process` may leak memory. U
 
 The `keys` field accepts a YAML string that satisfies the schema in the exporter's [`registry` collector documentation][registry].
 Like the `performancecounter` block, the best way to configure this collector is to use a `local.file` component.
-Add `"registry"` to [`enabled_collectors`][] to enable the collector.
+Include `"registry"` in [`enabled_collectors`](#arguments) to enable the collector.
+The component fails to start if the YAML contains a key that the schema doesn't define.
 
 ```alloy
 local.file "registry_keys" {
@@ -492,6 +494,9 @@ prometheus.exporter.windows "default" {
 The component includes tasks that match the regular expression specified by `include` and don't match the regular expression specified by `exclude`.
 
 The `include` and `exclude` expressions match task paths that use forward slashes, for example `/Microsoft/Windows/Chkdsk/SyspartRepair`.
+
+By default, `exclude` skips the tasks below `/Microsoft/`.
+To include every task, set `exclude` to `""`.
 
 Reading the missed runs of a task costs the Task Scheduler service extra requests, so `missed_runs` is off by default.
 
@@ -647,7 +652,8 @@ The `ntp` sub-collector reads the Windows Time Service performance counters, whi
 
 The `queries` field accepts a YAML string that satisfies the schema in the exporter's [`wmi` collector documentation][wmi].
 Like the `performancecounter` block, the best way to configure this collector is to use a `local.file` component.
-Add `"wmi"` to [`enabled_collectors`][] to enable the collector.
+Include `"wmi"` in [`enabled_collectors`](#arguments) to enable the collector.
+The component fails to start if the YAML contains a key that the schema doesn't define.
 
 ```alloy
 local.file "wmi_queries" {
@@ -720,7 +726,7 @@ You can enable a subset of collectors to limit the amount of metrics that the `p
 | [`dns`][dns]                               | DNS Server                                                     |                    |
 | [`exchange`][exchange]                     | Exchange metrics                                               |                    |
 | [`file`][file]                             | File modification time and size metrics                        |                    |
-| [`filetime`][filetime]                     | Deprecated. Alloy runs the `file` collector instead            |                    |
+| [`filetime`][filetime]                     | Deprecated. Use `file` instead. File modification time metrics |                    |
 | [`fsrmquota`][fsrmquota]                   | Microsoft File Server Resource Manager (FSRM) Quotas collector |                    |
 | [`gpu`][gpu]                               | GPU usage and memory consumption                               |                    |
 | [`hyperv`][hyperv]                         | Hyper-V hosts                                                  |                    |
@@ -738,8 +744,8 @@ You can enable a subset of collectors to limit the amount of metrics that the `p
 | [`physical_disk`][physical_disk]           | Physical disks                                                 |                    |
 | [`printer`][printer]                       | Printer metrics                                                |                    |
 | [`process`][process]                       | Per-process metrics                                            |                    |
-| [`remote_fx`][remote_fx]                   | RemoteFX protocol (RDP) metrics                                |                    |
 | [`registry`][registry]                     | Windows registry values                                        |                    |
+| [`remote_fx`][remote_fx]                   | RemoteFX protocol (RDP) metrics                                |                    |
 | [`scheduled_task`][scheduled_task]         | Scheduled Tasks metrics                                        |                    |
 | [`service`][service]                       | Service state metrics                                          | Yes                |
 | [`smb`][smb]                               | SMB Server shares                                              |                    |
@@ -749,13 +755,13 @@ You can enable a subset of collectors to limit the amount of metrics that the `p
 | [`system`][system]                         | System calls                                                   | Yes                |
 | [`tcp`][tcp]                               | TCP connections                                                |                    |
 | [`time`][time]                             | Windows Time Service                                           |                    |
-| `thermalzone`                              | Windows exporter v0.32 removed it. Alloy ignores it. Use the [`performancecounter`][performancecounter] block instead. |                    |
 | [`terminal_services`][terminal_services]   | Terminal services (RDS)                                        |                    |
 | [`textfile`][textfile]                     | Read Prometheus metrics from a text file                       |                    |
 | [`udp`][udp]                               | UDP connections                                                |                    |
 | [`wmi`][wmi]                               | User-defined WMI queries                                       |                    |
 | [`update`][update]                         | Windows Update service metrics                                 |                    |
 | [`vmware`][vmware]                         | Performance counters installed by the VMware Guest agent       |                    |
+| `thermalzone`                              | Windows exporter v0.32 removed it. {{< param "PRODUCT_NAME" >}} ignores it. Use the [`performancecounter`][performancecounter] block instead. |                    |
 
 [ad]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.ad.md
 [adcs]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.adcs.md
