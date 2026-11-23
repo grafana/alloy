@@ -182,6 +182,7 @@ func defaultArguments() Arguments {
 type ExplainPlansArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 	PerCollectRatio float64       `alloy:"per_collect_ratio,attr,optional"`
+	LogVerbosePlans bool          `alloy:"log_verbose_plans,attr,optional"`
 }
 
 type HealthCheckArguments struct {
@@ -1305,6 +1306,7 @@ func (c *Component) startCollectors(inst *dbInstance, systemID string, engineVer
 			DSN:              string(inst.cfg.dsn),
 			ScrapeInterval:   c.args.ExplainPlansArguments.CollectInterval,
 			PerScrapeRatio:   c.args.ExplainPlansArguments.PerCollectRatio,
+			LogVerbosePlans:  c.args.ExplainPlansArguments.LogVerbosePlans,
 			ExcludeDatabases: excludeDatabases,
 			IncludeDatabases: includeDatabases,
 			ExcludeUsers:     effectiveExcludeUsers,
