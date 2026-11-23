@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -34,7 +35,10 @@ func TestPipelines(t *testing.T) {
 
 			var schema TestSchema
 			require.NoError(t, yaml.Unmarshal(bb, &schema))
-			require.NoError(t, RunTest(t.Context(), schema, TestConfig{DataPath: t.TempDir()}))
+			if schema.OS != "" && schema.OS != runtime.GOOS {
+				t.Skipf("test requires %s, running on %s", schema.OS, runtime.GOOS)
+			}
+			require.NoError(t, RunTest(t.Context(), schema, TestConfig{DataPath: t.TempDir(), WorkDir: t.TempDir()}))
 		})
 	}
 }

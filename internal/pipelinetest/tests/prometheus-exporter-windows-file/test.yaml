@@ -1,0 +1,58 @@
+# Runs only on Windows, because the windows_exporter reads Windows counters.
+os: windows
+setup:
+  files:
+    - path: "{{TEMP_DIR}}/probe.txt"
+      content: alloy
+config: |
+  prometheus.exporter.windows "default" {
+    enabled_collectors = ["cpu", "file"]
+
+    file {
+      file_patterns = ["{{TEMP_DIR}}\\probe*.txt"]
+    }
+  }
+
+  prometheus.scrape "default" {
+    targets    = prometheus.exporter.windows.default.targets
+    forward_to = [prometheus.remote_write.default.receiver]
+
+    scrape_interval = "1s"
+    scrape_timeout  = "500ms"
+  }
+
+  prometheus.remote_write "default" {
+    endpoint {
+      url = pipelinetest.prometheus.url
+
+      // The test writes too few series to fill a batch, so without a short
+      // deadline every send waits out the 5s default.
+      queue_config {
+        batch_send_deadline = "500ms"
+      }
+    }
+  }
+
+assert:
+  prometheus:
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            __name__: windows_file_mtime_timestamp_seconds
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            __name__: windows_file_size_bytes
+    # The file label holds the path of the probe file.
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            __name__: windows_file_size_bytes
+          regex:
+            file: '.*probe\.txt'

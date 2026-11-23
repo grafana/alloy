@@ -18,6 +18,14 @@ const (
 
 // TestSchema describes a declarative pipeline test loaded from a text file.
 type TestSchema struct {
+	// OS limits the test to one operating system, using a runtime.GOOS value
+	// such as "windows". The test is skipped on other systems.
+	OS string `yaml:"os,omitempty"`
+	// Timeout is how long to wait for the assertions to pass, as a Go
+	// duration. It defaults to 30 seconds.
+	Timeout string `yaml:"timeout,omitempty"`
+	// Setup prepares files and runs commands before Alloy starts.
+	Setup  SetupSchema     `yaml:"setup,omitempty"`
 	Flags  FlagsSchema     `yaml:"flags,omitempty"`
 	Config ConfigSchema    `yaml:"config"`
 	Inputs InputSchema     `yaml:"inputs"`
@@ -72,6 +80,13 @@ type InputSchema struct {
 type AssertionSchema struct {
 	Loki       []LokiAssertionSchema       `yaml:"loki"`
 	Prometheus []PrometheusAssertionSchema `yaml:"prometheus"`
+	Logs       []LogAssertionSchema        `yaml:"logs"`
+}
+
+// LogAssertionSchema describes one assertion about the log output of Alloy.
+type LogAssertionSchema struct {
+	// Contains is text that some log line must contain.
+	Contains string `yaml:"contains"`
 }
 
 // MapMatchSchema describes map-like fields such as labels or structured
@@ -80,6 +95,9 @@ type AssertionSchema struct {
 type MapMatchSchema struct {
 	Mode   string            `yaml:"mode,omitempty"`
 	Values map[string]string `yaml:"values,omitempty"`
+	// Regex maps a label name to an anchored regular expression that its
+	// value must match. It only applies to Prometheus labels.
+	Regex map[string]string `yaml:"regex,omitempty"`
 }
 
 // produceInputs sends all configured test inputs into the running pipeline,
@@ -108,7 +126,14 @@ func buildAssertions(assertions AssertionSchema) ([]harness.Assertion, error) {
 		return nil, err
 	}
 
-	return append(lokiAssertions, promAssertions...), nil
+	out := append(lokiAssertions, promAssertions...)
+	for _, assertion := range assertions.Logs {
+		if assertion.Contains == "" {
+			return nil, errors.New("logs assertion requires contains")
+		}
+		out = append(out, harness.LogsContain(assertion.Contains))
+	}
+	return out, nil
 }
 
 func isPartialMapMatch(name string, match MapMatchSchema) (bool, error) {

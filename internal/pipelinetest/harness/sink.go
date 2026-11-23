@@ -249,6 +249,7 @@ func (s *Sink) storePrometheusMetadata(l labels.Labels, m metadata.Metadata) {
 type snapshot struct {
 	loki       []loki.Entry
 	prometheus []PrometheusSample
+	logs       string
 }
 
 func (s *Sink) snapshot() snapshot {

@@ -3,7 +3,6 @@ package harness
 import (
 	"context"
 	"fmt"
-	"io"
 	"sync"
 	"time"
 
@@ -28,14 +27,24 @@ type Config struct {
 	Source         string
 	DataPath       string
 	LokiPipelineV2 bool
+
+	// AssertTimeout is how long Assert waits for its assertions to pass.
+	// It defaults to 30 seconds.
+	AssertTimeout time.Duration
 }
 
 // NewAlloy creates and starts an in-process Alloy runtime for pipeline tests
 // from the provided source.
 func NewAlloy(cfg Config) (*Alloy, error) {
-	logger, err := logging.New(io.Discard, logging.DefaultOptions)
+	logs := &logBuffer{}
+	logger, err := logging.New(logs, logging.DefaultOptions)
 	if err != nil {
 		return nil, err
+	}
+
+	assertTimeout := cfg.AssertTimeout
+	if assertTimeout <= 0 {
+		assertTimeout = defaultTimeout
 	}
 
 	ctrl, err := alloyruntime.New(alloyruntime.Options{
@@ -55,8 +64,10 @@ func NewAlloy(cfg Config) (*Alloy, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	a := &Alloy{
-		ctrl:   ctrl,
-		cancel: cancel,
+		ctrl:          ctrl,
+		cancel:        cancel,
+		logs:          logs,
+		assertTimeout: assertTimeout,
 	}
 
 	a.wg.Go(func() {
@@ -95,6 +106,9 @@ type Alloy struct {
 	wg     sync.WaitGroup
 
 	sink *Sink
+
+	logs          *logBuffer
+	assertTimeout time.Duration
 }
 
 func (a *Alloy) Stop() {
@@ -108,6 +122,7 @@ func (a *Alloy) Stop() {
 func (a *Alloy) Assert(assertions ...Assertion) error {
 	return eventually(func() error {
 		s := a.sink.snapshot()
+		s.logs = a.logs.String()
 
 		errs := make([]error, 0, len(assertions))
 		for _, assertion := range assertions {
@@ -124,7 +139,7 @@ func (a *Alloy) Assert(assertions ...Assertion) error {
 			Errors:   errs,
 			Snapshot: s,
 		}
-	}, defaultTimeout, defaultInterval)
+	}, a.assertTimeout, defaultInterval)
 }
 
 func MustComponent[T any](a *Alloy, id string) T {

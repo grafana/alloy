@@ -2,6 +2,7 @@ package harness
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -84,6 +85,23 @@ func PrometheusSampleLabels(want labels.Labels, partial bool) SampleMatcher {
 		match: match,
 		text:  renderPrometheusLabels(want),
 	}
+}
+
+// PrometheusSampleLabelRegex returns a SampleMatcher that matches samples with
+// a label name whose value matches the regular expression. The expression is
+// anchored, like a PromQL label matcher.
+func PrometheusSampleLabelRegex(name, pattern string) (SampleMatcher, error) {
+	re, err := regexp.Compile("^(?:" + pattern + ")$")
+	if err != nil {
+		return SampleMatcher{}, fmt.Errorf("compile label regex %q: %w", pattern, err)
+	}
+
+	return SampleMatcher{
+		match: func(sample PrometheusSample) bool {
+			return re.MatchString(sample.Labels.Get(name))
+		},
+		text: fmt.Sprintf("%s =~ %q", name, pattern),
+	}, nil
 }
 
 // PrometheusSampleValue returns a SampleMatcher that matches the sample value
