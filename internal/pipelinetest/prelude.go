@@ -2,6 +2,7 @@ package pipelinetest
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/grafana/alloy/syntax/token"
@@ -15,7 +16,20 @@ func withPrelude(schema TestSchema) string {
 	sink := buildSink()
 	sources := buildSources(schema.Inputs, schema.Mocks)
 
-	return sink + "\n\n" + sources + "\n\n" + rewritePipelineTestRefs(string(schema.Config))
+	return logging(string(schema.Config)) + sink + "\n\n" + sources + "\n\n" + rewritePipelineTestRefs(string(schema.Config))
+}
+
+var loggingBlock = regexp.MustCompile(`(?m)^\s*logging\s*\{`)
+
+// logging returns a logging block that sends logs to stderr, unless the config
+// has its own. Alloy logs to the Windows Event Log when it runs under a
+// Windows service, such as a CI runner, and the log assertions cannot see
+// that output.
+func logging(config string) string {
+	if loggingBlock.MatchString(config) {
+		return ""
+	}
+	return "logging {\n  destination = \"stderr\"\n}\n\n"
 }
 
 func rewritePipelineTestRefs(source string) string {

@@ -44,6 +44,7 @@ func renderSnapshot(s snapshot) string {
 	sections := []string{
 		renderLokiEntries(s.loki),
 		renderPrometheusSamples(s.prometheus),
+		renderLogs(s.logs),
 	}
 	return strings.Join(sections, "\n\n")
 }

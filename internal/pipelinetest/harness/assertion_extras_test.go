@@ -1,7 +1,9 @@
 package harness
 
 import (
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
@@ -40,4 +42,46 @@ func TestPrometheusSampleLabelRegex_IsAnchored(t *testing.T) {
 func TestPrometheusSampleLabelRegex_RejectsBadPattern(t *testing.T) {
 	_, err := PrometheusSampleLabelRegex("task", "(")
 	require.Error(t, err)
+}
+
+func TestRenderLogs(t *testing.T) {
+	require.Equal(t, "logs: none", renderLogs(""))
+	require.Contains(t, renderLogs("one\ntwo\n"), "two")
+
+	var lines []string
+	for i := 0; i < 100; i++ {
+		lines = append(lines, "line")
+	}
+	lines[99] = "last"
+	out := renderLogs(strings.Join(lines, "\n"))
+	require.Contains(t, out, "last 40 lines")
+	require.Contains(t, out, "last")
+}
+
+func TestAssert_StableWindow(t *testing.T) {
+	newAlloy := func(stableFor time.Duration) *Alloy {
+		return &Alloy{sink: &Sink{}, logs: &logBuffer{}, assertTimeout: 5 * time.Second, stableFor: stableFor}
+	}
+
+	// Assertions that always pass succeed only after the window.
+	start := time.Now()
+	require.NoError(t, newAlloy(300*time.Millisecond).Assert(func(snapshot) error { return nil }))
+	require.GreaterOrEqual(t, time.Since(start), 300*time.Millisecond)
+
+	// A failure inside the window restarts the window.
+	polls := 0
+	start = time.Now()
+	require.NoError(t, newAlloy(300*time.Millisecond).Assert(func(snapshot) error {
+		polls++
+		if polls == 3 {
+			return AssertionError{Message: "late data"}
+		}
+		return nil
+	}))
+	require.GreaterOrEqual(t, time.Since(start), 300*time.Millisecond+2*defaultInterval)
+
+	// A window longer than the timeout fails.
+	a := newAlloy(time.Hour)
+	a.assertTimeout = 200 * time.Millisecond
+	require.Error(t, a.Assert(func(snapshot) error { return nil }))
 }

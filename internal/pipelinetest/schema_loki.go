@@ -154,6 +154,10 @@ func buildLokiContainsAssertion(assertion LokiAssertionSchema) (harness.Assertio
 func buildLokiMatchers(match LokiMatchSchema) ([]harness.EntryMatcher, error) {
 	matchers := make([]harness.EntryMatcher, 0, 4)
 
+	if len(match.Labels.Regex) > 0 || len(match.StructuredMetadata.Regex) > 0 {
+		return nil, errors.New("regex is only supported for Prometheus labels")
+	}
+
 	if len(match.Labels.Values) > 0 {
 		partial, err := isPartialMapMatch("labels", match.Labels)
 		if err != nil {

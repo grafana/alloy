@@ -31,6 +31,12 @@ type Config struct {
 	// AssertTimeout is how long Assert waits for its assertions to pass.
 	// It defaults to 30 seconds.
 	AssertTimeout time.Duration
+
+	// StableFor is how long all assertions must keep passing before Assert
+	// succeeds. A negative assertion, such as a count of zero, can pass before
+	// the data it guards arrives. A stable window gives that data time to
+	// arrive. The window counts against AssertTimeout.
+	StableFor time.Duration
 }
 
 // NewAlloy creates and starts an in-process Alloy runtime for pipeline tests
@@ -68,6 +74,7 @@ func NewAlloy(cfg Config) (*Alloy, error) {
 		cancel:        cancel,
 		logs:          logs,
 		assertTimeout: assertTimeout,
+		stableFor:     cfg.StableFor,
 	}
 
 	a.wg.Go(func() {
@@ -109,6 +116,7 @@ type Alloy struct {
 
 	logs          *logBuffer
 	assertTimeout time.Duration
+	stableFor     time.Duration
 }
 
 func (a *Alloy) Stop() {
@@ -117,9 +125,12 @@ func (a *Alloy) Stop() {
 }
 
 // Assert evaluates the provided assertions against the current snapshot
-// until they all pass or the assertion timeout is reached. On failure it
-// returns the latest snapshot alongside the assertion failures.
+// until they all pass, and keep passing for the stable window, or the
+// assertion timeout is reached. On failure it returns the latest snapshot
+// alongside the assertion failures.
 func (a *Alloy) Assert(assertions ...Assertion) error {
+	var passingSince time.Time
+
 	return eventually(func() error {
 		s := a.sink.snapshot()
 		s.logs = a.logs.String()
@@ -131,14 +142,30 @@ func (a *Alloy) Assert(assertions ...Assertion) error {
 			}
 		}
 
-		if len(errs) == 0 {
-			return nil
+		if len(errs) > 0 {
+			passingSince = time.Time{}
+			return AssertionErrors{
+				Errors:   errs,
+				Snapshot: s,
+			}
 		}
 
-		return AssertionErrors{
-			Errors:   errs,
-			Snapshot: s,
+		if a.stableFor <= 0 {
+			return nil
 		}
+		if passingSince.IsZero() {
+			passingSince = time.Now()
+		}
+		if time.Since(passingSince) < a.stableFor {
+			return AssertionErrors{
+				Errors: []error{AssertionError{
+					Kind:    "stable",
+					Message: fmt.Sprintf("assertions pass but have not held for %s yet", a.stableFor),
+				}},
+				Snapshot: s,
+			}
+		}
+		return nil
 	}, a.assertTimeout, defaultInterval)
 }
 

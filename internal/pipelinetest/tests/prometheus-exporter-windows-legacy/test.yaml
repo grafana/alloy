@@ -1,5 +1,6 @@
 # Runs only on Windows, because the windows_exporter reads Windows counters.
 os: windows
+timeout: 2m
 # Settings that windows_exporter v0.32 removed must still work and log a warning.
 setup:
   files:
@@ -22,8 +23,8 @@ config: |
     targets    = prometheus.exporter.windows.default.targets
     forward_to = [prometheus.remote_write.default.receiver]
 
-    scrape_interval = "1s"
-    scrape_timeout  = "500ms"
+    scrape_interval = "5s"
+    scrape_timeout  = "4s"
   }
 
   prometheus.remote_write "default" {
@@ -53,6 +54,8 @@ assert:
           mode: partial
           values:
             __name__: windows_file_size_bytes
+          regex:
+            file: '.*probe\.txt'
   logs:
     - contains: "the `filetime` collector and block are deprecated"
     - contains: "the `thermalzone` collector is removed"

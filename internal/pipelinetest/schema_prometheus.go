@@ -90,12 +90,14 @@ func buildPrometheusContainsAssertion(assertion PrometheusAssertionSchema) (harn
 func buildPrometheusMatchers(match PrometheusMatchSchema) ([]harness.SampleMatcher, error) {
 	matchers := make([]harness.SampleMatcher, 0, 5)
 
-	if len(match.Labels.Values) > 0 {
+	if len(match.Labels.Values) > 0 || len(match.Labels.Regex) > 0 {
 		partial, err := isPartialMapMatch("labels", match.Labels)
 		if err != nil {
 			return nil, err
 		}
-		matchers = append(matchers, harness.PrometheusSampleLabels(toLabels(match.Labels.Values), partial))
+		if len(match.Labels.Values) > 0 {
+			matchers = append(matchers, harness.PrometheusSampleLabels(toLabels(match.Labels.Values), partial))
+		}
 	}
 
 	names := make([]string, 0, len(match.Labels.Regex))

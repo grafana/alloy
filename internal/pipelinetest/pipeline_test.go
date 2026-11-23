@@ -1,6 +1,7 @@
 package pipelinetest
 
 import (
+	"bytes"
 	"errors"
 	"os"
 	"path/filepath"
@@ -30,15 +31,21 @@ func TestPipelines(t *testing.T) {
 		require.NoError(t, err)
 
 		t.Run(name, func(t *testing.T) {
+			// The zero value means go test has no deadline.
+			deadline, _ := t.Deadline()
+
 			bb, err := os.ReadFile(path)
 			require.NoError(t, err)
 
 			var schema TestSchema
-			require.NoError(t, yaml.Unmarshal(bb, &schema))
+			dec := yaml.NewDecoder(bytes.NewReader(bb))
+			dec.KnownFields(true)
+			require.NoError(t, dec.Decode(&schema))
+			require.NoError(t, validateOS(schema.OS))
 			if schema.OS != "" && schema.OS != runtime.GOOS {
 				t.Skipf("test requires %s, running on %s", schema.OS, runtime.GOOS)
 			}
-			require.NoError(t, RunTest(t.Context(), schema, TestConfig{DataPath: t.TempDir(), WorkDir: t.TempDir()}))
+			require.NoError(t, RunTest(t.Context(), schema, TestConfig{DataPath: t.TempDir(), WorkDir: t.TempDir(), Deadline: deadline}))
 		})
 	}
 }

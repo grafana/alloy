@@ -1,5 +1,8 @@
 # Runs only on Windows, because the windows_exporter reads Windows counters.
 os: windows
+timeout: 2m
+# The window gives a failing scrape time to show up after the first good one.
+stable_for: 10s
 config: |
   prometheus.exporter.windows "default" { }
 
@@ -7,8 +10,8 @@ config: |
     targets    = prometheus.exporter.windows.default.targets
     forward_to = [prometheus.remote_write.default.receiver]
 
-    scrape_interval = "1s"
-    scrape_timeout  = "500ms"
+    scrape_interval = "5s"
+    scrape_timeout  = "4s"
   }
 
   prometheus.remote_write "default" {
@@ -45,3 +48,13 @@ assert:
             __name__: windows_exporter_collector_success
             collector: "cpu"
         value: 1
+    # A collector that reports failure on any scrape fails the test.
+    - type: count
+      count: 0
+      match:
+        labels:
+          mode: partial
+          values:
+            __name__: windows_exporter_collector_success
+            collector: "cpu"
+        value: 0

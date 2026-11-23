@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 
@@ -22,9 +24,14 @@ type TestSchema struct {
 	// such as "windows". The test is skipped on other systems.
 	OS string `yaml:"os,omitempty"`
 	// Timeout is how long to wait for the assertions to pass, as a Go
-	// duration. It defaults to 30 seconds.
+	// duration. It defaults to 30 seconds. It does not cover the time Alloy
+	// needs to load, and it includes StableFor.
 	Timeout string `yaml:"timeout,omitempty"`
-	// Setup prepares files and runs commands before Alloy starts.
+	// StableFor is how long all assertions must keep passing, as a Go
+	// duration. Use it when an assertion about missing data, such as a count
+	// of zero, can pass before the data arrives.
+	StableFor string `yaml:"stable_for,omitempty"`
+	// Setup prepares files before Alloy starts.
 	Setup  SetupSchema     `yaml:"setup,omitempty"`
 	Flags  FlagsSchema     `yaml:"flags,omitempty"`
 	Config ConfigSchema    `yaml:"config"`
@@ -96,7 +103,8 @@ type MapMatchSchema struct {
 	Mode   string            `yaml:"mode,omitempty"`
 	Values map[string]string `yaml:"values,omitempty"`
 	// Regex maps a label name to an anchored regular expression that its
-	// value must match. It only applies to Prometheus labels.
+	// value must match. Only Prometheus labels support it, and Loki
+	// assertions reject it.
 	Regex map[string]string `yaml:"regex,omitempty"`
 }
 
@@ -134,6 +142,18 @@ func buildAssertions(assertions AssertionSchema) ([]harness.Assertion, error) {
 		out = append(out, harness.LogsContain(assertion.Contains))
 	}
 	return out, nil
+}
+
+// knownOS lists the runtime.GOOS values a test can name in os.
+var knownOS = []string{"aix", "android", "darwin", "dragonfly", "freebsd", "illumos", "ios", "js", "linux", "netbsd", "openbsd", "plan9", "solaris", "wasip1", "windows"}
+
+// validateOS rejects an os value that no system uses. A typo such as
+// "Windows" would otherwise skip the test on every system.
+func validateOS(os string) error {
+	if os == "" || slices.Contains(knownOS, os) {
+		return nil
+	}
+	return fmt.Errorf("unknown os %q, want one of %s", os, strings.Join(knownOS, ", "))
 }
 
 func isPartialMapMatch(name string, match MapMatchSchema) (bool, error) {
