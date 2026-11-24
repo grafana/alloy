@@ -111,7 +111,7 @@ func newQuerySamplesForTest(t *testing.T, db *sql.DB, handler loki.EntryHandler,
 
 func expectQuerySamples(t *testing.T, mock sqlmock.Sqlmock, hashes, users []string, rows *sqlmock.Rows) {
 	t.Helper()
-	query, args, err := buildQuerySamplesStatement(hashes, users, false)
+	query, args, err := buildQuerySamplesStatement(hashes, users, nil, false)
 	require.NoError(t, err)
 	mockSelectQueryStoreState(mock, "READ_WRITE")
 	mock.ExpectQuery(query).
@@ -123,7 +123,7 @@ func expectQuerySamples(t *testing.T, mock sqlmock.Sqlmock, hashes, users []stri
 func TestBuildQuerySamplesStatement(t *testing.T) {
 	query, args, err := buildQuerySamplesStatement(
 		[]string{"ffeeddccbbaa9988", testHash, testHash},
-		[]string{"admin", "monitor"}, false)
+		[]string{"admin", "monitor"}, nil, false)
 	require.NoError(t, err)
 	require.Contains(t, query, `r.query_hash IN (@h0, @h1)`)
 	require.Contains(t, query, `s.original_login_name NOT IN (@u0, @u1)`)
@@ -137,17 +137,35 @@ func TestBuildQuerySamplesStatement(t *testing.T) {
 		sql.Named("collector_marker", "/* grafana:alloy:database_observability */"),
 	}, namedArgs(args))
 
-	query, args, err = buildQuerySamplesStatement([]string{testHash}, nil, false)
+	query, args, err = buildQuerySamplesStatement([]string{testHash}, nil, nil, false)
 	require.NoError(t, err)
 	require.NotContains(t, query, "original_login_name NOT IN")
 	require.Len(t, args, 4)
 
-	_, _, err = buildQuerySamplesStatement(nil, nil, false)
+	_, _, err = buildQuerySamplesStatement(nil, nil, nil, false)
 	require.ErrorContains(t, err, "without query hashes")
-	_, _, err = buildQuerySamplesStatement([]string{"not-hex"}, nil, false)
+	_, _, err = buildQuerySamplesStatement([]string{"not-hex"}, nil, nil, false)
 	require.ErrorContains(t, err, "failed to decode")
-	_, _, err = buildQuerySamplesStatement([]string{"0011"}, nil, false)
+	_, _, err = buildQuerySamplesStatement([]string{"0011"}, nil, nil, false)
 	require.ErrorContains(t, err, "expected 8 bytes")
+
+	query, args, err = buildQuerySamplesStatement(
+		[]string{testHash},
+		[]string{"admin"},
+		[]string{"app_reader", "batch_user"},
+		false,
+	)
+	require.NoError(t, err)
+	require.Contains(t, query, `s.original_login_name NOT IN (@u0) AND s.original_login_name IN (@iu0, @iu1)`)
+	require.Equal(t, []driver.Value{
+		sql.Named("h0", queryHashBytes),
+		sql.Named("u0", "admin"),
+		sql.Named("iu0", "app_reader"),
+		sql.Named("iu1", "batch_user"),
+		sql.Named("exclude_current_user", false),
+		sql.Named("collector_app_name", "grafana:alloy:database_observability"),
+		sql.Named("collector_marker", "/* grafana:alloy:database_observability */"),
+	}, namedArgs(args))
 }
 
 func TestNewQuerySamplesNormalizesExcludedUsers(t *testing.T) {
@@ -218,6 +236,17 @@ func TestQuerySamples_SkipsExcludedDatabase(t *testing.T) {
 	require.NoError(t, collector.collect(context.Background()))
 	require.NoError(t, mock.ExpectationsWereMet())
 	require.Empty(t, handler.Received())
+}
+
+func TestQuerySamples_IncludeDatabases(t *testing.T) {
+	collector, err := NewQuerySamples(QuerySamplesArguments{
+		Logger:           util.TestAlloyLogger(t).Slog(),
+		IncludeDatabases: []string{"books_store"},
+	})
+	require.NoError(t, err)
+	require.False(t, collector.databaseExcluded("BOOKS_STORE"))
+	require.True(t, collector.databaseExcluded("other_db"))
+	require.True(t, collector.databaseExcluded("master"))
 }
 
 func TestQuerySamples_CollectAndFinalize(t *testing.T) {
@@ -623,7 +652,7 @@ func TestQuerySamples_QueryAndRowErrorsPreserveState(t *testing.T) {
 		QueryHash:    testHash,
 	}}, map[string]struct{}{testHash: {}})
 
-	query, args, err := buildQuerySamplesStatement([]string{testHash}, nil, false)
+	query, args, err := buildQuerySamplesStatement([]string{testHash}, nil, nil, false)
 	require.NoError(t, err)
 	mockSelectQueryStoreState(mock, "READ_WRITE")
 	mock.ExpectQuery(query).WithArgs(namedArgs(args)...).WillReturnError(errors.New("permission denied"))

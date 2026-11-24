@@ -295,8 +295,6 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SetupActorsCollector:    true,
 			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          false,
-			collector.TableStatsCollector:     false,
-			collector.IndexStatsCollector:     false,
 		}, actualCollectors)
 	})
 
@@ -322,8 +320,6 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SetupActorsCollector:    true,
 			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          true,
-			collector.TableStatsCollector:     false,
-			collector.IndexStatsCollector:     false,
 		}, actualCollectors)
 	})
 
@@ -349,8 +345,6 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SetupActorsCollector:    false,
 			collector.ExplainPlansCollector:   false,
 			collector.LocksCollector:          false,
-			collector.TableStatsCollector:     false,
-			collector.IndexStatsCollector:     false,
 		}, actualCollectors)
 	})
 
@@ -377,8 +371,6 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SetupActorsCollector:    true,
 			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          true,
-			collector.TableStatsCollector:     false,
-			collector.IndexStatsCollector:     false,
 		}, actualCollectors)
 	})
 
@@ -405,8 +397,6 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SetupActorsCollector:    false,
 			collector.ExplainPlansCollector:   false,
 			collector.LocksCollector:          false,
-			collector.TableStatsCollector:     false,
-			collector.IndexStatsCollector:     false,
 		}, actualCollectors)
 	})
 
@@ -433,8 +423,6 @@ func Test_enableOrDisableCollectors(t *testing.T) {
 			collector.SetupActorsCollector:    true,
 			collector.ExplainPlansCollector:   true,
 			collector.LocksCollector:          false,
-			collector.TableStatsCollector:     false,
-			collector.IndexStatsCollector:     false,
 		}, actualCollectors)
 	})
 }
@@ -1311,9 +1299,10 @@ func TestMySQL_Update_FailedRebuildKeepsOldInstances(t *testing.T) {
 // fakeCluster is a cluster.Cluster implementation with controllable
 // readiness and per-key ownership.
 type fakeCluster struct {
-	ready bool
-	owned map[shard.Key]bool
-	err   error
+	ready    bool
+	disabled bool
+	owned    map[shard.Key]bool
+	err      error
 }
 
 func (f *fakeCluster) Lookup(key shard.Key, _ int, _ shard.Op) ([]peer.Peer, error) {
@@ -1327,7 +1316,7 @@ func (f *fakeCluster) Peers() []peer.Peer { return nil }
 
 func (f *fakeCluster) Ready() bool { return f.ready }
 
-func (f *fakeCluster) Enabled() bool { return true }
+func (f *fakeCluster) Enabled() bool { return !f.disabled }
 
 var (
 	clusterKeyDB1 = shard.StringKey("tcp(127.0.0.1:3306)/db1")
@@ -1571,10 +1560,61 @@ func TestMySQL_Clustering_UpdateRecomputesOwnership(t *testing.T) {
 		[]string{instances[0].instanceKey, instances[1].instanceKey})
 }
 
-func TestMySQL_Clustering_LookupErrorFailsOpen(t *testing.T) {
-	// Ownership lookup errors fail open to local ownership, so a broken
-	// cluster degrades to collecting everything rather than nothing.
+func TestMySQL_Clustering_LookupErrorOwnsNothing(t *testing.T) {
+	// A lookup only errors while no peer is eligible to own a key, as on a
+	// node that hasn't joined as a participant yet. Failing open there would
+	// make every node of a freshly started cluster connect to every database.
 	fake := &fakeCluster{ready: true, err: assert.AnError}
+	var gotExports cmp.Exports
+
+	c, err := new(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, _ string) (*sql.DB, error) {
+		t.Error("unexpected database connection while no peer is eligible to own databases")
+		return nil, assert.AnError
+	})
+	require.NoError(t, err)
+
+	assert.Empty(t, c.loadInstances())
+
+	h := c.CurrentHealth()
+	assert.Equal(t, cmp.HealthTypeHealthy, h.Health)
+	assert.Contains(t, h.Message, "no databases are currently owned")
+
+	exported, ok := gotExports.(Exports)
+	require.True(t, ok)
+	assert.Empty(t, exported.Targets)
+}
+
+func TestMySQL_Clustering_ReconcilePicksUpDatabasesAfterLookupError(t *testing.T) {
+	fake := &fakeCluster{ready: true, err: assert.AnError}
+	var gotExports cmp.Exports
+
+	c, err := new(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, dsn string) (*sql.DB, error) {
+		switch {
+		case strings.Contains(dsn, "/db1"):
+			return multiDatabaseTestMockDB(t, "uuid-a"), nil
+		default:
+			return multiDatabaseTestMockDB(t, "uuid-b"), nil
+		}
+	})
+	require.NoError(t, err)
+	require.Empty(t, c.loadInstances())
+
+	// The node becomes a participant: lookups succeed and it owns db1.
+	fake.err = nil
+	fake.owned = map[shard.Key]bool{clusterKeyDB1: true, clusterKeyDB2: false}
+	c.reconcileCluster()
+
+	instances := c.loadInstances()
+	require.Len(t, instances, 1)
+	assert.Equal(t, "tcp(127.0.0.1:3306)/db1", instances[0].instanceKey)
+	assert.NotEmpty(t, instances[0].collectors)
+}
+
+func TestMySQL_Clustering_ClusterServiceDisabledOwnsEverything(t *testing.T) {
+	// With the cluster service disabled, the component's clustering block must
+	// be ignored. Lookups error until the node has joined as a participant after
+	// its initial load, and that must not leave every database unowned.
+	fake := &fakeCluster{ready: true, disabled: true, err: assert.AnError}
 	var gotExports cmp.Exports
 
 	c, err := new(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, dsn string) (*sql.DB, error) {
@@ -1647,7 +1687,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas, args.IncludeSchemas)
 		assert.Equal(t, wantDefaultCollectors, exporterArgs.SetCollectors)
 		assert.ElementsMatch(t, wantDefaultCollectors, scraperNames(exporterArgs))
 		assert.Equal(t, 100, exporterArgs.PerfSchemaEventsStatements.Limit)
@@ -1666,7 +1706,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas, args.IncludeSchemas)
 		assert.Equal(t, wantDefaultCollectors, exporterArgs.SetCollectors)
 		assert.Equal(t, 50, exporterArgs.PerfSchemaEventsStatements.Limit)
 		assert.Equal(t, 0, exporterArgs.PerfSchemaEventsStatements.TextLimit)
@@ -1683,7 +1723,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas, args.IncludeSchemas)
 		assert.Equal(t, 120, exporterArgs.PerfSchemaEventsStatements.TextLimit)
 	})
 
@@ -1697,7 +1737,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas, args.IncludeSchemas)
 		assert.Equal(t, []string{"global_status"}, exporterArgs.SetCollectors)
 	})
 
@@ -1711,7 +1751,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas, args.IncludeSchemas)
 		assert.Equal(t, wantDefaultCollectors, exporterArgs.SetCollectors)
 	})
 
@@ -1726,7 +1766,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas, args.IncludeSchemas)
 		assert.ElementsMatch(t, []string{"global_status", "global_variables", "slave_status"}, scraperNames(exporterArgs))
 	})
 
@@ -1740,7 +1780,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas, args.IncludeSchemas)
 		assert.Equal(t, 100, exporterArgs.PerfSchemaEventsStatements.Limit)
 	})
 
@@ -1753,7 +1793,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		`
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas, args.IncludeSchemas)
 		assert.Equal(t, 100, exporterArgs.PerfSchemaEventsStatements.Limit)
 		assert.Equal(t, wantDefaultCollectors, exporterArgs.SetCollectors)
 	})
@@ -1768,7 +1808,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas)
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, args.ExcludeSchemas, args.IncludeSchemas)
 		assert.Equal(t, 100, exporterArgs.PerfSchemaEventsStatements.Limit)
 		assert.ElementsMatch(t,
 			[]string{eventsStatementsCollector, "global_status", "global_variables", "slave_status", "perf_schema.eventswaits"},
@@ -1783,7 +1823,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 			},
 		}
 
-		exporterArgs := resolveExporterArgs(userBlock, []string{"top_level"})
+		exporterArgs := resolveExporterArgs(userBlock, []string{"top_level"}, nil)
 
 		assert.Equal(t, []string{
 			"mysql", "performance_schema", "sys", "information_schema",
@@ -1800,7 +1840,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 			},
 		}
 
-		exporterArgs := resolveExporterArgs(userBlock, []string{"top_level"})
+		exporterArgs := resolveExporterArgs(userBlock, []string{"top_level"}, nil)
 
 		assert.Equal(t, []string{
 			"mysql", "performance_schema", "sys", "information_schema",
@@ -1825,7 +1865,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		require.NotNil(t, args.PrometheusExporter)
 		require.NotNil(t, args.PrometheusExporter.PerfSchemaEventsStatements.ExcludeSchemas)
 
-		exporterArgs := resolveExporterArgs(args.PrometheusExporter, []string{"top_level"})
+		exporterArgs := resolveExporterArgs(args.PrometheusExporter, []string{"top_level"}, nil)
 
 		assert.Equal(t, []string{
 			"mysql", "performance_schema", "sys", "information_schema",
@@ -1834,11 +1874,20 @@ func Test_resolveExporterArgs(t *testing.T) {
 	})
 
 	t.Run("schema exclusions preserve default schema exclusions without configuration", func(t *testing.T) {
-		exporterArgs := resolveExporterArgs(nil, nil)
+		exporterArgs := resolveExporterArgs(nil, nil, nil)
 
 		assert.Equal(t, []string{
 			"mysql", "performance_schema", "sys", "information_schema",
 			"alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin",
+		}, exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas)
+	})
+
+	t.Run("include_schemas removes matching default schema exclusions from exporter", func(t *testing.T) {
+		exporterArgs := resolveExporterArgs(nil, defaultExcludedSchemas(), []string{"rdsadmin", "app_db"})
+
+		assert.Equal(t, []string{
+			"mysql", "performance_schema", "sys", "information_schema",
+			"alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin",
 		}, exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas)
 	})
 }
@@ -2069,6 +2118,69 @@ func Test_exclude_schemas_eventsstatements_mismatch_warning(t *testing.T) {
 		require.NoError(t, c.Update(args))
 
 		assert.NotContains(t, logs.String(), "exclude_schemas and prometheus_exporter perf_schema.eventsstatements exclude_schemas differ")
+	})
+}
+
+func TestValidate_IncludeAndExcludeSchemas(t *testing.T) {
+	t.Run("rejects overlapping include_schemas and exclude_schemas", func(t *testing.T) {
+		cfg := `
+			data_source_name = "user:pass@tcp(localhost:3306)/db"
+			forward_to       = []
+			include_schemas  = ["app_db", "shared_schema"]
+			exclude_schemas  = ["other_schema", "shared_schema"]
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.EqualError(t, err, `include_schemas and exclude_schemas cannot both contain "shared_schema"`)
+	})
+
+	t.Run("accepts include_schemas overlapping default exclude_schemas when exclude_schemas is not overridden", func(t *testing.T) {
+		cfg := `
+			data_source_name = "user:pass@tcp(localhost:3306)/db"
+			forward_to       = []
+			include_schemas  = ["app_db", "rdsadmin"]
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		require.Equal(t, []string{"app_db", "rdsadmin"}, args.IncludeSchemas)
+	})
+
+	t.Run("accepts include_schemas overlapping default exclude_schemas when exclude_schemas is overridden with other schemas", func(t *testing.T) {
+		cfg := `
+			data_source_name = "user:pass@tcp(localhost:3306)/db"
+			forward_to       = []
+			include_schemas  = ["app_db", "rdsadmin"]
+			exclude_schemas  = ["legacy_only"]
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		require.Equal(t, []string{"app_db", "rdsadmin"}, args.IncludeSchemas)
+		require.Equal(t, []string{"legacy_only"}, args.ExcludeSchemas)
+	})
+
+	t.Run("rejects include_schemas overlapping always-excluded schemas", func(t *testing.T) {
+		cfg := `
+			data_source_name = "user:pass@tcp(localhost:3306)/db"
+			forward_to       = []
+			include_schemas  = ["app_db", "information_schema"]
+			exclude_schemas  = ["legacy_only"]
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.EqualError(t, err, `include_schemas and exclude_schemas cannot both contain "information_schema"`)
+	})
+
+	t.Run("accepts disjoint include_schemas and exclude_schemas", func(t *testing.T) {
+		cfg := `
+			data_source_name = "user:pass@tcp(localhost:3306)/db"
+			forward_to       = []
+			include_schemas  = ["app_db"]
+			exclude_schemas  = ["legacy_db"]
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		require.Equal(t, []string{"app_db"}, args.IncludeSchemas)
+		require.Equal(t, []string{"legacy_db"}, args.ExcludeSchemas)
 	})
 }
 

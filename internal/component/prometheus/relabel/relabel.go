@@ -243,6 +243,32 @@ func New(o component.Options, args Arguments) (*Component, error) {
 			// Since SeriesRefs are tied to the labels, we send zero to indicate the seriesRef should be recalculated downstream.
 			return next.AppendHistogram(0, newLbl, t, h, fh)
 		}),
+		prometheus.WithSTZeroSampleHook(func(ref storage.SeriesRef, l labels.Labels, t, st int64, next storage.Appender) (storage.SeriesRef, error) {
+			if c.exited.Load() {
+				return 0, fmt.Errorf("%s has exited", o.ID)
+			}
+
+			newLbl := c.relabel(0, l)
+			if newLbl.IsEmpty() {
+				return 0, nil
+			}
+
+			// Since SeriesRefs are tied to the labels, we send zero to indicate the seriesRef should be recalculated downstream.
+			return next.AppendSTZeroSample(0, newLbl, t, st)
+		}),
+		prometheus.WithHistogramSTZeroSampleHook(func(ref storage.SeriesRef, l labels.Labels, t, st int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error) {
+			if c.exited.Load() {
+				return 0, fmt.Errorf("%s has exited", o.ID)
+			}
+
+			newLbl := c.relabel(0, l)
+			if newLbl.IsEmpty() {
+				return 0, nil
+			}
+
+			// Since SeriesRefs are tied to the labels, we send zero to indicate the seriesRef should be recalculated downstream.
+			return next.AppendHistogramSTZeroSample(0, newLbl, t, st, h, fh)
+		}),
 	)
 
 	// Immediately export the receiver which remains the same for the component

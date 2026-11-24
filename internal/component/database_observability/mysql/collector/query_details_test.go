@@ -203,11 +203,28 @@ func TestQueryTables(t *testing.T) {
 			}},
 			logsLabels: []model.LabelSet{
 				{"op": database_observability.OP_QUERY_ASSOCIATION},
+				{"op": database_observability.OP_QUERY_ASSOCIATION},
 				{"op": database_observability.OP_QUERY_PARSED_TABLE_NAMES_V2},
 			},
 			logsLines: []string{
+				`level="info" schema="some_schema" parseable="false" digest="xyz456" digest_text="not valid sql"`,
 				"level=\"info\" schema=\"some_schema\" parseable=\"true\" digest=\"abc123\" digest_text=\"SELECT * FROM `some_table` WHERE `id` = ?\"",
 				`level="info" schema="some_schema" digest="abc123" tables="[{\"table\":\"some_table\",\"validated\":false}]"`,
+			},
+		},
+		{
+			name: "truncated table-less statement with identical sample and digest text",
+			eventStatementsRows: [][]driver.Value{{
+				"xyz456",
+				"SET @@session.sql_mode = ...",
+				"some_schema",
+				"SET @@session.sql_mode = ...",
+			}},
+			logsLabels: []model.LabelSet{
+				{"op": database_observability.OP_QUERY_ASSOCIATION},
+			},
+			logsLines: []string{
+				`level="info" schema="some_schema" parseable="false" digest="xyz456" digest_text="SET @@session.sql_mode = ..."`,
 			},
 		},
 		{
@@ -654,6 +671,35 @@ func TestQueryDetailsExcludeSchemas(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+func TestQueryDetailsIncludeSchemas(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	c, err := NewQueryDetails(QueryDetailsArguments{
+		DB:              db,
+		CollectInterval: time.Millisecond,
+		StatementsLimit: 250,
+		IncludeSchemas:  []string{"included_schema"},
+		EntryHandler:    lokiClient,
+		Logger:          util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+
+	mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, buildSchemaFilterClause(nil, []string{"included_schema"}, "schema_name"), 250)).
+		WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+		"digest", "digest_text", "schema_name", "query_sample_text",
+	}))
+
+	require.NoError(t, c.tablesFromEventsStatements(t.Context()))
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestQueryDetails_ResolvesTableNameCasingAndPreservesValidation(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
@@ -892,4 +938,23 @@ func TestQueryDetails_EscapesQuotedIdentifiers(t *testing.T) {
 		}
 	}
 	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestTryTokenizeTableNames(t *testing.T) {
+	c, err := NewQueryDetails(QueryDetailsArguments{
+		Logger: util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+
+	t.Run("no tables with identical fallback returns nil without error", func(t *testing.T) {
+		tables, err := c.tryTokenizeTableNames("SET @@session.sql_mode = ...", "SET @@session.sql_mode = ...")
+		require.NoError(t, err)
+		require.Nil(t, tables)
+	})
+
+	t.Run("falls back to digest text when sample text yields no tables", func(t *testing.T) {
+		tables, err := c.tryTokenizeTableNames("", "SELECT * FROM `some_table` WHERE `id` = ?")
+		require.NoError(t, err)
+		require.Equal(t, []string{"some_table"}, tables)
+	})
 }

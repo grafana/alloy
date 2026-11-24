@@ -44,7 +44,9 @@ type QuerySamplesArguments struct {
 	MaxSamplesPerQuery    int
 	MaxSamplesPerCollect  int
 	ExcludeDatabases      []string
+	IncludeDatabases      []string
 	ExcludeUsers          []string
+	IncludeUsers          []string
 	ExcludeCurrentUser    bool
 }
 
@@ -60,7 +62,9 @@ type QuerySamples struct {
 	maxSamplesPerQuery    int
 	maxSamplesPerCollect  int
 	excludeDatabases      []string
+	includeDatabases      []string
 	excludeUsers          []string
+	includeUsers          []string
 	excludeCurrentUser    bool
 
 	logger  *slog.Logger
@@ -199,7 +203,9 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		maxSamplesPerQuery:    args.MaxSamplesPerQuery,
 		maxSamplesPerCollect:  args.MaxSamplesPerCollect,
 		excludeDatabases:      database_observability.MergeExclusions(excludedDatabases, args.ExcludeDatabases),
+		includeDatabases:      args.IncludeDatabases,
 		excludeUsers:          uniqueSorted(args.ExcludeUsers),
+		includeUsers:          args.IncludeUsers,
 		excludeCurrentUser:    args.ExcludeCurrentUser,
 		logger:                args.Logger.With("collector", QuerySamplesCollector),
 		running:               atomic.NewBool(false),
@@ -290,7 +296,7 @@ func (c *QuerySamples) collect(ctx context.Context) error {
 	// TODO(cristian): GetQueryHashes returns TTL-retained hashes and can exceed
 	// query_metrics.statements_limit. Introduce an exact latest-top-N snapshot
 	// before relying on the tracker as a strict admission bound.
-	query, args, err := buildQuerySamplesStatement(candidateHashes, c.excludeUsers, c.excludeCurrentUser)
+	query, args, err := buildQuerySamplesStatement(candidateHashes, c.excludeUsers, c.includeUsers, c.excludeCurrentUser)
 	if err != nil {
 		return err
 	}
@@ -603,10 +609,10 @@ func (c *QuerySamples) buildWaitEventLine(row querySampleRow, wait queryWaitOccu
 	return line + fmt.Sprintf(` wait_time=%s`, strconv.Quote(wait.duration.String()))
 }
 
-func buildQuerySamplesStatement(hashes, excludedUsers []string, excludeCurrentUser bool) (string, []any, error) {
+func buildQuerySamplesStatement(hashes, excludedUsers, includedUsers []string, excludeCurrentUser bool) (string, []any, error) {
 	hashes = uniqueSorted(hashes)
 	hashPlaceholders := make([]string, 0, len(hashes))
-	args := make([]any, 0, len(hashes)+len(excludedUsers))
+	args := make([]any, 0, len(hashes)+len(excludedUsers)+len(includedUsers))
 	for i, queryHash := range hashes {
 		raw, err := hex.DecodeString(queryHash)
 		if err != nil {
@@ -633,6 +639,20 @@ func buildQuerySamplesStatement(hashes, excludedUsers []string, excludeCurrentUs
 		}
 		userClause = fmt.Sprintf("AND s.original_login_name NOT IN (%s)", strings.Join(userPlaceholders, ", "))
 	}
+	if len(includedUsers) > 0 {
+		userPlaceholders := make([]string, 0, len(includedUsers))
+		for i, user := range includedUsers {
+			name := fmt.Sprintf("iu%d", i)
+			userPlaceholders = append(userPlaceholders, "@"+name)
+			args = append(args, sql.Named(name, user))
+		}
+		inClause := fmt.Sprintf("AND s.original_login_name IN (%s)", strings.Join(userPlaceholders, ", "))
+		if userClause != "" {
+			userClause += " " + inClause
+		} else {
+			userClause = inClause
+		}
+	}
 
 	args = append(args, sql.Named("exclude_current_user", excludeCurrentUser), sql.Named("collector_app_name", AppName), sql.Named("collector_marker", QueryMarker))
 
@@ -653,6 +673,14 @@ func (c *QuerySamples) databaseExcluded(database string) bool {
 		if strings.EqualFold(database, excluded) {
 			return true
 		}
+	}
+	if len(c.includeDatabases) > 0 {
+		for _, included := range c.includeDatabases {
+			if strings.EqualFold(database, included) {
+				return false
+			}
+		}
+		return true
 	}
 	return false
 }

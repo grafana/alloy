@@ -38,7 +38,7 @@ func TestEnricher(t *testing.T) {
 
 	tests := []testCase{
 		{
-			name: "label enrichment with target_labels and logs_match_label",
+			name: "label enrichment with target_labels and differing label names",
 			args: Arguments{
 				Targets: []discovery.Target{
 					discovery.NewTargetFromMap(map[string]string{
@@ -48,8 +48,7 @@ func TestEnricher(t *testing.T) {
 						"foo":     "bar",
 					}),
 				},
-				TargetMatchLabel: "service",
-				LogsMatchLabel:   "service_name",
+				TargetToLogMatch: map[string]string{"service": "service_name"},
 				LabelsToCopy:     []string{"env", "owner"},
 			},
 			input: loki.Entry{
@@ -77,8 +76,7 @@ func TestEnricher(t *testing.T) {
 						"env":     "prod",
 					}),
 				},
-				TargetMatchLabel: "service",
-				LogsMatchLabel:   "service_name",
+				TargetToLogMatch: map[string]string{"service": "service_name"},
 				LabelsToCopy:     []string{"env"},
 			},
 			input: loki.Entry{
@@ -107,8 +105,7 @@ func TestEnricher(t *testing.T) {
 						"region":  "us-west",
 					}),
 				},
-				TargetMatchLabel: "service",
-				// LogsMatchLabel intentionally omitted as 'service' label exists in both.
+				TargetToLogMatch: map[string]string{"service": "service"},
 			},
 			input: loki.Entry{
 				Labels: model.LabelSet{
@@ -127,7 +124,7 @@ func TestEnricher(t *testing.T) {
 			},
 		},
 		{
-			name: "match using target_match_label when logs_match_label is not specified",
+			name: "match when the label name is the same in targets and logs",
 			args: Arguments{
 				Targets: []discovery.Target{
 					discovery.NewTargetFromMap(map[string]string{
@@ -136,13 +133,12 @@ func TestEnricher(t *testing.T) {
 						"owner":   "team-c",
 					}),
 				},
-				TargetMatchLabel: "service",
-				// LogsMatchLabel intentionally omitted as 'service' label exists in both.
-				LabelsToCopy: []string{"env", "owner"},
+				TargetToLogMatch: map[string]string{"service": "service"},
+				LabelsToCopy:     []string{"env", "owner"},
 			},
 			input: loki.Entry{
 				Labels: model.LabelSet{
-					"service":  "test-service", // matches target_match_label
+					"service":  "test-service", // matches the target_to_log_match label
 					"original": "label",
 				},
 				Entry: inputEntry,
@@ -223,37 +219,6 @@ func TestEnricher(t *testing.T) {
 				Entry: expectedEntry,
 			},
 		},
-		{
-			name: "target_to_log_match takes precedence over deprecated labels",
-			args: Arguments{
-				Targets: []discovery.Target{
-					discovery.NewTargetFromMap(map[string]string{
-						"cluster":   "cluster-a",
-						"legacy_id": "legacy-a",
-						"env":       "prod",
-					}),
-				},
-				TargetToLogMatch: map[string]string{"cluster": "cluster_id"},
-				TargetMatchLabel: "legacy_id",
-				LogsMatchLabel:   "legacy_id",
-				LabelsToCopy:     []string{"env"},
-			},
-			input: loki.Entry{
-				Labels: model.LabelSet{
-					"cluster_id": "cluster-a",
-					"legacy_id":  "does-not-match",
-				},
-				Entry: inputEntry,
-			},
-			expected: loki.Entry{
-				Labels: model.LabelSet{
-					"cluster_id": "cluster-a",
-					"legacy_id":  "does-not-match",
-					"env":        "prod",
-				},
-				Entry: expectedEntry,
-			},
-		},
 	}
 
 	for _, tt := range tests {
@@ -306,19 +271,6 @@ func TestValidate(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name: "valid deprecated",
-			args: Arguments{
-				TargetMatchLabel: "service",
-			},
-		},
-		{
-			name: "valid deprecated with logs_match_label",
-			args: Arguments{
-				TargetMatchLabel: "service",
-				LogsMatchLabel:   "service_name",
-			},
-		},
-		{
 			name: "valid multi-label match",
 			args: Arguments{
 				TargetToLogMatch: map[string]string{"namespace": "namespace", "pod_name": "pod"},
@@ -327,21 +279,7 @@ func TestValidate(t *testing.T) {
 		{
 			name:    "missing match mechanism",
 			args:    Arguments{},
-			wantErr: "at least one match mechanism must be specified",
-		},
-		{
-			name: "new match takes precedence over deprecated",
-			args: Arguments{
-				TargetMatchLabel: "service",
-				TargetToLogMatch: map[string]string{"namespace": "namespace"},
-			},
-		},
-		{
-			name: "logs_match_label requires target_match_label",
-			args: Arguments{
-				LogsMatchLabel: "service_name",
-			},
-			wantErr: "target_match_label must be set",
+			wantErr: "target_to_log_match must contain at least one label pair",
 		},
 		{
 			name: "empty target label in target_to_log_match",
@@ -388,48 +326,8 @@ func TestUpdate(t *testing.T) {
 
 	err = comp.Update(Arguments{
 		Targets:          newTargets,
-		TargetMatchLabel: "service",
-		LogsMatchLabel:   "service_name",
+		TargetToLogMatch: map[string]string{"service": "service_name"},
 		LabelsToCopy:     []string{"env"},
 	})
 	require.NoError(t, err)
-}
-
-func TestUpdateFromDeprecatedToTargetToLogMatch(t *testing.T) {
-	targets := []discovery.Target{
-		discovery.NewTargetFromMap(map[string]string{
-			"service":   "svc-a",
-			"namespace": "ns-a",
-			"env":       "prod",
-		}),
-	}
-
-	comp, err := New(component.Options{
-		Logger:        logging.NewSlogNop(),
-		OnStateChange: func(e component.Exports) {},
-	}, Arguments{
-		Targets:          targets,
-		TargetMatchLabel: "service",
-		LogsMatchLabel:   "service_name",
-		LabelsToCopy:     []string{"env"},
-	})
-	require.NoError(t, err)
-
-	// The log only matches the deprecated single-label configuration.
-	deprecatedOnly := model.LabelSet{"service_name": "svc-a"}
-	// The log only matches the new multi-label configuration.
-	multiLabel := model.LabelSet{"svc": "svc-a", "ns": "ns-a"}
-
-	require.Equal(t, model.LabelSet{"service_name": "svc-a", "env": "prod"}, comp.process(deprecatedOnly, true))
-	require.Equal(t, multiLabel, comp.process(multiLabel, true))
-
-	err = comp.Update(Arguments{
-		Targets:          targets,
-		TargetToLogMatch: map[string]string{"service": "svc", "namespace": "ns"},
-		LabelsToCopy:     []string{"env"},
-	})
-	require.NoError(t, err)
-
-	require.Equal(t, deprecatedOnly, comp.process(deprecatedOnly, true))
-	require.Equal(t, model.LabelSet{"svc": "svc-a", "ns": "ns-a", "env": "prod"}, comp.process(multiLabel, true))
 }

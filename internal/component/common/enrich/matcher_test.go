@@ -156,3 +156,27 @@ func TestMatcherSnapshotsTargetsAndStrategy(t *testing.T) {
 		matcher.Match(labels.FromStrings("service_name", "api").Get))
 	require.Nil(t, matcher.Match(labels.FromStrings("service_name", "worker").Get))
 }
+
+func TestValidateMatch(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   map[string]string
+		wantErr string
+	}{
+		{name: "valid", input: map[string]string{"ns": "namespace", "pod": "pod_name"}},
+		{name: "nil map", input: nil, wantErr: "my_attr must contain at least one label pair"},
+		{name: "empty map", input: map[string]string{}, wantErr: "my_attr must contain at least one label pair"},
+		{name: "empty target label", input: map[string]string{"": "namespace"}, wantErr: "my_attr must not contain empty label names"},
+		{name: "empty incoming label", input: map[string]string{"ns": ""}, wantErr: "my_attr must not contain empty label names"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := enrich.ValidateMatch("my_attr", tt.input)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}

@@ -40,6 +40,8 @@ var _ harness.Dependency = (*Kafka)(nil)
 type Kafka struct {
 	opts      KafkaOptions
 	installed bool
+	// ready is set once Install has finished, topics included.
+	ready bool
 }
 
 type KafkaOptions struct {
@@ -109,6 +111,7 @@ func (k *Kafka) Install(_ *harness.TestContext) (err error) {
 			return err
 		}
 	}
+	k.ready = true
 	return nil
 }
 

@@ -56,6 +56,12 @@ Mount `/sys/kernel/tracing` (on older kernel versions you might need `/sys/kerne
 * Native code (C/C++, Rust, Zig, Go, etc. without debug symbols on host)
 * Broad set of high-level languages (HotSpot JVM, Python, Ruby, PHP, Node.js, V8, Perl).
 
+{{< admonition type="note" >}}
+The experimental `debug_info` block is no longer supported.
+Remove the entire block from your configuration, including `upload`, `on_target_symbolization`, `cache_size`, `strip_text_section`, `queue_size`, and `worker_num`.
+The component continues to symbolize profiles locally and no longer uploads debug information.
+{{< /admonition >}}
+
 ## Usage
 
 ```alloy

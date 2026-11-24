@@ -35,6 +35,7 @@ You can use the following arguments with `database_observability.mysql`:
 | `disable_collectors`                       | `list(string)`       | A list of collectors to disable from the default set.                       |         | no       |
 | `enable_collectors`                        | `list(string)`       | A list of collectors to enable on top of the default set.                   |         | no       |
 | `exclude_schemas`                          | `list(string)`       | A list of schemas to exclude from monitoring on top of the default exclusions. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
+| `include_schemas`                          | `list(string)`       | A list of schemas to monitor. When empty, all non-excluded schemas are monitored. Items in `include_schemas` override the default exclusions, but cannot overlap with `exclude_schemas` or system schemas (`mysql`, `performance_schema`, `sys`, `information_schema`). | `[]` | no       |
 | `allow_update_performance_schema_settings` | `boolean`            | Whether to allow updates to `performance_schema` settings in any collector. Enable this in conjunction with other collector-specific settings where required. | `false` | no       |
 
 The following collectors are configurable:
@@ -48,8 +49,6 @@ The following collectors are configurable:
 | `setup_actors`    | Check and update `performance_schema.setup_actors` settings. | yes                |
 | `locks`           | Collect queries that are waiting/blocking other queries.     | no                 |
 | `explain_plans`   | Collect explain plans information.                           | yes                |
-| `table_stats`     | Collect table-level index usage statistics.                  | no                 |
-| `index_stats`     | Collect per-index usage statistics.                          | no                 |
 
 ## Blocks
 
@@ -247,11 +246,14 @@ The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they
 
 ### `explain_plans`
 
-| Name                           | Type           | Description                                                                     | Default | Required |
-| ------------------------------ | -------------- | ------------------------------------------------------------------------------- | ------- | -------- |
-| `collect_interval`             | `duration`     | How frequently to collect information from database.                            | `"1m"`  | no       |
-| `initial_lookback`             | `duration`     | How far back to look for explain plan queries on the first collection interval. | `"24h"` | no       |
-| `per_collect_ratio`            | `float`        | Ratio of explain plan queries to collect per collect interval.                  | `1.0`   | no       |
+| Name                   | Type       | Description                                                                     | Default | Required |
+| ---------------------- | ---------- | ------------------------------------------------------------------------------- | ------- | -------- |
+| `collect_interval`     | `duration` | How frequently to collect information from database.                            | `"1m"`  | no       |
+| `initial_lookback`     | `duration` | How far back to look for explain plan queries on the first collection interval. | `"24h"` | no       |
+| `per_collect_ratio`    | `float`    | Ratio of explain plan queries to collect per collect interval.                  | `1.0`   | no       |
+| `log_explain_warnings` | `bool`     | Log the warnings of each explain plan at debug level.                           | `false` | no       |
+
+When `log_explain_warnings` is `true` and the log level is `debug`, the collector runs `SHOW WARNINGS` on the monitored database after each `EXPLAIN` and logs the warnings next to the plan. The warnings explain plans that the plan alone doesn't, such as an index that can't be used because of a type or collation conversion. The collector logs the message of a warning only for the codes `1276`, `1287`, `1739`, and `3170`, and only the code of any other warning, because some messages quote the query. The plan sent to Loki doesn't change. The setting has no effect at other log levels.
 
 ### `locks`
 
@@ -295,6 +297,7 @@ The `limit` of the `perf_schema.eventsstatements` collector defaults to `100`.
 Use `enable_collectors` and `disable_collectors` to adjust this set, or `set_collectors` to replace it.
 The embedded `perf_schema.eventsstatements` collector inherits the top-level `exclude_schemas` list. Setting `prometheus_exporter > perf_schema.eventsstatements > exclude_schemas` is discouraged because it can cause the embedded exporter and the component's collectors to monitor different schemas.
 Configure the top-level `exclude_schemas` argument instead.
+The `include_schemas` argument applies only to `database_observability.mysql` collectors and isn't forwarded to the embedded `mysqld_exporter`.
 
 Refer to [`prometheus.exporter.mysql`](../../prometheus/prometheus.exporter.mysql/) docs for the full list of supported arguments and sub-blocks.
 

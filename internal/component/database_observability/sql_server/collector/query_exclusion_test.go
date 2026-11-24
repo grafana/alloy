@@ -70,7 +70,7 @@ func TestQueryCollectorsExcludeCurrentUser(t *testing.T) {
 				c, e := NewQuerySamples(QuerySamplesArguments{DB: db, Tracker: tracker, Logger: logger, ExcludeCurrentUser: true, ExcludeUsers: []string{"db-o11y"}})
 				require.NoError(t, e)
 				collect = c.collect
-				query, args, err = buildQuerySamplesStatement([]string{testHash}, []string{"db-o11y"}, true)
+				query, args, err = buildQuerySamplesStatement([]string{testHash}, []string{"db-o11y"}, nil, true)
 				rows = querySampleRows()
 			}
 			require.NoError(t, err)

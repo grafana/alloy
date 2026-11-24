@@ -15,7 +15,7 @@ import (
 // TestGlobResolverCaseSensitive verifies that glob patterns are case-sensitive on Unix.
 // An uppercase pattern should NOT match lowercase files.
 func TestGlobResolverCaseSensitive(t *testing.T) {
-	resolver := newGlobResolver(logging.NewSlogNop())
+	resolver := newGlobResolver(logging.NewSlogNop(), 0)
 
 	// Use uppercase pattern - should NOT match the lowercase .log files on Unix
 	targets := []discovery.Target{
@@ -35,7 +35,7 @@ func TestGlobResolverCaseSensitive(t *testing.T) {
 
 // TestGlobResolverCaseSensitiveMatch verifies that matching case works correctly.
 func TestGlobResolverCaseSensitiveMatch(t *testing.T) {
-	resolver := newGlobResolver(logging.NewSlogNop())
+	resolver := newGlobResolver(logging.NewSlogNop(), 0)
 
 	// Use lowercase pattern - should match the lowercase .log files
 	targets := []discovery.Target{
