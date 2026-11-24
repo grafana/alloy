@@ -105,3 +105,8 @@ func TestCapTimeout(t *testing.T) {
 	_, err = capTimeout(time.Minute, time.Now().Add(time.Second))
 	require.Error(t, err)
 }
+
+func TestRunTest_RejectsStableWindowLongerThanTimeout(t *testing.T) {
+	err := RunTest(t.Context(), TestSchema{Timeout: "1s", StableFor: "5s"}, TestConfig{DataPath: t.TempDir(), WorkDir: t.TempDir()})
+	require.ErrorContains(t, err, "stable window")
+}

@@ -39,19 +39,28 @@ type Config struct {
 	StableFor time.Duration
 }
 
+// assertTimeout returns the assertion timeout, or the default when unset.
+func (c Config) assertTimeout() time.Duration {
+	if c.AssertTimeout <= 0 {
+		return defaultTimeout
+	}
+	return c.AssertTimeout
+}
+
 // NewAlloy creates and starts an in-process Alloy runtime for pipeline tests
 // from the provided source.
 func NewAlloy(cfg Config) (*Alloy, error) {
+	if cfg.StableFor > 0 && cfg.StableFor >= cfg.assertTimeout() {
+		return nil, fmt.Errorf("the stable window of %s does not fit in the assertion timeout of %s", cfg.StableFor, cfg.assertTimeout())
+	}
+
 	logs := &logBuffer{}
 	logger, err := logging.New(logs, logging.DefaultOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	assertTimeout := cfg.AssertTimeout
-	if assertTimeout <= 0 {
-		assertTimeout = defaultTimeout
-	}
+	assertTimeout := cfg.assertTimeout()
 
 	ctrl, err := alloyruntime.New(alloyruntime.Options{
 		Logger:   logger,
@@ -128,8 +137,18 @@ func (a *Alloy) Stop() {
 // until they all pass, and keep passing for the stable window, or the
 // assertion timeout is reached. On failure it returns the latest snapshot
 // alongside the assertion failures.
+//
+// It returns early when the stable window can no longer fit before the
+// timeout. A passing streak ends at its start plus the window, and a failing
+// poll can at best start a streak now, so waiting longer cannot help.
 func (a *Alloy) Assert(assertions ...Assertion) error {
+	deadline := time.Now().Add(a.assertTimeout)
 	var passingSince time.Time
+
+	// windowFits reports whether a streak that starts at start can finish.
+	windowFits := func(start time.Time) bool {
+		return a.stableFor <= 0 || !start.Add(a.stableFor).After(deadline)
+	}
 
 	return eventually(func() error {
 		s := a.sink.snapshot()
@@ -144,10 +163,14 @@ func (a *Alloy) Assert(assertions ...Assertion) error {
 
 		if len(errs) > 0 {
 			passingSince = time.Time{}
-			return AssertionErrors{
-				Errors:   errs,
-				Snapshot: s,
+			if !windowFits(time.Now()) {
+				errs = append(errs, AssertionError{
+					Kind:    "stable",
+					Message: fmt.Sprintf("not enough time left for the stable window of %s", a.stableFor),
+				})
+				return fatalError{AssertionErrors{Errors: errs, Snapshot: s}}
 			}
+			return AssertionErrors{Errors: errs, Snapshot: s}
 		}
 
 		if a.stableFor <= 0 {
@@ -155,6 +178,15 @@ func (a *Alloy) Assert(assertions ...Assertion) error {
 		}
 		if passingSince.IsZero() {
 			passingSince = time.Now()
+		}
+		if !windowFits(passingSince) {
+			return fatalError{AssertionErrors{
+				Errors: []error{AssertionError{
+					Kind:    "stable",
+					Message: fmt.Sprintf("assertions pass, but the stable window of %s cannot finish before the timeout", a.stableFor),
+				}},
+				Snapshot: s,
+			}}
 		}
 		if time.Since(passingSince) < a.stableFor {
 			return AssertionErrors{
@@ -182,6 +214,11 @@ func MustComponent[T any](a *Alloy, id string) T {
 	return typed
 }
 
+// fatalError makes eventually stop and return the wrapped error at once.
+type fatalError struct{ err error }
+
+func (e fatalError) Error() string { return e.err.Error() }
+
 func eventually(fn func() error, timeout, interval time.Duration) error {
 	deadline := time.Now().Add(timeout)
 
@@ -190,6 +227,9 @@ func eventually(fn func() error, timeout, interval time.Duration) error {
 		lastErr = fn()
 		if lastErr == nil {
 			return nil
+		}
+		if fatal, ok := lastErr.(fatalError); ok {
+			return fatal.err
 		}
 
 		if time.Now().After(deadline) {

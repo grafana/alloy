@@ -85,3 +85,33 @@ func TestAssert_StableWindow(t *testing.T) {
 	a.assertTimeout = 200 * time.Millisecond
 	require.Error(t, a.Assert(func(snapshot) error { return nil }))
 }
+
+func TestAssert_ReturnsEarlyWhenTheStableWindowCannotFit(t *testing.T) {
+	newAlloy := func(timeout, stableFor time.Duration) *Alloy {
+		return &Alloy{sink: &Sink{}, logs: &logBuffer{}, assertTimeout: timeout, stableFor: stableFor}
+	}
+
+	// Assertions pass at once, but the window is longer than the timeout.
+	start := time.Now()
+	err := newAlloy(5*time.Second, 10*time.Second).Assert(func(snapshot) error { return nil })
+	require.ErrorContains(t, err, "cannot finish before the timeout")
+	require.Less(t, time.Since(start), time.Second)
+
+	// A failure with less than the window left ends the test, and the error
+	// keeps the failing assertion.
+	start = time.Now()
+	err = newAlloy(2*time.Second, 5*time.Second).Assert(func(snapshot) error {
+		return AssertionError{Kind: "x", Message: "never passes"}
+	})
+	require.ErrorContains(t, err, "never passes")
+	require.ErrorContains(t, err, "not enough time left")
+	require.Less(t, time.Since(start), time.Second)
+
+	// A failure with enough time left keeps polling until the timeout.
+	start = time.Now()
+	err = newAlloy(400*time.Millisecond, 100*time.Millisecond).Assert(func(snapshot) error {
+		return AssertionError{Kind: "x", Message: "never passes"}
+	})
+	require.ErrorContains(t, err, "never passes")
+	require.GreaterOrEqual(t, time.Since(start), 250*time.Millisecond)
+}
