@@ -57,6 +57,29 @@ func TestBuildAssertions_RejectsBadInput(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestBuildPrometheusLabelMatchers(t *testing.T) {
+	values := map[string]string{"__name__": "windows_scheduled_task_state"}
+	regex := map[string]string{"task": "/Microsoft/.*"}
+
+	// Exact mode with a regex adds a label names matcher.
+	got, err := buildPrometheusLabelMatchers(MapMatchSchema{Values: values, Regex: regex})
+	require.NoError(t, err)
+	require.Len(t, got, 3)
+
+	got, err = buildPrometheusLabelMatchers(MapMatchSchema{Mode: "partial", Values: values, Regex: regex})
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+
+	// Exactness applies to a regex-only match too.
+	got, err = buildPrometheusLabelMatchers(MapMatchSchema{Regex: regex})
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+
+	got, err = buildPrometheusLabelMatchers(MapMatchSchema{Values: values})
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+}
+
 func TestValidateOS(t *testing.T) {
 	require.NoError(t, validateOS(""))
 	require.NoError(t, validateOS("windows"))
@@ -88,21 +111,17 @@ func TestLoggingBlock(t *testing.T) {
 	require.Empty(t, logging("  logging{\n  }\n"))
 }
 
-func TestCapTimeout(t *testing.T) {
-	// No deadline or no timeout means no cap.
-	got, err := capTimeout(time.Minute, time.Time{})
+func TestAssertDeadline(t *testing.T) {
+	got, err := assertDeadline(time.Time{})
 	require.NoError(t, err)
-	require.Equal(t, time.Minute, got)
-	got, err = capTimeout(0, time.Now().Add(time.Second))
-	require.NoError(t, err)
-	require.Zero(t, got)
+	require.True(t, got.IsZero())
 
-	got, err = capTimeout(time.Hour, time.Now().Add(5*time.Minute))
+	deadline := time.Now().Add(5 * time.Minute)
+	got, err = assertDeadline(deadline)
 	require.NoError(t, err)
-	require.Less(t, got, 5*time.Minute)
-	require.Greater(t, got, 4*time.Minute)
+	require.Equal(t, deadline.Add(-deadlineMargin), got)
 
-	_, err = capTimeout(time.Minute, time.Now().Add(time.Second))
+	_, err = assertDeadline(time.Now().Add(time.Second))
 	require.Error(t, err)
 }
 

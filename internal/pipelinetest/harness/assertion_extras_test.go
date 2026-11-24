@@ -30,6 +30,25 @@ func TestPrometheusSampleLabelRegex(t *testing.T) {
 	require.Error(t, PrometheusSampleCount(0, matcher)(s))
 }
 
+func TestPrometheusSampleLabelNames(t *testing.T) {
+	regex, err := PrometheusSampleLabelRegex("task", "/Microsoft/.*")
+	require.NoError(t, err)
+	// This is what an exact match of a literal __name__ and a task regex builds.
+	matchers := []SampleMatcher{
+		PrometheusSampleLabels(labels.FromStrings("__name__", "windows_scheduled_task_state"), true),
+		regex,
+		PrometheusSampleLabelNames([]string{"__name__", "task"}),
+	}
+
+	s := snapshot{prometheus: []PrometheusSample{
+		{Labels: labels.FromStrings("__name__", "windows_scheduled_task_state", "task", "/Microsoft/Windows/Defrag")},
+		{Labels: labels.FromStrings("__name__", "windows_scheduled_task_state", "state", "ready", "task", "/Microsoft/Windows/Defrag")},
+		{Labels: labels.FromStrings("__name__", "windows_scheduled_task_state", "task", "/Probe")},
+	}}
+	require.NoError(t, PrometheusSampleCount(1, matchers...)(s))
+	require.NoError(t, PrometheusContainsSample(matchers...)(s))
+}
+
 func TestPrometheusSampleLabelRegex_IsAnchored(t *testing.T) {
 	matcher, err := PrometheusSampleLabelRegex("task", "/Microsoft")
 	require.NoError(t, err)
@@ -124,4 +143,13 @@ func TestAssert_ReturnsEarlyWhenTheStableWindowCannotFit(t *testing.T) {
 	})
 	require.ErrorContains(t, err, "never passes")
 	require.GreaterOrEqual(t, time.Since(start), 250*time.Millisecond)
+}
+
+func TestAssert_StopsAtTheDeadline(t *testing.T) {
+	// The default timeout is 30 seconds. The deadline is earlier, so it wins.
+	a := &Alloy{sink: &Sink{}, logs: &logBuffer{}, assertTimeout: defaultTimeout, deadline: time.Now().Add(200 * time.Millisecond)}
+	start := time.Now()
+	err := a.Assert(func(snapshot) error { return AssertionError{Message: "never passes"} })
+	require.ErrorContains(t, err, "never passes")
+	require.Less(t, time.Since(start), 2*time.Second)
 }

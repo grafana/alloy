@@ -3,6 +3,7 @@ package harness
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -102,6 +103,19 @@ func PrometheusSampleLabelRegex(name, pattern string) (SampleMatcher, error) {
 		},
 		text: fmt.Sprintf("%s =~ %q", name, pattern),
 	}, nil
+}
+
+// PrometheusSampleLabelNames returns a SampleMatcher that matches samples
+// whose label names are exactly names. The names must be sorted.
+func PrometheusSampleLabelNames(names []string) SampleMatcher {
+	return SampleMatcher{
+		match: func(sample PrometheusSample) bool {
+			got := make([]string, 0, sample.Labels.Len())
+			sample.Labels.Range(func(l labels.Label) { got = append(got, l.Name) })
+			return slices.Equal(got, names)
+		},
+		text: "label names = [" + strings.Join(names, ", ") + "]",
+	}
 }
 
 // PrometheusSampleValue returns a SampleMatcher that matches the sample value

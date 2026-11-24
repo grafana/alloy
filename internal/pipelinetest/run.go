@@ -14,25 +14,25 @@ type TestConfig struct {
 	// WorkDir holds the files of the setup of a test. It replaces the
 	// {{TEMP_DIR}} placeholder.
 	WorkDir string
-	// Deadline is when go test stops the package. The assertion timeout
-	// never goes past it, so a slow test fails with a message instead of
-	// ending the package with a panic. The zero value means no deadline.
+	// Deadline is when go test stops the package. The assertions never wait
+	// past it, so a slow test fails with a message instead of ending the
+	// package with a panic. The zero value means no deadline.
 	Deadline time.Time
 }
 
 // deadlineMargin is the time to keep free before the deadline for cleanup.
 const deadlineMargin = 30 * time.Second
 
-// capTimeout makes sure a test ends before the deadline.
-func capTimeout(timeout time.Duration, deadline time.Time) (time.Duration, error) {
-	if deadline.IsZero() || timeout == 0 {
-		return timeout, nil
+// assertDeadline returns the latest time that the assertions can wait until.
+func assertDeadline(deadline time.Time) (time.Time, error) {
+	if deadline.IsZero() {
+		return time.Time{}, nil
 	}
-	remaining := time.Until(deadline) - deadlineMargin
-	if remaining <= 0 {
-		return 0, errors.New("not enough time left before the go test deadline")
+	latest := deadline.Add(-deadlineMargin)
+	if !time.Now().Before(latest) {
+		return time.Time{}, errors.New("not enough time left before the go test deadline")
 	}
-	return min(timeout, remaining), nil
+	return latest, nil
 }
 
 func RunTest(ctx context.Context, schema TestSchema, cfg TestConfig) error {
@@ -62,7 +62,7 @@ func RunTest(ctx context.Context, schema TestSchema, cfg TestConfig) error {
 		}
 	}
 
-	timeout, err := capTimeout(timeout, cfg.Deadline)
+	deadline, err := assertDeadline(cfg.Deadline)
 	if err != nil {
 		return err
 	}
@@ -80,6 +80,7 @@ func RunTest(ctx context.Context, schema TestSchema, cfg TestConfig) error {
 		LokiPipelineV2: schema.Flags.LokiPipelineV2,
 		AssertTimeout:  timeout,
 		StableFor:      stableFor,
+		Deadline:       deadline,
 	})
 	if err != nil {
 		return err

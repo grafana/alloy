@@ -37,6 +37,10 @@ type Config struct {
 	// the data it guards arrives. A stable window gives that data time to
 	// arrive. The window counts against AssertTimeout.
 	StableFor time.Duration
+
+	// Deadline is the latest time that Assert can wait until, whatever the
+	// assertion timeout is. The zero value means no deadline.
+	Deadline time.Time
 }
 
 // assertTimeout returns the assertion timeout, or the default when unset.
@@ -54,8 +58,15 @@ func NewAlloy(cfg Config) (*Alloy, error) {
 		return nil, fmt.Errorf("the stable window of %s does not fit in the assertion timeout of %s", cfg.StableFor, cfg.assertTimeout())
 	}
 
+	// Do not use logging.DefaultOptions. On a Windows service runner, its
+	// destination is the Event Log. Components can log before the logging
+	// block is evaluated, and those logs must go to the buffer.
 	logs := &logBuffer{}
-	logger, err := logging.New(logs, logging.DefaultOptions)
+	logger, err := logging.New(logs, logging.Options{
+		Level:       logging.LevelDefault,
+		Format:      logging.FormatDefault,
+		Destination: logging.LogDestinationStderr,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -84,6 +95,7 @@ func NewAlloy(cfg Config) (*Alloy, error) {
 		logs:          logs,
 		assertTimeout: assertTimeout,
 		stableFor:     cfg.StableFor,
+		deadline:      cfg.Deadline,
 	}
 
 	a.wg.Go(func() {
@@ -107,7 +119,7 @@ func NewAlloy(cfg Config) (*Alloy, error) {
 			return nil
 		}
 		return fmt.Errorf("runtime has not finished loading")
-	}, defaultTimeout, defaultInterval); err != nil {
+	}, time.Now().Add(defaultTimeout), defaultInterval); err != nil {
 		a.Stop()
 		return nil, fmt.Errorf("timed out waiting for runtime to finish loading: %w", err)
 	}
@@ -126,6 +138,7 @@ type Alloy struct {
 	logs          *logBuffer
 	assertTimeout time.Duration
 	stableFor     time.Duration
+	deadline      time.Time
 }
 
 func (a *Alloy) Stop() {
@@ -135,14 +148,17 @@ func (a *Alloy) Stop() {
 
 // Assert evaluates the provided assertions against the current snapshot
 // until they all pass, and keep passing for the stable window, or the
-// assertion timeout is reached. On failure it returns the latest snapshot
-// alongside the assertion failures.
+// assertion timeout or the deadline is reached. On failure it returns the
+// latest snapshot alongside the assertion failures.
 //
 // It returns early when the stable window can no longer fit before the
 // timeout. A passing streak ends at its start plus the window, and a failing
 // poll can at best start a streak now, so waiting longer cannot help.
 func (a *Alloy) Assert(assertions ...Assertion) error {
 	deadline := time.Now().Add(a.assertTimeout)
+	if !a.deadline.IsZero() && a.deadline.Before(deadline) {
+		deadline = a.deadline
+	}
 	var passingSince time.Time
 
 	// windowFits reports whether a streak that starts at start can finish.
@@ -198,7 +214,7 @@ func (a *Alloy) Assert(assertions ...Assertion) error {
 			}
 		}
 		return nil
-	}, a.assertTimeout, defaultInterval)
+	}, deadline, defaultInterval)
 }
 
 func MustComponent[T any](a *Alloy, id string) T {
@@ -219,9 +235,7 @@ type fatalError struct{ err error }
 
 func (e fatalError) Error() string { return e.err.Error() }
 
-func eventually(fn func() error, timeout, interval time.Duration) error {
-	deadline := time.Now().Add(timeout)
-
+func eventually(fn func() error, deadline time.Time, interval time.Duration) error {
 	var lastErr error
 	for {
 		lastErr = fn()

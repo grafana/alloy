@@ -3,6 +3,7 @@ package pipelinetest
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"time"
 
@@ -87,31 +88,48 @@ func buildPrometheusContainsAssertion(assertion PrometheusAssertionSchema) (harn
 	return harness.PrometheusContainsSample(matchers...), nil
 }
 
-func buildPrometheusMatchers(match PrometheusMatchSchema) ([]harness.SampleMatcher, error) {
-	matchers := make([]harness.SampleMatcher, 0, 5)
-
-	if len(match.Labels.Values) > 0 || len(match.Labels.Regex) > 0 {
-		partial, err := isPartialMapMatch("labels", match.Labels)
-		if err != nil {
-			return nil, err
-		}
-		if len(match.Labels.Values) > 0 {
-			matchers = append(matchers, harness.PrometheusSampleLabels(toLabels(match.Labels.Values), partial))
-		}
+// buildPrometheusLabelMatchers builds the matchers for literal and regex
+// labels. In exact mode, the sample must have exactly the labels that the
+// literal values and the regexes name together.
+func buildPrometheusLabelMatchers(match MapMatchSchema) ([]harness.SampleMatcher, error) {
+	if len(match.Values) == 0 && len(match.Regex) == 0 {
+		return nil, nil
+	}
+	partial, err := isPartialMapMatch("labels", match)
+	if err != nil {
+		return nil, err
+	}
+	if len(match.Regex) == 0 {
+		return []harness.SampleMatcher{harness.PrometheusSampleLabels(toLabels(match.Values), partial)}, nil
 	}
 
-	names := make([]string, 0, len(match.Labels.Regex))
-	for name := range match.Labels.Regex {
-		names = append(names, name)
+	var matchers []harness.SampleMatcher
+	if len(match.Values) > 0 {
+		matchers = append(matchers, harness.PrometheusSampleLabels(toLabels(match.Values), true))
 	}
-	slices.Sort(names)
-	for _, name := range names {
-		matcher, err := harness.PrometheusSampleLabelRegex(name, match.Labels.Regex[name])
+	for _, name := range slices.Sorted(maps.Keys(match.Regex)) {
+		matcher, err := harness.PrometheusSampleLabelRegex(name, match.Regex[name])
 		if err != nil {
 			return nil, err
 		}
 		matchers = append(matchers, matcher)
 	}
+	if !partial {
+		names := slices.Concat(slices.Collect(maps.Keys(match.Values)), slices.Collect(maps.Keys(match.Regex)))
+		slices.Sort(names)
+		matchers = append(matchers, harness.PrometheusSampleLabelNames(slices.Compact(names)))
+	}
+	return matchers, nil
+}
+
+func buildPrometheusMatchers(match PrometheusMatchSchema) ([]harness.SampleMatcher, error) {
+	matchers := make([]harness.SampleMatcher, 0, 5)
+
+	labelMatchers, err := buildPrometheusLabelMatchers(match.Labels)
+	if err != nil {
+		return nil, err
+	}
+	matchers = append(matchers, labelMatchers...)
 
 	if match.Value != nil {
 		matchers = append(matchers, harness.PrometheusSampleValue(*match.Value))
