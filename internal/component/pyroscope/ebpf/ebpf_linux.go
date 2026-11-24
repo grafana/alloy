@@ -336,9 +336,10 @@ func NewDefaultArguments() Arguments {
 		GoEnabled:                true,
 		LoadProbe:                false,
 		ProbeLinks:               []string{},
-		VerboseMode:              false,
-		LazyMode:                 false,
-		NoKernelVersionCheck:     false,
+		VerboseMode:                 false,
+		LazyMode:                    false,
+		NoKernelVersionCheck:        false,
+		PIDNamespaceTranslationMode: "none",
 
 		Comm:         string(rargs.CommModeNone),
 		KernelFrames: true,
@@ -383,6 +384,9 @@ func (args *Arguments) Convert() (*controller.Config, error) {
 	cfg.OBIProcessCtx = args.OBIProcessContextEnabled
 	cfg.VerboseMode = args.VerboseMode
 	cfg.NoKernelVersionCheck = args.NoKernelVersionCheck
+	if err = cfg.PIDNamespaceTranslationMode.UnmarshalText([]byte(args.PIDNamespaceTranslationMode)); err != nil {
+		return nil, err
+	}
 	return cfg, nil
 }
 
