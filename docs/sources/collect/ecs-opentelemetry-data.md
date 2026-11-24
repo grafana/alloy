@@ -78,7 +78,7 @@ Complete the following steps to create a sample task. Refer to the [ADOT doc][ad
 
 {{< param "PRODUCT_NAME" >}} offers two approaches for collecting ECS task and container metrics:
 
-- **Native receiver:** Use the [`otelcol.receiver.awsecscontainermetrics`][awsecscontainermetrics] component to read the ECS Task Metadata Endpoint V4 directly. This approach is simpler but requires enabling experimental features.
+- **Native receiver:** Use the [`otelcol.receiver.awsecscontainermetrics`][awsecscontainermetrics] component to read the ECS Task Metadata Endpoint V4 directly. This approach is simpler but requires enabling public preview features.
 
 - **Prometheus exporter:** Use the [Prometheus ECS exporter](https://github.com/prometheus-community/ecs_exporter) as a sidecar container and scrape metrics with `prometheus.scrape`. This approach requires an additional container.
 
@@ -87,7 +87,7 @@ Complete the following steps to create a sample task. Refer to the [ADOT doc][ad
 The `otelcol.receiver.awsecscontainermetrics` component reads AWS ECS task- and container-level metadata, and resource usage metrics such as CPU, memory, network, and disk, and forwards them to other otelcol.* components.
 
 {{< admonition type="note" >}}
-The `otelcol.receiver.awsecscontainermetrics` component is experimental. You must set the `--stability.level=experimental` flag to use it. Refer to [Permitted stability levels][stability-levels] for more information.
+The `otelcol.receiver.awsecscontainermetrics` component is in public preview. You must set the `--stability.level=public-preview` flag to use it. Refer to [Permitted stability levels][stability-levels] for more information.
 
 [stability-levels]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/#permitted-stability-levels
 {{< /admonition >}}
@@ -123,7 +123,7 @@ This configuration collects ECS task and container metrics every 60 seconds and 
 
 #### Prometheus exporter
 
-You don't need to enable experimental stability in {{< param "PRODUCT_NAME" >}} to use the ECS exporter as a sidecar container.
+You don't need to enable public preview stability in {{< param "PRODUCT_NAME" >}} to use the ECS exporter as a sidecar container.
 
 Use the following as a starting point for your {{< param "PRODUCT_NAME" >}} configuration:
 
@@ -182,7 +182,7 @@ Complete the following steps to create a sample task.
        - `PROMETHEUS_USERNAME`
        - `PROMETHEUS_PASSWORD` - For increased security, create a password in AWS Secrets Manager and reference the ARN of the secret in the **ValueFrom** field.
    - In the Docker configuration, change the **Entrypoint** to `/bin/sh,-c`. This allows the command to use shell features like redirection and chaining.
-   - _`{{command}}`_: For the native receiver, use `"printenv ALLOY_CONFIG_CONTENT > /tmp/config_file && exec /bin/alloy run --stability.level=experimental --server.http.listen-addr=0.0.0.0:12345 /tmp/config_file"`. The `--stability.level=experimental` flag enables the use of the `otelcol.receiver.awsecscontainermetrics` component.
+   - _`{{command}}`_: For the native receiver, use `"printenv ALLOY_CONFIG_CONTENT > /tmp/config_file && exec /bin/alloy run --stability.level=public-preview --server.http.listen-addr=0.0.0.0:12345 /tmp/config_file"`. The `--stability.level=public-preview` flag enables the use of the `otelcol.receiver.awsecscontainermetrics` component.
 
      For the Prometheus exporter, use `"printenv ALLOY_CONFIG_CONTENT > /tmp/config_file && exec /bin/alloy run --server.http.listen-addr=0.0.0.0:12345 /tmp/config_file"`.
 
