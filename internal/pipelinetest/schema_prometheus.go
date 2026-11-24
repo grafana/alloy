@@ -3,6 +3,7 @@ package pipelinetest
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/prometheus/prometheus/model/labels"
@@ -89,12 +90,27 @@ func buildPrometheusContainsAssertion(assertion PrometheusAssertionSchema) (harn
 func buildPrometheusMatchers(match PrometheusMatchSchema) ([]harness.SampleMatcher, error) {
 	matchers := make([]harness.SampleMatcher, 0, 5)
 
-	if len(match.Labels.Values) > 0 {
+	if len(match.Labels.Values) > 0 || len(match.Labels.Regex) > 0 {
 		partial, err := isPartialMapMatch("labels", match.Labels)
 		if err != nil {
 			return nil, err
 		}
-		matchers = append(matchers, harness.PrometheusSampleLabels(toLabels(match.Labels.Values), partial))
+		if len(match.Labels.Values) > 0 {
+			matchers = append(matchers, harness.PrometheusSampleLabels(toLabels(match.Labels.Values), partial))
+		}
+	}
+
+	names := make([]string, 0, len(match.Labels.Regex))
+	for name := range match.Labels.Regex {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	for _, name := range names {
+		matcher, err := harness.PrometheusSampleLabelRegex(name, match.Labels.Regex[name])
+		if err != nil {
+			return nil, err
+		}
+		matchers = append(matchers, matcher)
 	}
 
 	if match.Value != nil {

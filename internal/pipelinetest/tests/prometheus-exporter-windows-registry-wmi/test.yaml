@@ -1,0 +1,96 @@
+# Runs only on Windows, because the windows_exporter reads Windows counters.
+os: windows
+timeout: 2m
+config: |
+  prometheus.exporter.windows "default" {
+    enabled_collectors = ["cpu", "registry", "wmi"]
+
+    registry {
+      keys = `
+  - name: windows_nt
+    key: HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion
+    values:
+      - name: CurrentMajorVersionNumber
+        metric: windows_registry_windows_major_version
+  `
+    }
+
+    wmi {
+      queries = `
+  - name: os
+    class: Win32_OperatingSystem
+    properties:
+      - name: NumberOfProcesses
+        metric: windows_wmi_os_processes
+  `
+    }
+  }
+
+  prometheus.scrape "default" {
+    targets    = prometheus.exporter.windows.default.targets
+    forward_to = [prometheus.remote_write.default.receiver]
+
+    scrape_interval = "5s"
+    scrape_timeout  = "4s"
+  }
+
+  prometheus.remote_write "default" {
+    endpoint {
+      url = pipelinetest.prometheus.url
+
+      // The test writes too few series to fill a batch, so without a short
+      // deadline every send waits out the 5s default.
+      queue_config {
+        batch_send_deadline = "500ms"
+      }
+    }
+  }
+
+assert:
+  prometheus:
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            __name__: windows_registry_windows_major_version
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            __name__: windows_wmi_os_processes
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            __name__: windows_exporter_collector_success
+            collector: "registry"
+        value: 1
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            __name__: windows_exporter_collector_success
+            collector: "wmi"
+        value: 1
+    # The per-item success metrics catch a key or query that fails while the
+    # collector still reports success.
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            __name__: windows_registry_key_success
+            key: "windows_nt"
+        value: 1
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            __name__: windows_wmi_query_success
+            query: "os"
+        value: 1

@@ -45,6 +45,9 @@ func renderSnapshot(s snapshot) string {
 		renderLokiEntries(s.loki),
 		renderPrometheusSamples(s.prometheus),
 	}
+	if tail := tailLogs(s.logs); len(tail.lines) > 0 {
+		sections = append(sections, tail.String())
+	}
 	return strings.Join(sections, "\n\n")
 }
 
