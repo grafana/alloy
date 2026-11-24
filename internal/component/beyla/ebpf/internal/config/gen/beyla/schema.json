@@ -744,6 +744,9 @@
         "enabled": {
           "type": "boolean",
           "x-env-var": "BEYLA_EXCEPTIONS_ENABLED"
+        },
+        "go": {
+          "$ref": "#/$defs/GoExceptionsConfig"
         }
       },
       "type": "object",
@@ -1030,6 +1033,17 @@
         "features": {
           "$ref": "#/$defs/Features",
           "x-env-var": "OTEL_EBPF_METRICS_FEATURES"
+        }
+      },
+      "type": "object"
+    },
+    "GoExceptionsConfig": {
+      "properties": {
+        "formatted_errors": {
+          "type": "boolean"
+        },
+        "panics": {
+          "type": "boolean"
         }
       },
       "type": "object"
@@ -1689,6 +1703,14 @@
       },
       "type": "object"
     },
+    "MetadataCentralConfig": {
+      "properties": {
+        "address": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "MetricsConfig": {
       "properties": {
         "OTELIntervalMS": {
@@ -2127,6 +2149,9 @@
             "1ms"
           ],
           "x-env-var": "BEYLA_PEER_METADATA_CALLER_TTL"
+        },
+        "central": {
+          "$ref": "#/$defs/MetadataCentralConfig"
         },
         "enabled": {
           "type": "boolean",

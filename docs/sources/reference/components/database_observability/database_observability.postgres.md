@@ -274,10 +274,16 @@ The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they
 
 ### `explain_plans`
 
-| Name                | Type           | Description                                          | Default | Required |
-|---------------------|----------------|------------------------------------------------------|---------|----------|
-| `collect_interval`  | `duration`     | How frequently to collect information from database. | `"1m"`  | no       |
-| `per_collect_ratio` | `float64`      | The ratio of queries to collect explain plans for.   | `1.0`   | no       |
+| Name                | Type       | Description                                              | Default | Required |
+|---------------------|------------|----------------------------------------------------------|---------|----------|
+| `collect_interval`  | `duration` | How frequently to collect information from database.     | `"1m"`  | no       |
+| `per_collect_ratio` | `float64`  | The ratio of queries to collect explain plans for.       | `1.0`   | no       |
+| `log_verbose_plans` | `bool`     | Log a second, verbose plan of each query at debug level. | `false` | no       |
+
+When `log_verbose_plans` is `true` and the log level is `debug`, the collector runs a second `EXPLAIN` for each query on the monitored database and logs its plan next to the regular one.
+The verbose plan adds the schema of each table, the columns each step returns, and the planner settings that differ from the defaults, and lists every partition of a partitioned table.
+The plan sent to Loki doesn't change.
+The setting has no effect at other log levels.
 
 ### `logs`
 
@@ -297,7 +303,9 @@ The `logs` collector is always enabled and counts server errors from the Postgre
 
 The `prometheus_exporter` block configures the embedded `postgres_exporter` scrapers.
 The `data_source_name` is inherited from the parent block.
-Only the `stat_statements` collector is enabled by default.
+By default the embedded exporter enables the `database`, `database_wraparound`, `postmaster`, `replication`, `stat_bgwriter`, `stat_checkpointer`, `stat_statements`, and `wal` collectors.
+Setting `enabled_collectors` replaces the default set instead of adding to it, so the embedded exporter runs only the collectors you list. To keep a default collector, include it in the list. If you set `enabled_collectors`, it is highly recommended to always include `stat_statements` in the list.
+
 The embedded exporter inherits the top-level `exclude_databases` list in both `autodiscovery > database_denylist` and `stat_statements > exclude_databases`, inherits `include_databases` in `autodiscovery > database_allowlist`, and inherits the effective top-level `exclude_users` list in `stat_statements > exclude_users`.
 Setting these nested filter lists in `prometheus_exporter` is discouraged because it can cause the embedded exporter and the component's collectors to monitor different databases or users.
 Configure the top-level `exclude_databases`, `include_databases`, and `exclude_users` arguments instead.

@@ -314,8 +314,7 @@ type GCENameResolver struct {
 	Zone      string `alloy:"zone,attr,optional"`
 }
 
-// PeerMetadata configures Beyla's peer metadata exchange: each Beyla serves its local
-// service inventory over HTTP and fetches the inventory of the peers it sees in spans.
+// PeerMetadata configures how Beyla exchanges service metadata with peers or a central service.
 type PeerMetadata struct {
 	Enabled          bool              `alloy:"enabled,attr,optional"`
 	Mode             string            `alloy:"mode,attr,optional"`
@@ -332,7 +331,13 @@ type PeerMetadata struct {
 	MaxResponseBytes int               `alloy:"max_response_bytes,attr,optional"`
 	MaxCacheBytes    int               `alloy:"max_cache_bytes,attr,optional"`
 	Token            alloytypes.Secret `alloy:"token,attr,optional"`
-	TLS              PeerMetadataTLS   `alloy:"tls,block,optional"`
+
+	TLS     PeerMetadataTLS     `alloy:"tls,block,optional"`
+	Central PeerMetadataCentral `alloy:"central,block,optional"`
+}
+
+type PeerMetadataCentral struct {
+	Address string `alloy:"address,attr,optional"`
 }
 
 type PeerMetadataTLS struct {

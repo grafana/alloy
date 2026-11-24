@@ -520,6 +520,27 @@ func TestYAMLGeneration_PeerMetadata(t *testing.T) {
 	}, cfg["peer_metadata"])
 }
 
+func TestYAMLGeneration_CentralPeerMetadata(t *testing.T) {
+	const input = `
+		peer_metadata {
+			enabled = true
+			mode = "central"
+			central { address = "metadata:8999" }
+			tls { enabled = true }
+		}
+	`
+	var args Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(input), &args))
+	require.NoError(t, args.Validate())
+	cfg := buildYAML(t, args, Runtime{Port: 12345})
+	require.Equal(t, map[string]any{
+		"enabled": true,
+		"mode":    "central",
+		"central": map[string]any{"address": "metadata:8999"},
+		"tls":     map[string]any{"enabled": true},
+	}, cfg["peer_metadata"])
+}
+
 func TestRedacted(t *testing.T) {
 	args := Arguments{PeerMetadata: PeerMetadata{Enabled: true, Token: "test-token"}}
 	cfg := Build(args, Runtime{Port: 12345}, slog.New(slog.NewTextHandler(io.Discard, nil)))

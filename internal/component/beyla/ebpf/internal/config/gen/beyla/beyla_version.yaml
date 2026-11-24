@@ -1,5 +1,5 @@
 # Beyla release pinned by Alloy. Regenerate with: make update-beyla TAG=<beyla-version>
-version: v3.41.0
+version: v3.43.0
 checksums:
-  amd64: 3892ad01a4c639253adfd43ef3c0f4c7eff3ff3edd9bcb1285a9f303f681e9f7
-  arm64: 15259fb686d56e5cebd51b96e394cb041b82d864f2daaf22cfde573e74484f0c
+  amd64: a2487695f03e83f4892667ea7ff8a41130cf920dfe32e646ad1d526d06897cc7
+  arm64: 4b097fa381f93afd88941d462e9b7c1b98dc2e61b47144f57cb53e0b605d132a

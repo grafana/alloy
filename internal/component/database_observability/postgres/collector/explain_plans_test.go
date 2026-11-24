@@ -3,7 +3,13 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"log/slog"
+	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -110,6 +116,50 @@ func (m *mockDbConnectionFactory) NewDBConnection(dsn string) (*sql.DB, error) {
 
 	m.InstantiationCount++
 	return m.db, nil
+}
+
+// expectDebugExplainPlan registers the statements the collector runs for the verbose plan, for
+// the query with id 123456, between the regular EXPLAIN and the DEALLOCATE: pruning off, the
+// cached plans dropped, and the verbose EXPLAIN. args is the argument list of the regular EXPLAIN,
+// for example "(null)", or empty without parameters.
+func expectDebugExplainPlan(mock sqlmock.Sqlmock, args string, planJSON []byte) {
+	mock.ExpectExec("SET enable_partition_pruning = off").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("DISCARD PLANS").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery("EXPLAIN (FORMAT JSON, VERBOSE, SETTINGS) EXECUTE explain_plan_123456" + args).
+		WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(planJSON))
+}
+
+// newVerbosePlanTestCollector returns a collector with one query to explain, backed by db.
+func newVerbosePlanTestCollector(t *testing.T, db *sql.DB, mock sqlmock.Sqlmock, lokiClient loki.EntryHandler, logger *slog.Logger, queryText string, logVerbosePlans bool) *ExplainPlans {
+	t.Helper()
+
+	version, err := semver.ParseTolerant("17.0")
+	require.NoError(t, err)
+	factory := &mockDbConnectionFactory{db: db, Mock: &mock}
+
+	return &ExplainPlans{
+		dbConnection:        db,
+		dbDSN:               "postgres://user:pass@host:1234/database",
+		dbConnectionFactory: factory.NewDBConnection,
+		dbVersion:           version,
+		queryCache: map[string]*queryInfo{
+			explainPlanQueryKey("testdb", "123456"): {
+				datname:    "testdb",
+				queryId:    "123456",
+				queryText:  queryText,
+				calls:      int64(10),
+				callsReset: time.Now(),
+			},
+		},
+		queryDenylist:      map[string]struct{}{},
+		finishedQueryCache: map[string]processedQueryInfo{},
+		excludeDatabases:   []string{},
+		perScrapeRatio:     1.0,
+		logVerbosePlans:    logVerbosePlans,
+		logger:             logger,
+		currentBatchSize:   1,
+		entryHandler:       lokiClient,
+	}
 }
 
 func TestExplainPlanOutput(t *testing.T) {
@@ -3273,6 +3323,404 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 			)
 
 			require.NotContains(t, logBuffer.String(), "error")
+		})
+
+		t.Run("logs the plan at debug level with only SQL expressions redacted", func(t *testing.T) {
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+			require.NoError(t, err)
+			defer db.Close()
+
+			lokiClient.Clear()
+			logBuffer.Reset()
+			dbConnFactory := &mockDbConnectionFactory{
+				db:                 db,
+				Mock:               &mock,
+				InstantiationCount: 0,
+			}
+			explainPlan = &ExplainPlans{
+				dbConnection:        db,
+				dbDSN:               "postgres://user:pass@host:1234/database",
+				dbConnectionFactory: dbConnFactory.NewDBConnection,
+				dbVersion:           post17ver,
+				queryCache: map[string]*queryInfo{
+					explainPlanQueryKey("testdb", "123456"): {
+						datname:    "testdb",
+						queryId:    "123456",
+						queryText:  "select * from some_table where id = $1",
+						calls:      int64(10),
+						callsReset: time.Now(),
+					},
+				},
+				queryDenylist:      map[string]struct{}{},
+				finishedQueryCache: map[string]processedQueryInfo{},
+				excludeDatabases:   []string{},
+				perScrapeRatio:     1.0,
+				logger:             slogger,
+				currentBatchSize:   1,
+				entryHandler:       lokiClient,
+			}
+
+			archive, err := txtar.ParseFile("./testdata/explain_plan/complex_aggregation_with_case.txtar")
+			require.NoError(t, err)
+			require.Equal(t, 1, len(archive.Files))
+			jsonData := archive.Files[0].Data
+
+			mock.ExpectExec("SET SESSION search_path TO \"public\"").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("PREPARE explain_plan_123456 AS select * from some_table where id = $1").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null)").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(jsonData))
+			mock.ExpectExec("DEALLOCATE explain_plan_123456").WillReturnResult(sqlmock.NewResult(0, 1))
+
+			require.NoError(t, explainPlan.fetchExplainPlans(t.Context()))
+			assert.NoError(t, mock.ExpectationsWereMet())
+
+			// logfmt quotes the value when it contains "=", which base64 padding does.
+			match := regexp.MustCompile(`db_native_explain_plan="?([A-Za-z0-9+/=]+)"?`).FindStringSubmatch(logBuffer.String())
+			require.Len(t, match, 2, "no db native explain plan debug line in: %s", logBuffer.String())
+
+			logged, err := base64.StdEncoding.DecodeString(match[1])
+			require.NoError(t, err)
+			require.True(t, json.Valid(logged), "logged plan is not valid JSON: %s", logged)
+
+			// Costs and structure are kept; literals in expressions are not.
+			require.Contains(t, string(logged), `"Node Type":"Aggregate"`)
+			require.Contains(t, string(logged), `"Total Cost":15789.54`)
+			require.Contains(t, string(logged), `"Plan Rows":9,"Plan Width":122`)
+			require.NotContains(t, string(logged), "9999-01-01")
+		})
+
+		t.Run("logs an error and no plan when the plan cannot be redacted", func(t *testing.T) {
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+			require.NoError(t, err)
+			defer db.Close()
+
+			lokiClient.Clear()
+			logBuffer.Reset()
+			dbConnFactory := &mockDbConnectionFactory{
+				db:                 db,
+				Mock:               &mock,
+				InstantiationCount: 0,
+			}
+			explainPlan = &ExplainPlans{
+				dbConnection:        db,
+				dbDSN:               "postgres://user:pass@host:1234/database",
+				dbConnectionFactory: dbConnFactory.NewDBConnection,
+				dbVersion:           post17ver,
+				queryCache: map[string]*queryInfo{
+					explainPlanQueryKey("testdb", "123456"): {
+						datname:    "testdb",
+						queryId:    "123456",
+						queryText:  "select * from some_table where id = $1",
+						calls:      int64(10),
+						callsReset: time.Now(),
+					},
+				},
+				queryDenylist:      map[string]struct{}{},
+				finishedQueryCache: map[string]processedQueryInfo{},
+				excludeDatabases:   []string{},
+				perScrapeRatio:     1.0,
+				logger:             slogger,
+				currentBatchSize:   1,
+				entryHandler:       lokiClient,
+			}
+
+			mock.ExpectExec("SET SESSION search_path TO \"public\"").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("PREPARE explain_plan_123456 AS select * from some_table where id = $1").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null)").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow([]byte("not json")))
+			mock.ExpectExec("DEALLOCATE explain_plan_123456").WillReturnResult(sqlmock.NewResult(0, 1))
+
+			require.NoError(t, explainPlan.fetchExplainPlans(t.Context()))
+			assert.NoError(t, mock.ExpectationsWereMet())
+
+			require.Contains(t, logBuffer.String(), "failed to redact explain plan json for the debug log")
+			require.NotContains(t, logBuffer.String(), "db_native_explain_plan")
+		})
+
+		t.Run("logs an unpruned plan with the schema, output columns, and settings when verbose plans are on", func(t *testing.T) {
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+			require.NoError(t, err)
+			defer db.Close()
+
+			lokiClient.Clear()
+			logBuffer.Reset()
+			explainPlan = newVerbosePlanTestCollector(t, db, mock, lokiClient, slogger, "select * from events where ts >= $1", true)
+
+			// With every parameter bound to NULL the executor prunes all partitions, so the regular
+			// plan is an Append without children.
+			prunedPlan := []byte(`[{"Plan":{"Node Type":"Append","Parallel Aware":false,"Startup Cost":0.00,"Total Cost":10.00,` +
+				`"Plan Rows":1000,"Plan Width":0,"Subplans Removed":2}}]`)
+			// The settings hold the three the collector sets itself, which are left out of the log,
+			// and one the database owner set.
+			unprunedPlan := []byte(`[{"Plan":{"Node Type":"Append","Parallel Aware":false,"Startup Cost":0.00,"Total Cost":10.00,` +
+				`"Plan Rows":1000,"Plan Width":8,"Subplans Removed":0,"Output":["events.id","'secret'::text"],"Plans":[` +
+				`{"Node Type":"Seq Scan","Parent Relationship":"Member","Relation Name":"events_p0","Schema":"public","Alias":"events_1",` +
+				`"Startup Cost":0.00,"Total Cost":5.00,"Plan Rows":500,"Plan Width":8,"Filter":"(ts >= $1)"},` +
+				`{"Node Type":"Seq Scan","Parent Relationship":"Member","Relation Name":"events_p1","Schema":"public","Alias":"events_2",` +
+				`"Startup Cost":0.00,"Total Cost":5.00,"Plan Rows":500,"Plan Width":8,"Filter":"(ts >= $1)"}]},` +
+				`"Settings":{"search_path":"\"tenant_a\", \"tenant_b\", public","work_mem":"64kB",` +
+				`"plan_cache_mode":"force_generic_plan","enable_partition_pruning":"off"}}]`)
+
+			mock.ExpectExec("SET SESSION search_path TO \"public\"").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("PREPARE explain_plan_123456 AS select * from events where ts >= $1").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null)").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(prunedPlan))
+			expectDebugExplainPlan(mock, "(null)", unprunedPlan)
+			mock.ExpectExec("DEALLOCATE explain_plan_123456").WillReturnResult(sqlmock.NewResult(0, 1))
+
+			require.NoError(t, explainPlan.fetchExplainPlans(t.Context()))
+			assert.NoError(t, mock.ExpectationsWereMet())
+
+			logs := logBuffer.String()
+			require.Contains(t, logs, "partition_pruning=off")
+
+			// The regular plan is still logged as before, pruned.
+			regular := regexp.MustCompile(`db_native_explain_plan="?([A-Za-z0-9+/=]+)"?`).FindStringSubmatch(logs)
+			require.Len(t, regular, 2, "no db native explain plan debug line in: %s", logs)
+			regularJSON, err := base64.StdEncoding.DecodeString(regular[1])
+			require.NoError(t, err)
+			require.Contains(t, string(regularJSON), `"Subplans Removed":2`)
+			require.NotContains(t, string(regularJSON), "events_p0")
+
+			verbose := regexp.MustCompile(`db_native_explain_plan_verbose="?([A-Za-z0-9+/=]+)"?`).FindStringSubmatch(logs)
+			require.Len(t, verbose, 2, "no verbose db native explain plan debug line in: %s", logs)
+			verboseJSON, err := base64.StdEncoding.DecodeString(verbose[1])
+			require.NoError(t, err)
+			require.True(t, json.Valid(verboseJSON), "logged plan is not valid JSON: %s", verboseJSON)
+
+			// Every partition and its schema are there, the output columns are redacted like any
+			// expression, and only the settings of the database are kept, as returned.
+			require.Contains(t, string(verboseJSON), `"Relation Name":"events_p0"`)
+			require.Contains(t, string(verboseJSON), `"Relation Name":"events_p1"`)
+			require.Contains(t, string(verboseJSON), `"Schema":"public"`)
+			require.Contains(t, string(verboseJSON), `"Output":["events.id","?::text"]`)
+			require.Contains(t, string(verboseJSON), `"Settings":{"work_mem":"64kB"}`)
+			require.NotContains(t, string(verboseJSON), "secret")
+			require.NotContains(t, string(verboseJSON), "tenant_a", "the search_path lists every schema of the database")
+
+			// The plan sent to Loki comes from the regular plan, not the verbose one.
+			require.Eventually(t, func() bool { return len(lokiClient.Received()) == 1 }, 5*time.Second, 10*time.Millisecond)
+			require.NotContains(t, logs, "error")
+		})
+
+		t.Run("keeps the regular plan when the verbose plan cannot be fetched", func(t *testing.T) {
+			steps := []struct {
+				name   string
+				expect func(mock sqlmock.Sqlmock)
+			}{
+				{
+					name: "turning partition pruning off fails",
+					expect: func(mock sqlmock.Sqlmock) {
+						mock.ExpectExec("SET enable_partition_pruning = off").WillReturnError(errors.New("permission denied to set parameter"))
+					},
+				},
+				{
+					name: "dropping the cached plans fails",
+					expect: func(mock sqlmock.Sqlmock) {
+						mock.ExpectExec("SET enable_partition_pruning = off").WillReturnResult(sqlmock.NewResult(0, 1))
+						mock.ExpectExec("DISCARD PLANS").WillReturnError(errors.New("connection reset by peer"))
+					},
+				},
+				{
+					name: "the verbose explain fails",
+					expect: func(mock sqlmock.Sqlmock) {
+						mock.ExpectExec("SET enable_partition_pruning = off").WillReturnResult(sqlmock.NewResult(0, 1))
+						mock.ExpectExec("DISCARD PLANS").WillReturnResult(sqlmock.NewResult(0, 1))
+						mock.ExpectQuery("EXPLAIN (FORMAT JSON, VERBOSE, SETTINGS) EXECUTE explain_plan_123456(null)").
+							WillReturnError(errors.New("canceling statement due to statement timeout"))
+					},
+				},
+			}
+
+			for _, step := range steps {
+				t.Run(step.name, func(t *testing.T) {
+					db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+					require.NoError(t, err)
+					defer db.Close()
+
+					lokiClient.Clear()
+					logBuffer.Reset()
+					explainPlan = newVerbosePlanTestCollector(t, db, mock, lokiClient, slogger, "select * from some_table where id = $1", true)
+
+					archive, err := txtar.ParseFile("./testdata/explain_plan/complex_aggregation_with_case.txtar")
+					require.NoError(t, err)
+					require.Equal(t, 1, len(archive.Files))
+
+					mock.ExpectExec("SET SESSION search_path TO \"public\"").WillReturnResult(sqlmock.NewResult(0, 1))
+					mock.ExpectExec("PREPARE explain_plan_123456 AS select * from some_table where id = $1").WillReturnResult(sqlmock.NewResult(0, 1))
+					mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
+					mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null)").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(archive.Files[0].Data))
+					step.expect(mock)
+					mock.ExpectExec("DEALLOCATE explain_plan_123456").WillReturnResult(sqlmock.NewResult(0, 1))
+
+					require.NoError(t, explainPlan.fetchExplainPlans(t.Context()))
+					assert.NoError(t, mock.ExpectationsWereMet())
+
+					logs := logBuffer.String()
+					require.Contains(t, logs, "failed to fetch verbose explain plan json bytes")
+					require.Contains(t, logs, "db_native_explain_plan=")
+					require.NotContains(t, logs, "db_native_explain_plan_verbose")
+					require.NotContains(t, logs, "level=error")
+
+					// The failure leaves the plan sent to Loki as it would have been.
+					require.Eventually(t, func() bool { return len(lokiClient.Received()) == 1 }, 5*time.Second, 10*time.Millisecond)
+					entry, err := database_observability.ExtractExplainPlanOutputFromLogMsg(lokiClient.Received()[0])
+					require.NoError(t, err)
+					require.Equal(t, database_observability.ExplainProcessingResultSuccess, entry.Metadata.ProcessingResult)
+				})
+			}
+		})
+
+		t.Run("does not run the verbose plan statements unless verbose plans are on and the log level is debug", func(t *testing.T) {
+			for _, tc := range []struct {
+				name            string
+				logVerbosePlans bool
+				infoLevel       bool
+			}{
+				{name: "debug level, verbose plans off", logVerbosePlans: false, infoLevel: false},
+				{name: "info level, verbose plans on", logVerbosePlans: true, infoLevel: true},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+					require.NoError(t, err)
+					defer db.Close()
+					// A statement that is not expected is not an error of the test: it is reported as
+					// an unmet expectation below, so the order does not matter.
+					mock.MatchExpectationsInOrder(false)
+
+					logger := slogger
+					if tc.infoLevel {
+						infoLogger, err := logging.New(&syncbuffer.Buffer{}, logging.Options{Level: logging.LevelInfo, Format: logging.FormatLogfmt})
+						require.NoError(t, err)
+						logger = infoLogger.Slog()
+					}
+
+					lokiClient.Clear()
+					logBuffer.Reset()
+					explainPlan = newVerbosePlanTestCollector(t, db, mock, lokiClient, logger, "select * from some_table where id = $1", tc.logVerbosePlans)
+
+					archive, err := txtar.ParseFile("./testdata/explain_plan/complex_aggregation_with_case.txtar")
+					require.NoError(t, err)
+					require.Equal(t, 1, len(archive.Files))
+
+					mock.ExpectExec("SET SESSION search_path TO \"public\"").WillReturnResult(sqlmock.NewResult(0, 1))
+					mock.ExpectExec("PREPARE explain_plan_123456 AS select * from some_table where id = $1").WillReturnResult(sqlmock.NewResult(0, 1))
+					mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
+					mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null)").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(archive.Files[0].Data))
+					mock.ExpectExec("DEALLOCATE explain_plan_123456").WillReturnResult(sqlmock.NewResult(0, 1))
+					expectDebugExplainPlan(mock, "(null)", archive.Files[0].Data)
+
+					require.NoError(t, explainPlan.fetchExplainPlans(t.Context()))
+					require.Eventually(t, func() bool { return len(lokiClient.Received()) == 1 }, 5*time.Second, 10*time.Millisecond)
+
+					// The regular statements ran, and the verbose plan ones are what is left: sqlmock
+					// reports the first expectation that was not met, which is the SET.
+					err = mock.ExpectationsWereMet()
+					require.Error(t, err)
+					require.Contains(t, err.Error(), "SET enable_partition_pruning = off")
+					require.NotContains(t, err.Error(), "PREPARE explain_plan_123456")
+					require.NotContains(t, err.Error(), "DEALLOCATE")
+					require.NotContains(t, logBuffer.String(), "db_native_explain_plan_verbose")
+				})
+			}
+		})
+
+		t.Run("does not log a verbose plan that is too large for a log entry", func(t *testing.T) {
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+			require.NoError(t, err)
+			defer db.Close()
+
+			lokiClient.Clear()
+			logBuffer.Reset()
+			explainPlan = newVerbosePlanTestCollector(t, db, mock, lokiClient, slogger, "select * from some_table where id = $1", true)
+
+			archive, err := txtar.ParseFile("./testdata/explain_plan/complex_aggregation_with_case.txtar")
+			require.NoError(t, err)
+			require.Equal(t, 1, len(archive.Files))
+
+			// A table with 3,000 partitions, which is more than a log entry can hold.
+			children := make([]string, 0, 3000)
+			for i := range 3000 {
+				children = append(children, fmt.Sprintf(`{"Node Type":"Seq Scan","Parent Relationship":"Member","Relation Name":"events_p%d",`+
+					`"Schema":"public","Alias":"events_%d","Startup Cost":0.00,"Total Cost":5.00,"Plan Rows":500,"Plan Width":8}`, i, i))
+			}
+			hugePlan := []byte(`[{"Plan":{"Node Type":"Append","Plan Rows":1000,"Plan Width":8,"Plans":[` + strings.Join(children, ",") + `]}}]`)
+
+			mock.ExpectExec("SET SESSION search_path TO \"public\"").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("PREPARE explain_plan_123456 AS select * from some_table where id = $1").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null)").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(archive.Files[0].Data))
+			expectDebugExplainPlan(mock, "(null)", hugePlan)
+			mock.ExpectExec("DEALLOCATE explain_plan_123456").WillReturnResult(sqlmock.NewResult(0, 1))
+
+			require.NoError(t, explainPlan.fetchExplainPlans(t.Context()))
+			assert.NoError(t, mock.ExpectationsWereMet())
+
+			logs := logBuffer.String()
+			require.Contains(t, logs, "verbose explain plan is too large to log")
+			require.Contains(t, logs, "db_native_explain_plan=")
+			require.NotContains(t, logs, "db_native_explain_plan_verbose")
+			require.NotContains(t, logs, "level=error")
+			require.Eventually(t, func() bool { return len(lokiClient.Received()) == 1 }, 5*time.Second, 10*time.Millisecond)
+		})
+
+		t.Run("does not redact or log the plan when debug logging is off", func(t *testing.T) {
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+			require.NoError(t, err)
+			defer db.Close()
+
+			infoBuffer := syncbuffer.Buffer{}
+			infoLogger, err := logging.New(&infoBuffer, logging.Options{
+				Level:  logging.LevelInfo,
+				Format: logging.FormatLogfmt,
+			})
+			require.NoError(t, err)
+
+			lokiClient.Clear()
+			dbConnFactory := &mockDbConnectionFactory{
+				db:                 db,
+				Mock:               &mock,
+				InstantiationCount: 0,
+			}
+			explainPlan = &ExplainPlans{
+				dbConnection:        db,
+				dbDSN:               "postgres://user:pass@host:1234/database",
+				dbConnectionFactory: dbConnFactory.NewDBConnection,
+				dbVersion:           post17ver,
+				queryCache: map[string]*queryInfo{
+					explainPlanQueryKey("testdb", "123456"): {
+						datname:    "testdb",
+						queryId:    "123456",
+						queryText:  "select * from some_table where id = $1",
+						calls:      int64(10),
+						callsReset: time.Now(),
+					},
+				},
+				queryDenylist:      map[string]struct{}{},
+				finishedQueryCache: map[string]processedQueryInfo{},
+				excludeDatabases:   []string{},
+				perScrapeRatio:     1.0,
+				logger:             infoLogger.Slog(),
+				currentBatchSize:   1,
+				entryHandler:       lokiClient,
+			}
+
+			archive, err := txtar.ParseFile("./testdata/explain_plan/complex_aggregation_with_case.txtar")
+			require.NoError(t, err)
+			require.Equal(t, 1, len(archive.Files))
+
+			mock.ExpectExec("SET SESSION search_path TO \"public\"").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("PREPARE explain_plan_123456 AS select * from some_table where id = $1").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null)").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(archive.Files[0].Data))
+			mock.ExpectExec("DEALLOCATE explain_plan_123456").WillReturnResult(sqlmock.NewResult(0, 1))
+
+			require.NoError(t, explainPlan.fetchExplainPlans(t.Context()))
+			assert.NoError(t, mock.ExpectationsWereMet())
+
+			require.Eventually(t, func() bool { return len(lokiClient.Received()) == 1 }, 5*time.Second, 10*time.Millisecond)
+			require.NotContains(t, infoBuffer.String(), "db_native_explain_plan")
+			require.NotContains(t, infoBuffer.String(), "error")
 		})
 
 		t.Run("passes queries beginning in with", func(t *testing.T) {

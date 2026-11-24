@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"net/netip"
 	"slices"
 	"strconv"
@@ -63,7 +64,7 @@ func (args Metrics) hasAppFeature() bool {
 	for _, feature := range args.Features {
 		switch feature {
 		case "application", "application_red", "application_sizes", "application_host", "application_span", "application_service_graph",
-			"application_service_graph_connection_info", "application_process", "application_span_otel", "application_span_sizes", "*", "all":
+			"application_process", "application_service_graph_connection_info", "application_span_otel", "application_span_sizes", "*", "all":
 			return true
 		}
 	}
@@ -146,10 +147,17 @@ func (args PeerMetadata) Validate() error {
 
 	switch args.Mode {
 	case "", "peer":
+		if args.TLS.Enabled && (args.TLS.CertFile == "" || args.TLS.KeyFile == "") {
+			return fmt.Errorf("peer_metadata.tls requires cert_file and key_file")
+		}
 	case "central":
-		return fmt.Errorf("peer_metadata.mode: Beyla doesn't implement the \"central\" mode yet")
+		host, port, addrErr := net.SplitHostPort(args.Central.Address)
+		portNumber, portErr := strconv.Atoi(port)
+		if addrErr != nil || host == "" || portErr != nil || portNumber < 1 || portNumber > 65535 {
+			return fmt.Errorf("peer_metadata.central.address must specify a host and a port between 1 and 65535 in central mode")
+		}
 	default:
-		return fmt.Errorf("peer_metadata.mode: invalid value %q. Valid values are: peer", args.Mode)
+		return fmt.Errorf("peer_metadata.mode: invalid value %q. Valid values are: peer, central", args.Mode)
 	}
 
 	if args.Port < 0 || args.Port > 65535 {
@@ -211,9 +219,6 @@ func (args PeerMetadata) Validate() error {
 	if args.Token != "" && !args.TLS.Enabled {
 		return fmt.Errorf("peer_metadata.token requires peer_metadata.tls.enabled, so the token isn't sent in clear text")
 	}
-	if args.TLS.Enabled && (args.TLS.CertFile == "" || args.TLS.KeyFile == "") {
-		return fmt.Errorf("peer_metadata.tls requires cert_file and key_file")
-	}
 	return nil
 }
 
@@ -268,6 +273,11 @@ func (args SurveyServices) Validate() error {
 
 // Validate validates the Arguments configuration
 func (args *Arguments) Validate() error {
+	exceptionsEnabled := args.Exceptions.enabled(false)
+	if exceptionsEnabled && (args.Output == nil || len(args.Output.Logs) == 0) {
+		return fmt.Errorf("exceptions require output.logs")
+	}
+
 	hasAppFeature := args.Metrics.hasAppFeature()
 
 	if args.TracePrinter == "" {

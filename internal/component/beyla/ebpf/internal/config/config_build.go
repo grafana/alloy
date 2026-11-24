@@ -674,6 +674,9 @@ func (p PeerMetadata) Convert() map[string]any {
 	if v := p.Mode; v != "" {
 		m["mode"] = v
 	}
+	if v := p.Central.Address; v != "" {
+		m["central"] = map[string]any{"address": v}
+	}
 	if v := p.ListenAddress; v != "" {
 		m["listen_address"] = v
 	}

@@ -1,0 +1,24 @@
+Hand-written plan in the shape postgres_fdw produces for EXPLAIN (VERBOSE, FORMAT JSON).
+It was not captured from a server. It exists to exercise a label that core
+PostgreSQL does not emit ("Remote SQL"), which holds a full query with literals.
+
+-- foreign_scan_remote_sql.json --
+[
+  {
+    "Plan": {
+      "Node Type": "Foreign Scan",
+      "Operation": "Select",
+      "Parallel Aware": false,
+      "Async Capable": false,
+      "Relation Name": "accounts",
+      "Schema": "public",
+      "Alias": "a",
+      "Startup Cost": 100.00,
+      "Total Cost": 125.50,
+      "Plan Rows": 2,
+      "Plan Width": 36,
+      "Output": ["id", "name"],
+      "Remote SQL": "SELECT id, name FROM public.accounts WHERE ((status = 'active')) AND ((balance > 1000)) LIMIT 5"
+    }
+  }
+]

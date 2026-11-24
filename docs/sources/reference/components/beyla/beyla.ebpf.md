@@ -18,7 +18,7 @@ The `beyla.ebpf` component uses Grafana Beyla version {{< param "BEYLA_VERSION" 
 
 The `beyla.ebpf` component is a wrapper for [Grafana Beyla][] which uses [eBPF][eBPF website] to automatically inspect application executables and the OS networking layer, and capture trace spans related to web transactions and Rate Errors Duration (RED) metrics for Linux HTTP/S and gRPC services.
 You can configure the component to collect telemetry data from a specific port or executable path, and other criteria from Kubernetes metadata.
-The component exposes metrics that can be collected by a Prometheus scrape component, and traces that can be forwarded to an OTel exporter component.
+The component exposes metrics that a Prometheus scrape component can collect, and logs and traces that you can forward to other OpenTelemetry components.
 
 ## Permissions
 
@@ -203,6 +203,8 @@ You can use the following blocks with `beyla.ebpf`:
 | `ebpf` > `payload_extraction` > `http` > [`rerank`][rerank payload extraction] | Configures `rerank` payload extraction.                                                      | no       |
 | `ebpf` > `payload_extraction` > `http` > [`retrieval`][retrieval payload extraction] | Configures retrieval payload extraction.                                             | no       |
 | `ebpf` > [`maps_config`][maps config]                                  | Configures eBPF map sizing.                                                                        | no       |
+| [`exceptions`][exceptions] | Configures runtime exception capture for instrumented services. | no |
+| `exceptions` > [`go`][go exceptions] | Configures Go panic and formatted error capture. | no |
 | [`filters`][filters]                                                   | Configures filtering of attributes.                                                                | no       |
 | `filters` > [`application`][application filters]                       | Configures filtering of application attributes.                                                    | no       |
 | `filters` > [`network`][network filters]                               | Configures filtering of network attributes.                                                        | no       |
@@ -214,6 +216,7 @@ You can use the following blocks with `beyla.ebpf`:
 | `name_resolver` > [`ecs`][ecs name resolution]                        | Deprecated. Configures Amazon ECS task inventory refreshes for service name resolution.            | no       |
 | `name_resolver` > [`gce`][gce name resolution]                        | Configures the Google Compute Engine scope for service name resolution.                           | no       |
 | [`peer_metadata`][peer_metadata]                                      | Configures the exchange of service metadata between Beyla instances.                              | no       |
+| `peer_metadata` > [`central`][peer_metadata central]                  | Configures the address of the central metadata service.                                           | no       |
 | `peer_metadata` > [`tls`][peer_metadata tls]                          | Configures TLS for the peer metadata exchange.                                                    | no       |
 | [`traces`][traces]                                                     | Configures trace collection and sampling options for all services instrumented by the component.   | no       |
 | `traces` > [`sampler`][sampler]                                        | Configures global trace sampling settings                                                          | no       |
@@ -257,6 +260,8 @@ You can use the following blocks with `beyla.ebpf`:
 [metrics]: #metrics
 [network metrics]: #network-metrics
 [network filters]: #network-filters
+[exceptions]: #exceptions
+[go exceptions]: #go
 [output]: #output
 [injector]: #injector
 [injector webhook]: #webhook
@@ -273,6 +278,7 @@ You can use the following blocks with `beyla.ebpf`:
 [ecs name resolution]: #ecs
 [gce name resolution]: #gce
 [peer_metadata]: #peer_metadata
+[peer_metadata central]: #central
 [peer_metadata tls]: #tls
 [buckets]: #buckets
 
@@ -288,11 +294,12 @@ The following arguments are supported:
 
 | Name     | Type                     | Description                          | Default | Required |
 |----------|--------------------------|--------------------------------------|---------|----------|
+| `logs` | `list(otelcol.Consumer)` | List of consumers to send exception logs to. | `[]` | no |
 | `traces` | `list(otelcol.Consumer)` | List of consumers to send traces to. | `[]`    | no       |
 
 You must specify the `output` block, but all its arguments are optional.
 By default, telemetry data is dropped.
-Configure the `traces` argument to send traces data to other components.
+Configure `logs` to forward exception logs and `traces` to forward traces to other components.
 
 ### `attributes`
 
@@ -403,6 +410,9 @@ beyla.ebpf "default" {
 
 In the previous example, all the metrics with a name starting with `http_` or `http.` would include all the possible attributes but `http_path` and `http_route` or `http.path` and `http.route`.
 The `http_client_*` section would override the base configuration, enabling the `http_path` attribute for the HTTP client metrics and `http_route` for the HTTP server metrics.
+
+To break down HTTP request duration metrics by HTTP version, include `network_protocol_version` in the `select` blocks for `http_server_request_duration_seconds` and `http_client_request_duration_seconds`.
+HTTP request and response body size metrics include this label by default when you enable `application_sizes`.
 
 ### `discovery`
 
@@ -715,6 +725,9 @@ This context propagation support is fully compatible with any OpenTelemetry dist
 * `tcp`: Enable context propagation via TCP only.
 * `disabled`: Disable trace context propagation.
 
+When `discovery.exclude_otel_instrumented_services` is enabled, Beyla stops injecting `traceparent` through its generic HTTP header injector once it detects that a process exports OTLP traces.
+TCP option propagation and runtime-specific header injection continue to follow their existing settings.
+
 The deprecated value `ip` is still accepted by upstream Beyla for compatibility, but it has no effect.
 
 #### `payload_extraction`
@@ -813,6 +826,25 @@ The `maps_config` block configures eBPF map sizing.
 
 
 [cilium]: https://grafana.com/docs/beyla/latest/cilium-compatibility/
+
+### `exceptions`
+
+The `exceptions` block configures runtime exception capture for services selected by `discovery`.
+You must configure at least one destination in `output.logs` when you enable exception capture.
+
+| Name | Type | Description | Default | Required |
+|------|------|-------------|---------|----------|
+| `enabled` | `bool` | Enables runtime exception capture. | `false` | no |
+
+#### `go`
+
+The `go` block configures which Go exceptions Beyla captures as OpenTelemetry log records.
+Set `exceptions.enabled` to `true` to enable capture.
+
+| Name | Type | Description | Default | Required |
+|------|------|-------------|---------|----------|
+| `formatted_errors` | `bool` | Captures errors created with `fmt.Errorf`. | `false` | no |
+| `panics` | `bool` | Captures Go panics. | `true` | no |
 
 ### `filters`
 
@@ -1260,9 +1292,7 @@ Beyla authenticates with application default credentials.
 ### `peer_metadata`
 
 The `peer_metadata` block configures Beyla instances to exchange metadata about the services they instrument.
-Each Beyla serves the list of its instrumented services and the ports they listen on.
-When a span shows a connection to or from another host, Beyla fetches that host's list from the Beyla running there.
-Beyla uses it to name the service at the other end of the connection in traces and service graph metrics.
+Beyla uses this metadata to name the service at the other end of a connection in traces and service graph metrics.
 
 | Name | Type | Description | Default | Required |
 |------|------|-------------|---------|----------|
@@ -1275,7 +1305,7 @@ Beyla uses it to name the service at the other end of the connection in traces a
 | `max_concurrent` | `int` | Maximum number of peers that Beyla fetches metadata from at the same time. | `8` | no |
 | `max_peers` | `int` | Maximum number of peers that Beyla tracks. | `1024` | no |
 | `max_response_bytes` | `int` | Maximum size of the metadata that Beyla accepts from one peer, in bytes. | `1048576` | no |
-| `mode` | `string` | How Beyla exchanges metadata. | `"peer"` | no |
+| `mode` | `string` | How Beyla exchanges metadata. Accepts `"peer"` or `"central"`. | `"peer"` | no |
 | `peer_cidrs` | `list(string)` | Networks that peers can connect from and that Beyla fetches metadata from. | `[]` | no |
 | `port` | `int` | TCP port to serve the metadata on, and to fetch it from on peers. | `8998` | no |
 | `refresh_interval` | `duration` | How often Beyla fetches metadata from its peers. | `"10s"` | no |
@@ -1283,12 +1313,12 @@ Beyla uses it to name the service at the other end of the connection in traces a
 | `token` | `secret` | Bearer token that peers must present. | `""` | no |
 
 Unset or zero values use the defaults defined in Beyla.
-Every Beyla in the exchange must use the same `port`, `token`, and TLS settings.
 
-When you set `enabled` to `true`, Beyla opens a TCP listener on `port`.
-An empty `listen_address` listens on all interfaces.
+In `peer` mode, each Beyla instance serves its list of instrumented services and fetches metadata directly from its peers.
+Every instance in the exchange must use the same `port`, `token`, and TLS settings.
+When you enable the exchange, Beyla opens a TCP listener on `port`. An empty `listen_address` listens on all interfaces.
 
-`mode` only accepts `peer`, which exchanges metadata directly between Beyla instances.
+In `central` mode, Beyla publishes and fetches metadata through the service at [`central.address`][peer_metadata central].
 
 `peer_cidrs` accepts networks in CIDR notation, for example `10.0.0.0/16`.
 Beyla rejects requests from addresses outside these networks, and only fetches metadata from addresses inside them.
@@ -1318,9 +1348,17 @@ peer_metadata {
 
 Replace _`<BEYLA_PEER_TOKEN>`_ with the name of the environment variable that holds the token.
 
+#### `central`
+
+The `central` block configures the connection to the central metadata service.
+
+| Name | Type | Description | Default | Required |
+|------|------|-------------|---------|----------|
+| `address` | `string` | Host and port of the metadata service, for example `metadata:8999`. Required when `peer_metadata.enabled` is `true` and `mode` is `"central"`. | `""` | no |
+
 #### `tls`
 
-The `tls` block configures TLS for both the metadata that Beyla serves and the metadata it fetches from peers.
+The `tls` block configures TLS for connections to peers or the central metadata service.
 
 | Name | Type | Description | Default | Required |
 |------|------|-------------|---------|----------|
@@ -1330,9 +1368,9 @@ The `tls` block configures TLS for both the metadata that Beyla serves and the m
 | `key_file` | `string` | Path to the private key of `cert_file`. | `""` | no |
 | `server_name` | `string` | Name that peer certificates must be valid for. | `""` | no |
 
-When you set `enabled` to `true`, you must also set `cert_file` and `key_file`.
+When you enable TLS in `peer` mode, you must also set `cert_file` and `key_file`.
 An empty `ca_file` verifies peer certificates with the system certificate pool.
-An empty `server_name` verifies peer certificates against the IP address of the peer.
+An empty `server_name` verifies the certificate against the host that Beyla connects to.
 
 ## Exported fields
 
@@ -1410,7 +1448,7 @@ A scrape job that targets only the {{< param "PRODUCT_NAME" >}} pprof endpoints 
 
 ## Examples
 
-The following examples show you how to collect metrics and traces from `beyla.ebpf`.
+The following examples show you how to collect metrics, logs, and traces from `beyla.ebpf`.
 
 ### Metrics
 
@@ -1496,6 +1534,50 @@ Replace the following:
 * _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
 * _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
 * _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+
+### Go exception logs
+
+This example captures panics and formatted errors from Go services that listen on the specified port and forwards them through an OpenTelemetry logs pipeline:
+
+```alloy
+beyla.ebpf "default" {
+  discovery {
+    instrument {
+      open_ports = "<OPEN_PORT>"
+    }
+  }
+
+  exceptions {
+    enabled = true
+    go {
+      panics = true
+      formatted_errors = true
+    }
+  }
+
+  output {
+    logs = [otelcol.processor.batch.default.input]
+  }
+}
+
+otelcol.processor.batch "default" {
+  output {
+    logs = [otelcol.exporter.otlphttp.default.input]
+  }
+}
+
+otelcol.exporter.otlphttp "default" {
+  client {
+    endpoint = "<OTLP_ENDPOINT>"
+  }
+}
+```
+
+Replace the following:
+
+* _`<OPEN_PORT>`_: The port of your Go service.
+* _`<OTLP_ENDPOINT>`_: The HTTP endpoint of your OpenTelemetry Collector.
+
 
 ### Traces
 

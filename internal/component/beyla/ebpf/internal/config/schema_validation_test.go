@@ -78,6 +78,7 @@ func TestSupportedSectionsCoverSchema(t *testing.T) {
 		{"GCENameResolverConfig", []string{"name_resolver", "gce"}},
 		{"AzureNameResolverConfig", []string{"name_resolver", "azure"}},
 		{"PeerMetadataConfig", []string{"peer_metadata"}},
+		{"MetadataCentralConfig", []string{"peer_metadata", "central"}},
 		{"PeerMetadataTLSConfig", []string{"peer_metadata", "tls"}},
 	}
 	for _, tt := range tests {
