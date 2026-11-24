@@ -145,20 +145,21 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 			continue
 		}
 
-		var tables []string
-		var parserErr, lexerErr error
-		if tables, parserErr = c.tryParseTableNames(sampleText.String, digestText); parserErr != nil {
-			if tables, lexerErr = c.tryTokenizeTableNames(sampleText.String, digestText); lexerErr != nil {
-				c.logger.Warn("failed to extract tables from sql text", "schema", schema, "digest", digest, "parser_err", parserErr, "lexer_err", lexerErr)
-				continue
-			}
-		}
+		tables, parserErr := c.tryParseTableNames(sampleText.String, digestText)
 
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			database_observability.OP_QUERY_ASSOCIATION,
 			fmt.Sprintf(`schema=%q parseable="%t" digest=%q digest_text=%q`, schema, parserErr == nil, digest, digestText),
 		)
+
+		if parserErr != nil {
+			var lexerErr error
+			if tables, lexerErr = c.tryTokenizeTableNames(sampleText.String, digestText); lexerErr != nil {
+				c.logger.Warn("failed to extract tables from sql text", "schema", schema, "digest", digest, "parser_err", parserErr, "lexer_err", lexerErr)
+				continue
+			}
+		}
 
 		if len(tables) == 0 {
 			continue
@@ -222,7 +223,10 @@ func (c *QueryDetails) tryTokenizeTableNames(sqlText, fallbackSqlText string) ([
 	_, metadata, err = c.normalizer.Normalize(sqlText, sqllexer.WithDBMS(sqllexer.DBMSMySQL))
 	if err != nil || len(metadata.Tables) == 0 {
 		if fallbackSqlText == sqlText {
-			return nil, fmt.Errorf("failed to tokenize sql text (without fallback): %w", err)
+			if err != nil {
+				return nil, fmt.Errorf("failed to tokenize sql text (without fallback): %w", err)
+			}
+			return nil, nil
 		}
 
 		if _, metadata, err = c.normalizer.Normalize(fallbackSqlText, sqllexer.WithDBMS(sqllexer.DBMSMySQL)); err != nil {

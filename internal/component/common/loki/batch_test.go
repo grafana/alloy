@@ -187,7 +187,18 @@ func BenchmarkBatch_Add(b *testing.B) {
 		b.Run(tt.name, func(b *testing.B) {
 			streams := make([]Stream, 0, tt.numEntries)
 			for i := range tt.numEntries {
-				labels := model.LabelSet{"job": model.LabelValue(fmt.Sprintf("job-%d", i%tt.numStreams))}
+				labels := model.LabelSet{
+					"cluster":      "prod-eu-west",
+					"namespace":    "default",
+					"container":    "app",
+					"app":          "checkout",
+					"env":          "production",
+					"region":       "eu-west-1",
+					"team":         "platform",
+					"service_name": "checkout-service",
+					"level":        "info",
+					"job":          model.LabelValue(fmt.Sprintf("job-%d", i%tt.numStreams)),
+				}
 				streams = append(streams, NewStream(labels, push.Entry{Timestamp: time.Now(), Line: "very important log"}))
 			}
 
@@ -232,7 +243,18 @@ func BenchmarkBatch_AddEntry(b *testing.B) {
 		b.Run(tt.name, func(b *testing.B) {
 			labels := make([]model.LabelSet, 0, tt.numStreams)
 			for i := range tt.numStreams {
-				labels = append(labels, model.LabelSet{"job": model.LabelValue(fmt.Sprintf("job-%d", i))})
+				labels = append(labels, model.LabelSet{
+					"cluster":      "prod-eu-west",
+					"namespace":    "default",
+					"container":    "app",
+					"app":          "checkout",
+					"env":          "production",
+					"region":       "eu-west-1",
+					"team":         "platform",
+					"service_name": "checkout-service",
+					"level":        "info",
+					"job":          model.LabelValue(fmt.Sprintf("job-%d", i)),
+				})
 			}
 			entry := push.Entry{Timestamp: time.Now(), Line: "very important log"}
 
@@ -314,6 +336,8 @@ func BenchmarkBatch_FilterMap(b *testing.B) {
 }
 
 func BenchmarkBatch_FilterMapStreams(b *testing.B) {
+	const relabelEvery = 10
+
 	type testCase struct {
 		name       string
 		numEntries int
@@ -351,10 +375,27 @@ func BenchmarkBatch_FilterMapStreams(b *testing.B) {
 				batch.AddEntry(labels[i%tt.numStreams], 0, entry)
 			}
 
+			// Toggling the label moves the stream on every call it is picked, and moves
+			// it back the next time, so the batch keeps a similar shape and can be
+			// reused across iterations.
+			var n int
+			fn := func(s Stream) (Stream, bool) {
+				n++
+				if n%relabelEvery != 0 {
+					return s, true
+				}
+				if _, ok := s.Labels["moved"]; ok {
+					delete(s.Labels, "moved")
+				} else {
+					s.Labels["moved"] = "true"
+				}
+				return s, true
+			}
+
 			b.ResetTimer()
 			b.ReportAllocs()
 			for b.Loop() {
-				batch.FilterMapStreams(func(s Stream) (Stream, bool) { return s, true })
+				batch.FilterMapStreams(fn)
 			}
 		})
 	}

@@ -87,7 +87,7 @@ func newTailer(
 	}, nil
 }
 
-func (t *tailer) Run(ctx context.Context) {
+func (t *tailer) Run(ctx, _ context.Context) {
 	ticker := time.NewTicker(t.restartInterval)
 	defer ticker.Stop()
 

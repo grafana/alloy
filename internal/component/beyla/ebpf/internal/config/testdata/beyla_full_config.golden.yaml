@@ -358,6 +358,11 @@ ebpf:
     traffic_control_backend: x
     wakeup_len: 1
 enforce_sys_caps: true
+exceptions:
+    enabled: true
+    go:
+        formatted_errors: true
+        panics: true
 filter:
     application:
         x:
@@ -516,6 +521,9 @@ network:
     source: x
 nodejs:
     enabled: true
+otel_logs_export:
+    endpoint: unix://@beyla-otlp
+    protocol: http/protobuf
 otel_metrics_export:
     endpoint: unix://@beyla-otlp
     protocol: http/protobuf
