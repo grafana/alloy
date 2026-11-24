@@ -14,7 +14,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.14.1
 	github.com/Azure/go-autorest/autorest v0.11.30
 	github.com/DATA-DOG/go-sqlmock v1.5.2
-	github.com/DataDog/go-sqllexer v0.2.4
+	github.com/DataDog/go-sqllexer v0.2.7
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/collector v0.62.0
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/extension/googleclientauthextension v0.59.0
 	github.com/IBM/sarama v1.50.3
