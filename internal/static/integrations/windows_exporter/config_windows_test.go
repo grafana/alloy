@@ -170,7 +170,10 @@ func TestConfig_HyperVDHCPAndStorageSpaces(t *testing.T) {
 }
 
 func TestConfig_HyperVDefaultsWhenUnset(t *testing.T) {
-	cfg, err := (&Config{}).ToWindowsExporterConfig()
+	// The defaults come from DefaultConfig. A zero Config has an empty list,
+	// which turns every hyperv sub-collector off.
+	c := DefaultConfig
+	cfg, err := c.ToWindowsExporterConfig()
 	require.NoError(t, err)
 	require.Equal(t, collector.ConfigDefaults.HyperV.CollectorsEnabled, cfg.HyperV.CollectorsEnabled)
 	require.Equal(t, collector.ConfigDefaults.HyperV.VirtualHardDisk.RefreshInterval, cfg.HyperV.VirtualHardDisk.RefreshInterval)
