@@ -16,9 +16,9 @@ Each scenario directory has its own configuration, backends, and README.
 
 Ensure you have the following:
 
-- [Docker][] and [Docker Compose][], for Docker-based scenarios
+- [Docker][] and [Docker Compose][] for Docker-based scenarios
 - Git
-- kind, kubectl, and Helm, for Kubernetes scenarios
+- kind, kubectl, and Helm for Kubernetes scenarios
 
 ## Start a Docker-based scenario
 

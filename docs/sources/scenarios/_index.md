@@ -13,9 +13,9 @@ A scenario is a small, self-contained project that shows one way to collect or p
 Each scenario includes an {{< param "PRODUCT_NAME" >}} configuration, the backends it needs, and a README.
 Most scenarios configure Grafana with the data sources the stack needs, so you can query your telemetry immediately.
 
-Scenarios help you learn and experiment.
-Use one to try a pipeline before you adopt it, compare two approaches, or reproduce a problem in isolation.
-They aren't production configurations, so read a scenario as a worked example rather than as a template to deploy.
+Scenarios can bootstrap your production monitoring pipelines or help you experiment with new technologies.
+Use the scenario as written to try a pipeline before you adopt it, compare two approaches, or reproduce a problem in isolation.
+Once you know a scenario is pointing you in the right direction ensure that it meets the requirements of your production pipelines.
 
 The scenarios are in the [alloy-scenarios][] repository.
 Refer to [Run a scenario][] for the requirements and the setup steps.
