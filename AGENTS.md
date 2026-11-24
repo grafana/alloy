@@ -93,8 +93,8 @@ How you work in the tree while implementing.
 - Prefer validating Alloy configuration and components against this repo's source and current docs
   over training-data guesses.
 - Verify changes with `make lint` and relevant tests before considering implementation work done.
-  Prefer `GO_TAGS="nodocker" make test` or a focused `go test` for the packages you touched. See
-  [docs/developer/writing-tests.md](docs/developer/writing-tests.md).
+- IMPORTANT: Before you create or change any `_test.go` file, you MUST open and read
+  [Writing good tests](docs/developer/writing-tests.md#writing-good-tests).
 - When touching `require` lines in any `go.mod` (root or submodule), run
   `make generate-otel-collector-distro` and confirm zero additional diff. Raw `go mod tidy` in one
   module is not enough. See [collector/README.md](collector/README.md).
