@@ -34,6 +34,7 @@ type Arguments struct {
 	DotnetRuntimeMetrics DotnetRuntimeMetrics       `alloy:"dotnet_runtime_metrics,block,optional"`
 	CloudMetadata        CloudMetadata              `alloy:"cloud_metadata,block,optional"`
 	NameResolver         NameResolver               `alloy:"name_resolver,block,optional"`
+	PeerMetadata         PeerMetadata               `alloy:"peer_metadata,block,optional"`
 }
 
 type Attributes struct {
@@ -46,6 +47,7 @@ type Attributes struct {
 	RenameUnresolvedHosts         string              `alloy:"rename_unresolved_hosts,attr,optional"`
 	RenameUnresolvedHostsIncoming string              `alloy:"rename_unresolved_hosts_incoming,attr,optional"`
 	RenameUnresolvedHostsOutgoing string              `alloy:"rename_unresolved_hosts_outgoing,attr,optional"`
+	SanitizeSQLQueryText          bool                `alloy:"sanitize_sql_query_text,attr,optional"`
 }
 
 type HostIDConfig struct {
