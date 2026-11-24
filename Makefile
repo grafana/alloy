@@ -264,6 +264,14 @@ integration-test-windows-service: dist-alloy-installer-windows
 	cd integration-tests/windows-service && ALLOY_INSTALLER_PATH="../../dist/alloy-installer-windows-amd64.exe" \
 		$(GO_ENV) go test -v -tags="gore2regex alloyintegrationtests" -timeout 10m -run TestWindowsService ./...
 
+# Windows exporter integration test. Runs only on Windows.
+# The skip flags are on the make command line because other targets read them when make parses the file.
+.PHONY: integration-test-windows-exporter
+integration-test-windows-exporter:
+	"$(MAKE)" SKIP_UI_BUILD=1 SKIP_CODE_GENERATION=1 ALLOY_BINARY=build/alloy.exe alloy
+	cd integration-tests/windows-exporter && ALLOY_BINARY="../../build/alloy.exe" \
+		$(GO_ENV) go test -v -count=1 -tags="gore2regex alloyintegrationtests" -timeout 20m ./...
+
 .PHONY: test-pyroscope
 test-pyroscope:
 	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep pyroscope)

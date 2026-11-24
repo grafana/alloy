@@ -33,6 +33,27 @@ The `blacklist` and `whitelist` configuration arguments are deprecated but remai
 Use the `include` and `exclude` arguments instead.
 {{< /admonition >}}
 
+{{< admonition type="warning" >}}
+Starting with {{< param "PRODUCT_NAME" >}} v1.23.0, this component embeds `windows_exporter` v0.32.
+This release renames many metrics and labels, and changes the units of some metrics.
+Update your dashboards, recording rules, and alerts when you upgrade.
+Refer to the upstream [upgrade guide][upgrade-0.32] for the full list of changes.
+
+Some metrics keep their name but switch between a gauge and a counter.
+A query that uses `rate()` on a metric that became a gauge returns wrong results.
+Use these sections of the upgrade guide to find and handle those metrics:
+
+- [Changed type, same name][upgrade-type-change] lists the metrics that keep their name but change type.
+- [Renamed metrics][upgrade-renamed] lists the renamed metrics, including those that change type.
+- [Load the compatibility recording rules][upgrade-rules] keeps most queries that use the v0.31 names working while you migrate.
+
+[upgrade-0.32]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/upgrade/0.32.md
+[upgrade-type-change]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/upgrade/0.32.md#changed-type-same-name
+[upgrade-renamed]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/upgrade/0.32.md#renamed-metrics
+[upgrade-rules]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/upgrade/0.32.md#2-load-the-compatibility-recording-rules
+
+{{< /admonition >}}
+
 [windows_exporter]: https://github.com/prometheus-community/windows_exporter/tree/{{< param "PROM_WIN_EXP_VERSION" >}}
 
 {{< docs/shared lookup="reference/components/exporter-clustering-warning.md" source="alloy" version="<ALLOY_VERSION>" >}}
@@ -71,10 +92,14 @@ Each block only takes effect if you include its corresponding collector in `enab
 
 | Name                                       | Description                                                               | Required |
 | ------------------------------------------ | ------------------------------------------------------------------------- | -------- |
+| [`container`][container-block]             | Configures the `container` collector.                                     | no       |
 | [`dfsr`][dfsr]                             | Configures the `dfsr` collector.                                          | no       |
+| [`dhcp`][dhcp-block]                       | Configures the `dhcp` collector.                                          | no       |
 | [`dns`][dns]                               | Configures the `dns` collector.                                           | no       |
 | [`exchange`][exchange]                     | Configures the `exchange` collector.                                      | no       |
-| [`filetime`][filetime]                     | Configures the `filetime` collector.                                      | no       |
+| [`file`][file-block]                       | Configures the `file` collector.                                          | no       |
+| [`filetime`][filetime-block]               | Deprecated. Use `file` instead. Configures the `file` collector.          | no       |
+| [`hyperv`][hyperv-block]                   | Configures the `hyperv` collector.                                        | no       |
 | [`iis`][iis]                               | Configures the `iis` collector.                                           | no       |
 | [`logical_disk`][logical_disk]             | Configures the `logical_disk` collector.                                  | no       |
 | [`mscluster`][mscluster]                   | Configures the `mscluster` collector.                                     | no       |
@@ -86,21 +111,28 @@ Each block only takes effect if you include its corresponding collector in `enab
 | [`physical_disk`][physical_disk]           | Configures the `physical_disk` collector.                                 | no       |
 | [`printer`][printer]                       | Configures the `printer` collector.                                       | no       |
 | [`process`][process]                       | Configures the `process` collector.                                       | no       |
-| [`scheduled_task`][scheduled_task]         | Configures the `scheduled_task` collector.                                | no       |
+| [`registry`][registry-block]               | Configures the `registry` collector.                                      | no       |
+| [`scheduled_task`][scheduled_task-block]   | Configures the `scheduled_task` collector.                                | no       |
 | [`service`][service]                       | Configures the `service` collector.                                       | no       |
 | [`smb`][smb]                               | Deprecated. Add `"smb"` to [`enabled_collectors`][] instead.              | no       |
 | [`smb_client`][smb_client]                 | Deprecated. Add `"smb_client"` to [`enabled_collectors`][] instead.       | no       |
 | [`smtp`][smtp]                             | Configures the `smtp` collector.                                          | no       |
+| [`storage_spaces`][storage_spaces-block]   | Configures the `storage_spaces` collector.                                | no       |
 | [`tcp`][tcp]                               | Configures the `tcp` collector.                                           | no       |
 | [`textfile`][textfile]                     | Configures the `textfile` collector.                                      | no       |
 | [`text_file`][text_file]                   | (Deprecated: use `textfile` instead) Configures the `textfile` collector. | no       |
 | [`time`][time]                             | Configures the `time` collector.                                          | no       |
 | [`update`][update]                         | Configures the `update` collector.                                        | no       |
+| [`wmi`][wmi-block]                         | Configures the `wmi` collector.                                           | no       |
 
+[container-block]: #container
 [dfsr]: #dfsr
+[dhcp-block]: #dhcp
 [dns]: #dns
 [exchange]: #exchange
-[filetime]: #filetime
+[file-block]: #file
+[filetime-block]: #filetime
+[hyperv-block]: #hyperv
 [iis]: #iis
 [logical_disk]: #logical_disk
 [mscluster]: #mscluster
@@ -112,7 +144,8 @@ Each block only takes effect if you include its corresponding collector in `enab
 [physical_disk]: #physical_disk
 [printer]: #printer
 [process]: #process
-[scheduled_task]: #scheduled_task
+[registry-block]: #registry
+[scheduled_task-block]: #scheduled_task
 [service]: #service
 [smb_client]: #smb_client
 [smb]: #smb
@@ -120,8 +153,10 @@ Each block only takes effect if you include its corresponding collector in `enab
 [textfile]: #textfile
 [text_file]: #text_file-deprecated-use-textfile-instead
 [tcp]: #tcp
+[storage_spaces-block]: #storage_spaces
 [time]: #time
 [update]: #update
+[wmi-block]: #wmi
 [`enabled_collectors`](#arguments)
 
 {{< /docs/alloy-config >}}
@@ -136,11 +171,36 @@ The `msmq` block is deprecated as of {{< param "PRODUCT_NAME" >}} v1.9.0.
 You can still include this block in your configuration files, but it has no effect.
 {{< /admonition >}}
 
+Windows exporter v0.32 rejects an unknown name in an `enabled_list` or `sources_enabled` attribute.
+The component fails to start and reports the name.
+In earlier versions, the exporter ignored a typo in these blocks and silently disabled that collector.
+
+### `container`
+
+| Name           | Type     | Description                                                        | Default                                   | Required |
+| -------------- | -------- | ------------------------------------------------------------------ | ----------------------------------------- | -------- |
+| `cri_endpoint` | `string` | The Container Runtime Interface (CRI) endpoint of the container runtime. | `"npipe:////./pipe/containerd-containerd"` | no       |
+
+The `container` collector reads the Kubernetes `namespace`, `pod`, and `container` labels from the CRI endpoint.
+Set `cri_endpoint` if containerd listens on a different named pipe.
+On hosts without a CRI endpoint, the collector exports containers without Kubernetes labels.
+
 ### `dfsr`
 
 | Name              | Type           | Description                              | Default                            | Required |
 | ----------------- | -------------- | ---------------------------------------- | ---------------------------------- | -------- |
 | `sources_enabled` | `list(string)` | A list of DFSR `Perflib` sources to use. | `["connection","folder","volume"]` | no       |
+
+### `dhcp`
+
+| Name           | Type           | Description                  | Default                              | Required |
+| -------------- | -------------- | ---------------------------- | ------------------------------------ | -------- |
+| `enabled_list` | `list(string)` | A list of collectors to use. | `["server_metrics","scope_metrics"]` | no       |
+
+The collectors specified by `enabled_list` can include the following:
+
+- `scope_metrics`
+- `server_metrics`
 
 ### `dns`
 
@@ -154,11 +214,60 @@ You can still include this block in your configuration files, but it has no effe
 | -------------- | -------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | `enabled_list` | `list(string)` | A list of collectors to use. | `["ADAccessProcesses", "TransportQueues", "HttpProxy", "ActiveSync", "AvailabilityService", "OutlookWebAccess", "Autodiscover", "WorkloadManagement", "RpcClientAccess", "MapiHttpEmsmdb"]` | no       |
 
-### `filetime`
+### `file`
 
 | Name            | Type           | Description                                          | Default | Required |
 | --------------- | -------------- | ---------------------------------------------------- | ------- | -------- |
 | `file_patterns` | `list(string)` | A list of glob patterns that match files to monitor. | `[]`    | no       |
+
+### `filetime`
+
+{{< admonition type="caution" >}}
+Starting with {{< param "PRODUCT_NAME" >}} v1.23.0, the `filetime` block is deprecated.
+It will be removed in a future release.
+`windows_exporter` v0.32 replaced the `filetime` collector with the `file` collector, and metrics with the prefix `windows_filetime` have the prefix `windows_file`.
+Use the [`file`][file-block] block instead.
+{{< /admonition >}}
+
+The `filetime` block configures the `file` collector.
+
+| Name            | Type           | Description                                          | Default | Required |
+| --------------- | -------------- | ---------------------------------------------------- | ------- | -------- |
+| `file_patterns` | `list(string)` | A list of glob patterns that match files to monitor. | `[]`    | no       |
+
+### `hyperv`
+
+| Name                                 | Type           | Description                                                                    | Default   | Required |
+| ------------------------------------ | -------------- | ------------------------------------------------------------------------------ | --------- | -------- |
+| `enabled_list`                       | `list(string)` | A list of collectors to use.                                                   | See below | no       |
+| `virtual_hard_disk_refresh_interval` | `duration`     | How often the `virtual_hard_disk` collector reads the disks in the background. | `"5m"`    | no       |
+
+The default value of `enabled_list` is every collector in the following list.
+The collectors specified by `enabled_list` can include the following:
+
+- `datastore`
+- `dynamic_memory_balancer`
+- `dynamic_memory_vm`
+- `host`
+- `hypervisor_logical_processor`
+- `hypervisor_root_partition`
+- `hypervisor_root_virtual_processor`
+- `hypervisor_virtual_processor`
+- `legacy_network_adapter`
+- `replica_vm`
+- `virtual_hard_disk`
+- `virtual_machine_health_summary`
+- `virtual_machine_vid_partition`
+- `virtual_network_adapter`
+- `virtual_network_adapter_drop_reasons`
+- `virtual_smb`
+- `virtual_storage_device`
+- `virtual_switch`
+- `vm_state`
+- `wmi_health`
+
+Windows exporter v0.32 added `host`, `replica_vm`, `virtual_hard_disk`, `vm_state`, and `wmi_health` to the default list.
+To keep the v0.31 set of metrics, list the collectors you want in `enabled_list`.
 
 ### `iis`
 
@@ -192,7 +301,7 @@ The component [wraps][wrap-regex] user-supplied `exclude` and `include` strings 
 
 | Name           | Type           | Description                  | Default                                                   | Required |
 | -------------- | -------------- | ---------------------------- | --------------------------------------------------------- | -------- |
-| `enabled_list` | `list(string)` | A list of collectors to use. | `["cluster","network","node","resource","resourcegroup"]` | no       |
+| `enabled_list` | `list(string)` | A list of collectors to use. | `["cluster","network","node","resource","resourcegroup","shared_volumes"]` | no       |
 
 The collectors specified by `enabled_list` can include the following:
 
@@ -201,6 +310,7 @@ The collectors specified by `enabled_list` can include the following:
 - `node`
 - `resource`
 - `resourcegroup`
+- `shared_volumes`
 
 For example, you can set `enabled_list` to `["cluster"]`.
 
@@ -332,16 +442,15 @@ The component [wraps][wrap-regex] user-supplied `exclude` and `include` strings 
 
 | Name                        | Type     | Description                                 | Default  | Required |
 | --------------------------- | -------- | ------------------------------------------- | -------- | -------- |
-| `counter_version`           | `int`    | Version of the process collector to use.    | `0`      | no       |
+| `counter_version`           | `int`    | Deprecated. This attribute has no effect.   | `0`      | no       |
 | `enable_iis_worker_process` | `bool`   | Enable IIS worker process name queries.     | `false`  | no       |
 | `exclude`                   | `string` | Regular expression of processes to exclude. | `"^$"`   | no       |
 | `include`                   | `string` | Regular expression of processes to include. | `"^.+$"` | no       |
 
-The `counter_version` may be `0`, `1`, or `2`.
-
-- A value of `1` uses the Windows `Process` performance counters through the [registry][] API.
-- A value of `2` uses the Windows `Process V2` performance counters through the [Performance Data Helper (PDH)][pdh] API. These counters are available starting in Windows 11.
-- A value of `0` checks if `Process V2` counters are available and falls back to `Process` counters if they aren't.
+{{< admonition type="caution" >}}
+Starting with {{< param "PRODUCT_NAME" >}} v1.23.0, the `counter_version` attribute is deprecated and has no effect.
+It will be removed in a future release.
+{{< /admonition >}}
 
 The component includes processes that match the regular expression specified by `include` and don't match the regular expression specified by `exclude`.
 
@@ -349,17 +458,47 @@ The component [wraps][wrap-regex] user-supplied `exclude` and `include` strings 
 
 The upstream collector warns that `enable_iis_worker_process` may leak memory. Use with caution.
 
-[pdh]: https://learn.microsoft.com/en-us/windows/win32/perfctrs/collecting-performance-data
-[registry]: https://learn.microsoft.com/en-us/windows/win32/perfctrs/using-the-registry-functions-to-consume-counter-data
+### `registry`
+
+| Name   | Type     | Description                                          | Default | Required |
+| ------ | -------- | ---------------------------------------------------- | ------- | -------- |
+| `keys` | `string` | YAML string representing the registry keys to export. | `""`    | no       |
+
+The `keys` field accepts a YAML string that satisfies the schema in the exporter's [`registry` collector documentation][registry].
+Like the `performancecounter` block, the best way to configure this collector is to use a `local.file` component.
+Include `"registry"` in [`enabled_collectors`](#arguments) to enable the collector.
+The component fails to start if the YAML contains a key that the schema doesn't define.
+
+```alloy
+local.file "registry_keys" {
+  filename = "C:\\Program Files\\GrafanaLabs\\Alloy\\registry_keys.yaml"
+}
+
+prometheus.exporter.windows "default" {
+  enabled_collectors = ["registry"]
+
+  registry {
+    keys = local.file.registry_keys.content
+  }
+}
+```
 
 ### `scheduled_task`
 
 | Name      | Type     | Description                             | Default  | Required |
 | --------- | -------- | --------------------------------------- | -------- | -------- |
-| `exclude` | `string` | Regular expression of tasks to exclude. | `"^$"`   | no       |
+| `exclude` | `string` | Regular expression of tasks to exclude. | `"^(?:/Microsoft/.+)$"` | no |
 | `include` | `string` | Regular expression of tasks to include. | `"^.+$"` | no       |
+| `missed_runs` | `bool` | Report the number of missed runs of each task in `windows_scheduled_task_missed_runs`. | `false` | no |
 
 The component includes tasks that match the regular expression specified by `include` and don't match the regular expression specified by `exclude`.
+
+The `include` and `exclude` expressions match task paths that use forward slashes, for example `/Microsoft/Windows/Chkdsk/SyspartRepair`.
+
+By default, `exclude` skips the tasks below `/Microsoft/`.
+To include every task, set `exclude` to `""`.
+
+Reading the missed runs of a task costs the Task Scheduler service extra requests, so `missed_runs` is off by default.
 
 The component [wraps][wrap-regex] user-supplied `exclude` and `include` strings in a regular expression.
 
@@ -405,6 +544,20 @@ To collect SMB Client metrics, include `"smb_client"` in [`enabled_collectors`](
 The component includes server names that match the regular expression specified by `include` and don't match the regular expression specified by `exclude`.
 
 The component [wraps][wrap-regex] user-supplied `exclude` and `include` strings in a regular expression.
+
+### `storage_spaces`
+
+The `storage_spaces` collector exposes Storage Spaces pool and virtual disk metrics.
+It works on standalone hosts and doesn't need a failover cluster.
+
+| Name           | Type           | Description                  | Default                     | Required |
+| -------------- | -------------- | ---------------------------- | --------------------------- | -------- |
+| `enabled_list` | `list(string)` | A list of collectors to use. | `["pool","virtual_disk"]`   | no       |
+
+The collectors specified by `enabled_list` can include the following:
+
+- `pool`
+- `virtual_disk`
 
 ### `tcp`
 
@@ -471,12 +624,13 @@ If the Windows Time Service is stopped after collection has started, collector m
 
 | Name           | Type           | Description                  | Default                                       | Required |
 | -------------- | -------------- | ---------------------------- | --------------------------------------------- | -------- |
-| `enabled_list` | `list(string)` | A list of collectors to use. | `["system_time","clock_source","ntp"]`        | no       |
+| `enabled_list` | `list(string)` | A list of collectors to use. | `["system_time","clock_source","ntp","sync_status"]`        | no       |
 
 The collectors specified by `enabled_list` can include the following:
 
 - `clock_source`
 - `ntp`
+- `sync_status`
 - `system_time`
 
 The `ntp` sub-collector reads the Windows Time Service performance counters, which are only available on [Windows Server 2016 or newer][win2016-time-svc-improv]. It produces no metrics on older systems.
@@ -489,6 +643,31 @@ The `ntp` sub-collector reads the Windows Time Service performance counters, whi
 | ----------------- | ---------- | ---------------------------------------------------- | ------- | -------- |
 | `online`          | `bool`     | Whether to search for updates online.                | `false` | no       |
 | `scrape_interval` | `duration` | How frequently to scrape Windows Update information. | `6h`    | no       |
+
+### `wmi`
+
+| Name      | Type     | Description                                | Default | Required |
+| --------- | -------- | ------------------------------------------ | ------- | -------- |
+| `queries` | `string` | YAML string representing the WMI queries to export. | `""`    | no       |
+
+The `queries` field accepts a YAML string that satisfies the schema in the exporter's [`wmi` collector documentation][wmi].
+Like the `performancecounter` block, the best way to configure this collector is to use a `local.file` component.
+Include `"wmi"` in [`enabled_collectors`](#arguments) to enable the collector.
+The component fails to start if the YAML contains a key that the schema doesn't define.
+
+```alloy
+local.file "wmi_queries" {
+  filename = "C:\\Program Files\\GrafanaLabs\\Alloy\\wmi_queries.yaml"
+}
+
+prometheus.exporter.windows "default" {
+  enabled_collectors = ["wmi"]
+
+  wmi {
+    queries = local.file.wmi_queries.content
+  }
+}
+```
 
 ## Exported fields
 
@@ -513,7 +692,7 @@ debug metrics.
 
 ## Wrap regular expression strings
 
-Some collector blocks such as [`scheduled_task`][scheduled_task] accept a regular expression as a string argument.
+Some collector blocks such as [`scheduled_task`][scheduled_task-block] accept a regular expression as a string argument.
 `prometheus.exporter.windows` prefixes some regular expression string arguments with `^(?:` and suffixes them with `)$`.
 For example, if a user sets an `exclude` argument to `".*"`, Alloy sets it to `"^(?:.*)$"`.
 
@@ -543,9 +722,11 @@ You can enable a subset of collectors to limit the amount of metrics that the `p
 | [`container`][container]                   | Container metrics                                              |                    |
 | [`dfsr`][dfsr]                             | DFSR metrics                                                   |                    |
 | [`dhcp`][dhcp]                             | DHCP Server                                                    |                    |
+| [`dmi`][dmi]                               | DMI (SMBIOS) hardware information                              |                    |
 | [`dns`][dns]                               | DNS Server                                                     |                    |
 | [`exchange`][exchange]                     | Exchange metrics                                               |                    |
-| [`filetime`][filetime]                     | File modification time metrics                                 |                    |
+| [`file`][file]                             | File modification time and size metrics                        |                    |
+| [`filetime`][filetime]                     | Deprecated. Use `file` instead. File modification time metrics |                    |
 | [`fsrmquota`][fsrmquota]                   | Microsoft File Server Resource Manager (FSRM) Quotas collector |                    |
 | [`gpu`][gpu]                               | GPU usage and memory consumption                               |                    |
 | [`hyperv`][hyperv]                         | Hyper-V hosts                                                  |                    |
@@ -563,21 +744,24 @@ You can enable a subset of collectors to limit the amount of metrics that the `p
 | [`physical_disk`][physical_disk]           | Physical disks                                                 |                    |
 | [`printer`][printer]                       | Printer metrics                                                |                    |
 | [`process`][process]                       | Per-process metrics                                            |                    |
+| [`registry`][registry]                     | Windows registry values                                        |                    |
 | [`remote_fx`][remote_fx]                   | RemoteFX protocol (RDP) metrics                                |                    |
 | [`scheduled_task`][scheduled_task]         | Scheduled Tasks metrics                                        |                    |
 | [`service`][service]                       | Service state metrics                                          | Yes                |
 | [`smb`][smb]                               | SMB Server shares                                              |                    |
 | [`smb_client`][smb_client]                 | SMB Client shares                                              |                    |
 | [`smtp`][smtp]                             | IIS SMTP Server                                                |                    |
+| [`storage_spaces`][storage_spaces]         | Storage Spaces pools and virtual disks                         |                    |
 | [`system`][system]                         | System calls                                                   | Yes                |
 | [`tcp`][tcp]                               | TCP connections                                                |                    |
 | [`time`][time]                             | Windows Time Service                                           |                    |
-| [`thermalzone`][thermalzone]               | Thermal information                                            |                    |
 | [`terminal_services`][terminal_services]   | Terminal services (RDS)                                        |                    |
 | [`textfile`][textfile]                     | Read Prometheus metrics from a text file                       |                    |
 | [`udp`][udp]                               | UDP connections                                                |                    |
+| [`wmi`][wmi]                               | User-defined WMI queries                                       |                    |
 | [`update`][update]                         | Windows Update service metrics                                 |                    |
 | [`vmware`][vmware]                         | Performance counters installed by the VMware Guest agent       |                    |
+| `thermalzone`                              | Windows exporter v0.32 removed it. {{< param "PRODUCT_NAME" >}} ignores it. Use the [`performancecounter`][performancecounter] block instead. |                    |
 
 [ad]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.ad.md
 [adcs]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.adcs.md
@@ -585,12 +769,17 @@ You can enable a subset of collectors to limit the amount of metrics that the `p
 [cache]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.cache.md
 [cpu]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.cpu.md
 [cpu_info]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.cpu_info.md
+[dmi]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.dmi.md
+[registry]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.registry.md
+[storage_spaces]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.storage_spaces.md
+[wmi]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.wmi.md
 [container]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.container.md
 [dfsr]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.dfsr.md
 [dhcp]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.dhcp.md
 [dns]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.dns.md
 [exchange]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.exchange.md
-[filetime]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.filetime.md
+[file]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.file.md
+[filetime]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/upgrade/0.32.md#filetime-collector-removed
 [fsrmquota]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.fsrmquota.md
 [gpu]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.gpu.md
 [hyperv]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.hyperv.md
@@ -617,7 +806,6 @@ You can enable a subset of collectors to limit the amount of metrics that the `p
 [system]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.system.md
 [tcp]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.tcp.md
 [time]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.time.md
-[thermalzone]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.thermalzone.md
 [terminal_services]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.terminal_services.md
 [textfile]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.textfile.md
 [udp]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.udp.md

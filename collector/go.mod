@@ -355,7 +355,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bitfield/gotestdox v0.2.2 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
-	github.com/bmatcuk/doublestar/v4 v4.10.2 // indirect
+	github.com/bmatcuk/doublestar/v4 v4.10.3 // indirect
 	github.com/bodgit/plumbing v1.3.0 // indirect
 	github.com/bodgit/sevenzip v1.6.1 // indirect
 	github.com/bodgit/windows v1.0.1 // indirect
@@ -654,7 +654,7 @@ require (
 	github.com/mdlayher/genetlink v1.3.2 // indirect
 	github.com/mdlayher/kobject v0.0.0-20200520190114-19ca17470d7d // indirect
 	github.com/mdlayher/netlink v1.7.2 // indirect
-	github.com/mdlayher/socket v0.7.0 // indirect
+	github.com/mdlayher/socket v0.8.0 // indirect
 	github.com/mdlayher/vsock v1.3.0 // indirect
 	github.com/mdlayher/wifi v0.1.0 // indirect
 	github.com/metalmatze/signal v0.0.0-20210307161603-1c9aa721a97a // indirect
@@ -808,7 +808,7 @@ require (
 	github.com/prometheus-community/postgres_exporter v0.19.0 // indirect
 	github.com/prometheus-community/prom-label-proxy v0.15.0 // indirect
 	github.com/prometheus-community/stackdriver_exporter v0.18.0 // indirect
-	github.com/prometheus-community/windows_exporter v0.31.3 // indirect
+	github.com/prometheus-community/windows_exporter v0.32.1 // indirect
 	github.com/prometheus-community/yet-another-cloudwatch-exporter v0.64.0 // indirect
 	github.com/prometheus-operator/prometheus-operator v0.93.0 // indirect
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.93.0 // indirect
@@ -826,7 +826,7 @@ require (
 	github.com/prometheus/mysqld_exporter v0.18.0 // indirect
 	github.com/prometheus/node_exporter v1.10.2 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
-	github.com/prometheus/procfs v0.22.0 // indirect
+	github.com/prometheus/procfs v0.23.0 // indirect
 	github.com/prometheus/prometheus v0.315.0 // indirect
 	github.com/prometheus/sigv4 v0.5.0 // indirect
 	github.com/prometheus/snmp_exporter v0.29.0 // indirect
@@ -923,7 +923,7 @@ require (
 	github.com/xdg-go/stringprep v1.0.4 // indirect
 	github.com/xdg/scram v1.0.5 // indirect
 	github.com/xdg/stringprep v1.0.3 // indirect
-	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
+	github.com/xhit/go-str2duration/v2 v2.2.0 // indirect
 	github.com/xo/dburl v0.24.2 // indirect
 	github.com/xo/terminfo v1.0.0 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect

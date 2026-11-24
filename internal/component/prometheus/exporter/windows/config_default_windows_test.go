@@ -46,7 +46,9 @@ func TestAlloyUnmarshalWithDefaultConfig(t *testing.T) {
 	// The default is now set in the convert function to allow for the deprecated text_file block to be used.
 	// require.Equal(t, defaultArgs.TextFile.TextFileDirectory, args.TextFile.TextFileDirectory)
 	require.Equal(t, defaultArgs.TCP.EnabledList, args.TCP.EnabledList)
-	require.Equal(t, defaultArgs.Filetime.FilePatterns, args.Filetime.FilePatterns)
+	require.Equal(t, defaultArgs.File.FilePatterns, args.File.FilePatterns)
+	require.Equal(t, defaultArgs.Container.CRIEndpoint, args.Container.CRIEndpoint)
+	require.Equal(t, defaultArgs.ScheduledTask.MissedRuns, args.ScheduledTask.MissedRuns)
 	require.Equal(t, defaultArgs.DNS.EnabledList, args.DNS.EnabledList)
 	require.Equal(t, defaultArgs.Update.Online, args.Update.Online)
 	require.Equal(t, defaultArgs.Update.ScrapeInterval, args.Update.ScrapeInterval)
@@ -54,6 +56,10 @@ func TestAlloyUnmarshalWithDefaultConfig(t *testing.T) {
 	require.Equal(t, defaultArgs.Net.Exclude, args.Net.Exclude)
 	require.Equal(t, defaultArgs.Net.EnabledList, args.Net.EnabledList)
 	require.Equal(t, defaultArgs.Time.EnabledList, args.Time.EnabledList)
+	require.Equal(t, defaultArgs.HyperV.EnabledList, args.HyperV.EnabledList)
+	require.Equal(t, defaultArgs.HyperV.VirtualHardDiskRefreshInterval, args.HyperV.VirtualHardDiskRefreshInterval)
+	require.Equal(t, defaultArgs.DHCP.EnabledList, args.DHCP.EnabledList)
+	require.Equal(t, defaultArgs.StorageSpaces.EnabledList, args.StorageSpaces.EnabledList)
 }
 
 // This is a copy of the getDefaultPath() function in:
@@ -72,26 +78,33 @@ func TestDefaultConfig(t *testing.T) {
 		Exchange:          ExchangeConfig{EnabledList: []string{"ADAccessProcesses", "TransportQueues", "HttpProxy", "ActiveSync", "AvailabilityService", "OutlookWebAccess", "Autodiscover", "WorkloadManagement", "RpcClientAccess", "MapiHttpEmsmdb"}},
 		IIS:               IISConfig{AppBlackList: "^$", AppWhiteList: "^.+$", SiteBlackList: "^$", SiteWhiteList: "^.+$", AppExclude: "^$", AppInclude: "^.+$", SiteExclude: "^$", SiteInclude: "^.+$"},
 		LogicalDisk:       LogicalDiskConfig{BlackList: "^$", WhiteList: "^.+$", Include: "^.+$", Exclude: "^$", EnabledList: []string{"metrics"}},
-		MSCluster:         MSClusterConfig{EnabledList: []string{"cluster", "network", "node", "resource", "resourcegroup"}},
+		MSCluster:         MSClusterConfig{EnabledList: []string{"cluster", "network", "node", "resource", "resourcegroup", "shared_volumes"}},
 		MSSQL:             MSSQLConfig{EnabledClasses: []string{"accessmethods", "availreplica", "bufman", "databases", "dbreplica", "genstats", "info", "locks", "memmgr", "sqlerrors", "sqlstats", "transactions", "waitstats"}},
 		Network:           NetworkConfig{BlackList: "^$", WhiteList: "^.+$", Exclude: "^$", Include: "^.+$"},
 		NetFramework:      NetFrameworkConfig{EnabledList: []string{"clrexceptions", "clrinterop", "clrjit", "clrloading", "clrlocksandthreads", "clrmemory", "clrremoting", "clrsecurity"}},
 		PhysicalDisk:      PhysicalDiskConfig{Include: "^.+$", Exclude: "^$"},
 		Printer:           PrinterConfig{Exclude: "^$", Include: "^.+$"},
 		Process:           ProcessConfig{BlackList: "^$", WhiteList: "^.+$", Exclude: "^$", Include: "^.+$", EnableIISWorkerProcess: false, CounterVersion: 0},
-		ScheduledTask:     ScheduledTaskConfig{Exclude: "^$", Include: "^.+$"},
+		ScheduledTask:     ScheduledTaskConfig{Exclude: "^(?:/Microsoft/.+)$", Include: "^.+$", MissedRuns: false},
 		Service:           ServiceConfig{Include: "^.+$", Exclude: "^$"},
 		SMB:               SMBConfig{EnabledList: []string{}},
 		SMBClient:         SMBClientConfig{EnabledList: []string{}},
 		SMTP:              SMTPConfig{BlackList: "^$", WhiteList: "^.+$", Exclude: "^$", Include: "^.+$"},
 		// This default is not set on the defaults, but is applied when sending the config to the integration code
 		// TextFile:          &TextFileConfig{TextFileDirectory: getDefaultTextFilePath()},
-		TCP:      TCPConfig{EnabledList: []string{"metrics", "connections_state"}},
-		Filetime: FiletimeConfig{FilePatterns: []string{}},
-		DNS:      DNSConfig{EnabledList: []string{"metrics", "wmi_stats"}},
-		Update:   UpdateConfig{Online: false, ScrapeInterval: 6 * time.Hour},
-		Net:      NetConfig{Include: "^.+$", Exclude: "^$", EnabledList: []string{"metrics", "nic_info"}},
-		Time:     TimeConfig{EnabledList: []string{"system_time", "clock_source", "ntp"}},
+		TCP:       TCPConfig{EnabledList: []string{"metrics", "connections_state"}},
+		File:      FileConfig{FilePatterns: []string{}},
+		Container: ContainerConfig{CRIEndpoint: "npipe:////./pipe/containerd-containerd"},
+		DNS:       DNSConfig{EnabledList: []string{"metrics", "wmi_stats"}},
+		Update:    UpdateConfig{Online: false, ScrapeInterval: 6 * time.Hour},
+		Net:       NetConfig{Include: "^.+$", Exclude: "^$", EnabledList: []string{"metrics", "nic_info"}},
+		Time:      TimeConfig{EnabledList: []string{"system_time", "clock_source", "ntp", "sync_status"}},
+		HyperV: HyperVConfig{
+			EnabledList:                    []string{"datastore", "dynamic_memory_balancer", "dynamic_memory_vm", "host", "hypervisor_logical_processor", "hypervisor_root_partition", "hypervisor_root_virtual_processor", "hypervisor_virtual_processor", "legacy_network_adapter", "replica_vm", "virtual_hard_disk", "virtual_machine_health_summary", "virtual_machine_vid_partition", "virtual_network_adapter", "virtual_network_adapter_drop_reasons", "virtual_smb", "virtual_storage_device", "virtual_switch", "vm_state", "wmi_health"},
+			VirtualHardDiskRefreshInterval: 5 * time.Minute,
+		},
+		DHCP:          DHCPConfig{EnabledList: []string{"server_metrics", "scope_metrics"}},
+		StorageSpaces: StorageSpacesConfig{EnabledList: []string{"pool", "virtual_disk"}},
 	}
 
 	var args Arguments

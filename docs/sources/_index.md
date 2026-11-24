@@ -6,7 +6,7 @@ weight: 350
 cascade:
   ALLOY_RELEASE: v1.22.0 # x-release-please-version
   OTEL_VERSION: v0.161.0
-  PROM_WIN_EXP_VERSION: v0.31.3
+  PROM_WIN_EXP_VERSION: v0.32.1
   SNMP_VERSION: v0.29.0
   BEYLA_VERSION: v3.43.0
   GO_VERSION: 1.26.7
