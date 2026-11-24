@@ -1131,7 +1131,7 @@ replace github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-2026102
 
 replace github.com/google/cadvisor/lib => github.com/grafana/cadvisor/lib v0.0.0-20261027180521-39c571fbfcf6
 
-replace github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20260225165717-9c2c77e3702a
+replace github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20261124150901-6aebc4778e8d
 
 replace github.com/prometheus/mysqld_exporter => github.com/grafana/mysqld_exporter v0.0.0-20260319134024-e0461af8db16
 
