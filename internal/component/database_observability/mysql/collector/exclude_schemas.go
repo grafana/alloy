@@ -20,3 +20,7 @@ func buildExcludedSchemasClause(schemas []string) string {
 		database_observability.MergeExclusions(excludedSchemas, schemas),
 	)
 }
+
+func buildSchemaFilterClause(excludeSchemas, includeSchemas []string, columnExpr string) string {
+	return buildExcludedSchemasClause(excludeSchemas) + database_observability.BuildInclusionClause(columnExpr, includeSchemas)
+}

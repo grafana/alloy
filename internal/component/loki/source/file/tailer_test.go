@@ -22,43 +22,42 @@ import (
 func TestTailer(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	runTailerTest(t, func(t *testing.T, send sendFunc, received func() []loki.Entry) {
+	runTailerTest(t, func(t *testing.T, newBatcher func(model.LabelSet) loki.StreamBatcher, received func() []loki.Entry) {
 		l := logging.NewSlogNop()
 		tempDir := t.TempDir()
 		logFile, err := os.CreateTemp(tempDir, "example")
 		require.NoError(t, err)
 		positionsFile, err := positions.New(l, positions.Config{
-			SyncPeriod:        50 * time.Millisecond,
-			PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
-			IgnoreInvalidYaml: false,
-			ReadOnly:          false,
+			Path: filepath.Join(tempDir, "positions.yaml"),
 		})
 		require.NoError(t, err)
 		labels := model.LabelSet{
 			"filename": model.LabelValue(logFile.Name()),
 			"foo":      "bar",
 		}
-		tailer := newTailer(
-			newMetrics(nil),
-			l,
-			send,
-			positionsFile,
-			func() bool { return true },
-			sourceOptions{
-				path:   logFile.Name(),
-				labels: labels,
-				fileWatch: FileWatch{
-					MinPollFrequency: 25 * time.Millisecond,
-					MaxPollFrequency: 25 * time.Millisecond,
+		newFileTailer := func() *tailer {
+			return newTailer(
+				newMetrics(nil),
+				l,
+				newBatcher,
+				positionsFile,
+				sourceOptions{
+					path:   logFile.Name(),
+					labels: labels,
+					fileWatch: FileWatch{
+						MinPollFrequency: 25 * time.Millisecond,
+						MaxPollFrequency: 25 * time.Millisecond,
+					},
+					onPositionsFileError: OnPositionsFileErrorRestartBeginning,
 				},
-				onPositionsFileError: OnPositionsFileErrorRestartBeginning,
-			},
-		)
+			)
+		}
+		tailer := newFileTailer()
 
 		ctx, cancel := context.WithCancel(t.Context())
 		done := make(chan struct{})
 		go func() {
-			tailer.Run(ctx)
+			tailer.Run(ctx, ctx)
 			close(done)
 		}()
 
@@ -80,10 +79,11 @@ func TestTailer(t *testing.T) {
 		<-done
 
 		// Run the tailer again
+		tailer = newFileTailer()
 		ctx, cancel = context.WithCancel(t.Context())
 		done = make(chan struct{})
 		go func() {
-			tailer.Run(ctx)
+			tailer.Run(ctx, ctx)
 			close(done)
 		}()
 
@@ -117,16 +117,13 @@ func TestTailer(t *testing.T) {
 func TestTailerPositionFileEntryDeleted(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	runTailerTest(t, func(t *testing.T, send sendFunc, received func() []loki.Entry) {
+	runTailerTest(t, func(t *testing.T, newBatcher func(model.LabelSet) loki.StreamBatcher, received func() []loki.Entry) {
 		l := logging.NewSlogNop()
 		tempDir := t.TempDir()
 		logFile, err := os.CreateTemp(tempDir, "example")
 		require.NoError(t, err)
 		positionsFile, err := positions.New(l, positions.Config{
-			SyncPeriod:        50 * time.Millisecond,
-			PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
-			IgnoreInvalidYaml: false,
-			ReadOnly:          false,
+			Path: filepath.Join(tempDir, "positions.yaml"),
 		})
 		require.NoError(t, err)
 		labels := model.LabelSet{
@@ -136,9 +133,8 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 		tailer := newTailer(
 			newMetrics(nil),
 			l,
-			send,
+			newBatcher,
 			positionsFile,
-			func() bool { return false },
 			sourceOptions{
 				path:   logFile.Name(),
 				labels: labels,
@@ -152,7 +148,7 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 		ctx, cancel := context.WithCancel(t.Context())
 		done := make(chan struct{})
 		go func() {
-			tailer.Run(ctx)
+			tailer.Run(ctx, context.Background())
 			close(done)
 		}()
 
@@ -187,16 +183,13 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 func TestTailerDeleteFileInstant(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	runTailerTest(t, func(t *testing.T, send sendFunc, _ func() []loki.Entry) {
+	runTailerTest(t, func(t *testing.T, newBatcher func(model.LabelSet) loki.StreamBatcher, _ func() []loki.Entry) {
 		l := logging.NewSlogNop()
 		tempDir := t.TempDir()
 		logFile, err := os.CreateTemp(tempDir, "example")
 		require.NoError(t, err)
 		positionsFile, err := positions.New(l, positions.Config{
-			SyncPeriod:        50 * time.Millisecond,
-			PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
-			IgnoreInvalidYaml: false,
-			ReadOnly:          false,
+			Path: filepath.Join(tempDir, "positions.yaml"),
 		})
 		require.NoError(t, err)
 		labels := model.LabelSet{
@@ -206,9 +199,8 @@ func TestTailerDeleteFileInstant(t *testing.T) {
 		tailer := newTailer(
 			newMetrics(nil),
 			l,
-			send,
+			newBatcher,
 			positionsFile,
-			func() bool { return true },
 			sourceOptions{
 				path:   logFile.Name(),
 				labels: labels,
@@ -226,7 +218,7 @@ func TestTailerDeleteFileInstant(t *testing.T) {
 
 		done := make(chan struct{})
 		go func() {
-			tailer.Run(t.Context())
+			tailer.Run(t.Context(), t.Context())
 			positionsFile.Stop()
 			close(done)
 		}()
@@ -244,7 +236,7 @@ func TestTailerCancelWhileSendBlocked(t *testing.T) {
 
 	t.Run("pipeline v1", func(t *testing.T) {
 		recv := loki.NewLogsReceiver()
-		testTailerCancelWhileSendBlocked(t, sendToV1(recv), func() string {
+		testTailerCancelWhileSendBlocked(t, streamBatcherV1(recv), func() string {
 			entry := <-recv.Chan()
 			return entry.Line
 		})
@@ -252,7 +244,8 @@ func TestTailerCancelWhileSendBlocked(t *testing.T) {
 
 	t.Run("pipeline v2", func(t *testing.T) {
 		consumer := &blockingConsumer{CollectingConsumer: lokitest.NewCollectingConsumer()}
-		testTailerCancelWhileSendBlocked(t, sendToV2(logging.NewSlogNop(), consumer), func() string {
+		// Batch size 1 so the second line is sent in its own Consume call.
+		testTailerCancelWhileSendBlocked(t, streamBatcherV2(consumer, 1), func() string {
 			var entries []loki.Entry
 			require.Eventually(t, func() bool {
 				entries = consumer.Entries()
@@ -263,7 +256,7 @@ func TestTailerCancelWhileSendBlocked(t *testing.T) {
 	})
 }
 
-func testTailerCancelWhileSendBlocked(t *testing.T, send sendFunc, firstLine func() string) {
+func testTailerCancelWhileSendBlocked(t *testing.T, newBatcher func(model.LabelSet) loki.StreamBatcher, firstLine func() string) {
 	l := logging.NewSlogNop()
 	tempDir := t.TempDir()
 
@@ -276,10 +269,7 @@ func testTailerCancelWhileSendBlocked(t *testing.T, send sendFunc, firstLine fun
 	file.Close()
 
 	positionsFile, err := positions.New(l, positions.Config{
-		SyncPeriod:        50 * time.Millisecond,
-		PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
-		IgnoreInvalidYaml: false,
-		ReadOnly:          false,
+		Path: filepath.Join(tempDir, "positions.yaml"),
 	})
 	require.NoError(t, err)
 	defer positionsFile.Stop()
@@ -295,9 +285,8 @@ func testTailerCancelWhileSendBlocked(t *testing.T, send sendFunc, firstLine fun
 	tailer := newTailer(
 		newMetrics(nil),
 		l,
-		send,
+		newBatcher,
 		positionsFile,
-		func() bool { return true },
 		sourceOptions{
 			path:   path,
 			labels: labels,
@@ -313,7 +302,7 @@ func testTailerCancelWhileSendBlocked(t *testing.T, send sendFunc, firstLine fun
 
 	done := make(chan struct{})
 	go func() {
-		tailer.Run(ctx)
+		tailer.Run(ctx, ctx)
 		close(done)
 	}()
 
@@ -347,7 +336,7 @@ func (c *blockingConsumer) Consume(ctx context.Context, batch loki.Batch) error 
 func TestTailerCorruptedPositions(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	runTailerTest(t, func(t *testing.T, send sendFunc, received func() []loki.Entry) {
+	runTailerTest(t, func(t *testing.T, newBatcher func(model.LabelSet) loki.StreamBatcher, received func() []loki.Entry) {
 		l := logging.NewSlogNop()
 		tempDir := t.TempDir()
 		logFile, err := os.CreateTemp(tempDir, "example")
@@ -356,10 +345,7 @@ func TestTailerCorruptedPositions(t *testing.T) {
 		require.NoError(t, err)
 
 		positionsFile, err := positions.New(l, positions.Config{
-			SyncPeriod:        50 * time.Millisecond,
-			PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
-			IgnoreInvalidYaml: false,
-			ReadOnly:          false,
+			Path: filepath.Join(tempDir, "positions.yaml"),
 		})
 		require.NoError(t, err)
 		defer positionsFile.Stop()
@@ -369,27 +355,29 @@ func TestTailerCorruptedPositions(t *testing.T) {
 			"foo":      "bar",
 		}
 		positionsFile.PutString(logFile.Name(), labels.String(), "\\0\\0\\0\\0123") // Corrupted position entry
-		tailer := newTailer(
-			newMetrics(nil),
-			l,
-			send,
-			positionsFile,
-			func() bool { return true },
-			sourceOptions{
-				path:   logFile.Name(),
-				labels: labels,
-				fileWatch: FileWatch{
-					MinPollFrequency: 25 * time.Millisecond,
-					MaxPollFrequency: 25 * time.Millisecond,
+		newFileTailer := func() *tailer {
+			return newTailer(
+				newMetrics(nil),
+				l,
+				newBatcher,
+				positionsFile,
+				sourceOptions{
+					path:   logFile.Name(),
+					labels: labels,
+					fileWatch: FileWatch{
+						MinPollFrequency: 25 * time.Millisecond,
+						MaxPollFrequency: 25 * time.Millisecond,
+					},
+					onPositionsFileError: OnPositionsFileErrorRestartEnd,
 				},
-				onPositionsFileError: OnPositionsFileErrorRestartEnd,
-			},
-		)
+			)
+		}
+		tailer := newFileTailer()
 
 		ctx, cancel := context.WithCancel(t.Context())
 		done := make(chan struct{})
 		go func() {
-			tailer.Run(ctx)
+			tailer.Run(ctx, ctx)
 			close(done)
 		}()
 
@@ -414,10 +402,11 @@ func TestTailerCorruptedPositions(t *testing.T) {
 		<-done
 
 		// Run the tailer again
+		tailer = newFileTailer()
 		ctx, cancel = context.WithCancel(t.Context())
 		done = make(chan struct{})
 		go func() {
-			tailer.Run(ctx)
+			tailer.Run(ctx, ctx)
 			close(done)
 		}()
 
@@ -450,11 +439,10 @@ func TestTailerCorruptedPositions(t *testing.T) {
 func TestTailer_Compressions(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	runTailerTest(t, func(t *testing.T, send sendFunc, received func() []loki.Entry) {
+	runTailerTest(t, func(t *testing.T, newBatcher func(model.LabelSet) loki.StreamBatcher, received func() []loki.Entry) {
 		logger := logging.NewSlogNop()
 		positionsFile, err := positions.New(logger, positions.Config{
-			SyncPeriod:    50 * time.Millisecond,
-			PositionsFile: filepath.Join(t.TempDir(), "positions.yaml"),
+			Path: filepath.Join(t.TempDir(), "positions.yaml"),
 		})
 		require.NoError(t, err)
 		defer positionsFile.Stop()
@@ -468,10 +456,8 @@ func TestTailer_Compressions(t *testing.T) {
 		tailer := newTailer(
 			newMetrics(nil),
 			logger,
-			send,
+			newBatcher,
 			positionsFile,
-			// We return false here to verify that position is kept and we don't re-ingest the file.
-			func() bool { return false },
 			sourceOptions{
 				path:                 filename,
 				labels:               labels,
@@ -481,7 +467,7 @@ func TestTailer_Compressions(t *testing.T) {
 		)
 
 		// We expect tailer to exit when all compressed data have been consumed.
-		tailer.Run(t.Context())
+		tailer.Run(t.Context(), context.Background())
 
 		require.EventuallyWithT(t, func(c *assert.CollectT) {
 			entries := received()
@@ -496,7 +482,7 @@ func TestTailer_Compressions(t *testing.T) {
 		}, time.Second, 50*time.Millisecond)
 
 		// Run the decompressor again
-		tailer.Run(t.Context())
+		tailer.Run(t.Context(), context.Background())
 
 		// No new entries because the position was kept.
 		require.Len(t, received(), 1)
@@ -506,15 +492,14 @@ func TestTailer_Compressions(t *testing.T) {
 func TestTailer_GigantiqueGunzipFile(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	runTailerTest(t, func(t *testing.T, send sendFunc, received func() []loki.Entry) {
+	runTailerTest(t, func(t *testing.T, newBatcher func(model.LabelSet) loki.StreamBatcher, received func() []loki.Entry) {
 		file := "testdata/long-access.gz"
 
 		tailer := newTailer(
 			newMetrics(prometheus.NewRegistry()),
 			logging.NewSlogNop(),
-			send,
+			newBatcher,
 			positions.NewNop(),
-			func() bool { return false },
 			sourceOptions{
 				path:                file,
 				decompressionConfig: DecompressionConfig{Enabled: true, Format: "gz"},
@@ -522,7 +507,7 @@ func TestTailer_GigantiqueGunzipFile(t *testing.T) {
 		)
 
 		// We expect tailer to exit when all compressed data have been consumed.
-		tailer.Run(t.Context())
+		tailer.Run(t.Context(), context.Background())
 
 		require.EventuallyWithT(t, func(c *assert.CollectT) {
 			require.Equal(c, 100000, len(received()))
@@ -538,15 +523,14 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 	fileContent, err := os.ReadFile("testdata/onelinelog.log")
 	require.NoError(t, err)
 	t.Run("gunzip file", func(t *testing.T) {
-		runTailerTest(t, func(t *testing.T, send sendFunc, received func() []loki.Entry) {
+		runTailerTest(t, func(t *testing.T, newBatcher func(model.LabelSet) loki.StreamBatcher, received func() []loki.Entry) {
 			file := "testdata/onelinelog.log.gz"
 
 			tailer := newTailer(
 				newMetrics(prometheus.NewRegistry()),
 				logging.NewSlogNop(),
-				send,
+				newBatcher,
 				positions.NewNop(),
-				func() bool { return false },
 				sourceOptions{
 					path:                file,
 					decompressionConfig: DecompressionConfig{Enabled: true, Format: "gz"},
@@ -554,7 +538,7 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 			)
 
 			// We expect tailer to exit when all compressed data have been consumed.
-			tailer.Run(t.Context())
+			tailer.Run(t.Context(), context.Background())
 
 			require.Eventually(t, func() bool {
 				return len(received()) == 1
@@ -566,15 +550,14 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 	})
 
 	t.Run("bzip2 file", func(t *testing.T) {
-		runTailerTest(t, func(t *testing.T, send sendFunc, received func() []loki.Entry) {
+		runTailerTest(t, func(t *testing.T, newBatcher func(model.LabelSet) loki.StreamBatcher, received func() []loki.Entry) {
 			file := "testdata/onelinelog.log.bz2"
 
 			tailer := newTailer(
 				newMetrics(prometheus.NewRegistry()),
 				logging.NewSlogNop(),
-				send,
+				newBatcher,
 				positions.NewNop(),
-				func() bool { return false },
 				sourceOptions{
 					path:                file,
 					decompressionConfig: DecompressionConfig{Enabled: true, Format: "bz2"},
@@ -582,7 +565,7 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 			)
 
 			// We expect tailer to exit when all compressed data have been consumed.
-			tailer.Run(t.Context())
+			tailer.Run(t.Context(), context.Background())
 
 			require.Eventually(t, func() bool {
 				return len(received()) == 1
@@ -594,15 +577,14 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 	})
 
 	t.Run("tar.gz file", func(t *testing.T) {
-		runTailerTest(t, func(t *testing.T, send sendFunc, received func() []loki.Entry) {
+		runTailerTest(t, func(t *testing.T, newBatcher func(model.LabelSet) loki.StreamBatcher, received func() []loki.Entry) {
 			file := "testdata/onelinelog.tar.gz"
 
 			tailer := newTailer(
 				newMetrics(prometheus.NewRegistry()),
 				logging.NewSlogNop(),
-				send,
+				newBatcher,
 				positions.NewNop(),
-				func() bool { return false },
 				sourceOptions{
 					path:                file,
 					decompressionConfig: DecompressionConfig{Enabled: true, Format: "gz"},
@@ -610,7 +592,7 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 			)
 
 			// We expect tailer to exit when all compressed data have been consumed.
-			tailer.Run(t.Context())
+			tailer.Run(t.Context(), context.Background())
 
 			require.Eventually(t, func() bool {
 				return len(received()) == 1
@@ -627,17 +609,30 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 	})
 }
 
-func runTailerTest(t *testing.T, run func(t *testing.T, send sendFunc, received func() []loki.Entry)) {
+func runTailerTest(t *testing.T, run func(t *testing.T, newBatcher func(model.LabelSet) loki.StreamBatcher, received func() []loki.Entry)) {
 	t.Helper()
 
 	t.Run("pipeline v1", func(t *testing.T) {
-		handler := loki.NewCollectingHandler()
-		defer handler.Stop()
-		run(t, sendToV1(handler.Receiver()), handler.Received)
+		recv := lokitest.NewCollectingReceiver()
+		defer recv.Stop()
+		run(t, streamBatcherV1(recv), recv.Entries)
 	})
 
 	t.Run("pipeline v2", func(t *testing.T) {
 		consumer := lokitest.NewCollectingConsumer()
-		run(t, sendToV2(logging.NewSlogNop(), consumer), consumer.Entries)
+		defer consumer.Stop()
+		run(t, streamBatcherV2(consumer, 10), consumer.Entries)
 	})
+}
+
+func streamBatcherV1(recv loki.LogsReceiver) func(model.LabelSet) loki.StreamBatcher {
+	return func(labels model.LabelSet) loki.StreamBatcher {
+		return loki.NewStreamBatcherV1(recv, labels)
+	}
+}
+
+func streamBatcherV2(c loki.Consumer, size int) func(model.LabelSet) loki.StreamBatcher {
+	return func(labels model.LabelSet) loki.StreamBatcher {
+		return loki.NewStreamBatcherV2(logging.NewSlogNop(), c, labels, size)
+	}
 }

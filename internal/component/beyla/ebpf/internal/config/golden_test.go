@@ -25,6 +25,7 @@ func TestEmittedYAMLGolden(t *testing.T) {
 	fillValue(reflect.ValueOf(&args).Elem(), 0)
 	args.Output = &otelcol.ConsumerArguments{
 		Metrics: []otelcol.Consumer{nil},
+		Logs:    []otelcol.Consumer{nil},
 		Traces:  []otelcol.Consumer{nil},
 	}
 

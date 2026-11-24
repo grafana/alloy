@@ -5,7 +5,6 @@ import (
 	"encoding"
 	"errors"
 	"fmt"
-	"log/slog"
 	"maps"
 	"os"
 	"path/filepath"
@@ -16,7 +15,6 @@ import (
 
 	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/common/model"
-	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -209,8 +207,6 @@ type Component struct {
 
 	pipelineV2 bool
 	fanoutV2   *loki.FanoutV2
-
-	stopping atomic.Bool
 }
 
 // New creates a new loki.source.file component.
@@ -232,10 +228,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		}
 	}
 	positionsFile, err := positions.New(o.Logger, positions.Config{
-		SyncPeriod:        10 * time.Second,
-		PositionsFile:     newPositionsPath,
-		IgnoreInvalidYaml: false,
-		ReadOnly:          false,
+		Path: newPositionsPath,
 	})
 	if err != nil {
 		return nil, err
@@ -269,8 +262,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		c.opts.Logger.Info("loki.source.file component shutting down, stopping sources and positions file")
-		c.stopping.Store(true)
-
 		c.mut.Lock()
 		defer c.mut.Unlock()
 		c.watcher.Stop()
@@ -323,7 +314,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	// Choose resolver on FileMatch.
 	if newArgs.FileMatch.Enabled {
-		c.resolver = newGlobResolver(c.opts.Logger)
+		c.resolver = newGlobResolver(c.opts.Logger, newArgs.FileMatch.IgnoreOlderThan)
 	} else {
 		c.resolver = newStaticResolver()
 	}
@@ -359,10 +350,6 @@ func (c *Component) scheduleSources() {
 			if fi.IsDir() {
 				c.metrics.totalBytes.DeleteLabelValues(target.Path)
 				return nil, errors.New("failed to tail file, is directory")
-			}
-
-			if c.args.FileMatch.Enabled && c.args.FileMatch.IgnoreOlderThan != 0 && fi.ModTime().Before(time.Now().Add(-c.args.FileMatch.IgnoreOlderThan)) {
-				return nil, source.ErrSkip
 			}
 
 			c.metrics.totalBytes.WithLabelValues(target.Path).Set(float64(fi.Size()))
@@ -421,14 +408,11 @@ type sourceOptions struct {
 
 // newSource will return a decompressor source if enabled, otherwise a tailer source.
 func (c *Component) newSource(opts sourceOptions) (source.Source[positions.Entry], error) {
-	logger := c.opts.Logger.With("component", "tailer", "path", opts.path)
-
 	tailer := newTailer(
 		c.metrics,
-		logger,
-		c.newSend(logger),
+		c.opts.Logger,
+		c.newBatcher,
 		c.posFile,
-		c.IsStopping,
 		opts,
 	)
 
@@ -443,13 +427,11 @@ func (c *Component) newSource(opts sourceOptions) (source.Source[positions.Entry
 	}), nil
 }
 
-func (c *Component) newSend(logger *slog.Logger) sendFunc {
+func (c *Component) newBatcher(labels model.LabelSet) loki.StreamBatcher {
 	if c.pipelineV2 {
-		return sendToV2(logger, c.fanoutV2)
+		// FIXME(kalleep): This should be configurable https://github.com/grafana/alloy/issues/7630
+		const maxBatchSize = 100
+		return loki.NewStreamBatcherV2(c.opts.Logger, c.fanoutV2, labels, maxBatchSize)
 	}
-	return sendToV1(c.handler)
-}
-
-func (c *Component) IsStopping() bool {
-	return c.stopping.Load()
+	return loki.NewStreamBatcherV1(c.handler, labels)
 }

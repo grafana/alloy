@@ -14,7 +14,6 @@ loki.process "logs_config_with_metrics" {
 		metric.counter {
 			name              = "byte_count_total"
 			description       = "A running counter of all bytes per stream with their corresponding labels"
-			max_idle_duration = "0s"
 			action            = "add"
 			match_all         = true
 			count_entry_bytes = true

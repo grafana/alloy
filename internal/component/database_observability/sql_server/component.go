@@ -83,8 +83,11 @@ type Arguments struct {
 	EnableCollectors   []string `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors  []string `alloy:"disable_collectors,attr,optional"`
 	ExcludeSchemas     []string `alloy:"exclude_schemas,attr,optional"`
+	IncludeSchemas     []string `alloy:"include_schemas,attr,optional"`
 	ExcludeDatabases   []string `alloy:"exclude_databases,attr,optional"`
+	IncludeDatabases   []string `alloy:"include_databases,attr,optional"`
 	ExcludeUsers       []string `alloy:"exclude_users,attr,optional"`
+	IncludeUsers       []string `alloy:"include_users,attr,optional"`
 	ExcludeCurrentUser bool     `alloy:"exclude_current_user,attr,optional"`
 
 	Databases []DatabaseArguments `alloy:"database_instance,block,optional"`
@@ -256,6 +259,16 @@ func (a *Arguments) SetToDefault() {
 var databaseNameRegex = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 func (a *Arguments) Validate() error {
+	if err := database_observability.ValidateInclusions(a.IncludeSchemas, collector.AlwaysExcludedSchemas(), a.ExcludeSchemas, defaultExcludedSchemas(), "include_schemas", "exclude_schemas", true); err != nil {
+		return err
+	}
+	if err := database_observability.ValidateInclusions(a.IncludeDatabases, collector.AlwaysExcludedDatabases(), a.ExcludeDatabases, defaultExcludedDatabases(), "include_databases", "exclude_databases", true); err != nil {
+		return err
+	}
+	if err := database_observability.ValidateInclusions(a.IncludeUsers, nil, a.ExcludeUsers, defaultExcludedUsers(), "include_users", "exclude_users", true); err != nil {
+		return err
+	}
+
 	if len(a.Databases) == 0 {
 		if a.DataSourceName == "" {
 			return fmt.Errorf("one of data_source_name or database_instance blocks must be set")
@@ -605,13 +618,17 @@ func (c *Component) replaceInstances(instances []*dbInstance) {
 }
 
 // ownedDatabases returns the subset of configs this node is responsible for
-// collecting. With clustering disabled, all databases are owned locally.
-// While the cluster isn't ready to admit traffic, no databases are owned, so
-// that nodes don't collect duplicates while the cluster is still forming.
-// Ownership lookup errors fail open to local ownership, matching the
-// semantics of discovery.DistributedTargets.
+// collecting. With clustering disabled, either on the component or for the
+// whole cluster service, all databases are owned locally. While the cluster
+// isn't ready to admit traffic, no databases are owned, so that nodes don't
+// collect duplicates while the cluster is still forming.
+//
+// Ownership lookup errors fail closed. A single-owner lookup only errors while
+// no peer is a participant, which is every node's state during a new cluster's
+// initial load; failing open would make each node connect to every database.
+// reconcileCluster picks the databases up once the node becomes a participant.
 func (c *Component) ownedDatabases(cfgs []databaseConfig, clusteringEnabled bool) []databaseConfig {
-	if !clusteringEnabled {
+	if !clusteringEnabled || !c.cluster.Enabled() {
 		return cfgs
 	}
 	if !c.cluster.Ready() {
@@ -619,18 +636,27 @@ func (c *Component) ownedDatabases(cfgs []databaseConfig, clusteringEnabled bool
 		return nil
 	}
 
+	var lookupErr error
 	owned := make([]databaseConfig, 0, len(cfgs))
 	for _, cfg := range cfgs {
 		key, err := instanceKey(string(cfg.dsn))
 		if err != nil {
-			// Validate guarantees the DSN parses; fail open to local ownership.
+			// There's no key to look an owner up with. Keep the database so that
+			// building its instance reports the DSN error.
 			owned = append(owned, cfg)
 			continue
 		}
 		peers, err := c.cluster.Lookup(shard.StringKey(key), 1, shard.OpReadWrite)
-		if err != nil || len(peers) == 0 || peers[0].Self {
+		if err != nil {
+			lookupErr = err
+			continue
+		}
+		if len(peers) > 0 && peers[0].Self {
 			owned = append(owned, cfg)
 		}
+	}
+	if lookupErr != nil {
+		c.opts.Logger.Warn("failed to look up database owners in the cluster, not collecting from the affected databases", "err", lookupErr)
 	}
 	return owned
 }
@@ -821,7 +847,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	}
 
 	excludeCurrentUser := c.args.ExcludeCurrentUser && enableOrDisableCollectors(c.args)[collector.QuerySamplesCollector]
-	effectiveExcludeUsers, err := resolveExcludeUsers(ctx, inst.dbConnection, c.args.QueryTimeout, c.args.ExcludeUsers, excludeCurrentUser)
+	effectiveExcludeUsers, err := resolveExcludeUsers(ctx, inst.dbConnection, c.args.QueryTimeout, c.args.ExcludeUsers, c.args.IncludeUsers, excludeCurrentUser)
 	if err != nil {
 		return fmt.Errorf("failed to resolve current login for query_samples user exclusion: %w", err)
 	}
@@ -919,8 +945,11 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 	}
 	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), inst.instanceKey, serverID, inst.cfg.rules)
 
-	excludeSchemas := database_observability.MergeExclusions(defaultExcludedSchemas(), c.args.ExcludeSchemas)
-	excludeDatabases := database_observability.MergeExclusions(defaultExcludedDatabases(), c.args.ExcludeDatabases)
+	excludeSchemas := database_observability.EffectiveExclusions(defaultExcludedSchemas(), c.args.ExcludeSchemas, c.args.IncludeSchemas, true)
+	includeSchemas := database_observability.MergeExclusions(c.args.IncludeSchemas)
+	excludeDatabases := database_observability.EffectiveExclusions(defaultExcludedDatabases(), c.args.ExcludeDatabases, c.args.IncludeDatabases, true)
+	includeDatabases := database_observability.MergeExclusions(c.args.IncludeDatabases)
+	includeUsers := database_observability.MergeExclusions(c.args.IncludeUsers)
 
 	collectors := enableOrDisableCollectors(c.args)
 	var tableRegistry *collector.TableRegistry
@@ -931,7 +960,9 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 			CollectInterval:  c.args.SchemaDetailsArguments.CollectInterval,
 			QueryTimeout:     c.args.QueryTimeout,
 			ExcludeSchemas:   excludeSchemas,
+			IncludeSchemas:   includeSchemas,
 			ExcludeDatabases: excludeDatabases,
+			IncludeDatabases: includeDatabases,
 			EntryHandler:     entryHandler,
 			Logger:           c.opts.Logger,
 		})
@@ -1028,7 +1059,9 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 			MaxSamplesPerQuery:    c.args.QuerySamplesArguments.MaxSamplesPerQuery,
 			MaxSamplesPerCollect:  c.args.QuerySamplesArguments.MaxSamplesPerCollect,
 			ExcludeDatabases:      excludeDatabases,
+			IncludeDatabases:      includeDatabases,
 			ExcludeUsers:          effectiveExcludeUsers,
+			IncludeUsers:          includeUsers,
 			ExcludeCurrentUser:    c.args.ExcludeCurrentUser,
 		}
 		if queryMetricsCollector != nil {
@@ -1125,7 +1158,9 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 		DB:               inst.dbConnection,
 		CollectInterval:  c.args.HealthCheckArguments.CollectInterval,
 		QueryTimeout:     c.args.QueryTimeout,
+		EngineEdition:    engineEdition,
 		ExcludeDatabases: excludeDatabases,
+		IncludeDatabases: includeDatabases,
 		EntryHandler:     entryHandler,
 		Logger:           c.opts.Logger,
 	})
@@ -1151,8 +1186,8 @@ func (c *Component) startCollectors(ctx context.Context, inst *dbInstance, serve
 //
 // ORIGINAL_LOGIN() pairs with the sys.dm_exec_sessions.original_login_name
 // column that the query_samples filter matches against.
-func resolveExcludeUsers(ctx context.Context, db *sql.DB, queryTimeout time.Duration, configured []string, excludeCurrentUser bool) ([]string, error) {
-	effective := database_observability.MergeExclusions(defaultExcludedUsers(), configured)
+func resolveExcludeUsers(ctx context.Context, db *sql.DB, queryTimeout time.Duration, configuredExclude, configuredInclude []string, excludeCurrentUser bool) ([]string, error) {
+	effective := database_observability.EffectiveExclusions(defaultExcludedUsers(), configuredExclude, configuredInclude, true)
 	if !excludeCurrentUser {
 		return effective, nil
 	}

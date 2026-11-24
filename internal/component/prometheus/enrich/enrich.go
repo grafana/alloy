@@ -146,6 +146,24 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 			return next.AppendHistogram(0, newLabels, t, h, fh)
 		}),
+		prometheus.WithSTZeroSampleHook(func(_ storage.SeriesRef, l labels.Labels, t, st int64, next storage.Appender) (storage.SeriesRef, error) {
+			if c.exited.Load() {
+				return 0, fmt.Errorf("%s has exited", opts.ID)
+			}
+
+			newLabels := c.enrich(l)
+
+			return next.AppendSTZeroSample(0, newLabels, t, st)
+		}),
+		prometheus.WithHistogramSTZeroSampleHook(func(_ storage.SeriesRef, l labels.Labels, t, st int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error) {
+			if c.exited.Load() {
+				return 0, fmt.Errorf("%s has exited", opts.ID)
+			}
+
+			newLabels := c.enrich(l)
+
+			return next.AppendHistogramSTZeroSample(0, newLabels, t, st, h, fh)
+		}),
 	)
 
 	if err = c.Update(args); err != nil {

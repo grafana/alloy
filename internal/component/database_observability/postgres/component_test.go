@@ -1868,9 +1868,10 @@ func TestPostgres_ExportedReceiversStableAcrossUpdates(t *testing.T) {
 // fakeCluster is a cluster.Cluster implementation with controllable
 // readiness and per-key ownership.
 type fakeCluster struct {
-	ready bool
-	owned map[shard.Key]bool
-	err   error
+	ready    bool
+	disabled bool
+	owned    map[shard.Key]bool
+	err      error
 }
 
 func (f *fakeCluster) Lookup(key shard.Key, _ int, _ shard.Op) ([]peer.Peer, error) {
@@ -1884,7 +1885,7 @@ func (f *fakeCluster) Peers() []peer.Peer { return nil }
 
 func (f *fakeCluster) Ready() bool { return f.ready }
 
-func (f *fakeCluster) Enabled() bool { return true }
+func (f *fakeCluster) Enabled() bool { return !f.disabled }
 
 var (
 	clusterKeyDB1 = shard.StringKey("postgresql://127.0.0.1:5432/db1")
@@ -2134,10 +2135,63 @@ func TestPostgres_Clustering_UpdateRecomputesOwnership(t *testing.T) {
 		[]string{instances[0].instanceKey, instances[1].instanceKey})
 }
 
-func TestPostgres_Clustering_LookupErrorFailsOpen(t *testing.T) {
-	// Ownership lookup errors fail open to local ownership, so a broken
-	// cluster degrades to collecting everything rather than nothing.
+func TestPostgres_Clustering_LookupErrorOwnsNothing(t *testing.T) {
+	// A lookup only errors while no peer is eligible to own a key, as on a
+	// node that hasn't joined as a participant yet. Failing open there would
+	// make every node of a freshly started cluster connect to every database.
 	fake := &fakeCluster{ready: true, err: assert.AnError}
+	var gotExports cmp.Exports
+
+	c, err := new(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, _ string) (*sql.DB, error) {
+		t.Error("unexpected database connection while no peer is eligible to own databases")
+		return nil, assert.AnError
+	})
+	require.NoError(t, err)
+
+	assert.Empty(t, c.loadInstances())
+
+	h := c.CurrentHealth()
+	assert.Equal(t, cmp.HealthTypeHealthy, h.Health)
+	assert.Contains(t, h.Message, "no databases are currently owned")
+
+	exported, ok := gotExports.(Exports)
+	require.True(t, ok)
+	assert.Empty(t, exported.Targets)
+	// Every database still exports its logs receiver.
+	assert.Len(t, exported.LogsReceivers, 2)
+}
+
+func TestPostgres_Clustering_ReconcilePicksUpDatabasesAfterLookupError(t *testing.T) {
+	fake := &fakeCluster{ready: true, err: assert.AnError}
+	var gotExports cmp.Exports
+
+	c, err := new(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, dsn string) (*sql.DB, error) {
+		switch {
+		case strings.Contains(dsn, "/db1"):
+			return multiDatabaseTestMockDB(t, "system-a"), nil
+		default:
+			return multiDatabaseTestMockDB(t, "system-b"), nil
+		}
+	})
+	require.NoError(t, err)
+	require.Empty(t, c.loadInstances())
+
+	// The node becomes a participant: lookups succeed and it owns db1.
+	fake.err = nil
+	fake.owned = map[shard.Key]bool{clusterKeyDB1: true, clusterKeyDB2: false}
+	c.reconcileCluster()
+
+	instances := c.loadInstances()
+	require.Len(t, instances, 1)
+	assert.Equal(t, "postgresql://127.0.0.1:5432/db1", instances[0].instanceKey)
+	assert.NotEmpty(t, instances[0].collectors)
+}
+
+func TestPostgres_Clustering_ClusterServiceDisabledOwnsEverything(t *testing.T) {
+	// With the cluster service disabled, the component's clustering block must
+	// be ignored. Lookups error until the node has joined as a participant after
+	// its initial load, and that must not leave every database unowned.
+	fake := &fakeCluster{ready: true, disabled: true, err: assert.AnError}
 	var gotExports cmp.Exports
 
 	c, err := new(clusteringTestOptions(t, fake, &gotExports), clusteringTestArgs(), func(_ string, dsn string) (*sql.DB, error) {
@@ -2240,7 +2294,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		assert.Equal(t, uint(100), exporterArgs.StatStatementFlags.Limit)
 	})
 
-	t.Run("no block at all defaults to stat_statements only with default stat_statements limit", func(t *testing.T) {
+	t.Run("no block at all defaults to defaultEnabledCollectors with default stat_statements limit", func(t *testing.T) {
 		cfg := `
 			data_source_name = "postgresql://user:pass@localhost:5432/db"
 			forward_to = []
@@ -2248,7 +2302,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
-		assert.Equal(t, []string{"stat_statements"}, exporterArgs.EnabledCollectors)
+		assert.Equal(t, defaultEnabledCollectors, exporterArgs.EnabledCollectors)
 		require.NotNil(t, exporterArgs.StatStatementFlags)
 		assert.Equal(t, uint(100), exporterArgs.StatStatementFlags.Limit)
 	})
@@ -2266,7 +2320,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
-		assert.Equal(t, []string{"stat_statements"}, exporterArgs.EnabledCollectors)
+		assert.Equal(t, defaultEnabledCollectors, exporterArgs.EnabledCollectors)
 		require.NotNil(t, exporterArgs.StatStatementFlags)
 		assert.Equal(t, uint(50), exporterArgs.StatStatementFlags.Limit)
 	})
@@ -2296,7 +2350,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 		var args Arguments
 		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 		exporterArgs := resolveExporterArgs(args.PrometheusExporter)
-		assert.Equal(t, []string{"stat_statements"}, exporterArgs.EnabledCollectors)
+		assert.Equal(t, defaultEnabledCollectors, exporterArgs.EnabledCollectors)
 	})
 
 	t.Run("disable_default_metrics without enabled_collectors does not error and does not inject", func(t *testing.T) {
@@ -2339,7 +2393,9 @@ func Test_resolveExporterArgs(t *testing.T) {
 		exporterArgs := applyExporterExclusions(
 			resolveExporterArgs(userBlock),
 			[]string{"top_level"},
+			nil,
 			[]string{"top_level_user"},
+			nil,
 			sql.NullString{String: "current_user", Valid: true},
 		)
 
@@ -2374,7 +2430,9 @@ func Test_resolveExporterArgs(t *testing.T) {
 		exporterArgs := applyExporterExclusions(
 			resolveExporterArgs(userBlock),
 			[]string{"top_level"},
+			nil,
 			[]string{"top_level_user"},
+			nil,
 			sql.NullString{String: "current_user", Valid: true},
 		)
 
@@ -2420,7 +2478,9 @@ func Test_resolveExporterArgs(t *testing.T) {
 		exporterArgs := applyExporterExclusions(
 			resolveExporterArgs(args.PrometheusExporter),
 			[]string{"top_level"},
+			nil,
 			[]string{"top_level_user"},
+			nil,
 			sql.NullString{String: "current_user", Valid: true},
 		)
 
@@ -2437,7 +2497,7 @@ func Test_resolveExporterArgs(t *testing.T) {
 	})
 
 	t.Run("database and user exclusions preserve default exclusions without configuration", func(t *testing.T) {
-		exporterArgs := applyExporterExclusions(resolveExporterArgs(nil), nil, nil, sql.NullString{})
+		exporterArgs := applyExporterExclusions(resolveExporterArgs(nil), nil, nil, nil, nil, sql.NullString{})
 
 		assert.Equal(t, []string{
 			"azure_maintenance", "alloydbadmin", "alloydbmetadata", "azure_sys", "cloudsqladmin", "rdsadmin",
@@ -2447,6 +2507,28 @@ func Test_resolveExporterArgs(t *testing.T) {
 		}, exporterArgs.StatStatementFlags.ExcludeDatabases)
 		assert.Equal(t, []string{
 			"azuresu", "cloudsqladmin", "db-o11y", "rdsadmin",
+		}, exporterArgs.StatStatementFlags.ExcludeUsers)
+	})
+
+	t.Run("include_databases and include_users remove matching default exclusions from exporter", func(t *testing.T) {
+		exporterArgs := applyExporterExclusions(
+			resolveExporterArgs(nil),
+			defaultExcludedDatabases(),
+			[]string{"rdsadmin", "app_db"},
+			defaultExcludedUsers(),
+			[]string{"rdsadmin", "app_user"},
+			sql.NullString{},
+		)
+
+		assert.Equal(t, []string{"rdsadmin", "app_db"}, exporterArgs.AutoDiscovery.DatabaseAllowlist)
+		assert.Equal(t, []string{
+			"azure_maintenance", "alloydbadmin", "alloydbmetadata", "azure_sys", "cloudsqladmin",
+		}, exporterArgs.AutoDiscovery.DatabaseDenylist)
+		assert.Equal(t, []string{
+			"azure_maintenance", "alloydbadmin", "alloydbmetadata", "azure_sys", "cloudsqladmin",
+		}, exporterArgs.StatStatementFlags.ExcludeDatabases)
+		assert.Equal(t, []string{
+			"azuresu", "cloudsqladmin", "db-o11y",
 		}, exporterArgs.StatStatementFlags.ExcludeUsers)
 	})
 }
@@ -2687,5 +2769,105 @@ func Test_exclusions_exporter_mismatch_warning(t *testing.T) {
 
 		assert.NotContains(t, logs.String(), "stat_statements exclude_databases differ")
 		assert.NotContains(t, logs.String(), "stat_statements exclude_users differ")
+	})
+
+	t.Run("logs warning when autodiscovery database_allowlist differs from top-level include_databases", func(t *testing.T) {
+		var logs bytes.Buffer
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) {
+			return nil, fmt.Errorf("connection skipped for exclusion warning test")
+		})
+		c.opts.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+		defer c.stopPumps()
+		args := Arguments{
+			DataSourceName:        alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			QueryDetailsArguments: QueryDetailsArguments{StatementsLimit: 100},
+			IncludeDatabases:      []string{"top_level_db"},
+			PrometheusExporter: &PrometheusExporterArguments{
+				AutoDiscovery: exporter_postgres.AutoDiscovery{
+					DatabaseAllowlist: []string{"autodiscovery_db"},
+				},
+			},
+		}
+
+		require.NoError(t, c.Update(args))
+
+		assert.Contains(t, logs.String(), "include_databases and prometheus_exporter autodiscovery database_allowlist differ; prefer setting top-level include_databases only")
+	})
+}
+
+func TestValidate_IncludeAndExcludeDatabasesAndUsers(t *testing.T) {
+	t.Run("rejects overlapping include_databases and exclude_databases", func(t *testing.T) {
+		cfg := `
+			data_source_name  = "postgresql://user:pass@localhost:5432/db"
+			forward_to        = []
+			include_databases = ["app_db", "shared_db"]
+			exclude_databases = ["other_db", "shared_db"]
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.EqualError(t, err, `include_databases and exclude_databases cannot both contain "shared_db"`)
+	})
+
+	t.Run("rejects overlapping include_users and exclude_users", func(t *testing.T) {
+		cfg := `
+			data_source_name = "postgresql://user:pass@localhost:5432/db"
+			forward_to       = []
+			include_users    = ["app_user", "shared_user"]
+			exclude_users    = ["other_user", "shared_user"]
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.EqualError(t, err, `include_users and exclude_users cannot both contain "shared_user"`)
+	})
+
+	t.Run("accepts include_databases overlapping default exclude_databases when not explicitly excluded", func(t *testing.T) {
+		cfg := `
+			data_source_name  = "postgresql://user:pass@localhost:5432/db"
+			forward_to        = []
+			include_databases = ["app_db", "rdsadmin"]
+			exclude_databases = ["legacy_only"]
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		require.Equal(t, []string{"app_db", "rdsadmin"}, args.IncludeDatabases)
+	})
+
+	t.Run("rejects include_databases overlapping always-excluded databases", func(t *testing.T) {
+		cfg := `
+			data_source_name  = "postgresql://user:pass@localhost:5432/db"
+			forward_to        = []
+			include_databases = ["app_db", "azure_maintenance"]
+			exclude_databases = ["legacy_only"]
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.EqualError(t, err, `include_databases and exclude_databases cannot both contain "azure_maintenance"`)
+	})
+
+	t.Run("accepts include_users overlapping default exclude_users when not explicitly excluded", func(t *testing.T) {
+		cfg := `
+			data_source_name = "postgresql://user:pass@localhost:5432/db"
+			forward_to       = []
+			include_users    = ["app_user", "rdsadmin"]
+			exclude_users    = ["legacy_only"]
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		require.Equal(t, []string{"app_user", "rdsadmin"}, args.IncludeUsers)
+	})
+
+	t.Run("accepts disjoint include and exclude lists", func(t *testing.T) {
+		cfg := `
+			data_source_name  = "postgresql://user:pass@localhost:5432/db"
+			forward_to        = []
+			include_databases = ["app_db"]
+			exclude_databases = ["legacy_db"]
+			include_users     = ["app_user"]
+			exclude_users     = ["legacy_user"]
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		require.Equal(t, []string{"app_db"}, args.IncludeDatabases)
+		require.Equal(t, []string{"app_user"}, args.IncludeUsers)
 	})
 }

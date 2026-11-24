@@ -596,7 +596,11 @@ func (c *crdManager) onUpdatePodMonitor(oldObj, newObj any) {
 }
 
 func (c *crdManager) onDeletePodMonitor(obj any) {
-	pm := obj.(*promopv1.PodMonitor)
+	pm, ok := deletedObject[*promopv1.PodMonitor](obj)
+	if !ok {
+		c.logger.Warn("unexpected object in pod monitor delete event", "type", fmt.Sprintf("%T", obj))
+		return
+	}
 	c.clearConfigs(pm.Namespace, pm.Name)
 	if err := c.apply(); err != nil {
 		c.logger.Error("error applying scrape configs after deleting", "name", pm.Name, "err", err)
@@ -702,7 +706,11 @@ func (c *crdManager) onUpdateServiceMonitor(oldObj, newObj any) {
 }
 
 func (c *crdManager) onDeleteServiceMonitor(obj any) {
-	pm := obj.(*promopv1.ServiceMonitor)
+	pm, ok := deletedObject[*promopv1.ServiceMonitor](obj)
+	if !ok {
+		c.logger.Warn("unexpected object in service monitor delete event", "type", fmt.Sprintf("%T", obj))
+		return
+	}
 	c.clearConfigs(pm.Namespace, pm.Name)
 	c.clearServiceMonitorArbitraryFileAccessWarnings(pm.Namespace, pm.Name)
 	if err := c.apply(); err != nil {
@@ -764,7 +772,11 @@ func (c *crdManager) onUpdateProbe(oldObj, newObj any) {
 }
 
 func (c *crdManager) onDeleteProbe(obj any) {
-	pm := obj.(*promopv1.Probe)
+	pm, ok := deletedObject[*promopv1.Probe](obj)
+	if !ok {
+		c.logger.Warn("unexpected object in probe delete event", "type", fmt.Sprintf("%T", obj))
+		return
+	}
 	c.clearConfigs(pm.Namespace, pm.Name)
 	if err := c.apply(); err != nil {
 		c.logger.Error("error applying scrape configs after deleting", "name", pm.Name, "err", err)
@@ -819,11 +831,26 @@ func (c *crdManager) onUpdateScrapeConfig(oldObj, newObj any) {
 }
 
 func (c *crdManager) onDeleteScrapeConfig(obj any) {
-	pm := obj.(*promopv1alpha1.ScrapeConfig)
+	pm, ok := deletedObject[*promopv1alpha1.ScrapeConfig](obj)
+	if !ok {
+		c.logger.Warn("unexpected object in scrape config delete event", "type", fmt.Sprintf("%T", obj))
+		return
+	}
 	c.clearConfigs(pm.Namespace, pm.Name)
 	if err := c.apply(); err != nil {
 		c.logger.Error("error applying scrape configs after deleting", "name", pm.Name, "err", err)
 	}
+}
+
+// deletedObject returns the object from an informer delete event. When the
+// informer misses the delete, it passes a cache.DeletedFinalStateUnknown
+// holding the last known state instead of the object itself.
+func deletedObject[T any](obj any) (T, bool) {
+	if tombstone, ok := obj.(toolscache.DeletedFinalStateUnknown); ok {
+		obj = tombstone.Obj
+	}
+	o, ok := obj.(T)
+	return o, ok
 }
 
 func (c *crdManager) clearConfigs(ns, name string) {

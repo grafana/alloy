@@ -95,7 +95,9 @@ type LogsArguments struct {
 	Logger                    *slog.Logger
 	Registry                  *prometheus.Registry
 	ExcludeDatabases          []string
+	IncludeDatabases          []string
 	ExcludeUsers              []string
+	IncludeUsers              []string
 	EnableErrorLogsProcessing bool
 	DB                        *sql.DB
 }
@@ -107,7 +109,9 @@ type Logs struct {
 
 	receiver                  loki.LogsReceiver
 	excludeDatabases          []string
+	includeDatabases          []string
 	excludeUsers              []string
+	includeUsers              []string
 	enableErrorLogsProcessing bool
 
 	db              *sql.DB
@@ -156,7 +160,9 @@ func NewLogs(args LogsArguments) (*Logs, error) {
 		registry:                  args.Registry,
 		receiver:                  args.Receiver,
 		excludeDatabases:          database_observability.MergeExclusions(excludedDatabases, args.ExcludeDatabases),
+		includeDatabases:          args.IncludeDatabases,
 		excludeUsers:              args.ExcludeUsers,
+		includeUsers:              args.IncludeUsers,
 		enableErrorLogsProcessing: args.EnableErrorLogsProcessing,
 		db:                        args.DB,
 		pendingErrorTimeout:       5 * time.Second,
@@ -403,12 +409,18 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	if slices.Contains(l.excludeDatabases, database) {
 		return nil
 	}
+	if len(l.includeDatabases) > 0 && !slices.Contains(l.includeDatabases, database) {
+		return nil
+	}
 
 	beforeAt := line[:atIdx]
 	lastColonBeforeAt := strings.LastIndex(beforeAt, ":")
 	user := strings.TrimSpace(beforeAt[lastColonBeforeAt+1:])
 
 	if slices.Contains(l.excludeUsers, user) {
+		return nil
+	}
+	if len(l.includeUsers) > 0 && !slices.Contains(l.includeUsers, user) {
 		return nil
 	}
 
