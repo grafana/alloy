@@ -1,7 +1,6 @@
 package harness
 
 import (
-	"fmt"
 	"strings"
 	"sync"
 )
@@ -42,16 +41,29 @@ func LogsContain(text string) Assertion {
 // maxRenderedLogLines is how many of the last log lines a failure shows.
 const maxRenderedLogLines = 40
 
-// renderLogs renders the end of the captured logs for a failure message.
-func renderLogs(logs string) string {
-	lines := strings.Split(strings.TrimSpace(logs), "\n")
-	if len(lines) == 1 && lines[0] == "" {
-		return "logs: none"
+// logTail is the end of the captured logs that a failure message shows.
+type logTail struct {
+	lines     []string
+	truncated bool
+}
+
+// tailLogs keeps the last maxRenderedLogLines lines of logs.
+func tailLogs(logs string) logTail {
+	logs = strings.TrimSpace(logs)
+	if logs == "" {
+		return logTail{}
 	}
-	prefix := "logs:\n"
-	if len(lines) > maxRenderedLogLines {
-		lines = lines[len(lines)-maxRenderedLogLines:]
-		prefix = fmt.Sprintf("logs (last %d lines):\n", maxRenderedLogLines)
+	lines := strings.Split(logs, "\n")
+	if len(lines) <= maxRenderedLogLines {
+		return logTail{lines: lines}
 	}
-	return prefix + strings.Join(lines, "\n")
+	return logTail{lines: lines[len(lines)-maxRenderedLogLines:], truncated: true}
+}
+
+func (t logTail) String() string {
+	out := strings.Join(t.lines, "\n")
+	if t.truncated {
+		return "...\n" + out
+	}
+	return out
 }

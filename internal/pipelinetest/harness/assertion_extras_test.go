@@ -1,6 +1,7 @@
 package harness
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -44,18 +45,27 @@ func TestPrometheusSampleLabelRegex_RejectsBadPattern(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestRenderLogs(t *testing.T) {
-	require.Equal(t, "logs: none", renderLogs(""))
-	require.Contains(t, renderLogs("one\ntwo\n"), "two")
+func TestTailLogs(t *testing.T) {
+	require.Equal(t, logTail{}, tailLogs(""))
+	require.Equal(t, logTail{}, tailLogs(" \n\t\n"))
+
+	short := tailLogs("one\ntwo\n")
+	require.Equal(t, logTail{lines: []string{"one", "two"}}, short)
+	require.Equal(t, "one\ntwo", short.String())
 
 	var lines []string
 	for i := 0; i < 100; i++ {
-		lines = append(lines, "line")
+		lines = append(lines, fmt.Sprintf("line %d", i))
 	}
-	lines[99] = "last"
-	out := renderLogs(strings.Join(lines, "\n"))
-	require.Contains(t, out, "last 40 lines")
-	require.Contains(t, out, "last")
+	long := tailLogs(strings.Join(lines, "\n"))
+	require.True(t, long.truncated)
+	require.Equal(t, lines[100-maxRenderedLogLines:], long.lines)
+	require.Equal(t, "...\n"+strings.Join(long.lines, "\n"), long.String())
+}
+
+func TestRenderSnapshot_OmitsLogsWhenEmpty(t *testing.T) {
+	empty := renderSnapshot(snapshot{})
+	require.Equal(t, empty+"\n\nhello", renderSnapshot(snapshot{logs: "hello\n"}))
 }
 
 func TestAssert_StableWindow(t *testing.T) {
