@@ -70,11 +70,11 @@ Ideally we want to scale our efforts and add automated tests that will prevent r
 
 ## Writing good tests
 
-These apply to anyone writing tests, including AI agents:
+These rules apply to all tests, whether written by hand or with AI assistance:
 
-* Try to match a source file with a test file. For example, when testing functionality in `example.go`, the test should ideally go in `example_test.go`.
+* Put tests in the test file that matches the source file under test. For example, tests for `traces.go` go in `traces_test.go`. Don't create a test file that has no matching source file.
 * Keep tests small, readable, and straight to the point. For example, a bug report may mention a convoluted sequence of steps as a way to reproduce the bug. If there is a way to avoid this convoluted sequence and write a more direct test, do it.
-* Prefer table-driven tests. They tend to be extendable, readable and concise.
+* Prefer table-driven tests because they are extendable, readable and concise. Before adding a new test function, check whether an existing table can take the new case. Don't copy a test function just to change its inputs.
 
 ## Benchmarking a pull request
 
