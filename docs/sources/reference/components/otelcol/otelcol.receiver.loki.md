@@ -40,11 +40,13 @@ You can use the following blocks with `otelcol.receiver.loki`:
 
 {{< docs/alloy-config >}}
 
-| Block              | Description                                        | Required |
-|--------------------|----------------------------------------------------|----------|
-| [`output`][output] | Configures where to send converted telemetry data. | yes      |
+| Block                                  | Description                                                                                      | Required |
+|----------------------------------------|--------------------------------------------------------------------------------------------------|----------|
+| [`output`][output]                     | Configures where to send converted telemetry data.                                               | yes      |
+| [`retry_on_failure`][retry_on_failure] | Configures the retry behavior when the receiver encounters an error downstream in the pipeline. | no       |
 
 [output]: #output
+[retry_on_failure]: #retry_on_failure
 
 {{< /docs/alloy-config >}}
 
@@ -53,6 +55,25 @@ You can use the following blocks with `otelcol.receiver.loki`:
 {{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `retry_on_failure`
+
+The `retry_on_failure` block configures the retry behavior when the receiver encounters an error downstream in the pipeline.
+A backoff algorithm is used to delay the retry upon subsequent failures.
+`retry_on_failure` only takes effect when the loki pipeline v2 is enabled. Otherwise the component logs a warning and ignores it.
+The following arguments are supported:
+
+| Name               | Type       | Description                                                                                                 | Default | Required |
+|--------------------|------------|-------------------------------------------------------------------------------------------------------------|---------|----------|
+| `enabled`          | `bool`     | If set to `true` and a non-permanent error occurs, the receiver blocks and resends the current batch of logs. | `false` | no       |
+| `initial_interval` | `duration` | The time to wait after first failure to retry.                                                              | `"1s"`  | no       |
+| `max_elapsed_time` | `duration` | The maximum age of a message before the data is discarded.                                                  | `"5m"`  | no       |
+| `max_interval`     | `duration` | The maximum time to wait after applying backoff logic.                                                      | `"30s"` | no       |
+
+If `max_elapsed_time` is set to `0` data is never discarded.
+
+When `enabled` is `false`, the error is returned to the Loki component that sent the logs, which handles it as an unexpected error.
+When `enabled` is `true`, the Loki component that sent the logs waits until the batch is accepted, dropped, or the component stops. If the sender cancels its request, the wait ends too.
 
 ## Exported fields
 

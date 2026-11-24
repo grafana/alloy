@@ -8,11 +8,14 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/loki/pkg/push"
 	loki_translator "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/loki"
 	"github.com/prometheus/common/model"
 	"go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/consumer/consumererror"
 	"go.opentelemetry.io/collector/pdata/plog"
 
 	"github.com/grafana/alloy/internal/component"
@@ -24,6 +27,7 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/service/lokipipelinev2"
+	"github.com/grafana/alloy/syntax"
 )
 
 func init() {
@@ -45,6 +49,17 @@ const hintAttributes = "loki.attribute.labels"
 type Arguments struct {
 	// Output configures where to send received data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
+
+	// ConsumerRetry configures retries when the downstream consumer returns an error.
+	ConsumerRetry otelcol.ConsumerRetryArguments `alloy:"retry_on_failure,block,optional"`
+}
+
+var _ syntax.Defaulter = (*Arguments)(nil)
+
+// SetToDefault implements syntax.Defaulter.
+func (args *Arguments) SetToDefault() {
+	*args = Arguments{}
+	args.ConsumerRetry.SetToDefault()
 }
 
 // Exports holds the receiver that is used to send log entries to the
@@ -60,8 +75,10 @@ type Component struct {
 
 	mut      sync.RWMutex
 	stopped  bool
+	stopCh   chan struct{} // closed when Run exits
 	receiver loki.LogsReceiver
 	logsSink consumer.Logs
+	retry    otelcol.ConsumerRetryArguments
 
 	debugDataPublisher livedebugging.DebugDataPublisher
 }
@@ -88,6 +105,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	// total/successful/errored log entries?
 	res := &Component{
 		opts:               o,
+		stopCh:             make(chan struct{}),
 		pipelineV2:         lokiSvc.(lokipipelinev2.Data).PipelineV2Enabled(),
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
@@ -113,6 +131,7 @@ func (c *Component) Run(ctx context.Context) error {
 		c.mut.Lock()
 		defer c.mut.Unlock()
 		c.stopped = true
+		close(c.stopCh)
 	}()
 
 	if c.pipelineV2 {
@@ -126,10 +145,12 @@ func (c *Component) Run(ctx context.Context) error {
 			return nil
 		case entry := <-c.receiver.Chan():
 			c.mut.RLock()
-			if err := c.logsSink.ConsumeLogs(ctx, convertLokiEntryToPlog(entry)); err != nil {
+			sink := c.logsSink
+			c.mut.RUnlock()
+
+			if err := sink.ConsumeLogs(ctx, convertLokiEntryToPlog(entry)); err != nil {
 				c.opts.Logger.Error("failed to consume log entries", "err", err)
 			}
-			c.mut.RUnlock()
 		}
 	}
 }
@@ -145,6 +166,10 @@ func (c *Component) Update(args component.Arguments) error {
 		componentMetadata = otelcol.GetComponentMetadata(newArgs.Output.Logs)
 	)
 
+	if newArgs.ConsumerRetry.Enabled && !c.pipelineV2 {
+		c.opts.Logger.Warn("retry_on_failure has no effect unless loki pipeline v2 is enabled")
+	}
+	c.retry = newArgs.ConsumerRetry
 	c.logsSink = interceptconsumer.Logs(
 		fanout,
 		func(ctx context.Context, ld plog.Logs) error {
@@ -157,14 +182,6 @@ func (c *Component) Update(args component.Arguments) error {
 
 // Consume implements loki.Consumer.
 func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
-	c.mut.RLock()
-	stopped, sink := c.stopped, c.logsSink
-	c.mut.RUnlock()
-
-	if stopped {
-		return fmt.Errorf("%s: %w", c.opts.ID, loki.ErrConsumerStopped)
-	}
-
 	if batch.EntryLen() == 0 {
 		return nil
 	}
@@ -177,8 +194,52 @@ func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
 		appendToLogRecords(logRecords, stream.Labels, stream.Entries...)
 	}
 
-	// Not holding c.mut here so Update is never blocked behind a slow downstream.
-	return sink.ConsumeLogs(ctx, logs)
+	return c.consumeLogs(ctx, logs)
+}
+
+// consumeLogs forwards logs downstream for the v2 pipeline. With retry_on_failure enabled, non-permanent
+// errors are retried with backoff until max_elapsed_time, a permanent error, or ctx is done.
+func (c *Component) consumeLogs(ctx context.Context, logs plog.Logs) error {
+	var (
+		bo       *backoff.Backoff
+		deadline time.Time
+	)
+	for {
+		c.mut.RLock()
+		stopped, sink, retry := c.stopped, c.logsSink, c.retry
+		c.mut.RUnlock()
+
+		if stopped {
+			return fmt.Errorf("%s: %w", c.opts.ID, loki.ErrConsumerStopped)
+		}
+
+		err := sink.ConsumeLogs(ctx, logs)
+		if err == nil || !retry.Enabled || consumererror.IsPermanent(err) {
+			return err
+		}
+
+		if bo == nil {
+			bo = backoff.New(ctx, backoff.Config{MinBackoff: retry.InitialInterval, MaxBackoff: retry.MaxInterval})
+			if retry.MaxElapsedTime > 0 {
+				deadline = time.Now().Add(retry.MaxElapsedTime)
+			}
+		}
+
+		delay := bo.NextDelay()
+		if !deadline.IsZero() && time.Now().Add(delay).After(deadline) {
+			c.opts.Logger.Error("max elapsed time expired, dropping logs", "err", err, "dropped_items", logs.LogRecordCount())
+			return fmt.Errorf("giving up after retry_on_failure.max_elapsed_time: %w", err)
+		}
+
+		c.opts.Logger.Debug("failed to consume log entries, retrying", "delay", delay, "err", err)
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("context is cancelled or timed out: %w", err)
+		case <-c.stopCh:
+			return fmt.Errorf("%s: %w", c.opts.ID, loki.ErrConsumerStopped)
+		case <-time.After(delay):
+		}
+	}
 }
 
 func (c *Component) String() string {

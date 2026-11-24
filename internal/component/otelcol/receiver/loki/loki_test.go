@@ -2,13 +2,16 @@ package loki
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/consumer/consumererror"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/lokitest"
@@ -20,6 +23,9 @@ import (
 
 func TestComponent(t *testing.T) {
 	lokitest.TestV1(t, func(t *testing.T, env lokitest.Env) {
+		t.Run("retry_on_failure is ignored", func(t *testing.T) {
+			testV1RetryIgnored(t, env)
+		})
 		t.Run("LogReceiver", func(t *testing.T) {
 			cfg := `
 			output {
@@ -89,6 +95,21 @@ func TestComponent(t *testing.T) {
 		})
 		t.Run("Update and stop while downstream is blocked", func(t *testing.T) {
 			testBlockedDownstream(t, env)
+		})
+		t.Run("Retry transient downstream error", func(t *testing.T) {
+			testRetryTransient(t, env)
+		})
+		t.Run("Do not retry when retry is disabled", func(t *testing.T) {
+			testRetryDisabled(t, env)
+		})
+		t.Run("Do not retry permanent downstream error", func(t *testing.T) {
+			testRetryPermanent(t, env)
+		})
+		t.Run("Stop while waiting to retry", func(t *testing.T) {
+			testRetryStop(t, env)
+		})
+		t.Run("Give up after max elapsed time", func(t *testing.T) {
+			testRetryMaxElapsedTime(t, env)
 		})
 	})
 }
@@ -255,6 +276,127 @@ func testBlockedDownstream(t *testing.T, env lokitest.Env) {
 
 	cancelConsume()
 	require.ErrorIs(t, <-consumed, context.Canceled)
+}
+
+// testV1RetryIgnored checks that retry_on_failure has no effect on the v1 channel path.
+func testV1RetryIgnored(t *testing.T, env lokitest.Env) {
+	var calls atomic.Int32
+	fc := &fakeconsumer.Consumer{ConsumeLogsFunc: func(context.Context, plog.Logs) error {
+		calls.Add(1)
+		return errors.New("sending queue is full")
+	}}
+	args := Arguments{Output: &otelcol.ConsumerArguments{Logs: []otelcol.Consumer{fc}}, ConsumerRetry: testRetry}
+	ctrl, _ := env.Run(t, "otelcol.receiver.loki", args)
+	require.NoError(t, ctrl.WaitExports(time.Second))
+
+	ctrl.Exports().(Exports).Receiver.Chan() <- loki.Entry{
+		Labels: model.LabelSet{"stream": "1"},
+		Entry:  push.Entry{Line: "1", Timestamp: time.Now()},
+	}
+	require.Eventually(t, func() bool { return calls.Load() >= 1 }, 5*time.Second, time.Millisecond)
+	// Retries back off for at most 5ms here, so extra calls would show up quickly.
+	time.Sleep(100 * time.Millisecond)
+	require.EqualValues(t, 1, calls.Load())
+}
+
+func consumeWithDownstream(t *testing.T, env lokitest.Env, retry otelcol.ConsumerRetryArguments, fn func(context.Context, plog.Logs) error) error {
+	t.Helper()
+
+	args := Arguments{
+		Output:        &otelcol.ConsumerArguments{Logs: []otelcol.Consumer{&fakeconsumer.Consumer{ConsumeLogsFunc: fn}}},
+		ConsumerRetry: retry,
+	}
+	ctrl, _ := env.Run(t, "otelcol.receiver.loki", args)
+	require.NoError(t, ctrl.WaitExports(time.Second))
+	c := ctrl.Exports().(Exports).Receiver.(loki.Consumer)
+
+	batch := loki.NewBatch()
+	batch.Add(loki.NewStream(model.LabelSet{"stream": "1"}, push.Entry{Line: "1", Timestamp: time.Now()}))
+	return requireReturns(t, "Consume", func() error { return c.Consume(t.Context(), batch) })
+}
+
+var testRetry = otelcol.ConsumerRetryArguments{
+	Enabled:         true,
+	InitialInterval: time.Millisecond,
+	MaxInterval:     5 * time.Millisecond,
+	MaxElapsedTime:  time.Minute,
+}
+
+func testRetryTransient(t *testing.T, env lokitest.Env) {
+	var calls atomic.Int32
+	err := consumeWithDownstream(t, env, testRetry, func(context.Context, plog.Logs) error {
+		if calls.Add(1) < 3 {
+			return errors.New("sending queue is full")
+		}
+		return nil
+	})
+	require.NoError(t, err)
+	require.EqualValues(t, 3, calls.Load())
+}
+
+func testRetryDisabled(t *testing.T, env lokitest.Env) {
+	var calls atomic.Int32
+	retry := testRetry
+	retry.Enabled = false
+	err := consumeWithDownstream(t, env, retry, func(context.Context, plog.Logs) error {
+		calls.Add(1)
+		return errors.New("sending queue is full")
+	})
+	require.ErrorContains(t, err, "sending queue is full")
+	require.EqualValues(t, 1, calls.Load())
+}
+
+func testRetryPermanent(t *testing.T, env lokitest.Env) {
+	var calls atomic.Int32
+	err := consumeWithDownstream(t, env, testRetry, func(context.Context, plog.Logs) error {
+		calls.Add(1)
+		return consumererror.NewPermanent(errors.New("bad data"))
+	})
+	require.Error(t, err)
+	require.True(t, consumererror.IsPermanent(err))
+	require.EqualValues(t, 1, calls.Load())
+}
+
+func testRetryMaxElapsedTime(t *testing.T, env lokitest.Env) {
+	retry := testRetry
+	retry.MaxElapsedTime = 20 * time.Millisecond
+	err := consumeWithDownstream(t, env, retry, func(context.Context, plog.Logs) error {
+		return errors.New("sending queue is full")
+	})
+	require.ErrorContains(t, err, "sending queue is full")
+}
+
+func testRetryStop(t *testing.T, env lokitest.Env) {
+	called := make(chan struct{}, 1)
+	retry := testRetry
+	retry.InitialInterval = time.Hour
+	retry.MaxInterval = time.Hour
+	retry.MaxElapsedTime = 0
+	fc := &fakeconsumer.Consumer{ConsumeLogsFunc: func(context.Context, plog.Logs) error {
+		select {
+		case called <- struct{}{}:
+		default:
+		}
+		return errors.New("sending queue is full")
+	}}
+	args := Arguments{Output: &otelcol.ConsumerArguments{Logs: []otelcol.Consumer{fc}}, ConsumerRetry: retry}
+	ctrl, stop := env.Run(t, "otelcol.receiver.loki", args)
+	require.NoError(t, ctrl.WaitExports(time.Second))
+	c := ctrl.Exports().(Exports).Receiver.(loki.Consumer)
+
+	batch := loki.NewBatch()
+	batch.Add(loki.NewStream(model.LabelSet{"stream": "1"}, push.Entry{Line: "1", Timestamp: time.Now()}))
+	consumed := make(chan error, 1)
+	go func() { consumed <- c.Consume(t.Context(), batch) }()
+	<-called
+
+	stop()
+	select {
+	case err := <-consumed:
+		require.ErrorIs(t, err, loki.ErrConsumerStopped)
+	case <-time.After(5 * time.Second):
+		require.FailNow(t, "Consume did not return after the component stopped")
+	}
 }
 
 // requireReturns fails the test if fn does not return within 5 seconds.
