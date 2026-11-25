@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"path"
@@ -65,10 +66,15 @@ func (rc *Arguments) SetToDefault() {
 // EndpointOptions describes an individual location for where profiles
 // should be delivered to using the Pyroscope push API.
 type EndpointOptions struct {
-	Name              string                   `alloy:"name,attr,optional"`
-	URL               string                   `alloy:"url,attr"`
-	RemoteTimeout     time.Duration            `alloy:"remote_timeout,attr,optional"`
-	Headers           map[string]string        `alloy:"headers,attr,optional"`
+	Name          string            `alloy:"name,attr,optional"`
+	URL           string            `alloy:"url,attr"`
+	RemoteTimeout time.Duration     `alloy:"remote_timeout,attr,optional"`
+	Headers       map[string]string `alloy:"headers,attr,optional"`
+	// UnixSocketPath, when set, sends profiles over the unix-domain socket
+	// at this path instead of opening a TCP connection. The endpoint URL is
+	// still used for the request path and Host header; the socket listener
+	// must serve plaintext HTTP.
+	UnixSocketPath    string                   `alloy:"unix_socket_path,attr,optional"`
 	HTTPClientConfig  *config.HTTPClientConfig `alloy:",squash"`
 	MinBackoff        time.Duration            `alloy:"min_backoff_period,attr,optional"`  // start backoff at this level
 	MaxBackoff        time.Duration            `alloy:"max_backoff_period,attr,optional"`  // increase exponentially to this level
@@ -190,6 +196,20 @@ func newFanOut(logger *slog.Logger, tracer trace.Tracer, config Arguments, metri
 		httpClient, err := promconfig.NewClientFromConfig(*endpoint.HTTPClientConfig.Convert(), endpoint.Name)
 		if err != nil {
 			return nil, err
+		}
+		// Send over a unix-domain socket instead of TCP when configured.
+		// Only the dialer changes: the endpoint URL (host header and path)
+		// is left untouched, so the socket listener must serve plaintext
+		// HTTP. This runs before configureTracing, so a later tracing
+		// wrapper keeps the patched dialer.
+		if endpoint.UnixSocketPath != "" {
+			socketPath := endpoint.UnixSocketPath
+			dialer := &net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}
+			if tr, ok := httpClient.Transport.(*http.Transport); ok {
+				tr.DialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
+					return dialer.DialContext(ctx, "unix", socketPath)
+				}
+			}
 		}
 		configureTracing(config, httpClient)
 
