@@ -8,5 +8,11 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    server: {
+      deps: {
+        // Process the graph package's CSS imports through Vite during tests.
+        inline: ['@grafana/alloy-pipeline-graph', '@xyflow/react'],
+      },
+    },
   },
 });
