@@ -8,6 +8,8 @@ local filename = 'alloy-controller.json';
     templates.newTemplateVariablesList(
       filterSelector=$._config.filterSelector, 
       enableK8sCluster=$._config.enableK8sCluster, 
+      clusterLabel=$._config.clusterLabel,
+      clusterVariableLabel=$._config.clusterVariableLabel,
       includeInstance=false,
       setenceCaseLabels=$._config.useSetenceCaseTemplateLabels
     ) + [

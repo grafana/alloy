@@ -127,6 +127,29 @@ local tests =
     )
     for name in ['cluster', 'namespace', 'job']
   ] +
+  // Test: clusterLabel is used throughout the cluster template-variable chain
+  local labelMixin = mixin { _config+:: { clusterLabel: 'k8s_cluster' } };
+  local withoutLabel(query) = std.strReplace(std.strReplace(query, 'k8s_cluster', ''), '$cluster', '');
+  [
+    check(
+      std.length(std.findSubstr('k8s_cluster', templateQuery(labelMixin.grafanaDashboards[name + '.json'], variable))) > 0 &&
+      std.length(std.findSubstr('cluster', withoutLabel(templateQuery(labelMixin.grafanaDashboards[name + '.json'], variable)))) == 0,
+      'clusterLabel should replace the cluster label in %s %s variable query' % [name, variable]
+    )
+    for name in ['alloy-logs', 'alloy-resources', 'alloy-controller', 'alloy-prometheus-remote-write', 'alloy-opentelemetry', 'alloy-loki', 'alloy-otel-engine-overview'] + clusterDashboards
+    for variable in ['cluster', 'namespace', 'job', 'instance', 'level']
+    if std.member([v.name for v in labelMixin.grafanaDashboards[name + '.json'].templating.list], variable)
+  ] +
+  // Test: clusterVariableLabel sets the display name of every cluster template variable
+  local variableLabelMixin = mixin { _config+:: { clusterVariableLabel: 'Environment' } };
+  [
+    check(
+      templateVariable(variableLabelMixin.grafanaDashboards[name], 'cluster').label == 'Environment',
+      'clusterVariableLabel should set the cluster variable label in %s' % name
+    )
+    for name in std.objectFields(variableLabelMixin.grafanaDashboards)
+    if std.member([v.name for v in variableLabelMixin.grafanaDashboards[name].templating.list], 'cluster')
+  ] +
   // Test: rendered non-row panels do not overlap
   local lokiPanels = nonRowPanels(mixin.grafanaDashboards['alloy-loki.json']);
   [
