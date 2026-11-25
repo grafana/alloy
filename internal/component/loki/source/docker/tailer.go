@@ -68,7 +68,7 @@ func newTailer(
 	}
 
 	return &tailer{
-		logger:            logger,
+		logger:            logger.With("container", containerID),
 		recv:              recv,
 		positions:         position,
 		containerID:       containerID,
@@ -124,18 +124,18 @@ func (t *tailer) waitForRestart(ctx context.Context, bo *backoff.Backoff) bool {
 		res, err := t.client.ContainerInspect(ctx, t.containerID, client.ContainerInspectOptions{})
 		if err != nil {
 			if cerrdefs.IsNotFound(err) {
-				t.logger.Info("container no longer exists, stopping tailer", "id", t.containerID)
+				t.logger.Info("container no longer exists, stopping tailer")
 				return false
 			}
 			if !errors.Is(err, context.Canceled) {
-				t.logger.Error("error inspecting Docker container", "id", t.containerID, "error", err)
+				t.logger.Error("error inspecting Docker container", "error", err)
 			}
 			continue
 		}
 
 		finished, err := time.Parse(time.RFC3339Nano, res.Container.State.FinishedAt)
 		if err != nil {
-			t.logger.Error("error parsing finished time for Docker container", "id", t.containerID, "error", err)
+			t.logger.Error("error parsing finished time for Docker container", "error", err)
 			finished = time.Unix(0, 0)
 		}
 
@@ -149,14 +149,14 @@ func (t *tailer) waitForRestart(ctx context.Context, bo *backoff.Backoff) bool {
 func (t *tailer) tail(ctx context.Context) {
 	t.running.Store(true)
 	defer t.running.Store(false)
-	t.logger.Info("starting tailing container", "container", t.containerID)
+	t.logger.Info("starting tailing container")
 
 	info, err := t.client.ContainerInspect(ctx, t.containerID, client.ContainerInspectOptions{})
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
 			return
 		}
-		t.logger.Error("could not inspect container info", "container", t.containerID, "err", err)
+		t.logger.Error("could not inspect container info", "err", err)
 		t.err.Store(err)
 		return
 	}
@@ -172,13 +172,13 @@ func (t *tailer) tail(ctx context.Context) {
 		if errors.Is(err, context.Canceled) {
 			return
 		}
-		t.logger.Error("could not fetch logs for container", "container", t.containerID, "err", err)
+		t.logger.Error("could not fetch logs for container", "err", err)
 		t.err.Store(err)
 		return
 	}
 
 	t.processLoop(ctx, info.Container.Config.Tty, reader)
-	t.logger.Info("stopped tailing container", "container", t.containerID)
+	t.logger.Info("stopped tailing container")
 }
 
 func (t *tailer) Key() positions.Entry {
@@ -241,9 +241,9 @@ func (t *tailer) processLoop(ctx context.Context, tty bool, reader io.ReadCloser
 		}
 
 		if err != nil {
-			t.logger.Warn("could not transfer logs", "written", written, "container", t.containerID, "err", err)
+			t.logger.Warn("could not transfer logs", "written", written, "err", err)
 		} else {
-			t.logger.Info("finished transferring logs", "written", written, "container", t.containerID)
+			t.logger.Info("finished transferring logs", "written", written)
 		}
 	})
 
@@ -251,7 +251,7 @@ func (t *tailer) processLoop(ctx context.Context, tty bool, reader io.ReadCloser
 	wg.Go(func() { t.processStream(rstderr, t.getStreamLabels("stderr")) })
 
 	wg.Wait()
-	t.logger.Debug("done processing Docker logs", "container", t.containerID)
+	t.logger.Debug("done processing Docker logs")
 }
 
 func (t *tailer) processStream(r io.Reader, logStreamLset model.LabelSet) {

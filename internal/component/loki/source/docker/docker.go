@@ -230,7 +230,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 			return newTailer(
 				c.metrics,
-				c.opts.Logger.With("component", "tailer", "container", fmt.Sprintf("docker/%s", entry.Path)),
+				c.opts.Logger.With("component", "tailer"),
 				c.handler,
 				c.posFile,
 				entry.Path,
