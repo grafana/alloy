@@ -236,7 +236,7 @@ func (c *QueryDetails) emit(schema, digest, digestText, sampleText string) bool 
 	return c.tableRegistry != nil && !c.tableRegistry.HasSchema(schema)
 }
 
-//  pruneThrottle drops entries whose last emission was at least EmitInterval ago
+// pruneThrottle drops entries whose last emission was at least EmitInterval ago
 func (c *QueryDetails) pruneThrottle(now time.Time) {
 	for key, last := range c.lastEmittedAt {
 		if now.Sub(last) >= database_observability.EmitInterval {
