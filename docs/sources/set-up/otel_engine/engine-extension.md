@@ -9,18 +9,17 @@ weight: 200
 
 # Run the {{% param "FULL_PRODUCT_NAME" %}} Engine extension
 
-The `alloyengine` extension is an escape hatch.
-Use it when you need a {{< param "DEFAULT_ENGINE" >}} component that has no OpenTelemetry Collector equivalent and you want to keep it in the same process as the {{< param "OTEL_ENGINE" >}}.
-Add it to your OpenTelemetry Collector configuration to start a {{< param "DEFAULT_ENGINE" >}} pipeline alongside the {{< param "OTEL_ENGINE" >}} pipeline.
+Use the `alloyengine` extension only when you need a {{< param "DEFAULT_ENGINE" >}} component that has no equivalent in the [components included in the {{< param "OTEL_ENGINE" >}}][IncludedComponents].
+Add the extension to your OpenTelemetry Collector configuration to run a {{< param "DEFAULT_ENGINE" >}} pipeline in the same process as the {{< param "OTEL_ENGINE" >}} pipeline.
 The two engines run in parallel and can't exchange data with each other. If required, they can still communicate over the network via components like the OTLP exporter and receiver
-
-You're welcome to [open an issue][Issues] describing use cases where it's been valuable to you.
 
 Set exactly one of `config.path` or `config.inline.content`.
 The extension fails to start if you set both or neither.
 
 > **EXPERIMENTAL**: The `alloyengine` extension is an [experimental][] feature.
 > Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
+
+If you use the extension, [open an issue][Issues] that describes your use case.
 
 ## Before you begin
 
@@ -114,6 +113,7 @@ Refer to [Include `alloyengine` extension in an OCB distribution][OCBDistributio
 [CLI]: ../cli/
 [Clustering]: ../../../get-started/clustering/
 [experimental]: https://grafana.com/docs/release-life-cycle/
+[IncludedComponents]: ../../../reference/cli/otel/#included-components
 [Issues]: https://github.com/grafana/alloy/issues
 [OCBDistribution]: https://github.com/grafana/alloy/blob/main/extension/alloyengine/README.md#include-alloyengine-extension-in-an-ocb-distribution
 [PassFlags]: #pass-flags-to-the-default-engine

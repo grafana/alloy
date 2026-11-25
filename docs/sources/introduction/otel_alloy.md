@@ -119,17 +119,21 @@ The {{< param "DEFAULT_ENGINE" >}} is the recommended choice when you:
 The {{< param "DEFAULT_ENGINE" >}} is optimized for Prometheus pipelines and label semantics.
 It also provides Grafana-specific collection features that don't yet have OpenTelemetry-native equivalents.
 
-### Run both engines as an escape hatch
+### Run both engines in one process
 
-Use the `alloyengine` extension when you need a {{< param "DEFAULT_ENGINE" >}} component in the same process as the {{< param "OTEL_ENGINE" >}}.
-It's an escape hatch for use cases the Collector components don't cover yet.
-You're welcome to [open an issue](https://github.com/grafana/alloy/issues) describing use cases where it's been valuable to you.
+Use the `alloyengine` extension only when you need a {{< param "DEFAULT_ENGINE" >}} component in the same process as the {{< param "OTEL_ENGINE" >}}, and none of the [included Collector components][IncludedComponents] covers your use case.
 
-> **EXPERIMENTAL**: The `alloyengine` extension is an [experimental](https://grafana.com/docs/release-life-cycle/) feature.
+> **EXPERIMENTAL**: The `alloyengine` extension is an [experimental][] feature.
 > Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
+
+If you use the extension, [open an issue][Issues] that describes your use case.
 
 For large workloads, run the engines in separate processes so you can scale and troubleshoot them independently.
 Push-based OTLP gateways and pull-based Prometheus scrapers have different load and scaling characteristics.
+
+[experimental]: https://grafana.com/docs/release-life-cycle/
+[IncludedComponents]: ../../reference/cli/otel/#included-components
+[Issues]: https://github.com/grafana/alloy/issues
 
 ## Manage the {{% param "OTEL_ENGINE" %}} with Fleet Management
 
