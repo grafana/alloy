@@ -39,7 +39,7 @@ func (datadogExporterConverter) ConvertAndAppend(state *State, id componentstatu
 		switch val.(type) {
 		case extension.ExtensionHandler:
 			queue := cfg.(*datadogOtelconfig.Config).QueueSettings.GetOrInsertDefault()
-			ext := state.LookupExtension(*queue.StorageID)
+			ext := state.LookupExtension(queue.StorageID.Get().ComponentID())
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
 		return common.GetAlloyTypesOverrideHook()(val)
@@ -85,9 +85,8 @@ func toDatadogHTTPClientArguments(cfg confighttp.ClientConfig) datadog_config.Da
 		MaxIdleConnsPerHost: keepalive.MaxIdleConnsPerHost,
 		MaxConnsPerHost:     cfg.MaxConnsPerHost,
 		IdleConnTimeout:     keepalive.IdleConnTimeout,
-		//nolint:staticcheck
-		DisableKeepAlives:  cfg.DisableKeepAlives,
-		InsecureSkipVerify: cfg.TLS.Insecure,
+		DisableKeepAlives:   !cfg.Keepalive.HasValue(),
+		InsecureSkipVerify:  cfg.TLS.Insecure,
 	}
 }
 

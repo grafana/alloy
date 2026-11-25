@@ -47,7 +47,7 @@ You can use the following arguments with `otelcol.receiver.faro`:
 | `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"localhost:8080"`                                         | no       |
 | `idle_timeout`           | `duration`                 | Maximum idle time before closing a keep-alive connection.                    | `"1m"`                                                     | no       |
 | `include_metadata`       | `bool`                     | Propagate incoming connection metadata to downstream consumers.              | `false`                                                    | no       |
-| `keep_alives_enabled`    | `boolean`                  | Whether or not HTTP keep-alives are enabled                                  | `true`                                                     | no       |
+| `keep_alives_enabled`    | `boolean`                  | Deprecated and ignored. HTTP keep-alives are always enabled.                 | `true`                                                     | no       |
 | `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `"20MiB"`                                                  | no       |
 | `read_header_timeout`    | `duration`                 | Maximum time allowed to read request headers.                                | `"1m"`                                                     | no       |
 | `read_timeout`           | `duration`                 | Maximum time allowed to read an HTTP request, including the body.            | `""`                                                       | no       |

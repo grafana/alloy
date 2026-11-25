@@ -129,7 +129,10 @@ func TestDefaultArguments(t *testing.T) {
 
 	// Canary for the upstream defaults our docs promise. If this fails, a contrib
 	// bump changed one: update the docs, then these values.
+	defaults := memorylimiterprocessor.NewFactory().CreateDefaultConfig().(*memorylimiterprocessor.Config)
+	require.True(t, defaults.GarbageCollector.HasValue())
 	require.Equal(t, &memorylimiterprocessor.Config{
+		GarbageCollector:             defaults.GarbageCollector,
 		MinGCIntervalWhenSoftLimited: 10 * time.Second,
 		MaxGCIntervalWhenSoftLimited: 30 * time.Second,
 		MaxGCIntervalWhenHardLimited: 30 * time.Second,

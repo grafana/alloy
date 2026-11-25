@@ -223,3 +223,16 @@ func BenchmarkStaleness(b *testing.B) {
 	}
 	wg.Wait()
 }
+
+func TestGetGlobalRefID(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	store := New(nil, reg)
+	ls := labels.FromStrings("__name__", "test")
+	require.Zero(t, store.GetGlobalRefID(ls))
+	ref := store.GetOrAddGlobalRefID(ls)
+	require.Equal(t, uint64(1), ref, "lookup must not allocate a series")
+	require.Equal(t, ref, store.GetGlobalRefID(ls))
+	require.Zero(t, store.GetGlobalRefID(labels.FromStrings("__name__", "unknown")))
+	store.Clear()
+	require.Zero(t, store.GetGlobalRefID(ls))
+}

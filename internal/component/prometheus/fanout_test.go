@@ -17,6 +17,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/prometheus"
+	"github.com/grafana/alloy/internal/component/prometheus/appenders/adapter"
 	"github.com/grafana/alloy/internal/component/prometheus/remotewrite"
 	"github.com/grafana/alloy/internal/service/labelstore"
 )
@@ -194,8 +195,9 @@ func (n noopStore) AppenderV2(_ context.Context) storage.AppenderV2 {
 
 // recordingAppender records the ref passed to each Append call.
 type recordingAppender struct {
-	nextRef    storage.SeriesRef
-	appendRefs []storage.SeriesRef
+	nextRef      storage.SeriesRef
+	appendRefs   []storage.SeriesRef
+	exemplarRefs []storage.SeriesRef
 }
 
 func (r *recordingAppender) Append(ref storage.SeriesRef, _ labels.Labels, _ int64, _ float64) (storage.SeriesRef, error) {
@@ -216,6 +218,7 @@ func (r *recordingAppender) Rollback() error {
 
 func (r *recordingAppender) SetOptions(*storage.AppendOptions) {}
 func (r *recordingAppender) AppendExemplar(ref storage.SeriesRef, _ labels.Labels, _ exemplar.Exemplar) (storage.SeriesRef, error) {
+	r.exemplarRefs = append(r.exemplarRefs, ref)
 	return ref, nil
 }
 func (r *recordingAppender) AppendHistogram(ref storage.SeriesRef, _ labels.Labels, _ int64, _ *histogram.Histogram, _ *histogram.FloatHistogram) (storage.SeriesRef, error) {
@@ -320,4 +323,101 @@ func TestFanout_PassthroughToSeriesRefMappingTransition(t *testing.T) {
 		"child1 must be called with 0, not the stale passthrough ref")
 	require.Equal(t, storage.SeriesRef(0), child2.appender.appendRefs[1],
 		"child2 must be called with 0, not the stale passthrough ref")
+}
+
+type exemplarRecordingStore struct{ *recordingStore }
+
+func (s exemplarRecordingStore) AppenderV2(context.Context) storage.AppenderV2 {
+	return adapter.AppenderV1AsV2(singleSeriesExemplarAppender{s.appender})
+}
+
+// This fixture stores one series and resolves its optional exemplar ref by labels.
+type singleSeriesExemplarAppender struct{ *recordingAppender }
+
+func (a singleSeriesExemplarAppender) AppendExemplar(ref storage.SeriesRef, l labels.Labels, e exemplar.Exemplar) (storage.SeriesRef, error) {
+	if ref == 0 {
+		if len(a.appendRefs) == 0 {
+			return ref, storage.ErrNotFound
+		}
+		ref = a.nextRef
+	}
+	return a.recordingAppender.AppendExemplar(ref, l, e)
+}
+
+func TestFanoutSeparateExemplars(t *testing.T) {
+	for _, globalRefs := range []bool{false, true} {
+		for _, count := range []int{1, 2} {
+			for _, zeroRef := range []bool{false, true} {
+				for _, earlierTransaction := range []bool{false, true} {
+					t.Run(fmt.Sprintf("globalRefs=%v/children=%d/zeroRef=%v/earlierTransaction=%v", globalRefs, count, zeroRef, earlierTransaction), func(t *testing.T) {
+						reg := promclient.NewRegistry()
+						ls := labelstore.New(nil, reg, globalRefs)
+						children := make([]storage.AppendableV2, count)
+						stores := make([]*recordingStore, count)
+						for i := range stores {
+							stores[i] = newRecordingStore()
+							children[i] = exemplarRecordingStore{stores[i]}
+						}
+						fanout := prometheus.NewFanout(children, "test", reg, ls)
+						app := fanout.AppenderV2(t.Context()).(storage.ExemplarAppenderV2)
+						l := labels.FromStrings("__name__", "test")
+						if globalRefs {
+							_, err := app.AppendExemplars(0, l, []exemplar.Exemplar{{Ts: 1000, Value: 1}})
+							require.ErrorIs(t, err, storage.ErrNotFound)
+							require.Zero(t, ls.GetGlobalRefID(l), "exemplars must not allocate a series")
+						}
+						ref, err := app.Append(0, l, 0, 1000, 1, nil, nil, storage.AppendV2Options{})
+						require.NoError(t, err)
+						if earlierTransaction {
+							require.NoError(t, app.Commit())
+							app = fanout.AppenderV2(t.Context()).(storage.ExemplarAppenderV2)
+						}
+						exemplarRef := ref
+						if zeroRef {
+							exemplarRef = 0
+						}
+						_, err = app.AppendExemplars(exemplarRef, l, []exemplar.Exemplar{{Ts: 1000, Value: 1}})
+						require.NoError(t, err)
+						require.NoError(t, app.Commit())
+						for _, store := range stores {
+							require.Len(t, store.appender.appendRefs, 1)
+							require.Len(t, store.appender.exemplarRefs, 1)
+							expectedRef := store.appender.nextRef
+							if globalRefs {
+								expectedRef = ref
+							}
+							require.Equal(t, expectedRef, store.appender.exemplarRefs[0])
+						}
+					})
+				}
+			}
+		}
+	}
+}
+
+// Hide the optional interface to model a downstream that only accepts inline exemplars.
+type inlineExemplarStore struct{ exemplarRecordingStore }
+
+func (s inlineExemplarStore) AppenderV2(ctx context.Context) storage.AppenderV2 {
+	return struct{ storage.AppenderV2 }{s.exemplarRecordingStore.AppenderV2(ctx)}
+}
+
+func TestFanoutSeparateExemplarsUnsupportedChild(t *testing.T) {
+	for _, globalRefs := range []bool{false, true} {
+		t.Run(fmt.Sprintf("globalRefs=%v", globalRefs), func(t *testing.T) {
+			reg := promclient.NewRegistry()
+			ls := labelstore.New(nil, reg, globalRefs)
+			unsupported := inlineExemplarStore{exemplarRecordingStore{newRecordingStore()}}
+			supported := newRecordingStore()
+			fanout := prometheus.NewFanout([]storage.AppendableV2{unsupported, exemplarRecordingStore{supported}}, "test", reg, ls)
+			app := fanout.AppenderV2(t.Context()).(storage.ExemplarAppenderV2)
+			l := labels.FromStrings("__name__", "test")
+			ref, err := app.Append(0, l, 0, 1000, 1, nil, nil, storage.AppendV2Options{})
+			require.NoError(t, err)
+			_, err = app.AppendExemplars(ref, l, []exemplar.Exemplar{{Ts: 1000, Value: 1}})
+			require.ErrorContains(t, err, "does not support separate exemplars")
+			require.Len(t, supported.appender.exemplarRefs, 1, "a failing child must not prevent forwarding to the remaining children")
+			require.NoError(t, app.Rollback())
+		})
+	}
 }

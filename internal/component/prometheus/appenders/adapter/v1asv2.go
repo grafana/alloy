@@ -4,6 +4,7 @@ package adapter
 import (
 	"errors"
 
+	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
@@ -69,21 +70,13 @@ func (a *v1AsV2) Append(ref storage.SeriesRef, ls labels.Labels, st, t int64, v 
 		return ref, err
 	}
 
-	var partialErr *storage.AppendPartialError
-	for _, e := range opts.Exemplars {
-		if _, err := a.app.AppendExemplar(ref, ls, e); err != nil && !errors.Is(err, storage.ErrDuplicateExemplar) {
-			if partialErr == nil {
-				partialErr = &storage.AppendPartialError{}
-			}
-			partialErr.ExemplarErrors = append(partialErr.ExemplarErrors, err)
-		}
-	}
+	_, exemplarErr := a.AppendExemplars(ref, ls, opts.Exemplars)
 
 	if !opts.Metadata.IsEmpty() {
 		_, _ = a.app.UpdateMetadata(ref, ls, opts.Metadata)
 	}
 
-	return ref, partialErr.ToError()
+	return ref, exemplarErr
 }
 
 func (a *v1AsV2) Commit() error {
@@ -93,3 +86,24 @@ func (a *v1AsV2) Commit() error {
 func (a *v1AsV2) Rollback() error {
 	return a.app.Rollback()
 }
+
+// AppendExemplars supports remote write protocols that send exemplars separately
+// from samples, preserving the underlying V1 transaction.
+func (a *v1AsV2) AppendExemplars(ref storage.SeriesRef, ls labels.Labels, exemplars []exemplar.Exemplar) (storage.SeriesRef, error) {
+	var partialErr *storage.AppendPartialError
+	for i, e := range exemplars {
+		nextRef, err := a.app.AppendExemplar(ref, ls, e)
+		if err == nil {
+			ref = nextRef
+		}
+		if err != nil && !errors.Is(err, storage.ErrDuplicateExemplar) {
+			if partialErr == nil {
+				partialErr = &storage.AppendPartialError{}
+			}
+			partialErr.ExemplarErrors = append(partialErr.ExemplarErrors, storage.ExemplarError{Index: i, Err: err})
+		}
+	}
+	return ref, partialErr.ToError()
+}
+
+var _ storage.ExemplarAppenderV2 = (*v1AsV2)(nil)

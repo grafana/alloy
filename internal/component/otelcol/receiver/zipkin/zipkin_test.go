@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
+	"go.opentelemetry.io/collector/config/configoptional"
 )
 
 func TestRun(t *testing.T) {
@@ -58,8 +59,7 @@ func TestArguments_UnmarshalDefaults(t *testing.T) {
 		ServerConfig: confighttp.ServerConfig{
 			NetAddr:               confignet.AddrConfig{Endpoint: "0.0.0.0:9411", Transport: confignet.TransportTypeTCP},
 			CompressionAlgorithms: []string{"", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"},
-			KeepAlivesEnabled:     true,            //nolint:staticcheck // migrate to confighttp Keepalive
-			IdleTimeout:           1 * time.Minute, //nolint:staticcheck // migrate to confighttp Keepalive
+			Keepalive:             configoptional.Some(confighttp.KeepaliveServerConfig{IdleTimeout: 1 * time.Minute}),
 			ReadHeaderTimeout:     1 * time.Minute,
 			WriteTimeout:          30 * time.Second,
 		},

@@ -1046,8 +1046,8 @@ func TestSeriesRefMappingV2_PartialErrorsDoNotFailAppend(t *testing.T) {
 	err1 := errors.New("exemplar 1 failed")
 	err2 := errors.New("exemplar 2 failed")
 	store := newMockMappingStore()
-	child1 := &mockAppenderV2{nextRef: 100, err: &storage.AppendPartialError{ExemplarErrors: []error{err1}}}
-	child2 := &mockAppenderV2{nextRef: 200, err: &storage.AppendPartialError{ExemplarErrors: []error{err2}}}
+	child1 := &mockAppenderV2{nextRef: 100, err: &storage.AppendPartialError{ExemplarErrors: []storage.ExemplarError{{Err: err1}}}}
+	child2 := &mockAppenderV2{nextRef: 200, err: &storage.AppendPartialError{ExemplarErrors: []storage.ExemplarError{{Err: err2}}}}
 	app := NewSeriesRefMappingV2([]storage.AppenderV2{child1, child2}, store, newTestHistogram(), newTestCounter())
 
 	ref, err := app.Append(0, labels.FromStrings("job", "test"), 0, 1, 1, nil, nil, storage.AppendV2Options{})
@@ -1058,7 +1058,7 @@ func TestSeriesRefMappingV2_PartialErrorsDoNotFailAppend(t *testing.T) {
 	require.Len(t, store.createCalls, 1)
 	var partialErr *storage.AppendPartialError
 	require.ErrorAs(t, err, &partialErr)
-	require.Equal(t, []error{err1, err2}, partialErr.ExemplarErrors)
+	require.Equal(t, []storage.ExemplarError{{Err: err1}, {Err: err2}}, partialErr.ExemplarErrors)
 }
 
 func TestSeriesRefMappingV2_HardErrorFailsAppend(t *testing.T) {

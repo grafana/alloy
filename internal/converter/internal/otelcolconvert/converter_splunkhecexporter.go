@@ -35,7 +35,7 @@ func (splunkhecExporterConverter) ConvertAndAppend(state *State, id componentsta
 		switch val.(type) {
 		case extension.ExtensionHandler:
 			queue := cfg.(*splunkhecexporter.Config).QueueSettings.GetOrInsertDefault()
-			ext := state.LookupExtension(*queue.StorageID)
+			ext := state.LookupExtension(queue.StorageID.Get().ComponentID())
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
 		return common.GetAlloyTypesOverrideHook()(val)
@@ -83,10 +83,9 @@ func toSplunkHecHTTPClientArguments(cfg *splunkhecexporter.Config) splunkhec_con
 		MaxIdleConnsPerHost: keepalive.MaxIdleConnsPerHost,
 		MaxConnsPerHost:     cfg.ClientConfig.MaxConnsPerHost,
 		IdleConnTimeout:     keepalive.IdleConnTimeout,
-		//nolint:staticcheck
-		DisableKeepAlives:  cfg.ClientConfig.DisableKeepAlives,
-		InsecureSkipVerify: cfg.ClientConfig.TLS.Insecure,
-		ForceAttemptHTTP2:  cfg.ClientConfig.ForceAttemptHTTP2,
+		DisableKeepAlives:   !cfg.ClientConfig.Keepalive.HasValue(),
+		InsecureSkipVerify:  cfg.ClientConfig.TLS.Insecure,
+		ForceAttemptHTTP2:   cfg.ClientConfig.ForceAttemptHTTP2,
 	}
 }
 

@@ -28,7 +28,7 @@ func TestNoMemlimitErrorLogs(t *testing.T) {
 	require.Equal(t, "", buffer.String())
 
 	// Linux behavior, to confirm error is logged
-	memlimit.SetGoMemLimitWithOpts(memlimit.WithLogger(slog.New(l.Handler())))
+	memlimit.Set(memlimit.WithLogger(slog.New(l.Handler())))
 
 	require.Contains(t, buffer.String(), "cgroups is not supported on this system")
 }

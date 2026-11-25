@@ -45,7 +45,7 @@ func (otlpExporterConverter) ConvertAndAppend(state *State, id componentstatus.I
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		case extension.ExtensionHandler:
 			queue := cfg.(*otlpexporter.Config).QueueConfig.GetOrInsertDefault()
-			ext := state.LookupExtension(*queue.StorageID)
+			ext := state.LookupExtension(queue.StorageID.Get().ComponentID())
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
 		return val
@@ -100,9 +100,9 @@ func toQueueArguments(cfg configoptional.Optional[exporterhelper.QueueBatchConfi
 		Sizer:           string(sizer),
 	}
 
-	if queueCfg.StorageID != nil {
+	if queueCfg.StorageID.HasValue() {
 		q.Storage = &extension.ExtensionHandler{
-			ID: *queueCfg.StorageID,
+			ID: queueCfg.StorageID.Get().ComponentID(),
 		}
 	}
 

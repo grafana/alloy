@@ -12,6 +12,9 @@ type LabelStore interface {
 	// AddLocalLink adds a mapping from local to global id for the given component.
 	AddLocalLink(componentID string, globalRefID uint64, localRefID uint64)
 
+	// GetGlobalRefID finds an existing global id without creating a series.
+	GetGlobalRefID(l labels.Labels) uint64
+
 	// GetOrAddGlobalRefID finds or adds a global id for the given label map.
 	GetOrAddGlobalRefID(l labels.Labels) uint64
 

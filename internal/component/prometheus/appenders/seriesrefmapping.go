@@ -1,6 +1,7 @@
 package appenders
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -612,4 +613,21 @@ func (s *SeriesRefMappingStore) Clear() storage.SeriesRef {
 	s.cleanupStarted.Store(false)
 
 	return s.firstRefOfCurrentGeneration
+}
+
+func (s *seriesRefMappingV2) AppendExemplars(ref storage.SeriesRef, l labels.Labels, exemplars []exemplar.Exemplar) (storage.SeriesRef, error) {
+	var partialErr *storage.AppendPartialError
+	newRef, err := appendToChildren(&s.seriesRefMappingCore, s.children, ref, l, func(child storage.AppenderV2, ref storage.SeriesRef) (storage.SeriesRef, error) {
+		app, ok := child.(storage.ExemplarAppenderV2)
+		if !ok {
+			return ref, fmt.Errorf("appender %T does not support separate exemplars", child)
+		}
+		nextRef, err := app.AppendExemplars(ref, l, exemplars)
+		partialErr, err = partialErr.Handle(err)
+		return nextRef, err
+	})
+	if err != nil {
+		return newRef, err
+	}
+	return newRef, partialErr.ToError()
 }

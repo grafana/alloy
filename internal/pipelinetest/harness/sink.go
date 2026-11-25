@@ -158,7 +158,6 @@ func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
 	var (
 		acceptedMsgs            = remoteapi.MessageTypes{remoteapi.WriteV1MessageType, remoteapi.WriteV2MessageType}
 		appendMetadata          = true
-		ingestSTZeroSample      = false
 		enableTypeAndUnitLabels = false
 	)
 
@@ -167,7 +166,6 @@ func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
 			opts.Logger,
 			prometheus.NewRegistry(),
 			promrecv, acceptedMsgs,
-			ingestSTZeroSample,
 			enableTypeAndUnitLabels,
 			appendMetadata,
 		),

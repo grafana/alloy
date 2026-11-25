@@ -36,9 +36,8 @@ func TestConfigDefault(t *testing.T) {
 
 	fCfg, err := args.Convert()
 	require.NoError(t, err)
-	// Canary for the upstream defaults, which are empty today. If this fails, a contrib
-	// bump added one: document it, then update these values.
-	assert.Equal(t, &fluentforwardreceiver.Config{}, fCfg)
+	// Canary for the upstream connection limit.
+	assert.Equal(t, &fluentforwardreceiver.Config{MaxConnections: 100}, fCfg)
 
 	assert.Error(t, args.Validate())
 }

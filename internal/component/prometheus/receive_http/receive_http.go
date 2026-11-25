@@ -108,8 +108,6 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 			opts.Registerer,
 			fanout,
 			supportedRemoteWriteProtoMsgs,
-			// This is for ingestCTZeroSample which was deprecated in favor of a new StartTime behavior that has not been implemented yet
-			false,
 			args.EnableTypeAndUnitLabels,
 			args.AppendMetadata,
 		),

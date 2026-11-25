@@ -469,3 +469,36 @@ func (a *appenderV2) recordLatency() {
 	duration := time.Since(a.start)
 	a.fanout.writeLatency.Observe(duration.Seconds())
 }
+
+// AppendExemplars forwards exemplars without creating a sample or staleness entry.
+func (a *appenderV2) AppendExemplars(ref storage.SeriesRef, l labels.Labels, exemplars []exemplar.Exemplar) (storage.SeriesRef, error) {
+	if a.start.IsZero() {
+		a.start = time.Now()
+	}
+	if ref == 0 {
+		ref = storage.SeriesRef(a.fanout.ls.GetGlobalRefID(l))
+		if ref == 0 {
+			return ref, storage.ErrNotFound
+		}
+	}
+	var multiErr error
+	var partialErr *storage.AppendPartialError
+	for _, child := range a.children {
+		app, ok := child.(storage.ExemplarAppenderV2)
+		if !ok {
+			multiErr = multierror.Append(multiErr, fmt.Errorf("appender %T does not support separate exemplars", child))
+			continue
+		}
+		_, err := app.AppendExemplars(ref, l, exemplars)
+		partialErr, err = partialErr.Handle(err)
+		if err != nil {
+			multiErr = multierror.Append(multiErr, err)
+		}
+	}
+	if multiErr != nil {
+		return ref, multiErr
+	}
+	return ref, partialErr.ToError()
+}
+
+var _ storage.ExemplarAppenderV2 = (*appenderV2)(nil)

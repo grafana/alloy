@@ -20,7 +20,10 @@ exporters:
     # Splunk index, optional name of the Splunk index targeted.
     index: "metrics"
     # Maximum HTTP connections to use simultaneously when sending data. Defaults to 100.
-    max_idle_conns: 200
+    keepalive:
+      max_idle_conns: 200
+      max_idle_conns_per_host: 100
+      idle_conn_timeout: 10s
     # Whether to disable gzip compression over HTTP. Defaults to false.
     disable_compression: false
     # HTTP timeout when sending data. Defaults to 10s.

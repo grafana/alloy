@@ -2,6 +2,7 @@ package appenders
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -176,4 +177,18 @@ func sampleAppended(err error) bool {
 	}
 	var partialErr *storage.AppendPartialError
 	return errors.As(err, &partialErr)
+}
+
+func (p *passthroughV2) AppendExemplars(ref storage.SeriesRef, l labels.Labels, exemplars []exemplar.Exemplar) (storage.SeriesRef, error) {
+	if p.start.IsZero() {
+		p.start = time.Now()
+	}
+	if ref != 0 && ref < p.deadRefThreshold {
+		ref = 0
+	}
+	app, ok := p.wrapping.(storage.ExemplarAppenderV2)
+	if !ok {
+		return ref, fmt.Errorf("appender %T does not support separate exemplars", p.wrapping)
+	}
+	return app.AppendExemplars(ref, l, exemplars)
 }

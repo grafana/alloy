@@ -10,6 +10,7 @@ import (
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/config/configopaque"
+	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/config/configtls"
 )
 
@@ -33,21 +34,25 @@ func (args *DatadogClientArguments) Convert() *confighttp.ClientConfig {
 		return nil
 	}
 
-	return &confighttp.ClientConfig{
-		Endpoint:            "",
-		Headers:             nil,
-		ReadBufferSize:      args.ReadBufferSize,
-		WriteBufferSize:     args.WriteBufferSize,
-		Timeout:             args.Timeout,
-		MaxIdleConns:        args.MaxIdleConns,        //nolint:staticcheck // migrate to confighttp Keepalive
-		MaxIdleConnsPerHost: args.MaxIdleConnsPerHost, //nolint:staticcheck // migrate to confighttp Keepalive
-		MaxConnsPerHost:     args.MaxConnsPerHost,
-		IdleConnTimeout:     args.IdleConnTimeout,   //nolint:staticcheck // migrate to confighttp Keepalive
-		DisableKeepAlives:   args.DisableKeepAlives, //nolint:staticcheck // migrate to confighttp Keepalive
+	cfg := &confighttp.ClientConfig{
+		Endpoint:        "",
+		Headers:         nil,
+		ReadBufferSize:  args.ReadBufferSize,
+		WriteBufferSize: args.WriteBufferSize,
+		Timeout:         args.Timeout,
+		MaxConnsPerHost: args.MaxConnsPerHost,
 		TLS: configtls.ClientConfig{
 			InsecureSkipVerify: args.InsecureSkipVerify,
 		},
 	}
+	if !args.DisableKeepAlives {
+		cfg.Keepalive = configoptional.Some(confighttp.KeepaliveClientConfig{
+			IdleConnTimeout:     args.IdleConnTimeout,
+			MaxIdleConns:        args.MaxIdleConns,
+			MaxIdleConnsPerHost: args.MaxIdleConnsPerHost,
+		})
+	}
+	return cfg
 }
 
 func (args *DatadogClientArguments) SetToDefault() {

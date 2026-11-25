@@ -600,3 +600,20 @@ func (b *builder) compareMetrics(a, bb *dto.Metric) bool {
 
 	return len(aLabels) < len(bLabels)
 }
+
+func (a *echoAppenderV2) AppendExemplars(ref storage.SeriesRef, l labels.Labels, exemplars []exemplar.Exemplar) (storage.SeriesRef, error) {
+	a.buf.mut.Lock()
+	defer a.buf.mut.Unlock()
+	key := l.String()
+	_, sampleExists := a.buf.samples[key]
+	_, histogramExists := a.buf.histograms[key]
+	if !sampleExists && !histogramExists {
+		return ref, storage.ErrNotFound
+	}
+	if len(exemplars) > 0 {
+		e := exemplars[len(exemplars)-1]
+		e.Labels = e.Labels.Copy()
+		a.buf.exemplars[key] = seriesExemplar{Labels: l.Copy(), Exemplar: e}
+	}
+	return ref, nil
+}

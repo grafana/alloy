@@ -189,6 +189,13 @@ func (s *Service) ReplaceLocalLink(componentID string, globalRefID uint64, cache
 	m.globalToLocal[globalRefID] = newLocalRef
 }
 
+// GetGlobalRefID returns zero when no series has been registered for these labels.
+func (s *Service) GetGlobalRefID(l labels.Labels) uint64 {
+	s.mut.Lock()
+	defer s.mut.Unlock()
+	return s.labelsHashToGlobal[l.Hash()]
+}
+
 // GetOrAddGlobalRefID is used to create a global refid for a labelset
 func (s *Service) GetOrAddGlobalRefID(l labels.Labels) uint64 {
 	// Guard against bad input.
@@ -340,6 +347,8 @@ func (d disabledStore) Data() any {
 
 func (d disabledStore) AddLocalLink(componentID string, globalRefID uint64, localRefID uint64) {
 }
+
+func (d disabledStore) GetGlobalRefID(l labels.Labels) uint64 { return 0 }
 
 func (d disabledStore) GetOrAddGlobalRefID(l labels.Labels) uint64 {
 	return 0

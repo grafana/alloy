@@ -43,6 +43,8 @@ You can use the following arguments with `otelcol.receiver.fluentforward`:
 |------------|----------|----------------------------------------------------------------------------------------|---------|----------|
 | `endpoint` | `string` | The `<HOST:PORT>` or `unix://<path to socket>` address to listen to for logs messages. |         | yes      |
 
+The receiver accepts up to 100 concurrent connections. It rejects connections above this limit.
+
 ## Blocks
 
 You can use the following blocks with `otelcol.receiver.fluentforward`:

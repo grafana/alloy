@@ -143,7 +143,7 @@ func TestAppenderV1AsV2_ExemplarErrorsArePartial(t *testing.T) {
 	// other exemplar failures are reported as a partial error.
 	var partialErr *storage.AppendPartialError
 	require.ErrorAs(t, err, &partialErr)
-	require.Equal(t, []error{oooErr}, partialErr.ExemplarErrors)
+	require.Equal(t, []storage.ExemplarError{{Index: 2, Err: oooErr}}, partialErr.ExemplarErrors)
 
 	// Metadata is still updated after exemplar failures.
 	require.Equal(t, call{method: "UpdateMetadata", ref: 3, m: meta}, rec.calls[len(rec.calls)-1])
@@ -275,4 +275,32 @@ func (r *recordingAppender) Commit() error {
 func (r *recordingAppender) Rollback() error {
 	r.rollbacks++
 	return nil
+}
+
+func TestAppenderV1AsV2_SeparateExemplars(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		errs []error
+		want []storage.ExemplarError
+	}{
+		{name: "success"},
+		{name: "duplicate", errs: []error{storage.ErrDuplicateExemplar}},
+		{name: "partial failure continues", errs: []error{storage.ErrOutOfOrderExemplar, nil}, want: []storage.ExemplarError{{Index: 0, Err: storage.ErrOutOfOrderExemplar}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := &recordingAppender{exemplarErrs: tc.errs}
+			app := adapter.AppenderV1AsV2(rec).(storage.ExemplarAppenderV2)
+			es := []exemplar.Exemplar{{Ts: 100, Value: 1}, {Ts: 200, Value: 2}}
+			ref, err := app.AppendExemplars(7, testLabels, es)
+			require.Equal(t, storage.SeriesRef(7), ref)
+			if tc.want == nil {
+				require.NoError(t, err)
+			} else {
+				var partial *storage.AppendPartialError
+				require.ErrorAs(t, err, &partial)
+				require.Equal(t, tc.want, partial.ExemplarErrors)
+			}
+			require.Equal(t, []call{{method: "AppendExemplar", ref: 7, e: es[0]}, {method: "AppendExemplar", ref: 7, e: es[1]}}, rec.calls)
+		})
+	}
 }

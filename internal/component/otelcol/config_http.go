@@ -90,26 +90,29 @@ func (args *HTTPServerArguments) Convert() (configoptional.Optional[otelconfight
 		})
 	}
 
-	// Default true boolean
-	keepAliveEnabled := true
-	if args.KeepAlivesEnabled != nil {
-		keepAliveEnabled = *args.KeepAlivesEnabled
+	// Upstream removed the deprecated keep_alives_enabled and idle_timeout
+	// fields. Fold the deprecated idle_timeout attribute into the keepalive
+	// block when the block isn't set. Upstream no longer supports disabling
+	// server keep-alives, so keep_alives_enabled has no effect.
+	keepalive := args.Keepalive.Convert()
+	if args.Keepalive == nil {
+		keepalive = configoptional.Some(otelconfighttp.KeepaliveServerConfig{
+			IdleTimeout: args.IdleTimeout,
+		})
 	}
 
 	return configoptional.Some(otelconfighttp.ServerConfig{
 		NetAddr:               confignet.AddrConfig{Endpoint: args.Endpoint, Transport: confignet.TransportTypeTCP},
 		TLS:                   args.TLS.Convert(),
-		KeepAlivesEnabled:     keepAliveEnabled, //nolint:staticcheck // migrate to confighttp Keepalive
 		CORS:                  args.CORS.Convert(),
 		MaxRequestBodySize:    int64(args.MaxRequestBodySize),
 		IncludeMetadata:       args.IncludeMetadata,
 		CompressionAlgorithms: copyStringSlice(args.CompressionAlgorithms),
 		Auth:                  authentication,
-		IdleTimeout:           args.IdleTimeout, //nolint:staticcheck // migrate to confighttp Keepalive
 		ReadHeaderTimeout:     args.ReadHeaderTimeout,
 		WriteTimeout:          args.WriteTimeout,
 		ReadTimeout:           args.ReadTimeout,
-		Keepalive:             args.Keepalive.Convert(),
+		Keepalive:             keepalive,
 	}), nil
 }
 
@@ -299,11 +302,7 @@ func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error)
 		WriteBufferSize:      int(args.WriteBufferSize),
 		Timeout:              args.Timeout,
 		Headers:              opaqueHeaders,
-		MaxIdleConns:         args.MaxIdleConns,        //nolint:staticcheck // migrate to confighttp Keepalive
-		MaxIdleConnsPerHost:  args.MaxIdleConnsPerHost, //nolint:staticcheck // migrate to confighttp Keepalive
 		MaxConnsPerHost:      args.MaxConnsPerHost,
-		IdleConnTimeout:      args.IdleConnTimeout,   //nolint:staticcheck // migrate to confighttp Keepalive
-		DisableKeepAlives:    args.DisableKeepAlives, //nolint:staticcheck // migrate to confighttp Keepalive
 		HTTP2ReadIdleTimeout: args.HTTP2ReadIdleTimeout,
 		HTTP2PingTimeout:     args.HTTP2PingTimeout,
 		ForceAttemptHTTP2:    args.ForceAttemptHTTP2,
@@ -312,6 +311,17 @@ func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error)
 
 		Cookies:   args.Cookies.Convert(),
 		Keepalive: args.Keepalive.Convert(),
+	}
+
+	// Upstream removed the deprecated keep-alive fields. Fold the deprecated
+	// attributes into the keepalive block when the block isn't set. A None
+	// keepalive disables keep-alives upstream.
+	if args.Keepalive == nil && !args.DisableKeepAlives {
+		v.Keepalive = configoptional.Some(otelconfighttp.KeepaliveClientConfig{
+			IdleConnTimeout:     args.IdleConnTimeout,
+			MaxIdleConns:        args.MaxIdleConns,
+			MaxIdleConnsPerHost: args.MaxIdleConnsPerHost,
+		})
 	}
 
 	if args.CompressionParams != nil {

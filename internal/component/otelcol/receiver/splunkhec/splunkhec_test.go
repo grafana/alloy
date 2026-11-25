@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
+	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 
@@ -197,8 +198,7 @@ func TestUnmarshalDefault(t *testing.T) {
 				Transport: confignet.TransportTypeTCP,
 			},
 			CompressionAlgorithms: slices.Clone(otelcol.DefaultCompressionAlgorithms),
-			KeepAlivesEnabled:     true,            //nolint:staticcheck // migrate to confighttp Keepalive
-			IdleTimeout:           1 * time.Minute, //nolint:staticcheck // migrate to confighttp Keepalive
+			Keepalive:             configoptional.Some(confighttp.KeepaliveServerConfig{IdleTimeout: 1 * time.Minute}),
 			ReadHeaderTimeout:     1 * time.Minute,
 			WriteTimeout:          30 * time.Second,
 		},

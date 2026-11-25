@@ -4,6 +4,7 @@ package datadog_config_test
 
 import (
 	"testing"
+	"time"
 
 	datadog_config "github.com/grafana/alloy/internal/component/otelcol/exporter/datadog/config"
 
@@ -217,6 +218,23 @@ func TestUnmarshalDatadogLogsConfig(t *testing.T) {
 				require.Error(t, err)
 			} else {
 				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestDatadogClientKeepalive(t *testing.T) {
+	for _, disabled := range []bool{false, true} {
+		t.Run(map[bool]string{false: "enabled", true: "disabled"}[disabled], func(t *testing.T) {
+			args := datadog_config.DatadogClientArguments{
+				DisableKeepAlives: disabled, IdleConnTimeout: 30 * time.Second, MaxIdleConns: 42, MaxIdleConnsPerHost: 7,
+			}
+			cfg := args.Convert()
+			require.Equal(t, !disabled, cfg.Keepalive.HasValue())
+			if !disabled {
+				require.Equal(t, 30*time.Second, cfg.Keepalive.Get().IdleConnTimeout)
+				require.Equal(t, 42, cfg.Keepalive.Get().MaxIdleConns)
+				require.Equal(t, 7, cfg.Keepalive.Get().MaxIdleConnsPerHost)
 			}
 		})
 	}

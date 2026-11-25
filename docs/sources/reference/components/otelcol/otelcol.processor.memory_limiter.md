@@ -76,6 +76,8 @@ If the traffic through the component is spiky in nature, it's recommended to eit
 The `limit` and `spike_limit` values are rounded down to a whole number of MiB, which is the granularity the processor works at.
 A value of `"1536KiB"` is therefore treated as `"1MiB"`, and any value below 1 MiB rounds down to zero and is rejected.
 
+Forced garbage collection is enabled by default in the upstream processor.
+
 Forcing a garbage collection is CPU-heavy, so the processor spaces them out.
 While over a limit, it forces one no more often than the matching `min_gc_interval_when_*_limited`.
 When a forced collection fails to reclaim anything, which happens when the memory is held by live references such as a backed-up exporter queue, the interval doubles up to the matching `max_gc_interval_when_*_limited` and resets as soon as a collection is effective again.

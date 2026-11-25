@@ -43,7 +43,7 @@ func (otlpHTTPExporterConverter) ConvertAndAppend(state *State, id componentstat
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		case extension.ExtensionHandler:
 			queue := cfg.(*otlphttpexporter.Config).QueueConfig.GetOrInsertDefault()
-			ext := state.LookupExtension(*queue.StorageID)
+			ext := state.LookupExtension(queue.StorageID.Get().ComponentID())
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
 		return common.GetAlloyTypesOverrideHook()(val)
@@ -89,14 +89,8 @@ func effectiveClientKeepalive(cfg confighttp.ClientConfig) clientKeepalive {
 			MaxIdleConnsPerHost: ka.MaxIdleConnsPerHost,
 		}
 	}
-	return clientKeepalive{
-		//nolint:staticcheck
-		IdleConnTimeout: cfg.IdleConnTimeout,
-		//nolint:staticcheck
-		MaxIdleConns: cfg.MaxIdleConns,
-		//nolint:staticcheck
-		MaxIdleConnsPerHost: cfg.MaxIdleConnsPerHost,
-	}
+	// A None keepalive means keep-alives are disabled.
+	return clientKeepalive{}
 }
 
 func toHTTPClientArguments(cfg confighttp.ClientConfig) otelcol.HTTPClientArguments {
@@ -117,12 +111,11 @@ func toHTTPClientArguments(cfg confighttp.ClientConfig) otelcol.HTTPClientArgume
 		Timeout: cfg.Timeout,
 		Headers: toHeadersMap(cfg.Headers),
 		// The keepalive settings live in either the keepalive section or the deprecated fields.
-		MaxIdleConns:        keepalive.MaxIdleConns,
-		MaxIdleConnsPerHost: keepalive.MaxIdleConnsPerHost,
-		MaxConnsPerHost:     cfg.MaxConnsPerHost,
-		IdleConnTimeout:     keepalive.IdleConnTimeout,
-		//nolint:staticcheck
-		DisableKeepAlives:    cfg.DisableKeepAlives,
+		MaxIdleConns:         keepalive.MaxIdleConns,
+		MaxIdleConnsPerHost:  keepalive.MaxIdleConnsPerHost,
+		MaxConnsPerHost:      cfg.MaxConnsPerHost,
+		IdleConnTimeout:      keepalive.IdleConnTimeout,
+		DisableKeepAlives:    !cfg.Keepalive.HasValue(),
 		HTTP2PingTimeout:     cfg.HTTP2PingTimeout,
 		HTTP2ReadIdleTimeout: cfg.HTTP2ReadIdleTimeout,
 		ForceAttemptHTTP2:    cfg.ForceAttemptHTTP2,

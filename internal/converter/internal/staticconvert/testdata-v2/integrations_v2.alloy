@@ -1,6 +1,6 @@
 prometheus.remote_write "metrics_default" {
 	endpoint {
-		name = "default-04b53d"
+		name = "default-d6e735"
 		url  = "http://localhost:9009/api/prom/push"
 
 		queue_config { }
@@ -322,6 +322,25 @@ prometheus.scrape "integrations_memcached" {
 	targets    = discovery.relabel.integrations_memcached.output
 	forward_to = [prometheus.remote_write.metrics_default.receiver]
 	job_name   = "integrations/memcached"
+}
+
+prometheus.exporter.mssql "integrations_mssql" {
+	connection_string = "sqlserver://<USERNAME>:<PASSWORD>@<HOST>:<PORT>"
+}
+
+discovery.relabel "integrations_mssql" {
+	targets = prometheus.exporter.mssql.integrations_mssql.targets
+
+	rule {
+		target_label = "job"
+		replacement  = "integrations/mssql"
+	}
+}
+
+prometheus.scrape "integrations_mssql" {
+	targets    = discovery.relabel.integrations_mssql.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/mssql"
 }
 
 prometheus.exporter.mysql "integrations_mysqld_exporter" {
@@ -710,25 +729,6 @@ prometheus.scrape "integrations_gcp" {
 	targets    = discovery.relabel.integrations_gcp.output
 	forward_to = [prometheus.remote_write.metrics_default.receiver]
 	job_name   = "integrations/gcp"
-}
-
-prometheus.exporter.mssql "integrations_mssql" {
-	connection_string = "sqlserver://<USERNAME>:<PASSWORD>@<HOST>:<PORT>"
-}
-
-discovery.relabel "integrations_mssql" {
-	targets = prometheus.exporter.mssql.integrations_mssql.targets
-
-	rule {
-		target_label = "job"
-		replacement  = "integrations/mssql"
-	}
-}
-
-prometheus.scrape "integrations_mssql" {
-	targets    = discovery.relabel.integrations_mssql.output
-	forward_to = [prometheus.remote_write.metrics_default.receiver]
-	job_name   = "integrations/mssql"
 }
 
 prometheus.exporter.mongodb "integrations_mongodb_exporter" {

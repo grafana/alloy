@@ -321,3 +321,14 @@ func (a *interceptappenderV2) Rollback() error {
 	}
 	return a.child.Rollback()
 }
+
+func (a *interceptappenderV2) AppendExemplars(ref storage.SeriesRef, l labels.Labels, exemplars []exemplar.Exemplar) (storage.SeriesRef, error) {
+	if a.child == nil {
+		return ref, nil
+	}
+	app, ok := a.child.(storage.ExemplarAppenderV2)
+	if !ok {
+		return ref, fmt.Errorf("appender %T does not support separate exemplars", a.child)
+	}
+	return app.AppendExemplars(ref, l, exemplars)
+}

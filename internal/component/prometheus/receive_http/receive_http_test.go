@@ -858,6 +858,7 @@ func testAppendableWithMetadata(actualSamples chan testSample, actualMetadata ch
 		return ref, nil
 	}
 
+	seenMetadata := make(map[string]metadata.Metadata)
 	metadataHook := func(
 		ref storage.SeriesRef,
 		l labels.Labels,
@@ -866,6 +867,10 @@ func testAppendableWithMetadata(actualSamples chan testSample, actualMetadata ch
 	) (storage.SeriesRef, error) {
 
 		metricName := schema.NewMetadataFromLabels(l).Name
+		if previous, ok := seenMetadata[l.String()]; ok && previous == m {
+			return ref, nil
+		}
+		seenMetadata[l.String()] = m
 		actualMetadata <- testMetadata{
 			metricName: metricName,
 			metricType: string(m.Type),

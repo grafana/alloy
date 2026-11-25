@@ -79,3 +79,7 @@ func (n NoopV2) Commit() error {
 func (n NoopV2) Rollback() error {
 	return nil
 }
+
+func (n NoopV2) AppendExemplars(ref storage.SeriesRef, _ labels.Labels, _ []exemplar.Exemplar) (storage.SeriesRef, error) {
+	return ref, nil
+}

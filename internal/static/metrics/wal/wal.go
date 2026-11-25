@@ -683,7 +683,9 @@ func (w *Storage) Truncate(mint int64) error {
 	// experimental, off-by-default upstream feature. TODO: expose it as config,
 	// matching how upstream documents the feature flag:
 	// https://prometheus.io/docs/prometheus/latest/feature_flags/#start-timestamp-st-native-storage
-	if _, err = wlog.Checkpoint(w.logger, w.wal, first, last, keep, mint, false); err != nil {
+	// Pass false for writeMinValidTime because this WAL never reads it back,
+	// matching the Prometheus agent.
+	if _, err = wlog.Checkpoint(w.logger, w.wal, first, last, keep, mint, false, false); err != nil {
 		w.metrics.checkpointCreationFail.Inc()
 		var cerr *wlog.CorruptionErr
 		if errors.As(err, &cerr) {

@@ -259,7 +259,7 @@ func TestPassthroughV2_ZerosDeadRefs(t *testing.T) {
 }
 
 func TestPassthroughV2_CountsFloatSamples(t *testing.T) {
-	partialErr := &storage.AppendPartialError{ExemplarErrors: []error{storage.ErrOutOfOrderExemplar}}
+	partialErr := &storage.AppendPartialError{ExemplarErrors: []storage.ExemplarError{{Err: storage.ErrOutOfOrderExemplar}}}
 	hardErr := errors.New("append failed")
 
 	for _, tc := range []struct {

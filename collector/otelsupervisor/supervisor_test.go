@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/open-telemetry/opamp-go/protobufs"
 	"github.com/stretchr/testify/require"
 )
 
@@ -75,10 +76,10 @@ func TestBuildSupervisorConfigFromEnv(t *testing.T) {
 			require.Equal(t, "token", creds.apiToken)
 			require.Equal(t, "Basic "+creds.basicAuthBase64, cfg.Server.Headers.Get("Authorization"))
 			require.True(t, cfg.Capabilities.AcceptsRemoteConfig)
-			// ReportsRemoteConfig is deprecated upstream; AcceptsRemoteConfig alone now
-			// enables both capabilities, so this is intentionally left unset.
-			//nolint:staticcheck // asserting the deprecated field is left unset
-			require.False(t, cfg.Capabilities.ReportsRemoteConfig)
+			// Accepting remote config also enables reporting its status upstream.
+			capabilities := cfg.Capabilities.SupportedCapabilities()
+			require.NotZero(t, capabilities&protobufs.AgentCapabilities_AgentCapabilities_AcceptsRemoteConfig)
+			require.NotZero(t, capabilities&protobufs.AgentCapabilities_AgentCapabilities_ReportsRemoteConfig)
 			require.Equal(t, []string{"otel"}, cfg.Agent.Arguments)
 			require.True(t, cfg.Agent.PassthroughLogs)
 			require.Equal(t, storageDir, cfg.Storage.Directory)
