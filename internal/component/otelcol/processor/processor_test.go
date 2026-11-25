@@ -11,6 +11,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/processor"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
@@ -21,6 +22,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/pipeline"
 	otelprocessor "go.opentelemetry.io/collector/processor"
+	"go.uber.org/atomic"
 )
 
 func TestProcessor(t *testing.T) {
@@ -150,6 +152,178 @@ func TestProcessor_StabilityValidation(t *testing.T) {
 		}()
 		require.NoError(t, controller.WaitRunning(time.Second))
 	})
+}
+
+// TestProcessor_UpdateDoesNotWaitOnDataPath models a config reload that adds a
+// new component downstream of a running processor and also updates the
+// processor. The new component is paused until every Update of the reload has
+// returned. If Update waits for data that is blocked on it, the reload never
+// finishes. See https://github.com/grafana/alloy/issues/7762.
+func TestProcessor_UpdateDoesNotWaitOnDataPath(t *testing.T) {
+	const timeout = 5 * time.Second
+
+	tests := []struct {
+		name string
+		// blockData makes data of the first processor instance block on the
+		// paused downstream component. It runs before the processor starts, and
+		// returns a function that runs after it starts.
+		blockData func(t *testing.T, env *reloadTestEnvironment) func(ce otelcol.ConsumerExports)
+	}{
+		{
+			// Update swaps the consumers, which must not wait for data that is in
+			// flight through the processor.
+			name: "data in flight",
+			blockData: func(t *testing.T, env *reloadTestEnvironment) func(ce otelcol.ConsumerExports) {
+				inFlight := util.NewWaitTrigger()
+				env.onConsume = func(int) { inFlight.Trigger() }
+				return func(ce otelcol.ConsumerExports) {
+					go func() { _ = ce.Input.ConsumeTraces(componenttest.TestContext(t), ptrace.NewTraces()) }()
+					require.NoError(t, inFlight.Wait(timeout), "data did not reach the processor")
+				}
+			},
+		},
+		{
+			// Update stops the old instance, which flushes data while it shuts
+			// down, as the batch and tail sampling processors do.
+			name: "data flushed on shutdown",
+			blockData: func(_ *testing.T, env *reloadTestEnvironment) func(ce otelcol.ConsumerExports) {
+				env.onShutdown = func(ctx context.Context, generation int, next otelconsumer.Traces) error {
+					if generation != 1 {
+						return nil
+					}
+					return next.ConsumeTraces(ctx, ptrace.NewTraces())
+				}
+				return func(otelcol.ConsumerExports) {}
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			env := newReloadTestEnvironment(t)
+			afterStart := tc.blockData(t, env)
+			ce := env.start(t, timeout)
+			afterStart(ce)
+
+			updateDone := make(chan error, 1)
+			go func() { updateDone <- env.controller.Update(env.args()) }()
+			select {
+			case err := <-updateDone:
+				require.NoError(t, err)
+			case <-time.After(timeout):
+				require.FailNow(t, "Update did not return: it waits on the data path")
+			}
+
+			// The end of the reload: the new downstream component starts. The
+			// blocked data is delivered and the new processor instance starts.
+			env.downstream.Resume()
+			require.Eventually(t, func() bool { return env.delivered.Load() == 1 },
+				timeout, 10*time.Millisecond, "the blocked data was not delivered")
+			require.Eventually(t, func() bool { return env.started.Load() == 2 },
+				timeout, 10*time.Millisecond, "the new processor instance did not start")
+
+			// New data goes through the new instance.
+			require.NoError(t, ce.Input.ConsumeTraces(t.Context(), ptrace.NewTraces()))
+			require.Equal(t, int32(1), env.consumedByGeneration2.Load())
+		})
+	}
+}
+
+// reloadTestEnvironment runs a processor whose output is a paused lazyconsumer.
+// The lazyconsumer stands for a new component that a reload adds: the test
+// resumes it to mark the end of the reload. Each Update of the processor
+// creates a new instance of the fake processor, with an increasing generation
+// number.
+type reloadTestEnvironment struct {
+	controller *componenttest.Controller
+	downstream *lazyconsumer.Consumer
+
+	// Optional hooks for the fake processor instances. Set them before start.
+	onConsume  func(generation int)
+	onShutdown func(ctx context.Context, generation int, next otelconsumer.Traces) error
+
+	generation            atomic.Int32
+	started               atomic.Int32 // Instances started.
+	delivered             atomic.Int32 // Calls that reached the downstream component.
+	consumedByGeneration2 atomic.Int32
+}
+
+func newReloadTestEnvironment(t *testing.T) *reloadTestEnvironment {
+	env := &reloadTestEnvironment{}
+
+	env.downstream = lazyconsumer.NewPaused(componenttest.TestContext(t), "downstream")
+	env.downstream.SetConsumers(&fakeconsumer.Consumer{
+		ConsumeTracesFunc: func(context.Context, ptrace.Traces) error {
+			env.delivered.Inc()
+			return nil
+		},
+	}, nil, nil)
+
+	reg := component.Registration{
+		Name:    "testcomponent",
+		Args:    fakeProcessorArgs{},
+		Exports: otelcol.ConsumerExports{},
+		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
+			factory := otelprocessor.NewFactory(
+				otelcomponent.MustNewType("testcomponent"),
+				func() otelcomponent.Config { return &struct{}{} },
+				otelprocessor.WithTraces(func(
+					_ context.Context,
+					_ otelprocessor.Settings,
+					_ otelcomponent.Config,
+					next otelconsumer.Traces,
+				) (otelprocessor.Traces, error) {
+					return env.newInstance(int(env.generation.Inc()), next), nil
+				}, otelcomponent.StabilityLevelUndefined),
+			)
+			return processor.New(opts, factory, args.(processor.Arguments))
+		},
+	}
+	env.controller = componenttest.NewControllerFromReg(util.TestLogger(t), reg)
+	return env
+}
+
+func (env *reloadTestEnvironment) args() fakeProcessorArgs {
+	return fakeProcessorArgs{Output: &otelcol.ConsumerArguments{Traces: []otelcol.Consumer{env.downstream}}}
+}
+
+// start runs the processor and waits for its first instance to start.
+func (env *reloadTestEnvironment) start(t *testing.T, timeout time.Duration) otelcol.ConsumerExports {
+	componenttest.RunInBackground(t, func(ctx context.Context) error {
+		return env.controller.Run(ctx, env.args())
+	})
+	// Don't leave data blocked when a test fails. Cleanups run in reverse
+	// order, so this runs before the processor is stopped.
+	t.Cleanup(env.downstream.Resume)
+
+	require.NoError(t, env.controller.WaitExports(timeout), "processor did not export its input")
+	require.Eventually(t, func() bool { return env.started.Load() == 1 },
+		timeout, 10*time.Millisecond, "the first processor instance did not start")
+	return env.controller.Exports().(otelcol.ConsumerExports)
+}
+
+func (env *reloadTestEnvironment) newInstance(generation int, next otelconsumer.Traces) *fakeProcessor {
+	return &fakeProcessor{
+		StartFunc: func(context.Context, otelcomponent.Host) error {
+			env.started.Inc()
+			return nil
+		},
+		ShutdownFunc: func(ctx context.Context) error {
+			if env.onShutdown != nil {
+				return env.onShutdown(ctx, generation, next)
+			}
+			return nil
+		},
+		ConsumeTracesFunc: func(ctx context.Context, td ptrace.Traces) error {
+			if generation == 2 {
+				env.consumedByGeneration2.Inc()
+			}
+			if env.onConsume != nil {
+				env.onConsume(generation)
+			}
+			return next.ConsumeTraces(ctx, td)
+		},
+	}
 }
 
 type testEnvironment struct {

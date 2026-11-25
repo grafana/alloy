@@ -150,6 +150,187 @@ func TestScheduler(t *testing.T) {
 	})
 }
 
+// TestScheduler_Async covers the switch to new components when the Scheduler
+// is running. Schedule is called from the Update of an Alloy component, so it
+// must not wait for the switch, which can wait on the data path. See
+// https://github.com/grafana/alloy/issues/7762.
+func TestScheduler_Async(t *testing.T) {
+	const timeout = 5 * time.Second
+
+	t.Run("Schedule does not wait for a blocked Shutdown", func(t *testing.T) {
+		var (
+			l  = util.TestAlloyLogger(t)
+			cs = scheduler.New(l.Slog())
+			h  = scheduler.NewHost()
+		)
+		componenttest.RunInBackground(t, cs.Run)
+
+		release := make(chan struct{})
+		old, oldStarted, oldStopped := newBlockingShutdownComponent(release)
+		cs.Schedule(t.Context(), func() {}, h, old)
+		require.NoError(t, oldStarted.Wait(timeout), "old component did not start")
+
+		// The old component blocks in Shutdown, as a component does when it
+		// flushes data to a downstream component that is paused.
+		updated := atomic.NewBool(false)
+		next, nextStarted, _ := newTriggerComponent()
+		requireReturns(t, timeout, func() {
+			cs.Schedule(t.Context(), func() { updated.Store(true) }, h, next)
+		})
+		require.NoError(t, oldStopped.Wait(timeout), "old component was not stopped")
+		require.False(t, updated.Load(), "consumers changed before the old component stopped")
+		require.False(t, triggered(nextStarted), "new component started before the old component stopped")
+
+		// Unblock the old component. The switch then finishes.
+		close(release)
+		require.NoError(t, nextStarted.Wait(timeout), "new component did not start")
+		require.True(t, updated.Load(), "consumers were not changed")
+	})
+
+	t.Run("Only the latest scheduled components are started", func(t *testing.T) {
+		var (
+			l  = util.TestAlloyLogger(t)
+			cs = scheduler.New(l.Slog())
+			h  = scheduler.NewHost()
+		)
+		componenttest.RunInBackground(t, cs.Run)
+
+		release := make(chan struct{})
+		old, oldStarted, oldStopped := newBlockingShutdownComponent(release)
+		cs.Schedule(t.Context(), func() {}, h, old)
+		require.NoError(t, oldStarted.Wait(timeout), "old component did not start")
+
+		// The first switch blocks while it stops the old component.
+		first, firstStarted, _ := newTriggerComponent()
+		requireReturns(t, timeout, func() { cs.Schedule(t.Context(), func() {}, h, first) })
+		require.NoError(t, oldStopped.Wait(timeout), "old component was not stopped")
+
+		// These two are scheduled while the first switch is blocked. Only the
+		// latest of them is started.
+		skipped, skippedStarted, skippedStopped := newTriggerComponent()
+		latest, latestStarted, _ := newTriggerComponent()
+		requireReturns(t, timeout, func() { cs.Schedule(t.Context(), func() {}, h, skipped) })
+		requireReturns(t, timeout, func() { cs.Schedule(t.Context(), func() {}, h, latest) })
+
+		close(release)
+		require.NoError(t, firstStarted.Wait(timeout), "first component did not start")
+		require.NoError(t, latestStarted.Wait(timeout), "latest component did not start")
+		require.False(t, triggered(skippedStarted), "a replaced set of components was started")
+		require.NoError(t, skippedStopped.Wait(timeout), "a replaced set of components was not shut down")
+	})
+
+	t.Run("Synchronous scheduler switches before Schedule returns", func(t *testing.T) {
+		var (
+			l  = util.TestAlloyLogger(t)
+			cs = scheduler.NewSynchronous(l.Slog())
+			h  = scheduler.NewHost()
+		)
+		componenttest.RunInBackground(t, cs.Run)
+
+		oldStopped := atomic.NewBool(false)
+		old := &fakeComponent{ShutdownFunc: func(context.Context) error {
+			oldStopped.Store(true)
+			return nil
+		}}
+		oldStarted := atomic.NewBool(false)
+		old.StartFunc = func(context.Context, otelcomponent.Host) error {
+			oldStarted.Store(true)
+			return nil
+		}
+		cs.Schedule(t.Context(), func() {}, h, old)
+		require.Eventually(t, oldStarted.Load, timeout, 10*time.Millisecond, "old component did not start")
+
+		nextStarted := atomic.NewBool(false)
+		next := &fakeComponent{StartFunc: func(context.Context, otelcomponent.Host) error {
+			nextStarted.Store(true)
+			return nil
+		}}
+		cs.Schedule(t.Context(), func() {}, h, next)
+		require.True(t, oldStopped.Load(), "old component was not stopped when Schedule returned")
+		require.True(t, nextStarted.Load(), "new component was not started when Schedule returned")
+	})
+
+	t.Run("Components scheduled while Run exits are started by the next Run", func(t *testing.T) {
+		var (
+			l  = util.TestAlloyLogger(t)
+			cs = scheduler.New(l.Slog())
+			h  = scheduler.NewHost()
+		)
+
+		release := make(chan struct{})
+		old, oldStarted, oldStopped := newBlockingShutdownComponent(release)
+		cs.Schedule(t.Context(), func() {}, h, old)
+
+		ctx, cancel := context.WithCancel(t.Context())
+		runDone := make(chan error, 1)
+		go func() { runDone <- cs.Run(ctx) }()
+		require.NoError(t, oldStarted.Wait(timeout), "old component did not start")
+
+		// Stop Run. It blocks while it stops the old component.
+		cancel()
+		require.NoError(t, oldStopped.Wait(timeout), "old component was not stopped")
+
+		// Schedule while Run exits, then let Run exit.
+		next, nextStarted, _ := newTriggerComponent()
+		requireReturns(t, timeout, func() { cs.Schedule(t.Context(), func() {}, h, next) })
+		close(release)
+		select {
+		case err := <-runDone:
+			require.NoError(t, err)
+		case <-time.After(timeout):
+			require.FailNow(t, "Run did not exit")
+		}
+		require.False(t, triggered(nextStarted), "component started after Run exited")
+
+		// The next Run starts the latest components.
+		componenttest.RunInBackground(t, cs.Run)
+		require.NoError(t, nextStarted.Wait(timeout), "new component did not start")
+	})
+}
+
+// triggered reports whether wt has been triggered. Use it to check that
+// something has not happened.
+func triggered(wt *util.WaitTrigger) bool {
+	return wt.Wait(50*time.Millisecond) == nil
+}
+
+// requireReturns fails the test if f does not return within timeout.
+func requireReturns(t *testing.T, timeout time.Duration, f func()) {
+	t.Helper()
+
+	done := make(chan struct{})
+	go func() {
+		f()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(timeout):
+		require.FailNow(t, "call did not return")
+	}
+}
+
+// newBlockingShutdownComponent returns a component whose Shutdown blocks until
+// release is closed.
+func newBlockingShutdownComponent(release <-chan struct{}) (component otelcomponent.Component, started, stopped *util.WaitTrigger) {
+	started = util.NewWaitTrigger()
+	stopped = util.NewWaitTrigger()
+
+	component = &fakeComponent{
+		StartFunc: func(_ context.Context, _ otelcomponent.Host) error {
+			started.Trigger()
+			return nil
+		},
+		ShutdownFunc: func(_ context.Context) error {
+			stopped.Trigger()
+			<-release
+			return nil
+		},
+	}
+
+	return
+}
+
 func newTriggerComponent() (component otelcomponent.Component, started, stopped *util.WaitTrigger) {
 	started = util.NewWaitTrigger()
 	stopped = util.NewWaitTrigger()

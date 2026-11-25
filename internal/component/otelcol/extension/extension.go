@@ -103,7 +103,9 @@ func New(opts component.Options, f otelextension.Factory, args Arguments) (*Exte
 		opts:    opts,
 		factory: f,
 
-		sched:     scheduler.New(opts.Logger),
+		// The exported handler points to the new extension instance as soon as
+		// Update returns, so Update must start it before it returns.
+		sched:     scheduler.NewSynchronous(opts.Logger),
 		collector: collector,
 	}
 	if err := r.Update(args); err != nil {
