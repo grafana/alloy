@@ -38,6 +38,9 @@ type Positions interface {
 	Put(path, labels string, pos int64)
 	// Remove deletes the stored position.
 	Remove(path, labels string)
+	// RemoveIf deletes every stored position for which drop returns true,
+	// except positions that changed while it ran.
+	RemoveIf(drop func(Entry) bool)
 	// Stop stops syncing and persists positions one last time.
 	Stop()
 }
@@ -182,6 +185,23 @@ func (p *File) cleanup() {
 	for _, tr := range toRemove {
 		p.remove(tr.Path, tr.Labels)
 	}
+}
+
+// RemoveIf deletes every entry for which drop returns true, except entries
+// whose position changed while it ran.
+func (p *File) RemoveIf(drop func(Entry) bool) {
+	p.mtx.Lock()
+	snapshot := maps.Clone(p.positions)
+	p.mtx.Unlock()
+
+	maps.DeleteFunc(snapshot, func(e Entry, _ string) bool { return !drop(e) })
+
+	p.mtx.Lock()
+	defer p.mtx.Unlock()
+	maps.DeleteFunc(p.positions, func(e Entry, cur string) bool {
+		pos, ok := snapshot[e]
+		return ok && pos == cur
+	})
 }
 
 // positionFile is the on-disk format of the positions file.
