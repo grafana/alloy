@@ -317,6 +317,7 @@ func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
 			})
 		}
 
+		// TODO(kalleep): Errors should be logged at warning level but also use rate limiting so we don't flood logs.
 		c.opts.Logger.Debug("failed to write batch, retrying", "attempt", bo.NumRetries()+1, "err", err)
 		bo.Wait()
 	}

@@ -10,7 +10,7 @@ import (
 // ErrWALWrite is returned by WALConsumer when an entry could not be written to the WAL.
 var ErrWALWrite = errors.New("wal write failed")
 
-// IsRetryableErr reports whether a failed ConsumeV1 is worth retrying.
+// IsRetryableErr reports whether a failed ConsumeV1 or ConsumeV2 is worth retrying.
 func IsRetryableErr(err error) bool {
 	return errors.Is(err, loki.ErrConsumerStopped) || errors.Is(err, ErrWALWrite)
 }
