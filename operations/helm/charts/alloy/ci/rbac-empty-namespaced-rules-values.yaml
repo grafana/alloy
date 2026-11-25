@@ -1,0 +1,8 @@
+alloy:
+  configMap:
+    content: |-
+      logging {
+        level = "info"
+      }
+rbac:
+  rules: []
