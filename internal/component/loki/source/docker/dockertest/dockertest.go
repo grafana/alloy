@@ -17,13 +17,23 @@ import (
 )
 
 // Server is a fake Docker daemon that serves container inspect and logs
-// requests from in-memory container state. Containers are reported as exited,
-// and logs requests return the stored lines and end.
+// requests from in-memory container state. A logs request with follow stays
+// open while the container runs and streams lines as they are logged.
 type Server struct {
 	URL string
 
+	done chan struct{}
+
 	mu         sync.Mutex
-	containers map[string][]line
+	containers map[string]*fakeContainer
+}
+
+type fakeContainer struct {
+	running    bool
+	finishedAt time.Time
+	lines      []line
+	// changed is closed and replaced whenever the container changes.
+	changed chan struct{}
 }
 
 type line struct {
@@ -33,7 +43,10 @@ type line struct {
 
 // NewServer starts a fake Docker daemon and closes it on test cleanup.
 func NewServer(t testing.TB) *Server {
-	s := &Server{containers: make(map[string][]line)}
+	s := &Server{
+		done:       make(chan struct{}),
+		containers: make(map[string]*fakeContainer),
+	}
 
 	mux := http.NewServeMux()
 	for _, prefix := range []string{"", "/{version}"} {
@@ -45,26 +58,98 @@ func NewServer(t testing.TB) *Server {
 
 	srv := httptest.NewServer(mux)
 	s.URL = srv.URL
-	t.Cleanup(srv.Close)
+	t.Cleanup(func() {
+		close(s.done)
+		srv.Close()
+	})
 	return s
 }
 
-// AddContainer adds a container without any logs.
+// AddContainer adds a running container without any logs.
 func (s *Server) AddContainer(id string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.containers[id] = nil
+	s.containers[id] = &fakeContainer{running: true, changed: make(chan struct{})}
 }
 
 // Log appends a stdout line with timestamp ts to the container's logs.
 func (s *Server) Log(id string, ts time.Time, text string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.containers[id] = append(s.containers[id], line{ts: ts, text: text})
+	c := s.containers[id]
+	c.lines = append(c.lines, line{ts: ts, text: text})
+	c.notify()
+}
+
+// Start marks the container as running.
+func (s *Server) Start(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	c := s.containers[id]
+	c.running = true
+	c.notify()
+}
+
+// Stop marks the container as exited at the given time and ends its followed
+// logs requests.
+func (s *Server) Stop(id string, at time.Time) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	c := s.containers[id]
+	c.running = false
+	c.finishedAt = at
+	c.notify()
+}
+
+// Remove deletes the container and ends its followed logs requests.
+func (s *Server) Remove(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.containers[id].notify()
+	delete(s.containers, id)
+}
+
+func (c *fakeContainer) notify() {
+	close(c.changed)
+	c.changed = make(chan struct{})
 }
 
 func (s *Server) inspect(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+
+	s.mu.Lock()
+	c, ok := s.containers[id]
+	var state container.State
+	if ok {
+		state = container.State{
+			Running:    c.running,
+			FinishedAt: c.finishedAt.Format(time.RFC3339Nano),
+		}
+	}
+	s.mu.Unlock()
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(container.InspectResponse{
+		ID:     id,
+		State:  &state,
+		Config: &container.Config{},
+	})
+}
+
+func (s *Server) logs(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	query := r.URL.Query()
+	follow := query.Get("follow") == "1" || query.Get("follow") == "true"
+
+	since, err := parseSince(query.Get("since"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	s.mu.Lock()
 	_, ok := s.containers[id]
@@ -74,40 +159,48 @@ func (s *Server) inspect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(container.InspectResponse{
-		ID: id,
-		State: &container.State{
-			FinishedAt: time.Time{}.Format(time.RFC3339Nano),
-		},
-		Config: &container.Config{},
-	})
-}
+	w.WriteHeader(http.StatusOK)
+	flusher := w.(http.Flusher)
+	flusher.Flush()
 
-func (s *Server) logs(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-
-	since, err := parseSince(r.URL.Query().Get("since"))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	s.mu.Lock()
-	lines, ok := s.containers[id]
-	lines = append([]line(nil), lines...)
-	s.mu.Unlock()
-	if !ok {
-		http.NotFound(w, r)
-		return
-	}
-
-	for _, l := range lines {
-		// Docker includes lines at exactly the since time.
-		if l.ts.Before(since) {
-			continue
+	var next int
+	for {
+		s.mu.Lock()
+		c, ok := s.containers[id]
+		if !ok {
+			s.mu.Unlock()
+			return
 		}
-		writeFrame(w, []byte(l.ts.Format(time.RFC3339Nano)+" "+l.text+"\n"))
+		lines := append([]line(nil), c.lines[next:]...)
+		next = len(c.lines)
+		running, changed := c.running, c.changed
+		s.mu.Unlock()
+
+		for _, l := range lines {
+			// Docker includes lines at exactly the since time, and stops checking
+			// since after the first line that passes because timestamps may not
+			// be in order.
+			if !since.IsZero() {
+				if l.ts.Before(since) {
+					continue
+				}
+				since = time.Time{}
+			}
+			writeFrame(w, []byte(l.ts.Format(time.RFC3339Nano)+" "+l.text+"\n"))
+		}
+		flusher.Flush()
+
+		if !follow || !running {
+			return
+		}
+
+		select {
+		case <-changed:
+		case <-r.Context().Done():
+			return
+		case <-s.done:
+			return
+		}
 	}
 }
 

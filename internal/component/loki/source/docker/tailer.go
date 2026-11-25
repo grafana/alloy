@@ -419,7 +419,6 @@ func (fw *dockerChunkWriter) Write(p []byte) (int, error) {
 	// Continuation chunk: strip redundant timestamp and append content.
 	_, content, err := extractTsFromBytes(p)
 	if err != nil {
-		// Should not normally happen, but flog.log has entries like this for some reason.
 		fw.logger.Warn("could not strip timestamp from continuation chunk", "err", err)
 		fw.buffer.Write(p)
 	} else {

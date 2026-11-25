@@ -105,14 +105,6 @@ func TestComponentDuplicateTargets(t *testing.T) {
 }
 
 func TestComponentUpdateDoesNotReread(t *testing.T) {
-	lines := func(entries []loki.Entry) []string {
-		lines := make([]string, 0, len(entries))
-		for _, e := range entries {
-			lines = append(lines, e.Line)
-		}
-		return lines
-	}
-
 	lokitest.TestV1(t, func(t *testing.T, env lokitest.Env) {
 		base := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
 
@@ -131,7 +123,7 @@ func TestComponentUpdateDoesNotReread(t *testing.T) {
 
 		ctrl, _ := env.Run(t, "loki.source.docker", args)
 
-		require.Equal(t, []string{"line 1", "line 2", "line 3"}, lines(recv.Next(t, 3)))
+		require.Equal(t, []string{"line 1", "line 2", "line 3"}, entryLines(recv.Next(t, 3)))
 
 		c, err := ctrl.GetComponent()
 		require.NoError(t, err)
@@ -140,15 +132,15 @@ func TestComponentUpdateDoesNotReread(t *testing.T) {
 			return err == nil && pos == base.Add(2*time.Second).Unix()
 		}, 5*time.Second, 10*time.Millisecond)
 
-		server.Log("flog", base.Add(3*time.Second), "line 4")
-
 		// Changing relabel rules recreates all tailers.
 		args.RelabelRules = alloy_relabel.Rules{{Action: alloy_relabel.Drop, Regex: mustNewRegexp(t, "f(.*)")}}
 		require.NoError(t, ctrl.Update(args))
 
+		server.Log("flog", base.Add(3*time.Second), "line 4")
+
 		// FIXME(kalleep): positions are whole seconds, so resuming re-sends every
 		// line from the last read second. See https://github.com/grafana/alloy/issues/6954.
-		require.Equal(t, []string{"line 3", "line 4"}, lines(recv.Next(t, 2)))
+		require.Equal(t, []string{"line 3", "line 4"}, entryLines(recv.Next(t, 2)))
 	})
 }
 
@@ -293,4 +285,12 @@ func mustNewRegexp(t *testing.T, s string) alloy_relabel.Regexp {
 	var re alloy_relabel.Regexp
 	require.NoError(t, re.UnmarshalText([]byte(s)))
 	return re
+}
+
+func entryLines(entries []loki.Entry) []string {
+	lines := make([]string, 0, len(entries))
+	for _, e := range entries {
+		lines = append(lines, e.Line)
+	}
+	return lines
 }
