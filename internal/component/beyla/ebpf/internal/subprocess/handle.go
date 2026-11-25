@@ -10,8 +10,6 @@ const MaxRestarts = 10
 type Handle struct {
 	mu sync.Mutex
 
-	configPath  string
-	configClose func()
 	port        int
 	addr        string
 	profilePort int
@@ -46,23 +44,10 @@ func (h *Handle) SetHealthAddr(addr string) {
 	h.healthAddr = addr
 }
 
-func (h *Handle) SetConfig(path string, closeFn func()) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.configPath = path
-	h.configClose = closeFn
-}
-
 func (h *Handle) SetPid(pid int) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.pid = pid
-}
-
-func (h *Handle) ConfigPath() string {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	return h.configPath
 }
 
 func (h *Handle) ProfilePort() int {
@@ -114,12 +99,6 @@ func (h *Handle) Reset() {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	if h.configClose != nil {
-		h.configClose()
-		h.configClose = nil
-	}
-
-	h.configPath = ""
 	h.profilePort = 0
 	h.healthAddr = ""
 	h.pid = 0

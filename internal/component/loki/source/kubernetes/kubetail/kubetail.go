@@ -114,9 +114,8 @@ func entryForTarget(t *Target) positions.Entry {
 	// "namespace/name:container" string and UID, it's so wildly unlikely that
 	// it's probably not worth handling.
 	//
-	// The path is fed into positions.CursorKey to treat it as a "cursor";
-	// otherwise positions.Positions will try to read the path as a file and
-	// delete the entry when it can't find it.
+	// The path is fed into positions.CursorKey to mark it as a cursor and not
+	// a file path.
 	return positions.Entry{
 		Path:   positions.CursorKey(t.String() + ":" + t.UID()),
 		Labels: t.Labels().String(),

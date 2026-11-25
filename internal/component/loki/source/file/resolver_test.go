@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
@@ -46,7 +47,7 @@ func TestResolver(t *testing.T) {
 		},
 		{
 			name:     "glob resolver",
-			resolver: newGlobResolver(logging.NewSlogNop()),
+			resolver: newGlobResolver(logging.NewSlogNop(), 0),
 			targets: []discovery.Target{
 				discovery.NewTargetFromLabelSet(model.LabelSet{
 					"__path__":     "./testdata/*.log",
@@ -112,7 +113,7 @@ func TestGlobResolverMultiplePatterns(t *testing.T) {
 		}
 	}
 
-	resolver := newGlobResolver(logging.NewSlogNop())
+	resolver := newGlobResolver(logging.NewSlogNop(), 0)
 
 	// Use pattern matching multiple directories and extensions with exclusions
 	// This mirrors: /var/log/{nginx,apache,caddy}/*.{log,txt,json} excluding *.{gz,zip,bak,old}
@@ -180,4 +181,29 @@ func TestGlobResolverMultiplePatterns(t *testing.T) {
 		require.NotContains(t, paths, filepath.Join(subdir, "debug.yaml"),
 			".yaml files should not be matched")
 	}
+}
+
+func TestGlobResolverIgnoreOlderThan(t *testing.T) {
+	dir := t.TempDir()
+	recent := filepath.Join(dir, "recent.log")
+	old := filepath.Join(dir, "old.log")
+	require.NoError(t, os.WriteFile(recent, []byte("recent"), 0o644))
+	require.NoError(t, os.WriteFile(old, []byte("old"), 0o644))
+
+	oldTime := time.Now().Add(-2 * time.Hour)
+	require.NoError(t, os.Chtimes(old, oldTime, oldTime))
+
+	resolver := newGlobResolver(logging.NewSlogNop(), time.Hour)
+	targets := []discovery.Target{
+		discovery.NewTargetFromLabelSet(model.LabelSet{
+			"__path__": model.LabelValue(filepath.Join(dir, "*.log")),
+		}),
+	}
+
+	var paths []string
+	for target := range resolver.Resolve(targets) {
+		paths = append(paths, target.Path)
+	}
+
+	require.Equal(t, []string{recent}, paths)
 }

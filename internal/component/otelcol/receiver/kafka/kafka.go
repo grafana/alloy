@@ -17,6 +17,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configretry"
+	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -68,6 +69,8 @@ type Arguments struct {
 	RackID                   string        `alloy:"rack_id,attr,optional"`
 	UseLeaderEpoch           bool          `alloy:"use_leader_epoch,attr,optional"`
 	ConnIdleTimeout          time.Duration `alloy:"conn_idle_timeout,attr,optional"`
+	DialTimeout              time.Duration `alloy:"dial_timeout,attr,optional"`
+	MaxDecompressBatchBytes  int           `alloy:"max_decompress_batch_bytes,attr,optional"`
 
 	ErrorBackOff ErrorBackOffArguments `alloy:"error_backoff,block,optional"`
 
@@ -86,19 +89,21 @@ func (args *Arguments) SetToDefault() {
 		// We use the defaults from the upstream OpenTelemetry Collector component
 		// for compatibility, even though that means using a client and group ID of
 		// "otel-collector".
-		Brokers:               []string{"localhost:9092"},
-		ClientID:              "otel-collector",
-		GroupID:               "otel-collector",
-		InitialOffset:         "latest",
-		SessionTimeout:        10 * time.Second,
-		HeartbeatInterval:     3 * time.Second,
-		MinFetchSize:          1,
-		MaxFetchSize:          1048576,
-		MaxPartitionFetchSize: 1048576,
-		MaxFetchWait:          250 * time.Millisecond,
-		RackID:                "",
-		UseLeaderEpoch:        true,
-		ConnIdleTimeout:       9 * time.Minute,
+		Brokers:                 []string{"localhost:9092"},
+		ClientID:                "otel-collector",
+		GroupID:                 "otel-collector",
+		InitialOffset:           "latest",
+		SessionTimeout:          10 * time.Second,
+		HeartbeatInterval:       3 * time.Second,
+		MinFetchSize:            1,
+		MaxFetchSize:            1048576,
+		MaxPartitionFetchSize:   1048576,
+		MaxFetchWait:            250 * time.Millisecond,
+		RackID:                  "",
+		UseLeaderEpoch:          true,
+		ConnIdleTimeout:         9 * time.Minute,
+		DialTimeout:             10 * time.Second,
+		MaxDecompressBatchBytes: 1 << 30,
 		// Encoding is left unset so that it can be told apart from an explicit
 		// value. Convert falls back to the upstream default.
 		Logs: KafkaReceiverTopicEncodingConfig{
@@ -129,6 +134,11 @@ func (args *Arguments) Validate() error {
 		if args.ErrorBackOff.RandomizationFactor < 0 {
 			return fmt.Errorf("randomization_factor must be greater or equal to 0")
 		}
+	}
+
+	// Upstream rejects setting both the deprecated and the new form of the batch limit.
+	if args.PartitionProcessing.MaxBufferedBatches != 1 && args.PartitionProcessing.MaxPrefetch.Batches != 1 {
+		return fmt.Errorf("partition_processing.max_buffered_batches and partition_processing.max_prefetch.batches are mutually exclusive")
 	}
 
 	// Upstream rejects setting both forms, whatever their values.
@@ -162,7 +172,13 @@ func (args *Arguments) Validate() error {
 		}
 	}
 
-	return nil
+	// Run the upstream validation on the whole config tree, including the
+	// nested client and consumer configs.
+	otelCfg, err := args.Convert()
+	if err != nil {
+		return err
+	}
+	return confmap.Validate(otelCfg.(*kafkareceiver.Config))
 }
 
 const defaultGroupRebalanceStrategy = "range"
@@ -230,6 +246,9 @@ func (args Arguments) LogDeprecations(logger *slog.Logger) {
 			"group_rebalance_strategy is deprecated, use group_rebalance_strategies instead",
 			"group_rebalance_strategy", args.GroupRebalanceStrategy,
 		)
+	}
+	if args.PartitionProcessing.MaxBufferedBatches != 1 {
+		logger.Warn("partition_processing.max_buffered_batches is deprecated, use partition_processing.max_prefetch.batches instead")
 	}
 	args.Authentication.LogDeprecations(logger)
 }
@@ -331,6 +350,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.ClientConfig.RackID = args.RackID
 	result.ClientConfig.UseLeaderEpoch = args.UseLeaderEpoch
 	result.ClientConfig.ConnIdleTimeout = args.ConnIdleTimeout
+	result.ClientConfig.DialTimeout = args.DialTimeout
+	result.ConsumerConfig.MaxDecompressBatchBytes = args.MaxDecompressBatchBytes
 	result.ErrorBackOff = *args.ErrorBackOff.Convert()
 
 	result.Logs = args.Logs.convert(result.Logs)
@@ -426,21 +447,65 @@ type PartitionProcessingArguments struct {
 
 	// MaxBufferedBatches bounds the number of fetched batches waiting for each
 	// partition worker.
+	//
+	// Deprecated: use max_prefetch.batches instead.
 	MaxBufferedBatches int `alloy:"max_buffered_batches,attr,optional"`
+
+	MaxPrefetch MaxPrefetchArguments `alloy:"max_prefetch,block,optional"`
+	MaxInFlight MaxInFlightArguments `alloy:"max_in_flight,block,optional"`
+}
+
+// MaxPrefetchArguments limits the fetched batches waiting for one partition worker.
+type MaxPrefetchArguments struct {
+	Batches int `alloy:"batches,attr,optional"`
+	Bytes   int `alloy:"bytes,attr,optional"`
+}
+
+// MaxInFlightArguments limits concurrent unmarshal-plus-consume calls for one partition worker.
+type MaxInFlightArguments struct {
+	Records int    `alloy:"records,attr,optional"`
+	Bytes   int    `alloy:"bytes,attr,optional"`
+	Window  string `alloy:"window,attr,optional"`
+}
+
+// SetToDefault implements syntax.Defaulter.
+func (args *MaxPrefetchArguments) SetToDefault() {
+	*args = MaxPrefetchArguments{Batches: 1}
+}
+
+// SetToDefault implements syntax.Defaulter.
+func (args *MaxInFlightArguments) SetToDefault() {
+	*args = MaxInFlightArguments{Records: 1, Window: kafkareceiver.InFlightWindowPerFetch}
 }
 
 func (args *PartitionProcessingArguments) SetToDefault() {
 	*args = PartitionProcessingArguments{
 		Independent:        false,
 		MaxBufferedBatches: 1,
+		MaxPrefetch:        MaxPrefetchArguments{Batches: 1},
+		MaxInFlight:        MaxInFlightArguments{Records: 1, Window: kafkareceiver.InFlightWindowPerFetch},
 	}
 }
 
-// Convert converts args into the upstream type.
+// Convert converts args into the upstream type. The deprecated
+// max_buffered_batches is only a fallback for max_prefetch.batches and is used
+// when the latter is left at its default.
 func (args PartitionProcessingArguments) Convert() kafkareceiver.PartitionProcessing {
+	batches := args.MaxPrefetch.Batches
+	if batches == 1 {
+		batches = args.MaxBufferedBatches
+	}
 	return kafkareceiver.PartitionProcessing{
-		Independent:        args.Independent,
-		MaxBufferedBatches: args.MaxBufferedBatches,
+		Independent: args.Independent,
+		MaxPrefetch: kafkareceiver.MaxPrefetchConfig{
+			Batches: batches,
+			Bytes:   args.MaxPrefetch.Bytes,
+		},
+		MaxInFlight: kafkareceiver.MaxInFlightConfig{
+			Records: args.MaxInFlight.Records,
+			Bytes:   args.MaxInFlight.Bytes,
+			Window:  args.MaxInFlight.Window,
+		},
 	}
 }
 

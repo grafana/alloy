@@ -52,9 +52,6 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/windowspriority"
 	"github.com/grafana/alloy/syntax/diag"
-
-	// Install Components
-	_ "github.com/grafana/alloy/internal/component/all"
 )
 
 func newAlloyRun(converter *clifeature.Converter) *alloyRun {
@@ -229,7 +226,7 @@ func mountRunFlags(r *alloyRun, fset *pflag.FlagSet) {
 	fset.
 		StringVar(&r.clusterTLSServerName, "cluster.tls-server-name", r.clusterTLSServerName, "Server name to use for TLS communication")
 	fset.
-		IntVar(&r.clusterWaitForSize, "cluster.wait-for-size", r.clusterWaitForSize, "Wait for the cluster to reach the specified number of instances before allowing components that use clustering to begin processing. Zero means disabled")
+		IntVar(&r.clusterWaitForSize, "cluster.wait-for-size", r.clusterWaitForSize, "Wait for the cluster to reach the specified number of instances before allowing components that use clustering to begin processing. After the cluster reaches this size, processing continues even if the cluster shrinks below it. Zero means disabled")
 	fset.
 		DurationVar(&r.clusterWaitTimeout, "cluster.wait-timeout", 0, "Maximum duration to wait for minimum cluster size before proceeding with available nodes. Zero means wait forever, no timeout")
 
