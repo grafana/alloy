@@ -315,6 +315,13 @@ func (c *Component) startup(ctx context.Context) error {
 	queue := workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[commonK8s.Event](), cfg)
 	informerStopChan := make(chan struct{})
 
+	// Queue a sync before starting the informers so that the Mimir state is loaded
+	// before any of the initial Kubernetes events are reconciled against it.
+	// TODO: Long term, the eventProcessor should own this ordering, e.g. by creating
+	//       the informers without starting them, queueing the sync in newEventProcessor,
+	//       and only then starting the informers.
+	enqueueSyncMimir(queue)
+
 	namespaceLister, err := c.startNamespaceInformer(queue, informerStopChan)
 	if err != nil {
 		return err
@@ -326,10 +333,6 @@ func (c *Component) startup(ctx context.Context) error {
 	}
 
 	c.eventProcessor = c.newEventProcessor(queue, informerStopChan, namespaceLister, ruleLister)
-	if err = c.eventProcessor.syncMimir(ctx); err != nil {
-		return err
-	}
-
 	go c.eventProcessor.run(ctx)
 	return nil
 }

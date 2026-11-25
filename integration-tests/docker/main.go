@@ -18,6 +18,7 @@ import (
 var (
 	specificTest    string
 	skipBuild       bool
+	skipBaseBuild   bool
 	stateful        bool
 	testTimeout     time.Duration
 	alwaysPrintLogs bool
@@ -34,6 +35,7 @@ func main() {
 
 	rootCmd.PersistentFlags().StringVar(&specificTest, "test", "", "Specific test directory to run")
 	rootCmd.PersistentFlags().BoolVar(&skipBuild, "skip-build", false, "Skip building Alloy")
+	rootCmd.PersistentFlags().BoolVar(&skipBaseBuild, "skip-base-build", false, "Skip building the base Alloy image")
 	statefulUsageString := "Run the tests in a stateful manner. " +
 		"The docker compose setup will not be torn down after the tests complete. " +
 		"Any queries will be run with a start time set to the alloy container start time. " +
@@ -57,13 +59,15 @@ func runIntegrationTests(cmd *cobra.Command, args []string) {
 	testsRootDir = filepath.Join(repoRootDir, "integration-tests", "docker")
 
 	if !skipBuild {
-		buildBaseAlloyImage()
+		if !skipBaseBuild {
+			buildBaseAlloyImage()
+		}
 		buildAlloyImagesFromTestYAMLs()
 	}
 
 	start := time.Now()
 	executeCommandInDir(testsRootDir, "docker", []string{"compose", "up", "-d"}, "Starting dependent services with docker compose")
-	waitArgs := []string{"compose", "up", "-d", "--wait", "mimir", "tempo", "kafka"}
+	waitArgs := []string{"compose", "up", "-d", "--wait", "mimir", "tempo"}
 	executeCommandInDir(testsRootDir, "docker", waitArgs, "Waiting for dependent services to be healthy")
 	waitForHTTPReady("http://localhost:9009/ready", 3*time.Minute)
 	waitForHTTPReady("http://localhost:3100/ready", 3*time.Minute)

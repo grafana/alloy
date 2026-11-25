@@ -3,6 +3,7 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -38,6 +39,7 @@ type QueryDetailsArguments struct {
 	CollectInterval time.Duration
 	StatementsLimit int
 	ExcludeSchemas  []string
+	IncludeSchemas  []string
 	EntryHandler    loki.EntryHandler
 	TableRegistry   *TableRegistry
 
@@ -49,6 +51,7 @@ type QueryDetails struct {
 	collectInterval time.Duration
 	statementsLimit int
 	excludeSchemas  []string
+	includeSchemas  []string
 	entryHandler    loki.EntryHandler
 	sqlParser       parser.Parser
 	normalizer      *sqllexer.Normalizer
@@ -67,6 +70,7 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 		collectInterval: args.CollectInterval,
 		statementsLimit: args.StatementsLimit,
 		excludeSchemas:  args.ExcludeSchemas,
+		includeSchemas:  args.IncludeSchemas,
 		entryHandler:    args.EntryHandler,
 		sqlParser:       parser.NewTiDBSqlParser(),
 		normalizer:      sqllexer.NewNormalizer(sqllexer.WithCollectTables(true)),
@@ -125,7 +129,8 @@ func (c *QueryDetails) Stop() {
 }
 
 func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
-	query := fmt.Sprintf(selectQueryTablesSamples, buildExcludedSchemasClause(c.excludeSchemas), c.statementsLimit)
+	// nosemgrep: go.lang.security.audit.database.string-formatted-query.string-formatted-query
+	query := fmt.Sprintf(selectQueryTablesSamples, buildSchemaFilterClause(c.excludeSchemas, c.includeSchemas, "schema_name"), c.statementsLimit) // #nosec G201 -- filter values are quote-escaped before interpolation
 	rs, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to fetch summary table samples: %w", err)
@@ -140,14 +145,7 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 			continue
 		}
 
-		var tables []string
-		var parserErr, lexerErr error
-		if tables, parserErr = c.tryParseTableNames(sampleText.String, digestText); parserErr != nil {
-			if tables, lexerErr = c.tryTokenizeTableNames(sampleText.String, digestText); lexerErr != nil {
-				c.logger.Warn("failed to extract tables from sql text", "schema", schema, "digest", digest, "parser_err", parserErr, "lexer_err", lexerErr)
-				continue
-			}
-		}
+		tables, parserErr := c.tryParseTableNames(sampleText.String, digestText)
 
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
@@ -155,19 +153,36 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 			fmt.Sprintf(`schema=%q parseable="%t" digest=%q digest_text=%q`, schema, parserErr == nil, digest, digestText),
 		)
 
+		if parserErr != nil {
+			var lexerErr error
+			if tables, lexerErr = c.tryTokenizeTableNames(sampleText.String, digestText); lexerErr != nil {
+				c.logger.Warn("failed to extract tables from sql text", "schema", schema, "digest", digest, "parser_err", parserErr, "lexer_err", lexerErr)
+				continue
+			}
+		}
+
+		if len(tables) == 0 {
+			continue
+		}
+		parsedTables := make([]database_observability.ParsedTable, 0, len(tables))
 		for _, table := range tables {
 			validated := false
 			resolvedTable := table
 			if c.tableRegistry != nil {
 				resolvedTable, validated = c.tableRegistry.IsValid(schema, table)
 			}
-
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-				logging.LevelInfo,
-				database_observability.OP_QUERY_PARSED_TABLE_NAME,
-				fmt.Sprintf(`schema=%q digest=%q table=%q validated="%t"`, schema, digest, resolvedTable, validated),
-			)
+			parsedTables = append(parsedTables, database_observability.ParsedTable{Table: resolvedTable, Validated: validated})
 		}
+		tablesJSON, err := json.Marshal(parsedTables)
+		if err != nil {
+			c.logger.Error("failed to encode parsed tables", "err", err)
+			continue
+		}
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+			logging.LevelInfo,
+			database_observability.OP_QUERY_PARSED_TABLE_NAMES_V2,
+			fmt.Sprintf(`schema=%q digest=%q tables=%q`, schema, digest, tablesJSON),
+		)
 	}
 
 	if err := rs.Err(); err != nil {
@@ -208,7 +223,10 @@ func (c *QueryDetails) tryTokenizeTableNames(sqlText, fallbackSqlText string) ([
 	_, metadata, err = c.normalizer.Normalize(sqlText, sqllexer.WithDBMS(sqllexer.DBMSMySQL))
 	if err != nil || len(metadata.Tables) == 0 {
 		if fallbackSqlText == sqlText {
-			return nil, fmt.Errorf("failed to tokenize sql text (without fallback): %w", err)
+			if err != nil {
+				return nil, fmt.Errorf("failed to tokenize sql text (without fallback): %w", err)
+			}
+			return nil, nil
 		}
 
 		if _, metadata, err = c.normalizer.Normalize(fallbackSqlText, sqllexer.WithDBMS(sqllexer.DBMSMySQL)); err != nil {

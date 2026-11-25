@@ -121,7 +121,7 @@ otelcol.processor.filter "default" {
 
 otelcol.exporter.otlphttp "default" {
   client {
-    endpoint = env("<OTLP_ENDPOINT>")
+    endpoint = sys.env("<OTLP_ENDPOINT>")
   }
 }
 ```

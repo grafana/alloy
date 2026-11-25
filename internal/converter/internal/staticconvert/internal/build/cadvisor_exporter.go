@@ -34,5 +34,8 @@ func toCadvisorExporter(config *cadvisor_integration.Config) *cadvisor.Arguments
 		DockerTLSCA:                config.DockerTLSCA,
 		DockerOnly:                 config.DockerOnly,
 		DisableRootCgroupStats:     config.DisableRootCgroupStats,
+		HousekeepingInterval:       config.HousekeepingInterval,
+		MaxHousekeepingInterval:    config.MaxHousekeepingInterval,
+		AllowDynamicHousekeeping:   config.AllowDynamicHousekeeping,
 	}
 }

@@ -31,11 +31,12 @@ func TestLokiAzureEventHubs(t *testing.T) {
 	cfg, err := newConfig()
 	require.NoError(t, err)
 
+	// Create the topics before the producer so that its initial metadata fetch sees them.
+	common.CreateKafkaTopics(t, []string{broker}, cfg, 3, topics...)
+
 	producer, err := newProducer(t.Context(), cfg)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, producer.Close()) }()
-
-	common.CreateKafkaTopics(t, []string{broker}, cfg, 3, topics...)
 
 	var g errgroup.Group
 	for _, tp := range topics {
@@ -75,6 +76,9 @@ func newConfig() (*sarama.Config, error) {
 	cfg := sarama.NewConfig()
 	cfg.Version = sarama.V1_0_0_0
 	cfg.Producer.Return.Successes = true
+	// Leader election can lag right after topic creation; retry NotLeaderForPartition for longer than the defaults.
+	cfg.Producer.Retry.Max = 10
+	cfg.Producer.Retry.Backoff = 500 * time.Millisecond
 	cfg.Net.SASL.Enable = true
 	cfg.Net.SASL.Mechanism = sarama.SASLTypePlaintext
 	cfg.Net.SASL.User = "$ConnectionString"

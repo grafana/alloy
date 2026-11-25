@@ -2,6 +2,7 @@ package echo
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/grafana/alloy/internal/component"
@@ -117,7 +118,7 @@ func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
 	c.mut.RLock()
 	defer c.mut.RUnlock()
 	if c.stopped {
-		return loki.ErrConsumerStopped
+		return fmt.Errorf("%s: %w", c.opts.ID, loki.ErrConsumerStopped)
 	}
 
 	for _, stream := range batch.Streams() {

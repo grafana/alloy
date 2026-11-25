@@ -151,8 +151,8 @@ otelcol.exporter.otlphttp "grafana_cloud" {
 }
 
 otelcol.auth.basic "grafana_cloud" {
-  username = env("<GRAFANA_CLOUD_USERNAME>")
-  password = env("<GRAFANA_CLOUD_API_KEY>")
+  username = sys.env("<GRAFANA_CLOUD_USERNAME>")
+  password = sys.env("<GRAFANA_CLOUD_API_KEY>")
 }
 ```
 

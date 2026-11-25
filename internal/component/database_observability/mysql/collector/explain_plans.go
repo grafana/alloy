@@ -44,6 +44,92 @@ const selectDigestsForExplainPlan = `
 
 const selectExplainPlanPrefix = `EXPLAIN FORMAT=JSON `
 
+// showWarnings is run on the connection of the EXPLAIN, right after it, only when the warnings
+// are logged. The warnings of a statement are replaced by the next statement on the same
+// connection.
+const showWarnings = `SHOW WARNINGS`
+
+// maxExplainWarnings bounds how many warnings of one EXPLAIN are kept for the debug log.
+const maxExplainWarnings = 20
+
+// warningRewrittenQuery is Note 1003, the query as the optimizer rewrote it. It carries the
+// literals of the query, so it is never kept.
+const warningRewrittenQuery = 1003
+
+// warningCodesWithLoggedMessage lists the warnings whose message is logged. Their messages are
+// templates filled in by MySQL with the name of a feature or function, or with schema objects
+// and aliases of the query, never with its values. This was checked on MySQL 8.0.46 and 8.4.11
+// with a literal in each of 14 queries, and none of the messages repeated it:
+//
+//	1276  Field or reference '...' of SELECT #2 was resolved in SELECT #1
+//	1287  SQL_CALC_FOUND_ROWS, FOUND_ROWS(), JSON_MERGE, or setting a user variable in an
+//	      expression is deprecated. The other deprecations have their own codes, such as 1681 and
+//	      3719, which are not logged with their message.
+//	1739  Cannot use ref access on index '...' due to type or collation conversion on field '...'
+//	3170  Memory capacity of ... bytes for 'range_optimizer_max_mem_size' exceeded
+//
+// The message of any other warning can carry query text: 1064 for a hint syntax error quotes the
+// query from the error on. Only the code of those is kept.
+var warningCodesWithLoggedMessage = map[int]struct{}{
+	1276: {},
+	1287: {},
+	1739: {},
+	3170: {},
+}
+
+// explainWarning is a row of SHOW WARNINGS after an EXPLAIN. Message is empty unless the code
+// is in warningCodesWithLoggedMessage.
+type explainWarning struct {
+	Level   string `json:"level"`
+	Code    int    `json:"code"`
+	Message string `json:"message,omitempty"`
+}
+
+// explainWarnings are the warnings of an EXPLAIN that are kept, and whether there were more.
+type explainWarnings struct {
+	List      []explainWarning
+	Truncated bool
+}
+
+// fetchExplainWarnings reads the warnings of the statement that just ran on conn. Note 1003 is
+// skipped, and the message of a warning is only kept for the codes that are known not to carry
+// query text.
+func fetchExplainWarnings(ctx context.Context, conn *sql.Conn) (explainWarnings, error) {
+	rows, err := conn.QueryContext(ctx, showWarnings)
+	if err != nil {
+		return explainWarnings{}, fmt.Errorf("failed to run show warnings: %w", err)
+	}
+	defer rows.Close()
+
+	var warnings explainWarnings
+	for rows.Next() {
+		var level, message string
+		var code int
+		if err := rows.Scan(&level, &code, &message); err != nil {
+			return explainWarnings{}, fmt.Errorf("failed to scan warning: %w", err)
+		}
+		if code == warningRewrittenQuery {
+			continue
+		}
+
+		if len(warnings.List) >= maxExplainWarnings {
+			warnings.Truncated = true
+			break
+		}
+
+		warning := explainWarning{Level: level, Code: code}
+		if _, ok := warningCodesWithLoggedMessage[code]; ok {
+			warning.Message = message
+		}
+		warnings.List = append(warnings.List, warning)
+	}
+	if err := rows.Err(); err != nil {
+		return explainWarnings{}, fmt.Errorf("failed to read warnings: %w", err)
+	}
+
+	return warnings, nil
+}
+
 func newExplainPlansOutput(logger *slog.Logger, explainJson []byte) (*database_observability.ExplainPlanNode, error) {
 	qblock, _, _, err := jsonparser.Get(explainJson, "query_block")
 	if err != nil {
@@ -533,17 +619,24 @@ type ExplainPlansArguments struct {
 	PerScrapeRatio  float64
 	InitialLookback time.Time
 	ExcludeSchemas  []string
+	IncludeSchemas  []string
 	EntryHandler    loki.EntryHandler
+
+	// LogWarnings makes the collector read the warnings of each EXPLAIN and log them at debug
+	// level. It has no effect unless the log level is debug.
+	LogWarnings bool
 
 	Logger *slog.Logger
 }
 
 type ExplainPlans struct {
 	dbConnection     *sql.DB
+	logWarnings      bool
 	scrapeInterval   time.Duration
 	queryCache       map[string]*queryInfo
 	queryDenylist    map[string]struct{}
 	excludeSchemas   []string
+	includeSchemas   []string
 	perScrapeRatio   float64
 	currentBatchSize int
 	entryHandler     loki.EntryHandler
@@ -562,7 +655,9 @@ func NewExplainPlans(args ExplainPlansArguments) (*ExplainPlans, error) {
 		dbConnection:   args.DB,
 		scrapeInterval: args.ScrapeInterval,
 		perScrapeRatio: args.PerScrapeRatio,
+		logWarnings:    args.LogWarnings,
 		excludeSchemas: args.ExcludeSchemas,
+		includeSchemas: args.IncludeSchemas,
 		lastSeen:       args.InitialLookback,
 		queryCache:     make(map[string]*queryInfo),
 		queryDenylist:  make(map[string]struct{}),
@@ -686,7 +781,7 @@ func (c *ExplainPlans) Stop() {
 func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 	c.pruneExpiredThrottle()
 
-	query := fmt.Sprintf(selectDigestsForExplainPlan, buildExcludedSchemasClause(c.excludeSchemas))
+	query := fmt.Sprintf(selectDigestsForExplainPlan, buildSchemaFilterClause(c.excludeSchemas, c.includeSchemas, "SCHEMA_NAME"))
 	rs, err := c.dbConnection.QueryContext(ctx, query, c.lastSeen)
 	if err != nil {
 		c.logger.Error("failed to fetch digests for explain plans", "err", err)
@@ -825,7 +920,8 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 
 	logger = logger.With("schema_name", qi.schemaName)
 
-	byteExplainPlanJSON, err := c.fetchExplainPlanJSON(ctx, *qi)
+	withWarnings := c.logWarnings && logger.Enabled(ctx, slog.LevelDebug)
+	byteExplainPlanJSON, warnings, err := c.fetchExplainPlanJSON(ctx, *qi, withWarnings)
 	if err != nil {
 		logger.Debug("failed to fetch explain plan json bytes", "err", err)
 		for _, code := range unrecoverableSQLCodes {
@@ -868,6 +964,16 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 	logger.Debug("db native explain plan",
 		"db_native_explain_plan", base64.StdEncoding.EncodeToString(redactedByteExplainPlanJSON))
 
+	// The warnings explain plans that the JSON alone cannot, such as an index that cannot be used
+	// because of a type or collation conversion. They are only logged, never sent to Loki.
+	if len(warnings.List) > 0 {
+		// A list of plain structs always marshals.
+		warningsJSON, _ := json.Marshal(warnings.List)
+		logger.Debug("db native explain warnings",
+			"db_native_explain_warnings", string(warningsJSON),
+			"truncated", warnings.Truncated)
+	}
+
 	explainPlanOutput, genErr := newExplainPlansOutput(logger, byteExplainPlanJSON)
 	explainPlanOutputJSON, err := json.Marshal(explainPlanOutput)
 	if err != nil {
@@ -898,16 +1004,19 @@ func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bo
 	return false
 }
 
-func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([]byte, error) {
+// fetchExplainPlanJSON returns the plan of the query. When withWarnings is true it also returns
+// the warnings of the EXPLAIN, read on the same connection right after it. A failure to read the
+// warnings is logged and leaves the plan untouched.
+func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo, withWarnings bool) ([]byte, explainWarnings, error) {
 	conn, err := c.dbConnection.Conn(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get connection: %w", err)
+		return nil, explainWarnings{}, fmt.Errorf("failed to get connection: %w", err)
 	}
 	defer conn.Close()
 
 	useStatement := fmt.Sprintf("USE `%s`", qi.schemaName)
 	if _, err := conn.ExecContext(ctx, useStatement); err != nil {
-		return nil, fmt.Errorf("failed to set schema: %w", err)
+		return nil, explainWarnings{}, fmt.Errorf("failed to set schema: %w", err)
 	}
 	defer func() {
 		// Switch to performance_schema to avoid that when the connection
@@ -917,15 +1026,25 @@ func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) (
 
 	rsExplain := conn.QueryRowContext(ctx, selectExplainPlanPrefix+qi.queryText)
 	if err := rsExplain.Err(); err != nil {
-		return nil, fmt.Errorf("failed to run explain plan: %w", err)
+		return nil, explainWarnings{}, fmt.Errorf("failed to run explain plan: %w", err)
 	}
 
 	var byteExplainPlanJSON []byte
 	if err := rsExplain.Scan(&byteExplainPlanJSON); err != nil {
-		return nil, fmt.Errorf("failed to scan explain plan json: %w", err)
+		return nil, explainWarnings{}, fmt.Errorf("failed to scan explain plan json: %w", err)
 	}
 
-	return byteExplainPlanJSON, nil
+	if !withWarnings {
+		return byteExplainPlanJSON, explainWarnings{}, nil
+	}
+
+	warnings, err := fetchExplainWarnings(ctx, conn)
+	if err != nil {
+		c.logger.Debug("failed to fetch explain warnings", "digest", qi.digest, "schema_name", qi.schemaName, "err", err)
+		return byteExplainPlanJSON, explainWarnings{}, nil
+	}
+
+	return byteExplainPlanJSON, warnings, nil
 }
 
 func redactAttachedConditions(explainPlanJSON []byte) ([]byte, int, error) {

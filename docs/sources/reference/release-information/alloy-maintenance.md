@@ -42,7 +42,7 @@ Example features include:
 The {{< param "PRODUCT_NAME" >}} maintainers can investigate and collaborate upstream, but resolution timing may depend on upstream acceptance and release timing.
 In some cases, maintainers may carry a temporary patch or fork, but this is case-by-case and not guaranteed.
 
-## Not maintained by {{< param "PRODUCT_NAME" >}} maintainers
+## Not maintained by {{% param "PRODUCT_NAME" %}} maintainers
 
 Example features include:
 
@@ -51,7 +51,7 @@ Example features include:
 
 The {{< param "PRODUCT_NAME" >}} maintainers may still contribute to fixing issues or implementing new features, but this isn't guaranteed and is done on a best-effort basis.
 
-## Extending {{< param "PRODUCT_NAME" >}} with OCB and custom builds
+## Extending {{% param "PRODUCT_NAME" %}} with OCB and custom builds
 
 With {{< param "OTEL_ENGINE" >}}, you can use the [OpenTelemetry Collector Builder (OCB)][OCB] to build a customized {{< param "PRODUCT_NAME" >}} binary, including adding components or removing components from the standard release.
 The [{{< param "PRODUCT_NAME" >}} OCB manifest](https://github.com/grafana/alloy/blob/main/collector/builder-config.yaml) is the starting point for custom builds.

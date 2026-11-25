@@ -84,6 +84,16 @@ The default port is `12345`.
 Some components write temporary files in the system temp directories.
 If you use the process or service collectors in the integrated Windows Exporter, the service account also needs permission to enumerate processes and services.
 
+## Process command-line label
+
+To collect the `cmdline` label on `windows_process_info` metrics, the service account needs `PROCESS_QUERY_INFORMATION` and `PROCESS_VM_READ` access to the target processes.
+
+Without this access, the process collector still emits process metrics, but the `cmdline` label is empty.
+Windows doesn't grant these access rights on [protected processes][], so the `cmdline` label is always empty for them.
+
+Command lines can contain credentials or other sensitive information.
+To remove the label before you forward metrics, use a `labeldrop` rule in [`prometheus.relabel`][prometheus-relabel].
+
 ## Restrict the HTTP server
 
 By default, {{< param "PRODUCT_NAME" >}} binds its HTTP server to `127.0.0.1:12345`.
@@ -104,3 +114,5 @@ Refer to the [`http` block][http-block] for configuration options.
 [acl]: https://learn.microsoft.com/windows/win32/secauthz/access-control-lists
 [registry-security]: https://learn.microsoft.com/windows/win32/sysinfo/registry-key-security-and-access-rights
 [firewall-rules]: https://learn.microsoft.com/windows/security/operating-system-security/network-security/windows-firewall/rules
+[protected-processes]: https://learn.microsoft.com/windows/win32/procthread/process-security-and-access-rights#protected-processes
+[prometheus-relabel]: ../../reference/components/prometheus/prometheus.relabel/

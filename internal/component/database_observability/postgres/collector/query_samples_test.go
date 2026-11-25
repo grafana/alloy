@@ -1431,6 +1431,44 @@ func TestQuerySamples_ExcludeDatabases(t *testing.T) {
 	}, 5*time.Second, 100*time.Millisecond)
 }
 
+func TestQuerySamples_IncludeDatabasesAndUsers(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	logBuffer := syncbuffer.Buffer{}
+	logger, err := logging.New(&logBuffer, logging.Options{
+		Level:  logging.LevelDebug,
+		Format: logging.FormatLogfmt,
+	})
+	require.NoError(t, err)
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
+		DB:               db,
+		CollectInterval:  time.Millisecond,
+		IncludeDatabases: []string{"included_db"},
+		IncludeUsers:     []string{"included_user"},
+		EntryHandler:     lokiClient,
+		Logger:           logger.Slog(),
+	})
+	require.NoError(t, err)
+
+	expectedDatabasesClause := buildDatabaseFilterClause(nil, []string{"included_db"}, "d.datname")
+	expectedUsersClause := buildUserFilterClause(nil, []string{"included_user"}, "s.usename")
+	expectedQuery := fmt.Sprintf(selectPgStatActivity, expectedDatabasesClause, "", expectedUsersClause)
+
+	mock.ExpectQuery(expectedQuery).RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows(columns))
+
+	require.NoError(t, sampleCollector.fetchQuerySample(t.Context()))
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestQuerySamples_ExcludeUsers(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
 
