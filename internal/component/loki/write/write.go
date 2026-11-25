@@ -296,7 +296,7 @@ func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
 		}
 
 		if !client.IsRetryableErr(err) {
-			return err
+			return fmt.Errorf("%s: %w", c.opts.ID, err)
 		}
 
 		// A stopped consumer has already been swapped out by the time Update
