@@ -2,34 +2,72 @@ flags:
   feature.loki.pipeline-v2.enabled: true
 
 config: |
+  loki.source.file "f" {
+    targets = [
+      {
+        __path__     = "./tests/loki-pipeline-v2/app.log",
+        service_name = "app",
+      },
+    ]
+
+    forward_to = [loki.write.no_wal.receiver, loki.write.wal.receiver, loki.echo.e.receiver]
+  }
+
   loki.echo "e" {}
 
-inputs:
-  loki:
-    - components:
-        - pipelinetest.sink.out.loki_receiver
-        - loki.echo.e.receiver
-      entries:
-        - labels:
-            service_name: app
-          line: 'ts=2026-10-15T12:00:00Z level=info msg="first line"'
-          timestamp: "2026-10-15T12:00:00Z"
-        - labels:
-            service_name: app
-          line: 'ts=2026-10-15T12:00:01Z level=warn msg="second line"'
-          timestamp: "2026-10-15T12:00:01Z"
-        - labels:
-            service_name: app
-          line: 'ts=2026-10-15T12:00:02Z level=error msg="third line"'
-          timestamp: "2026-10-15T12:00:02Z"
+  loki.write "no_wal" {
+    endpoint {
+      url = pipelinetest.loki.url
+    }
+
+    external_labels = {
+      write = "no_wal",
+    }
+  }
+
+  loki.write "wal" {
+    endpoint {
+      url = pipelinetest.loki.url
+    }
+
+    external_labels = {
+      write = "wal",
+    }
+
+    wal {
+      enabled = true
+    }
+  }
 
 assert:
   loki:
     - type: count
       count: 3
+      match:
+        labels:
+          mode: partial
+          values:
+            write: no_wal
+    - type: count
+      count: 3
+      match:
+        labels:
+          mode: partial
+          values:
+            write: wal
     - type: contains
       match:
         labels:
+          mode: partial
           values:
             service_name: app
+            write: no_wal
+        line: 'ts=2026-10-15T12:00:01Z level=warn msg="second line"'
+    - type: contains
+      match:
+        labels:
+          mode: partial
+          values:
+            service_name: app
+            write: wal
         line: 'ts=2026-10-15T12:00:01Z level=warn msg="second line"'

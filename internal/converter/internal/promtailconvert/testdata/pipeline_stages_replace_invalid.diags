@@ -1,0 +1,2 @@
+(Error) invalid pipeline stage config: map[expression:[unclosed replace:****] - error parsing regexp: missing closing ]: `[unclosed`
+(Error) invalid pipeline stage config: map[expression:password (\S+) replace:{{ .Value] - template: pipeline_template:1: unclosed action

@@ -97,7 +97,7 @@ func TestHealthCheck(t *testing.T) {
 				sqlmock.NewRows([]string{"Grants"}).
 					AddRow("GRANT PROCESS, REPLICATION CLIENT, SELECT, SHOW VIEW ON *.* TO 'user'@'host'"),
 			)
-		mock.ExpectQuery(performanceSchemaHasRowsQuery([]string{"custom_schema", "another_schema"})).
+		mock.ExpectQuery(performanceSchemaHasRowsQuery([]string{"custom_schema", "another_schema"}, nil)).
 			WillReturnRows(
 				sqlmock.NewRows([]string{"COUNT(*)"}).
 					AddRow(100),
@@ -183,7 +183,7 @@ func TestHealthCheck(t *testing.T) {
 				name:             "no rows in events statements digest",
 				failingCheckName: "PerformanceSchemaHasRows",
 				customSetup: func(mock sqlmock.Sqlmock) {
-					mock.ExpectQuery(performanceSchemaHasRowsQuery(nil)).
+					mock.ExpectQuery(performanceSchemaHasRowsQuery(nil, nil)).
 						WillReturnRows(
 							sqlmock.NewRows([]string{"COUNT(*)"}).
 								AddRow(0),
@@ -276,7 +276,7 @@ func setupExpectQueryAssertions(checkName string, mock sqlmock.Sqlmock, customSe
 		{
 			name: "PerformanceSchemaHasRows",
 			setup: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery(performanceSchemaHasRowsQuery(nil)).
+				mock.ExpectQuery(performanceSchemaHasRowsQuery(nil, nil)).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"COUNT(*)"}).
 							AddRow(100),

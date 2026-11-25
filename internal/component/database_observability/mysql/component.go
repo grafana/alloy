@@ -66,6 +66,7 @@ type Arguments struct {
 	EnableCollectors              []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors             []string            `alloy:"disable_collectors,attr,optional"`
 	ExcludeSchemas                []string            `alloy:"exclude_schemas,attr,optional"`
+	IncludeSchemas                []string            `alloy:"include_schemas,attr,optional"`
 	AllowUpdatePerfSchemaSettings bool                `alloy:"allow_update_performance_schema_settings,attr,optional"`
 
 	Databases []DatabaseArguments `alloy:"database_instance,block,optional"`
@@ -142,6 +143,7 @@ type ExplainPlansArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 	PerCollectRatio float64       `alloy:"per_collect_ratio,attr,optional"`
 	InitialLookback time.Duration `alloy:"initial_lookback,attr,optional"`
+	LogWarnings     bool          `alloy:"log_explain_warnings,attr,optional"`
 }
 
 type LocksArguments struct {
@@ -172,7 +174,12 @@ type HealthCheckArguments struct {
 type PrometheusExporterArguments exporter_mysql.Arguments
 
 func (a *PrometheusExporterArguments) SetToDefault() {
-	*a = PrometheusExporterArguments(exporter_mysql.DefaultArguments)
+	args := exporter_mysql.DefaultArguments
+	args.PerfSchemaEventsStatements.Limit = 100
+	// The query_details collector already sends the statement text as logs, so
+	// a digest_text label would only add cardinality to the statement metrics.
+	args.PerfSchemaEventsStatements.TextLimit = 0
+	*a = PrometheusExporterArguments(args)
 }
 
 func (a *PrometheusExporterArguments) Validate() error {
@@ -180,14 +187,22 @@ func (a *PrometheusExporterArguments) Validate() error {
 	return args.Validate()
 }
 
+const eventsStatementsCollector = "perf_schema.eventsstatements"
+
+// defaultEnabledCollectors is a replacement allowlist, not additive. Besides
+// events statements, it holds the collectors that Database Observability reads:
+// global_status (connections), global_variables (server settings) and
+// slave_status (replication).
+var defaultEnabledCollectors = []string{eventsStatementsCollector, "global_status", "global_variables", "slave_status"}
+
 func defaultArguments() Arguments {
 	return Arguments{
-		ExcludeSchemas:                database_observability.DefaultExcludedSchemas(),
+		ExcludeSchemas:                defaultExcludedSchemas(),
 		AllowUpdatePerfSchemaSettings: false,
 
 		QueryDetailsArguments: QueryDetailsArguments{
 			CollectInterval: 1 * time.Minute,
-			StatementsLimit: 250,
+			StatementsLimit: 100,
 		},
 
 		SchemaDetailsArguments: SchemaDetailsArguments{
@@ -215,12 +230,13 @@ func defaultArguments() Arguments {
 		},
 
 		QuerySamplesArguments: QuerySamplesArguments{
-			CollectInterval:             10 * time.Second,
-			DisableQueryRedaction:       false,
-			AutoEnableSetupConsumers:    false,
-			SetupConsumersCheckInterval: 1 * time.Hour,
-			SampleMinDuration:           0 * time.Millisecond,
-			WaitEventMinDuration:        1 * time.Microsecond,
+			CollectInterval:               10 * time.Second,
+			DisableQueryRedaction:         false,
+			AutoEnableSetupConsumers:      false,
+			SetupConsumersCheckInterval:   1 * time.Hour,
+			SampleMinDuration:             0 * time.Millisecond,
+			WaitEventMinDuration:          1 * time.Microsecond,
+			EnablePreClassifiedWaitEvents: true,
 		},
 		HealthCheckArguments: HealthCheckArguments{
 			CollectInterval: 1 * time.Hour,
@@ -239,6 +255,10 @@ func (a *Arguments) SetToDefault() {
 var databaseNameRegex = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 func (a *Arguments) Validate() error {
+	if err := database_observability.ValidateInclusions(a.IncludeSchemas, collector.AlwaysExcludedSchemas(), a.ExcludeSchemas, defaultExcludedSchemas(), "include_schemas", "exclude_schemas", false); err != nil {
+		return err
+	}
+
 	if len(a.Databases) == 0 {
 		_, err := mysql.ParseDSN(string(a.DataSourceName))
 		if err != nil {
@@ -494,10 +514,68 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 
 	c.args = newArgs
+	c.warnOnStatementLimitMismatch()
+	c.warnOnExclusionsMismatch()
 	c.fanout.UpdateChildren(c.args.ForwardTo)
 
 	c.replaceInstances(instances)
 	return nil
+}
+
+func (c *Component) eventsStatementsExporterArgs() (exporter_mysql.Arguments, bool) {
+	if len(c.args.Targets) > 0 {
+		return exporter_mysql.Arguments{}, false
+	}
+
+	exporterArgs := resolveExporterArgs(c.args.PrometheusExporter, c.args.ExcludeSchemas, c.args.IncludeSchemas)
+	for _, scraper := range mysqld_exporter.GetScrapers(exporterArgs.Convert()) {
+		if scraper.Name() == eventsStatementsCollector {
+			return exporterArgs, true
+		}
+	}
+
+	return exporter_mysql.Arguments{}, false
+}
+
+func (c *Component) warnOnStatementLimitMismatch() {
+	queryDetailsEnabled := enableOrDisableCollectors(c.args)[collector.QueryDetailsCollector]
+	if !queryDetailsEnabled {
+		return
+	}
+
+	exporterArgs, ok := c.eventsStatementsExporterArgs()
+	if !ok {
+		return
+	}
+
+	queryDetailsLimit := c.args.QueryDetailsArguments.StatementsLimit
+	eventsStatementsLimit := exporterArgs.PerfSchemaEventsStatements.Limit
+	if queryDetailsLimit != eventsStatementsLimit {
+		c.opts.Logger.Warn(
+			"query_details and prometheus_exporter perf_schema.eventsstatements limits differ",
+			"query_details_limit", queryDetailsLimit,
+			"eventsstatements_limit", eventsStatementsLimit,
+		)
+	}
+}
+
+func (c *Component) warnOnExclusionsMismatch() {
+	exporterArgs, ok := c.eventsStatementsExporterArgs()
+	if !ok {
+		return
+	}
+
+	topLevelSchemas := database_observability.MergeExclusions(
+		collector.AlwaysExcludedSchemas(),
+		database_observability.EffectiveExclusions(defaultExcludedSchemas(), c.args.ExcludeSchemas, c.args.IncludeSchemas, false),
+	)
+	if !database_observability.SameExclusions(topLevelSchemas, exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas) {
+		c.opts.Logger.Warn(
+			"exclude_schemas and prometheus_exporter perf_schema.eventsstatements exclude_schemas differ; prefer setting top-level exclude_schemas only",
+			"exclude_schemas", topLevelSchemas,
+			"eventsstatements_exclude_schemas", exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas,
+		)
+	}
 }
 
 // buildInstances constructs, but doesn't connect, one dbInstance per config.
@@ -531,13 +609,17 @@ func (c *Component) replaceInstances(instances []*dbInstance) {
 }
 
 // ownedDatabases returns the subset of configs this node is responsible for
-// collecting. With clustering disabled, all databases are owned locally.
-// While the cluster isn't ready to admit traffic, no databases are owned, so
-// that nodes don't collect duplicates while the cluster is still forming.
-// Ownership lookup errors fail open to local ownership, matching the
-// semantics of discovery.DistributedTargets.
+// collecting. With clustering disabled, either on the component or for the
+// whole cluster service, all databases are owned locally. While the cluster
+// isn't ready to admit traffic, no databases are owned, so that nodes don't
+// collect duplicates while the cluster is still forming.
+//
+// Ownership lookup errors fail closed. A single-owner lookup only errors while
+// no peer is a participant, which is every node's state during a new cluster's
+// initial load; failing open would make each node connect to every database.
+// reconcileCluster picks the databases up once the node becomes a participant.
 func (c *Component) ownedDatabases(cfgs []databaseConfig, clusteringEnabled bool) []databaseConfig {
-	if !clusteringEnabled {
+	if !clusteringEnabled || !c.cluster.Enabled() {
 		return cfgs
 	}
 	if !c.cluster.Ready() {
@@ -545,18 +627,27 @@ func (c *Component) ownedDatabases(cfgs []databaseConfig, clusteringEnabled bool
 		return nil
 	}
 
+	var lookupErr error
 	owned := make([]databaseConfig, 0, len(cfgs))
 	for _, cfg := range cfgs {
 		key, err := instanceKey(string(cfg.dsn))
 		if err != nil {
-			// Validate guarantees the DSN parses; fail open to local ownership.
+			// There's no key to look an owner up with. Keep the database so that
+			// building its instance reports the DSN error.
 			owned = append(owned, cfg)
 			continue
 		}
 		peers, err := c.cluster.Lookup(shard.StringKey(key), 1, shard.OpReadWrite)
-		if err != nil || len(peers) == 0 || peers[0].Self {
+		if err != nil {
+			lookupErr = err
+			continue
+		}
+		if len(peers) > 0 && peers[0].Self {
 			owned = append(owned, cfg)
 		}
+	}
+	if lookupErr != nil {
+		c.opts.Logger.Warn("failed to look up database owners in the cluster, not collecting from the affected databases", "err", lookupErr)
 	}
 	return owned
 }
@@ -781,10 +872,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	}
 
 	if len(inst.cfg.targets) == 0 {
-		exporterArgs := exporter_mysql.DefaultArguments
-		if c.args.PrometheusExporter != nil {
-			exporterArgs = exporter_mysql.Arguments(*c.args.PrometheusExporter)
-		}
+		exporterArgs := resolveExporterArgs(c.args.PrometheusExporter, c.args.ExcludeSchemas, c.args.IncludeSchemas)
 		exporterCfg := exporterArgs.Convert()
 		scrapers := mysqld_exporter.GetScrapers(exporterCfg)
 		exporter := mysqld_collector.New(context.Background(), string(inst.cfg.dsn), scrapers, c.opts.Logger,
@@ -828,6 +916,42 @@ func (c *Component) connectAndStartCollectors(ctx context.Context, inst *dbInsta
 	return nil
 }
 
+func resolveExporterArgs(userBlock *PrometheusExporterArguments, excludeSchemas, includeSchemas []string) exporter_mysql.Arguments {
+	exporterArgs := exporter_mysql.DefaultArguments
+	exporterArgs.PerfSchemaEventsStatements.Limit = 100
+	exporterArgs.PerfSchemaEventsStatements.TextLimit = 0
+	if userBlock != nil {
+		exporterArgs = exporter_mysql.Arguments(*userBlock)
+	}
+	if len(exporterArgs.SetCollectors) == 0 {
+		exporterArgs.SetCollectors = defaultEnabledCollectors
+	}
+	if exporterArgs.PerfSchemaEventsStatements.Limit == 0 {
+		exporterArgs.PerfSchemaEventsStatements.Limit = 100
+	}
+	alwaysExcludedSchemas := database_observability.MergeExclusions(
+		collector.AlwaysExcludedSchemas(),
+		database_observability.EffectiveDefaultExclusions(defaultExcludedSchemas(), includeSchemas, false),
+	)
+	exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas = database_observability.ResolveExclusions(
+		alwaysExcludedSchemas,
+		database_observability.UserConfiguredExclusions(excludeSchemas, defaultExcludedSchemas()),
+		exporterArgs.PerfSchemaEventsStatements.ExcludeSchemas,
+	)
+	return exporterArgs
+}
+
+func defaultExcludedSchemas() []string {
+	return []string{
+		"alloydbadmin",
+		"alloydbmetadata",
+		"azure_maintenance",
+		"azure_sys",
+		"cloudsqladmin",
+		"rdsadmin",
+	}
+}
+
 func enableOrDisableCollectors(a Arguments) map[string]bool {
 	// configurable collectors and their default enabled/disabled value
 	collectors := map[string]bool{
@@ -838,8 +962,6 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 		collector.QuerySamplesCollector:   true,
 		collector.ExplainPlansCollector:   true,
 		collector.LocksCollector:          false,
-		collector.TableStatsCollector:     false,
-		collector.IndexStatsCollector:     false,
 	}
 
 	for _, disabled := range a.DisableCollectors {
@@ -868,6 +990,9 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 	}
 	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), inst.instanceKey, serverID, inst.cfg.rules)
 
+	excludeSchemas := database_observability.EffectiveExclusions(defaultExcludedSchemas(), c.args.ExcludeSchemas, c.args.IncludeSchemas, false)
+	includeSchemas := database_observability.MergeExclusions(c.args.IncludeSchemas)
+
 	collectors := enableOrDisableCollectors(c.args)
 
 	var tableRegistry *collector.TableRegistry
@@ -886,7 +1011,8 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
 			DB:              inst.dbConnection,
 			CollectInterval: c.args.SchemaDetailsArguments.CollectInterval,
-			ExcludeSchemas:  c.args.ExcludeSchemas,
+			ExcludeSchemas:  excludeSchemas,
+			IncludeSchemas:  includeSchemas,
 			EntryHandler:    entryHandler,
 			Logger:          c.opts.Logger,
 		})
@@ -906,7 +1032,8 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 			DB:              inst.dbConnection,
 			CollectInterval: c.args.QueryDetailsArguments.CollectInterval,
 			StatementsLimit: c.args.QueryDetailsArguments.StatementsLimit,
-			ExcludeSchemas:  c.args.ExcludeSchemas,
+			ExcludeSchemas:  excludeSchemas,
+			IncludeSchemas:  includeSchemas,
 			EntryHandler:    entryHandler,
 			TableRegistry:   tableRegistry,
 			Logger:          c.opts.Logger,
@@ -933,7 +1060,8 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 			DB:                            inst.dbConnection,
 			EngineVersion:                 parsedEngineVersion,
 			CollectInterval:               c.args.QuerySamplesArguments.CollectInterval,
-			ExcludeSchemas:                c.args.ExcludeSchemas,
+			ExcludeSchemas:                excludeSchemas,
+			IncludeSchemas:                includeSchemas,
 			EntryHandler:                  entryHandler,
 			Registry:                      inst.registry,
 			Logger:                        c.opts.Logger,
@@ -1015,7 +1143,9 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 			DB:              inst.dbConnection,
 			ScrapeInterval:  c.args.ExplainPlansArguments.CollectInterval,
 			PerScrapeRatio:  c.args.ExplainPlansArguments.PerCollectRatio,
-			ExcludeSchemas:  c.args.ExcludeSchemas,
+			LogWarnings:     c.args.ExplainPlansArguments.LogWarnings,
+			ExcludeSchemas:  excludeSchemas,
+			IncludeSchemas:  includeSchemas,
 			InitialLookback: time.Now().Add(-c.args.ExplainPlansArguments.InitialLookback),
 			Logger:          c.opts.Logger,
 			EntryHandler:    entryHandler,
@@ -1027,40 +1157,6 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 				logStartError(collector.ExplainPlansCollector, "start", err)
 			}
 			inst.collectors = append(inst.collectors, epCollector)
-		}
-	}
-
-	if collectors[collector.TableStatsCollector] {
-		tsCollector, err := collector.NewTableStats(collector.TableStatsArguments{
-			DB:             inst.dbConnection,
-			ExcludeSchemas: c.args.ExcludeSchemas,
-			Registry:       inst.registry,
-			Logger:         c.opts.Logger,
-		})
-		if err != nil {
-			logStartError(collector.TableStatsCollector, "create", err)
-		} else {
-			if err := tsCollector.Start(context.Background()); err != nil {
-				logStartError(collector.TableStatsCollector, "start", err)
-			}
-			inst.collectors = append(inst.collectors, tsCollector)
-		}
-	}
-
-	if collectors[collector.IndexStatsCollector] {
-		isCollector, err := collector.NewIndexStats(collector.IndexStatsArguments{
-			DB:             inst.dbConnection,
-			ExcludeSchemas: c.args.ExcludeSchemas,
-			Registry:       inst.registry,
-			Logger:         c.opts.Logger,
-		})
-		if err != nil {
-			logStartError(collector.IndexStatsCollector, "create", err)
-		} else {
-			if err := isCollector.Start(context.Background()); err != nil {
-				logStartError(collector.IndexStatsCollector, "start", err)
-			}
-			inst.collectors = append(inst.collectors, isCollector)
 		}
 	}
 
@@ -1085,7 +1181,8 @@ func (c *Component) startCollectors(inst *dbInstance, serverID string, engineVer
 	hcCollector, err := collector.NewHealthCheck(collector.HealthCheckArguments{
 		DB:              inst.dbConnection,
 		CollectInterval: c.args.HealthCheckArguments.CollectInterval,
-		ExcludeSchemas:  c.args.ExcludeSchemas,
+		ExcludeSchemas:  excludeSchemas,
+		IncludeSchemas:  includeSchemas,
 		EntryHandler:    entryHandler,
 		Logger:          c.opts.Logger,
 	})

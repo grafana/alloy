@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"go.opentelemetry.io/collector/pdata/plog/plogotlp"
 	"go.opentelemetry.io/collector/pdata/pmetric/pmetricotlp"
 	"go.opentelemetry.io/collector/pdata/ptrace/ptraceotlp"
 
@@ -23,7 +24,7 @@ const (
 )
 
 type otlpItem struct {
-	isTraces    bool
+	signal      string
 	body        []byte
 	contentType string
 }
@@ -31,7 +32,7 @@ type otlpItem struct {
 func (c *Component) startOTLPReceiver() error {
 	output := c.args.Output
 
-	if output == nil || (len(output.Traces) == 0 && len(output.Metrics) == 0) {
+	if output == nil || (len(output.Traces) == 0 && len(output.Metrics) == 0 && len(output.Logs) == 0) {
 		return nil
 	}
 
@@ -56,13 +57,19 @@ func (c *Component) startOTLPReceiver() error {
 
 	if len(output.Traces) > 0 {
 		mux.HandleFunc("/v1/traces", func(w http.ResponseWriter, r *http.Request) {
-			c.enqueueOTLP(w, r, queue, true)
+			c.enqueueOTLP(w, r, queue, "traces")
 		})
 	}
 
 	if len(output.Metrics) > 0 {
 		mux.HandleFunc("/v1/metrics", func(w http.ResponseWriter, r *http.Request) {
-			c.enqueueOTLP(w, r, queue, false)
+			c.enqueueOTLP(w, r, queue, "metrics")
+		})
+	}
+
+	if len(output.Logs) > 0 {
+		mux.HandleFunc("/v1/logs", func(w http.ResponseWriter, r *http.Request) {
+			c.enqueueOTLP(w, r, queue, "logs")
 		})
 	}
 
@@ -111,7 +118,7 @@ func (c *Component) stopOTLPReceiver() {
 	c.otlpWorkersWG.Wait()
 }
 
-func (c *Component) enqueueOTLP(w http.ResponseWriter, r *http.Request, queue chan otlpItem, isTraces bool) {
+func (c *Component) enqueueOTLP(w http.ResponseWriter, r *http.Request, queue chan otlpItem, signal string) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -127,7 +134,7 @@ func (c *Component) enqueueOTLP(w http.ResponseWriter, r *http.Request, queue ch
 		return
 	}
 
-	item := otlpItem{isTraces: isTraces, body: body, contentType: r.Header.Get("Content-Type")}
+	item := otlpItem{signal: signal, body: body, contentType: r.Header.Get("Content-Type")}
 
 	select {
 	case queue <- item:
@@ -136,7 +143,7 @@ func (c *Component) enqueueOTLP(w http.ResponseWriter, r *http.Request, queue ch
 		_, _ = w.Write([]byte("{}"))
 	default:
 		// Sustained downstream backpressure; 503 is retryable and Beyla's OTLP exporter honours it.
-		c.opts.Logger.Warn("OTLP receiver queue full, rejecting request", "is_traces", isTraces)
+		c.opts.Logger.Warn("OTLP receiver queue full, rejecting request", "signal", signal)
 		http.Error(w, "receiver overloaded", http.StatusServiceUnavailable)
 	}
 }
@@ -145,10 +152,13 @@ func (c *Component) otlpWorker(ctx context.Context, queue <-chan otlpItem, outpu
 	defer c.otlpWorkersWG.Done()
 
 	for item := range queue {
-		if item.isTraces {
+		switch item.signal {
+		case "traces":
 			c.consumeTraces(ctx, item, output.Traces)
-		} else {
+		case "metrics":
 			c.consumeMetrics(ctx, item, output.Metrics)
+		case "logs":
+			c.consumeLogs(ctx, item, output.Logs)
 		}
 	}
 }
@@ -199,6 +209,26 @@ func (c *Component) consumeTraces(ctx context.Context, item otlpItem, consumers 
 	for _, consumer := range consumers {
 		if err := consumer.ConsumeTraces(ctx, traces); err != nil {
 			c.opts.Logger.Error("failed to forward traces to consumer", "err", err)
+			return
+		}
+	}
+}
+
+func (c *Component) consumeLogs(ctx context.Context, item otlpItem, consumers []otelcol.Consumer) {
+	req := plogotlp.NewExportRequest()
+	var err error
+	if strings.Contains(item.contentType, "application/json") {
+		err = req.UnmarshalJSON(item.body)
+	} else {
+		err = req.UnmarshalProto(item.body)
+	}
+	if err != nil {
+		c.opts.Logger.Error("failed to unmarshal OTLP logs", "err", err)
+		return
+	}
+	for _, consumer := range consumers {
+		if err := consumer.ConsumeLogs(ctx, req.Logs()); err != nil {
+			c.opts.Logger.Error("failed to forward logs to consumer", "err", err)
 			return
 		}
 	}

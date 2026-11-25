@@ -10,6 +10,10 @@ loki.process "valid" {
 	stage.logfmt {
 		regex = "^pod_"
 	}
+
+	stage.structured_metadata {
+		regex = "^label_"
+	}
 }
 
 loki.process "invalid_regex" {
@@ -21,5 +25,62 @@ loki.process "invalid_regex" {
 
 	stage.multiline {
 		firstline = "[unclosed"
+	}
+
+	stage.structured_metadata {
+		regex = "[unclosed"
+	}
+}
+
+loki.process "invalid_selector" {
+	forward_to = []
+
+	stage.match {
+		selector = ""
+
+		stage.label_drop {
+			values = ["unused"]
+		}
+	}
+
+	stage.match {
+		selector = "{}"
+
+		stage.label_drop {
+			values = ["unused"]
+		}
+	}
+
+	stage.match {
+		selector = "{app=\"foo\""
+
+		stage.label_drop {
+			values = ["unused"]
+		}
+	}
+
+	stage.match {
+		selector = "{app=\"foo\"} | json"
+
+		stage.label_drop {
+			values = ["unused"]
+		}
+	}
+
+	stage.match {
+		selector = "{app=\"foo\"} |> \"<_>\""
+
+		stage.label_drop {
+			values = ["unused"]
+		}
+	}
+
+	stage.match {
+		selector = "{app=\"foo\"}"
+		action   = "drop"
+
+		stage.label_drop {
+			values = ["unused"]
+		}
 	}
 }

@@ -13,8 +13,14 @@ import (
 
 func StartPyroscopeContainer(t *testing.T, ctx context.Context, l *slog.Logger) (testcontainers.Container, string) {
 	req := testcontainers.ContainerRequest{
-		Image:        "grafana/pyroscope:latest",
-		Cmd:          []string{"--ingester.min-ready-duration=0s"},
+		Image: "grafana/pyroscope:latest",
+		Cmd: []string{
+			"--architecture.storage=v2",
+			"--write-path=segment-writer",
+			"--enable-query-backend=true",
+			"--metastore.min-ready-duration=0s",
+			"--segment-writer.min-ready-duration=0s",
+		},
 		ExposedPorts: []string{"4040/tcp"},
 		WaitingFor:   wait.ForHTTP("/ready").WithPort("4040/tcp"),
 		Env: map[string]string{

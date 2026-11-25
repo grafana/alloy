@@ -50,8 +50,16 @@ func (d *deferredSlogHandler) Enabled(ctx context.Context, level slog.Level) boo
 // of h's attributes followed by attrs.
 func (d *deferredSlogHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	d.mut.RLock()
-	defer d.mut.RUnlock()
+	if d.handle != nil {
+		defer d.mut.RUnlock()
+		return d.handle.WithAttrs(attrs)
+	}
+	d.mut.RUnlock()
 
+	d.mut.Lock()
+	defer d.mut.Unlock()
+
+	// buildHandlers may have run since the read lock was released.
 	if d.handle != nil {
 		return d.handle.WithAttrs(attrs)
 	}
@@ -67,8 +75,16 @@ func (d *deferredSlogHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 
 func (d *deferredSlogHandler) WithGroup(name string) slog.Handler {
 	d.mut.RLock()
-	defer d.mut.RUnlock()
+	if d.handle != nil {
+		defer d.mut.RUnlock()
+		return d.handle.WithGroup(name)
+	}
+	d.mut.RUnlock()
 
+	d.mut.Lock()
+	defer d.mut.Unlock()
+
+	// buildHandlers may have run since the read lock was released.
 	if d.handle != nil {
 		return d.handle.WithGroup(name)
 	}

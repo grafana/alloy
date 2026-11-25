@@ -39,7 +39,7 @@ const (
 		) AS sees_insufficient_privilege`
 )
 
-func pgStatStatementsHasRowsQuery(excludeDatabases, excludeUsers []string) string {
+func pgStatStatementsHasRowsQuery(excludeDatabases, includeDatabases, excludeUsers, includeUsers []string) string {
 	return fmt.Sprintf(`
 		SELECT EXISTS (
 			SELECT 1
@@ -49,8 +49,8 @@ func pgStatStatementsHasRowsQuery(excludeDatabases, excludeUsers []string) strin
 			  AND pg_stat_statements.queryid <> 0
 			  %s
 		)`,
-		buildExcludedDatabasesClause(excludeDatabases),
-		buildExcludedUsersClause(excludeUsers, "pg_get_userbyid(pg_stat_statements.userid)"),
+		buildDatabaseFilterClause(excludeDatabases, includeDatabases, "pg_database.datname"),
+		buildUserFilterClause(excludeUsers, includeUsers, "pg_get_userbyid(pg_stat_statements.userid)"),
 	)
 }
 
@@ -58,7 +58,9 @@ type HealthCheckArguments struct {
 	DB               *sql.DB
 	CollectInterval  time.Duration
 	ExcludeDatabases []string
+	IncludeDatabases []string
 	ExcludeUsers     []string
+	IncludeUsers     []string
 	EntryHandler     loki.EntryHandler
 
 	Logger *slog.Logger
@@ -68,7 +70,9 @@ type HealthCheck struct {
 	dbConnection     *sql.DB
 	collectInterval  time.Duration
 	excludeDatabases []string
+	includeDatabases []string
 	excludeUsers     []string
+	includeUsers     []string
 	entryHandler     loki.EntryHandler
 	logger           *slog.Logger
 
@@ -83,7 +87,9 @@ func NewHealthCheck(args HealthCheckArguments) (*HealthCheck, error) {
 		dbConnection:     args.DB,
 		collectInterval:  args.CollectInterval,
 		excludeDatabases: args.ExcludeDatabases,
+		includeDatabases: args.IncludeDatabases,
 		excludeUsers:     args.ExcludeUsers,
+		includeUsers:     args.IncludeUsers,
 		entryHandler:     args.EntryHandler,
 		logger:           args.Logger.With("collector", HealthCheckCollector),
 		running:          &atomic.Bool{},
@@ -282,7 +288,7 @@ func checkComputeQueryIdEnabled(ctx context.Context, db *sql.DB) healthCheckResu
 // ingest after applying the exclude_databases / exclude_users filters.
 func (c *HealthCheck) checkPgStatStatementsHasRows(ctx context.Context, db *sql.DB) healthCheckResult {
 	r := healthCheckResult{name: "PgStatStatementsHasRows"}
-	q := pgStatStatementsHasRowsQuery(c.excludeDatabases, c.excludeUsers)
+	q := pgStatStatementsHasRowsQuery(c.excludeDatabases, c.includeDatabases, c.excludeUsers, c.includeUsers)
 
 	var hasRows bool
 	if err := db.QueryRowContext(ctx, q).Scan(&hasRows); err != nil {

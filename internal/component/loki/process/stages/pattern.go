@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"sync"
 
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/loki/v3/pkg/logql/log/pattern"
 	"github.com/prometheus/common/model"
 )
@@ -26,8 +27,9 @@ type PatternConfig struct {
 	LabelsFromGroups bool    `alloy:"labels_from_groups,attr,optional"`
 }
 
-// validatePatternConfig validates the PatternConfig
-func validatePatternConfig(c PatternConfig) error {
+var _ syntax.Validator = (*PatternConfig)(nil)
+
+func (c *PatternConfig) Validate() error {
 	if c.Pattern == "" {
 		return errPatternRequired
 	}
@@ -54,11 +56,7 @@ func validatePatternConfig(c PatternConfig) error {
 var _ entryProcessor = (*patternStage)(nil)
 
 // newPatternStage creates a newPatternStage
-func newPatternStage(config PatternConfig, opts stageOpts) (*patternStage, error) {
-	err := validatePatternConfig(config)
-	if err != nil {
-		return nil, err
-	}
+func newPatternStage(config PatternConfig, opts stageOpts) *patternStage {
 	return &patternStage{
 		next:   opts.next,
 		config: &config,
@@ -71,7 +69,7 @@ func newPatternStage(config PatternConfig, opts stageOpts) (*patternStage, error
 				return m
 			},
 		},
-	}, nil
+	}
 }
 
 // patternStage sets extracted data using logQL patterns

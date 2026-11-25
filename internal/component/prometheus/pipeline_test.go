@@ -12,6 +12,7 @@ import (
 	promclient "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
+	"github.com/prometheus/prometheus/tsdb/tsdbutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
@@ -132,6 +133,21 @@ func TestRelabelPipeline(t *testing.T) {
 				require.Len(t, destination.CollectedSamples(), 2)
 				require.ElementsMatch(t, expect, maps.Values(destination.CollectedSamples()))
 			}, 5*time.Second, 100*time.Millisecond, "timed out waiting for metrics to be written to destination")
+
+			// ST zero samples go to the relabeled series too. Sent before the
+			// local ref checks below so those also cover the ST hooks.
+			hist := labels.FromStrings("hist", "x")
+			app := pipeline.AppenderV2(t.Context())
+			_, err := app.Append(0, lset1, sampleTimestamp+500, sampleTimestamp+1000, 56, nil, nil, storage.AppendV2Options{})
+			require.NoError(t, err)
+			_, err = app.Append(0, hist, sampleTimestamp+500, sampleTimestamp+1000, 0, tsdbutil.GenerateTestHistogram(1), nil, storage.AppendV2Options{})
+			require.NoError(t, err)
+			require.NoError(t, app.Commit())
+
+			require.Contains(t, destination.CollectedSTZeroSamples(), labels.NewBuilder(lset1).Set("lbl", "foo").Labels().String())
+			require.NotContains(t, destination.CollectedSTZeroSamples(), lset1.String())
+			require.Contains(t, destination.CollectedSTZeroHistograms(), labels.NewBuilder(hist).Set("lbl", "foo").Labels().String())
+			require.NotContains(t, destination.CollectedSTZeroHistograms(), hist.String())
 
 			if tt.useLabelStore {
 				ref := ls.GetOrAddGlobalRefID(lset1)

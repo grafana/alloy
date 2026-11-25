@@ -3,6 +3,7 @@ package configgen
 import (
 	"fmt"
 	"net/url"
+	"slices"
 	"sort"
 	"strings"
 
@@ -54,8 +55,16 @@ func (cg *ConfigGenerator) GenerateProbeConfig(m *promopv1.Probe) (cfg *config.S
 			cfg.HTTPClientConfig.ProxyURL = commonConfig.URL{URL: u}
 		}
 	}
+	if len(m.Spec.Params) > 0 {
+		cfg.Params = make(url.Values, len(m.Spec.Params))
+		for _, param := range m.Spec.Params {
+			cfg.Params[param.Name] = slices.Clone(param.Values)
+		}
+	}
 	if m.Spec.Module != "" {
-		cfg.Params = url.Values{}
+		if cfg.Params == nil {
+			cfg.Params = url.Values{}
+		}
 		cfg.Params.Set("module", m.Spec.Module)
 	}
 

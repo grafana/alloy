@@ -377,12 +377,11 @@ func TestClusterE2E(t *testing.T) {
 			},
 		},
 		{
-			name:               "cluster dips below minimum size",
+			name:               "cluster dips below minimum size - stays ready",
 			alloyConfig:        `testcomponents.cluster_state_tracker "foo" {}`,
 			nodeCountInitial:   5,
 			minimumClusterSize: 5,
 			extraAllowedErrors: []string{
-				"minimum cluster size requirements are not met - marking cluster as not ready for traffic",
 				"failed to broadcast leave message to cluster",
 				"timeout waiting for leave broadcast",
 			},
@@ -410,11 +409,13 @@ func TestClusterE2E(t *testing.T) {
 						`cluster_node_info{state="participant"} 1`,
 						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 4`,
 						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 4`,
-						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-1___node-2___node-3___node-4",ready="false"} 4`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-1___node-2___node-3___node-4",ready="true"} 4`,
 						`cluster_minimum_size{cluster_name="cluster_e2e_test"} 5`,
-						`cluster_ready_for_traffic{cluster_name="cluster_e2e_test"} 0`,
+						`cluster_ready_for_traffic{cluster_name="cluster_e2e_test"} 1`,
 					)
-					verifyClusterNotReady(t, p)
+					// Once the minimum size was reached, the cluster must keep admitting traffic.
+					verifyClusterReady(t, p)
+					verifyPeers(t, p, 4)
 				}
 			},
 		},

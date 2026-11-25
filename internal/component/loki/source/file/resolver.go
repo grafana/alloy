@@ -3,7 +3,9 @@ package file
 import (
 	"iter"
 	"log/slog"
+	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/prometheus/common/model"
 
@@ -53,21 +55,23 @@ func (s *staticResolver) Resolve(targets []discovery.Target) iter.Seq[resolvedTa
 
 var _ resolver = (*globResolver)(nil)
 
-func newGlobResolver(logger *slog.Logger) *globResolver {
-	return newGlobResolverWithGlobber(logger, glob.NewGlobber())
+func newGlobResolver(logger *slog.Logger, ignoreOlderThan time.Duration) *globResolver {
+	return newGlobResolverWithGlobber(logger, glob.NewGlobber(), ignoreOlderThan)
 }
 
-func newGlobResolverWithGlobber(logger *slog.Logger, globber glob.Globber) *globResolver {
-	return &globResolver{logger: logger, globber: globber}
+func newGlobResolverWithGlobber(logger *slog.Logger, globber glob.Globber, ignoreOlderThan time.Duration) *globResolver {
+	return &globResolver{logger: logger, globber: globber, ignoreOlderThan: ignoreOlderThan}
 }
 
 // globResolver expands discovery targets using doublestar globbing. It reads
 // __path__ as a glob pattern and yields one ResolvedTarget per matched file.
 // If __path_exclude__ is present, matches that satisfy the exclude pattern are
-// filtered out. Returned paths are normalized to absolute form.
+// filtered out. Returned paths are normalized to absolute form. When
+// ignoreOlderThan is non-zero, files older than that duration are skipped.
 type globResolver struct {
-	logger  *slog.Logger
-	globber glob.Globber
+	logger          *slog.Logger
+	globber         glob.Globber
+	ignoreOlderThan time.Duration
 }
 
 func (s *globResolver) Resolve(targets []discovery.Target) iter.Seq[resolvedTarget] {
@@ -95,6 +99,20 @@ func (s *globResolver) Resolve(targets []discovery.Target) iter.Seq[resolvedTarg
 				if err != nil {
 					s.logger.Error("failed to resolve target", "error", err)
 					continue
+				}
+
+				if s.ignoreOlderThan != 0 {
+					fi, err := os.Stat(path)
+					if err != nil {
+						s.logger.Debug("failed to stat file, skipping", "path", path, "err", err)
+						continue
+					}
+					if fi.IsDir() {
+						continue
+					}
+					if fi.ModTime().Before(time.Now().Add(-s.ignoreOlderThan)) {
+						continue
+					}
 				}
 
 				if !yield(resolvedTarget{Path: path, Labels: labels}) {

@@ -1,0 +1,199 @@
+logging {
+  level = "debug"
+}
+
+livedebugging {
+  enabled = true
+}
+
+prometheus.remote_write "mimir" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+  }
+}
+
+// Each exporter below forwards through its own prometheus.relabel, which sets
+// the alloy_test_name label the k8s harness filters series on.
+
+// A custom module, with the target given in the targets attribute.
+prometheus.exporter.snmp "targets" {
+  config = `
+auths:
+  public_v2:
+    community: public
+    security_level: noAuthNoPriv
+    auth_protocol: MD5
+    priv_protocol: DES
+    version: 2
+modules:
+  default:
+    walk:
+      - 1.3.6.1.2.1.1  # OID for system
+      - 1.3.6.1.2.1.2  # OID for interfaces
+    metrics:
+      - name: sysDescr
+        oid: 1.3.6.1.2.1.1.1.0
+        type: DisplayString
+        help: "A textual description of the entity."
+`
+  targets = [
+    {
+      "name"    = "t1",
+      "address" = "snmpsim:161",
+      "module"  = "default",
+      "auth"    = "public_v2",
+    },
+  ]
+}
+
+prometheus.scrape "targets" {
+  targets         = prometheus.exporter.snmp.targets.targets
+  forward_to      = [prometheus.relabel.targets.receiver]
+  scrape_interval = "1s"
+  scrape_timeout  = "500ms"
+}
+
+prometheus.relabel "targets" {
+  forward_to = [prometheus.remote_write.mimir.receiver]
+  rule {
+    action       = "replace"
+    target_label = "alloy_test_name"
+    replacement  = "snmp-targets"
+  }
+}
+
+// The same module, with the target given in a target block.
+prometheus.exporter.snmp "target_block" {
+  config = `
+auths:
+  public_v2:
+    community: public
+    security_level: noAuthNoPriv
+    auth_protocol: MD5
+    priv_protocol: DES
+    version: 2
+modules:
+  default:
+    walk:
+      - 1.3.6.1.2.1.1  # OID for system
+      - 1.3.6.1.2.1.2  # OID for interfaces
+    metrics:
+      - name: sysDescr
+        oid: 1.3.6.1.2.1.1.1.0
+        type: DisplayString
+        help: "A textual description of the entity."
+`
+  target "t1" {
+    address = "snmpsim:161"
+    module  = "default"
+    auth    = "public_v2"
+  }
+}
+
+prometheus.scrape "target_block" {
+  targets         = prometheus.exporter.snmp.target_block.targets
+  forward_to      = [prometheus.relabel.target_block.receiver]
+  scrape_interval = "1s"
+  scrape_timeout  = "500ms"
+}
+
+prometheus.relabel "target_block" {
+  forward_to = [prometheus.remote_write.mimir.receiver]
+  rule {
+    action       = "replace"
+    target_label = "alloy_test_name"
+    replacement  = "snmp-target-block"
+  }
+}
+
+// Two custom modules on one target, walked concurrently.
+prometheus.exporter.snmp "multi_module" {
+  config = `
+auths:
+  public_v2:
+    community: public
+    security_level: noAuthNoPriv
+    auth_protocol: MD5
+    priv_protocol: DES
+    version: 2
+modules:
+  default:
+    walk:
+      - 1.3.6.1.2.1.1  # OID for system
+      - 1.3.6.1.2.1.2  # OID for interfaces
+    metrics:
+      - name: sysDescr
+        oid: 1.3.6.1.2.1.1.1.0
+        type: DisplayString
+        help: "A textual description of the entity."
+  hrDeviceForTest:
+    walk:
+    - 1.3.6.1.2.1.25.3
+    metrics:
+    - name: hrDeviceIndex
+      oid: 1.3.6.1.2.1.25.3.2.1.1
+      type: gauge
+      help: A unique value for each device contained by the host - 1.3.6.1.2.1.25.3.2.1.1
+      indexes:
+      - labelname: hrDevice
+        type: gauge
+`
+  concurrency = 2
+  target "t1" {
+    address = "snmpsim:161"
+    module  = "default,hrDeviceForTest"
+    auth    = "public_v2"
+  }
+}
+
+prometheus.scrape "multi_module" {
+  targets         = prometheus.exporter.snmp.multi_module.targets
+  forward_to      = [prometheus.relabel.multi_module.receiver]
+  scrape_interval = "1s"
+  scrape_timeout  = "500ms"
+}
+
+prometheus.relabel "multi_module" {
+  forward_to = [prometheus.remote_write.mimir.receiver]
+  rule {
+    action       = "replace"
+    target_label = "alloy_test_name"
+    replacement  = "snmp-multi-module"
+  }
+}
+
+// The merge strategy adds a custom auth, while the modules come from the
+// embedded snmp.yml.
+prometheus.exporter.snmp "merge" {
+  config_merge_strategy = "merge"
+  config = `
+auths:
+  public_custom:
+    community: public
+    security_level: noAuthNoPriv
+    auth_protocol: MD5
+    priv_protocol: DES
+    version: 2
+`
+  target "t1" {
+    address = "snmpsim:161"
+    module  = "system,hrDevice"
+    auth    = "public_custom"
+  }
+}
+
+prometheus.scrape "merge" {
+  targets         = prometheus.exporter.snmp.merge.targets
+  forward_to      = [prometheus.relabel.merge.receiver]
+  scrape_interval = "1s"
+  scrape_timeout  = "500ms"
+}
+
+prometheus.relabel "merge" {
+  forward_to = [prometheus.remote_write.mimir.receiver]
+  rule {
+    action       = "replace"
+    target_label = "alloy_test_name"
+    replacement  = "snmp-merge"
+  }
+}

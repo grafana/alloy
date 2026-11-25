@@ -1432,6 +1432,38 @@ func TestSchemaDetailsExcludeSchemas(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
+func TestSchemaDetailsIncludeSchemas(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	c, err := NewSchemaDetails(SchemaDetailsArguments{
+		DB:              db,
+		CollectInterval: time.Millisecond,
+		IncludeSchemas:  []string{"included_schema"},
+		EntryHandler:    lokiClient,
+		Logger:          util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+
+	mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, buildSchemaFilterClause(nil, []string{"included_schema"}, "TABLE_SCHEMA"))).
+		WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+		"table_schema",
+		"table_name",
+		"table_type",
+		"create_time",
+		"update_time",
+	}))
+
+	require.NoError(t, c.extractSchema(t.Context()))
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
 func TestSchemaDetails_PopulatesTableRegistry(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
