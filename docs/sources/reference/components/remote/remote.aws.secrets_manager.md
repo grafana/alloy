@@ -13,7 +13,7 @@ title: remote.aws.secrets_manager
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`remote.aws.secrets_manager` reads a secret from [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/) and exposes it to other components.
+`remote.aws.secrets_manager` reads a secret from [AWS Secrets Manager][aws-secrets-manager] and exposes it to other components.
 `remote.aws.secrets_manager` reads the secret again at the interval that the `poll_frequency` argument sets.
 
 If the secret is a JSON object, each top-level field is available in the `data` export.
@@ -21,8 +21,9 @@ The raw secret string is always available in the `content` export.
 
 You can specify multiple `remote.aws.secrets_manager` components by giving them different labels.
 
-By default, `remote.aws.secrets_manager` uses the [AWS SDK default credential chain](https://docs.aws.amazon.com/sdkref/latest/guide/standardized-credentials.html).
-This includes environment variables, shared configuration files, AWS Identity and Access Management (IAM) Roles for Service Accounts (IRSA), and Amazon Elastic Compute Cloud (Amazon EC2) or Amazon Elastic Container Service (Amazon ECS) instance roles.
+By default, `remote.aws.secrets_manager` uses the [AWS SDK default credential chain][aws-credential-chain].
+This includes environment variables, shared configuration files, and AWS Identity and Access Management (IAM) Roles for Service Accounts (IRSA).
+It also includes Amazon Elastic Compute Cloud (Amazon EC2) instance roles or Amazon Elastic Container Service (Amazon ECS) task roles.
 Use the `client` block to set static credentials, a region, a profile, a custom endpoint, or a role to assume.
 
 The identity that {{< param "PRODUCT_NAME" >}} uses needs these IAM permissions:
@@ -30,6 +31,9 @@ The identity that {{< param "PRODUCT_NAME" >}} uses needs these IAM permissions:
 - **`secretsmanager:GetSecretValue`:** Grant it on the secret.
 - **`kms:Decrypt`:** Grant it on the key if the secret uses a customer managed AWS Key Management Service (AWS KMS) key.
 - **`sts:AssumeRole`:** Grant it on the role if you use the `assume_role` block.
+
+[aws-secrets-manager]: https://aws.amazon.com/secrets-manager/
+[aws-credential-chain]: https://docs.aws.amazon.com/sdkref/latest/guide/standardized-credentials.html
 
 ## Usage
 
@@ -43,21 +47,23 @@ remote.aws.secrets_manager "<LABEL>" {
 
 You can use the following arguments with `remote.aws.secrets_manager`:
 
-| Name             | Type       | Description                                          | Default | Required |
-| ---------------- | ---------- | ---------------------------------------------------- | ------- | -------- |
-| `secret_id`      | `string`   | The name or ARN of the secret.                       |         | yes      |
-| `poll_frequency` | `duration` | How often to poll the secret for changes.            | `"1h"`  | no       |
-| `version_id`     | `string`   | The unique identifier of the secret version to read. |         | no       |
-| `version_stage`  | `string`   | The staging label of the secret version to read.     |         | no       |
+| Name             | Type       | Description                                           | Default | Required |
+| ---------------- | ---------- | ----------------------------------------------------- | ------- | -------- |
+| `secret_id`      | `string`   | The name or Amazon Resource Name (ARN) of the secret. |         | yes      |
+| `poll_frequency` | `duration` | How often to poll the secret for changes.             | `"1h"`  | no       |
+| `version_id`     | `string`   | The unique identifier of the secret version to read.  |         | no       |
+| `version_stage`  | `string`   | The staging label of the secret version to read.      |         | no       |
 
 Set the `poll_frequency` argument to `"0s"` to read the secret only when `remote.aws.secrets_manager` starts and when its arguments change.
 A reload that doesn't change the arguments of `remote.aws.secrets_manager` doesn't read the secret again.
 Otherwise, the `poll_frequency` argument must be at least `"1m"`.
 
 With the default `poll_frequency`, a rotated secret can take up to one hour to reach the components that use it.
-If you rotate the secret, use the alternating-users rotation strategy, so that the old credentials work until the next poll.
+If you rotate the secret, use the alternating-users rotation strategy, so that the previous credentials work until the next poll.
 You can also set a shorter `poll_frequency`.
-Refer to [Rotation strategies](https://docs.aws.amazon.com/secretsmanager/latest/userguide/rotation-strategy.html) for more information.
+Refer to [Rotation strategies][rotation-strategies] for more information.
+
+[rotation-strategies]: https://docs.aws.amazon.com/secretsmanager/latest/userguide/rotation-strategy.html
 
 You can set only one of the `version_id` and `version_stage` arguments.
 If you set neither, `remote.aws.secrets_manager` reads the version with the `AWSCURRENT` staging label.
@@ -68,8 +74,10 @@ Each `remote.aws.secrets_manager` component makes one call at each poll.
 It also reads the secret at startup and when its arguments change.
 The AWS SDK makes up to 3 attempts for each call.
 If you use the `assume_role` block, `remote.aws.secrets_manager` also calls AWS Security Token Service (AWS STS) when the role credentials expire.
-Refer to [AWS Secrets Manager pricing](https://aws.amazon.com/secrets-manager/pricing/) for more information.
+Refer to [AWS Secrets Manager pricing][aws-secrets-manager-pricing] for more information.
 {{< /admonition >}}
+
+[aws-secrets-manager-pricing]: https://aws.amazon.com/secrets-manager/pricing/
 
 ## Blocks
 
@@ -77,10 +85,10 @@ You can use the following blocks with `remote.aws.secrets_manager`:
 
 {{< docs/alloy-config >}}
 
-| Block                                   | Description                                   | Required |
-| --------------------------------------- | --------------------------------------------- | -------- |
-| [`client`][client]                      | Options for the connection to AWS.            | no       |
-| `client` > [`assume_role`][assume_role] | Assume an IAM role before reading the secret. | no       |
+| Block                                   | Description                                                 | Required |
+| --------------------------------------- | ----------------------------------------------------------- | -------- |
+| [`client`][client]                      | Configures the connection to AWS.                           | no       |
+| `client` > [`assume_role`][assume_role] | Configures an IAM role to assume before reading the secret. | no       |
 
 The `>` symbol indicates deeper levels of nesting.
 For example, `client` > `assume_role` refers to an `assume_role` block defined inside a `client` block.
@@ -93,6 +101,8 @@ For example, `client` > `assume_role` refers to an `assume_role` block defined i
 ### `client`
 
 The `client` block configures the connection to AWS.
+
+You can use the following arguments with the `client` block:
 
 | Name       | Type               | Description                                                                                | Default | Required |
 | ---------- | ------------------ | ------------------------------------------------------------------------------------------ | ------- | -------- |
@@ -122,7 +132,9 @@ The AWS SDK reads these environment variables:
 - `AWS_CA_BUNDLE` sets a custom certificate authority.
 - `AWS_PROFILE` sets the shared configuration profile. The `profile` argument overrides it.
 
-Refer to the [AWS SDK settings reference](https://docs.aws.amazon.com/sdkref/latest/guide/settings-reference.html) for more information.
+Refer to the [AWS SDK settings reference][aws-sdk-settings] for more information.
+
+[aws-sdk-settings]: https://docs.aws.amazon.com/sdkref/latest/guide/settings-reference.html
 
 ### `assume_role`
 
@@ -130,6 +142,8 @@ The `assume_role` block makes `remote.aws.secrets_manager` call AWS STS `AssumeR
 `remote.aws.secrets_manager` then reads the secret with the credentials of the assumed role.
 The AWS STS call uses the default regional AWS STS endpoint.
 The `endpoint` argument in the `client` block doesn't change the AWS STS endpoint.
+
+You can use the following arguments with the `assume_role` block:
 
 | Name           | Type               | Description                                          | Default              | Required |
 | -------------- | ------------------ | ---------------------------------------------------- | -------------------- | -------- |
@@ -144,10 +158,10 @@ The default `session_name` is `alloy-` followed by the host name.
 
 The following fields are exported and can be referenced by other components:
 
-| Name      | Type               | Description                                             |
-| --------- | ------------------ | ------------------------------------------------------- |
-| `content` | [`secret`][secret] | The raw secret string.                                  |
-| `data`    | `map(secret)`      | The top-level fields of a secret that is a JSON object. |
+| Name      | Type               | Description                                            |
+| --------- | ------------------ | ------------------------------------------------------ |
+| `content` | [`secret`][secret] | The raw secret string.                                 |
+| `data`    | `map(secret)`      | The top-level fields of a secret that's a JSON object. |
 
 `remote.aws.secrets_manager` fills `data` with these rules:
 
@@ -162,7 +176,7 @@ The following fields are exported and can be referenced by other components:
 
 `remote.aws.secrets_manager` reports as healthy if the most recent read of the secret succeeds.
 If a read fails, `remote.aws.secrets_manager` keeps the last values it read and reports as unhealthy.
-The health message then ends with the time of the last successful read, which shows how old the exported values are.
+The health message then ends with the time of the last successful read, which shows the age of the exported values.
 
 If the first read fails, `remote.aws.secrets_manager` doesn't start and doesn't retry by itself.
 Fix the cause, then reload the configuration.
@@ -170,11 +184,13 @@ Fix the cause, then reload the configuration.
 After a failed poll, `remote.aws.secrets_manager` retries after the `poll_frequency` interval or after 1 minute, whichever is shorter.
 After a successful read, `remote.aws.secrets_manager` returns to the `poll_frequency` schedule.
 
-If a configuration change gives `remote.aws.secrets_manager` new arguments and the read with them fails, `remote.aws.secrets_manager` keeps the previous arguments and the last values it read.
+If a configuration change gives `remote.aws.secrets_manager` different arguments and the read with them fails, `remote.aws.secrets_manager` keeps the previous arguments and the last values it read.
 It continues to poll with the previous arguments.
+
 {{< param "PRODUCT_NAME" >}} reports `remote.aws.secrets_manager` as unhealthy, with the configuration error, until you load a configuration that works.
 This includes restoring the previous configuration.
-If the arguments come from the exports of another component and those exports change often, `remote.aws.secrets_manager` reads the secret again at each failed change and restarts the poll schedule.
+
+If the arguments come from the exports of another component, each change to those exports makes `remote.aws.secrets_manager` read the secret and restart the poll schedule.
 
 ## Debug information
 
