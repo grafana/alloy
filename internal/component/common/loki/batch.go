@@ -27,13 +27,14 @@ func (b *Batch) Add(stream Stream) {
 }
 
 func (b *Batch) add(stream Stream) {
-	i := b.streamIndex(stream.Labels)
+	i, fp := b.streamIndex(stream.Labels)
 	if i >= 0 {
 		s := &b.streams[i]
 		s.Entries = append(s.Entries, stream.Entries...)
 		s.updateCreated(stream.created)
 		return
 	}
+	stream.fp = fp
 	b.streams = append(b.streams, stream)
 }
 
@@ -46,7 +47,7 @@ func (b *Batch) AddEntry(labels model.LabelSet, created int64, entry push.Entry)
 }
 
 func (b *Batch) addEntry(labels model.LabelSet, created int64, entry push.Entry) {
-	i := b.streamIndex(labels)
+	i, fp := b.streamIndex(labels)
 	if i >= 0 {
 		s := &b.streams[i]
 		s.Entries = append(s.Entries, entry)
@@ -55,16 +56,23 @@ func (b *Batch) addEntry(labels model.LabelSet, created int64, entry push.Entry)
 	}
 
 	stream := NewStreamWithCreatedUnixMicro(labels, created, entry)
+	stream.fp = fp
 	b.streams = append(b.streams, stream)
 }
 
-func (b *Batch) streamIndex(labels model.LabelSet) int {
-	// FIXME(kalleep): With https://github.com/grafana/alloy/issues/6835 the equality checks will be
-	// much more efficient. If this still shows up in profiles as expensive after
-	// that change we should consider alternative representations for streams.
-	return slices.IndexFunc(b.streams, func(s Stream) bool {
-		return s.Labels.Equal(labels)
+// streamIndex returns the index of the stream matching labels, or -1 together
+// with the fingerprint of labels for the new stream.
+func (b *Batch) streamIndex(labels model.LabelSet) (int, model.Fingerprint) {
+	// With a single stream a direct comparison is cheaper than hashing.
+	if len(b.streams) == 1 && b.streams[0].Labels.Equal(labels) {
+		return 0, b.streams[0].fp
+	}
+
+	fp := labels.FastFingerprint()
+	i := slices.IndexFunc(b.streams, func(s Stream) bool {
+		return s.fp == fp && s.Labels.Equal(labels)
 	})
+	return i, fp
 }
 
 // FilterMap calls fn for each entry in the batch. fn returns the entry to keep
@@ -167,6 +175,8 @@ func (b *Batch) FilterMapStreams(fn func(stream Stream) (Stream, bool)) {
 			continue
 		}
 
+		// fp is not passed to fn, labels are unchanged so the stored fp is still valid.
+		stream.fp = b.streams[i].fp
 		b.streams[dst] = stream
 		dst++
 	}
@@ -222,11 +232,7 @@ func (b *Batch) Reset() {
 
 // NewStream creates a Stream that owns the provided labels and entries.
 func NewStream(labels model.LabelSet, entries ...push.Entry) Stream {
-	return Stream{
-		Labels:  labels,
-		Entries: entries,
-		created: time.Now().UnixMicro(),
-	}
+	return NewStreamWithCreatedUnixMicro(labels, time.Now().UnixMicro(), entries...)
 }
 
 func NewStreamWithCreatedUnixMicro(labels model.LabelSet, created int64, entries ...push.Entry) Stream {
@@ -246,6 +252,8 @@ type Stream struct {
 	// This is used to track how long it takes for a stream
 	// from it's source to being sent over the wire.
 	created int64
+	// fp is only valid for streams stored in a Batch.
+	fp model.Fingerprint
 }
 
 func (s Stream) Created() int64 {
@@ -266,6 +274,7 @@ func (s Stream) clone() Stream {
 		Labels:  s.Labels,
 		created: s.created,
 		Entries: make([]push.Entry, 0, len(s.Entries)),
+		fp:      s.fp,
 	}
 	for _, entry := range s.Entries {
 		e := push.Entry{

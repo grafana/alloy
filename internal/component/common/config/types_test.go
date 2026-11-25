@@ -205,7 +205,7 @@ func TestHTTPClientConfigOath2ClientCertificateKeyFile(t *testing.T) {
 	oauth2 {
 		client_id = "client_id"
 		grant_type = "urn:ietf:params:oauth:grant-type:jwt-bearer"
-		client_certificate_key_file = "%s"
+		client_certificate_key_file = %q
 		scopes = ["scope1", "scope2"]
 		token_url = "token_url"
 		endpoint_params = {"param1" = "value1", "param2" = "value2"}
@@ -248,7 +248,7 @@ func TestHTTPClientConfigOath2ClientCertificateMultipleOptions(t *testing.T) {
 		client_id = "client_id"
 		grant_type = "urn:ietf:params:oauth:grant-type:jwt-bearer"
 		client_certificate_key = %q
-		client_certificate_key_file = "%s"
+		client_certificate_key_file = %q
 		scopes = ["scope1", "scope2"]
 		token_url = "token_url"
 		endpoint_params = {"param1" = "value1", "param2" = "value2"}

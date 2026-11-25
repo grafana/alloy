@@ -1,12 +1,10 @@
 name: Integration Tests
 on:
-  # Run tests on main just so the module and build cache can be saved and used
-  # in PRs. This speeds up the time it takes to test PRs dramatically.
-  # (More information on https://docs.github.com/en/enterprise-server@3.6/actions/using-workflows/caching-dependencies-to-speed-up-workflows)
-  push:
-    branches:
-      - main
-  pull_request:
+  workflow_call:
+    inputs:
+      image_tag:
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -15,15 +13,25 @@ jobs:
   run_tests:
     runs-on: github-hosted-ubuntu-x64-large
     steps:
-    - name: Checkout code
-      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-      with:
-        persist-credentials: false
-    - name: Setup tools
-      uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
-      with:
-        version: v2026.5.18
-        sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
-        install_args: go
-    - name: Run tests
-      run: make integration-test-docker
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - name: Setup tools
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+        with:
+          version: v2026.5.18
+          sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
+          install_args: go
+      - name: Download Alloy image
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: alloy-ci-distroless-${{ inputs.image_tag }}
+      - name: Load Alloy image
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          docker load -i alloy-distroless.tar
+          docker tag "alloy-ci:${IMAGE_TAG}-distroless" alloy-integration-tests:latest
+      - name: Run tests
+        run: make integration-test-docker RUN_ARGS="--skip-base-build"
