@@ -365,7 +365,7 @@ func (t *TCPTransport) handleConnection(cn net.Conn) {
 
 	if t.config.SyslogFormat == scrapeconfig.SyslogFormatRaw {
 		delim := t.config.RawFormatOptions.Delimiter()
-		for msg, err := range syslogparser.IterStreamRaw(c, delim) {
+		for msg, err := range syslogparser.IterStreamRaw(c, delim, t.maxMessageLength()) {
 			cb(&syslog.Result{
 				Message: msg,
 				Error:   err,
@@ -528,7 +528,7 @@ func (t *UDPTransport) handleDatagram(msg datagram) {
 
 	if t.config.SyslogFormat == scrapeconfig.SyslogFormatRaw {
 		delim := t.config.RawFormatOptions.Delimiter()
-		for msg, err := range syslogparser.IterStreamRaw(r, delim) {
+		for msg, err := range syslogparser.IterStreamRaw(r, delim, t.maxMessageLength()) {
 			cb(&syslog.Result{
 				Message: msg,
 				Error:   err,

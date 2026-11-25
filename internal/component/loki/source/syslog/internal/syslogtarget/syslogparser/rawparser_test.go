@@ -6,15 +6,20 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/leodido/go-syslog/v4"
 	"github.com/stretchr/testify/require"
 )
 
-const delim = '\n'
+const (
+	delim            = '\n'
+	maxMessageLength = 8192
+)
 
 func TestReadLineRaw_OctetCounting(t *testing.T) {
 	cases := []struct {
@@ -54,7 +59,7 @@ func TestReadLineRaw_OctetCounting(t *testing.T) {
 			require.NoError(t, err)
 
 			i := 0
-			for got, err := range IterStreamRaw(inputs, delim) {
+			for got, err := range IterStreamRaw(inputs, delim, maxMessageLength) {
 				require.NoErrorf(t, err, "item: %d", i)
 				expect := expects[i]
 				require.Equalf(t, expect, got, "mismatch at index %d", i)
@@ -64,6 +69,62 @@ func TestReadLineRaw_OctetCounting(t *testing.T) {
 			if i != len(expects) {
 				t.Errorf("expected %d items, got %d", len(expects), i)
 			}
+		})
+	}
+}
+
+func TestIterStreamRaw_OctetCountingMaxLength(t *testing.T) {
+	cases := []struct {
+		label     string
+		input     string
+		maxLength int
+		expectErr string
+	}{
+		{
+			label:     "at limit",
+			input:     "5 <14>a",
+			maxLength: 5,
+		},
+		{
+			label:     "over limit",
+			input:     "5 <14>a",
+			maxLength: 4,
+			expectErr: "message length (5) exceeds maximum length (4)",
+		},
+		{
+			// Allocating a buffer of this length panics.
+			label:     "max int",
+			input:     fmt.Sprintf("%d x", math.MaxInt),
+			maxLength: maxMessageLength,
+			expectErr: fmt.Sprintf("message length (%d) exceeds maximum length (%d)", math.MaxInt, maxMessageLength),
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.label, func(t *testing.T) {
+			var (
+				msgs []*syslog.Base
+				errs []error
+			)
+			for got, err := range IterStreamRaw(strings.NewReader(tc.input), delim, tc.maxLength) {
+				if err != nil {
+					errs = append(errs, err)
+					continue
+				}
+				msgs = append(msgs, got)
+			}
+
+			if tc.expectErr != "" {
+				require.Empty(t, msgs)
+				require.Len(t, errs, 1)
+				require.EqualError(t, errs[0], tc.expectErr)
+				return
+			}
+
+			require.Empty(t, errs)
+			require.Len(t, msgs, 1)
+			require.Equal(t, "a", *msgs[0].Message)
+			require.Equal(t, uint8(14), *msgs[0].Priority)
 		})
 	}
 }
@@ -82,7 +143,7 @@ func TestIterStreamRaw_NonTransparentCEF(t *testing.T) {
 	require.NoError(t, err)
 
 	i := 0
-	for got, err := range IterStreamRaw(inputs, delim) {
+	for got, err := range IterStreamRaw(inputs, delim, maxMessageLength) {
 		require.NoErrorf(t, err, "item: %d", i)
 		expect := expects[i]
 		require.Equalf(t, expect, got, "mismatch at index %d", i)
@@ -142,7 +203,7 @@ func TestIterStreamRaw_NonTransparentTCP(t *testing.T) {
 	t.Cleanup(func() { client.Close() })
 
 	i := 0
-	for got, err := range IterStreamRaw(client, delim) {
+	for got, err := range IterStreamRaw(client, delim, maxMessageLength) {
 		require.NoErrorf(t, err, "item: %d", i)
 		expect := expects[i]
 		require.Equalf(t, expect, got, "mismatch at index %d", i)
