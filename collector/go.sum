@@ -1252,8 +1252,8 @@ github.com/grafana/cadvisor v0.0.0-20261027180521-39c571fbfcf6 h1:TIGnPCnE+g7Ucc
 github.com/grafana/cadvisor v0.0.0-20261027180521-39c571fbfcf6/go.mod h1:ShMYCWitWxCedSLVYLgHnmwA4j8P14bNHg+DpFIYdw0=
 github.com/grafana/cadvisor/lib v0.0.0-20261027180521-39c571fbfcf6 h1:foqL16ZBbniMd8W1qEIcG4bU9TFwGXRr8ZjfDX1YZw4=
 github.com/grafana/cadvisor/lib v0.0.0-20261027180521-39c571fbfcf6/go.mod h1:htHKT0OSYO6zaik+iLOo3Wj1mf/5l8uV5TJaqLz13oM=
-github.com/grafana/ckit v0.0.0-20260226120531-bbed30d6364e h1:XN6vpnyS0vur4R23ePYBgmU1GY9lPmf1jqWMFIdExS0=
-github.com/grafana/ckit v0.0.0-20260226120531-bbed30d6364e/go.mod h1:OUtfKg0lKXnJ6wNdgO6ubGmlDL7yFj2zZr5GYZQAxcw=
+github.com/grafana/ckit v0.0.0-20261125111442-36139162a68a h1:TP7FTGwTCYMYeDXdCotySJggbIhWEVd/d948ko2QyNg=
+github.com/grafana/ckit v0.0.0-20261125111442-36139162a68a/go.mod h1:OUtfKg0lKXnJ6wNdgO6ubGmlDL7yFj2zZr5GYZQAxcw=
 github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2 h1:qhugDMdQ4Vp68H0tp/0iN17DM2ehRo1rLEdOFe/gB8I=
 github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2/go.mod h1:w/aiO1POVIeXUQyl0VQSZjl5OAGDTL5aX+4v0RA1tcw=
 github.com/grafana/clusterurl v0.3.0 h1:fUryzdeUfIsC5th1fNLpt8KnZhtnN8OTEM3F/BXAelI=
