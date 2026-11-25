@@ -65,6 +65,8 @@ func (c *lruRelabelCache) close()   {}
 // ttlEntry's lbls is immutable after insertion (same input hash always
 // yields the same relabel output within a cache lifetime); expires is
 // atomic so Get can slide the TTL window without taking the write lock.
+// Expiry has whole-second resolution: the reaper only runs every ttl/4,
+// so anything finer would be lost anyway.
 type ttlEntry struct {
 	lbls    labels.Labels
 	expires atomic.Int64 // Unix seconds
@@ -86,7 +88,19 @@ type ttlRelabelCache struct {
 	peak int
 
 	ttl          time.Duration
+	ttlSec       int64
 	scanInterval time.Duration
+
+	// nowSec is a coarse copy of the wall clock in Unix seconds. get
+	// reads it instead of calling time.Now(): on hosts whose clocksource
+	// is not TSC (Xen pvclock, HPET, acpi_pm) a clock read costs
+	// hundreds of nanoseconds, which at ~100k samples/s made it the
+	// single largest cost of the component. The scan goroutine refreshes
+	// it once a second; add and scan also refresh it from the real clock
+	// they already read. An entry may therefore live up to one second
+	// longer than its nominal TTL, which is well inside the ttl/4 reaper
+	// lag.
+	nowSec atomic.Int64
 
 	evictions prometheus_client.Counter
 
@@ -117,13 +131,16 @@ func scanIntervalFor(ttl time.Duration) time.Duration {
 }
 
 func newTTLRelabelCache(ttl time.Duration, evictions prometheus_client.Counter) *ttlRelabelCache {
-	return &ttlRelabelCache{
+	c := &ttlRelabelCache{
 		entries:      make(map[uint64]*ttlEntry),
 		ttl:          ttl,
+		ttlSec:       max(int64(ttl/time.Second), 1),
 		scanInterval: scanIntervalFor(ttl),
 		evictions:    evictions,
 		closeCh:      make(chan struct{}),
 	}
+	c.nowSec.Store(time.Now().Unix())
+	return c
 }
 
 func (c *ttlRelabelCache) get(hash uint64) (labels.Labels, bool) {
@@ -133,13 +150,16 @@ func (c *ttlRelabelCache) get(hash uint64) (labels.Labels, bool) {
 	if !ok {
 		return labels.EmptyLabels(), false
 	}
-	// Slide the TTL window forward without upgrading to the write lock.
-	entry.expires.Store(time.Now().Add(c.ttl).Unix())
+	// Slide the TTL window forward without upgrading to the write lock
+	// and without reading the clock: this runs once per sample on a hit.
+	entry.expires.Store(c.nowSec.Load() + c.ttlSec)
 	return entry.lbls, true
 }
 
 func (c *ttlRelabelCache) add(hash uint64, lbls labels.Labels) {
-	expires := time.Now().Add(c.ttl).Unix()
+	now := time.Now()
+	c.nowSec.Store(now.Unix())
+	expires := now.Add(c.ttl).Unix()
 	c.mu.Lock()
 	if existing, ok := c.entries[hash]; ok {
 		// Concurrent miss: keep lbls immutable and just refresh expiry.
@@ -168,18 +188,23 @@ func (c *ttlRelabelCache) len() int {
 	return len(c.entries)
 }
 
-// start spawns the background scan goroutine. Idempotent.
+// start spawns the background goroutine that refreshes the coarse clock
+// every second and runs the scan every scanInterval. Idempotent.
 func (c *ttlRelabelCache) start() {
 	c.startOnce.Do(func() {
 		c.scanWG.Add(1)
 		go func() {
 			defer c.scanWG.Done()
+			clock := time.NewTicker(time.Second)
+			defer clock.Stop()
 			t := time.NewTicker(c.scanInterval)
 			defer t.Stop()
 			for {
 				select {
 				case <-c.closeCh:
 					return
+				case now := <-clock.C:
+					c.nowSec.Store(now.Unix())
 				case now := <-t.C:
 					c.scan(now)
 				}
@@ -199,6 +224,7 @@ func (c *ttlRelabelCache) close() {
 // far enough below its peak to make the reclaim worthwhile.
 func (c *ttlRelabelCache) scan(now time.Time) {
 	nowSec := now.Unix()
+	c.nowSec.Store(nowSec)
 	// Phase 1: collect expired keys under RLock. Also peek at the
 	// shrink condition so a drain-only cycle (entries removed via stale
 	// markers, nothing expired) still triggers the write lock.

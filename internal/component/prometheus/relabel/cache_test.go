@@ -133,13 +133,16 @@ func TestTTLRelabelCache_StaleRemove(t *testing.T) {
 func TestTTLRelabelCache_GetSlidesExpiry(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		c := newTTLRelabelCache(time.Minute, newTestEvictionsCounter())
+		c.start()
 		defer c.close()
 
 		c.add(1, labels.FromStrings("a", "b"))
 
 		// Halfway through the TTL: still a hit, and the Get slides
-		// expiry from t=60s out to t=90s.
+		// expiry from t=60s out to t=90s. Wait lets the clock ticker
+		// observe t=30s before the Get reads it.
 		time.Sleep(30 * time.Second)
+		synctest.Wait()
 		_, ok := c.get(1)
 		require.True(t, ok)
 
@@ -188,6 +191,7 @@ func TestShouldShrink(t *testing.T) {
 func TestTTLRelabelCache_ScanRebuildsAfterDrain(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		c := newTTLRelabelCache(time.Minute, newTestEvictionsCounter())
+		c.start()
 		defer c.close()
 
 		// Fill past the 1M-tier boundary, then let everything expire
@@ -277,6 +281,7 @@ func TestTTLRelabelCache_ScanLeavesActiveEntries(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		evictions := newTestEvictionsCounter()
 		c := newTTLRelabelCache(time.Minute, evictions)
+		c.start()
 		defer c.close()
 
 		c.add(1, labels.FromStrings("a", "b"))
@@ -293,4 +298,63 @@ func TestTTLRelabelCache_ScanLeavesActiveEntries(t *testing.T) {
 		require.Equal(t, 1, c.len())
 		require.Equal(t, float64(0), counterVal(t, evictions))
 	})
+}
+
+// TestTTLRelabelCache_GetUsesCoarseClock asserts that a hit slides the
+// expiry from the once-a-second cached clock rather than from a fresh
+// time.Now(): the result lands on the current second plus the TTL.
+func TestTTLRelabelCache_GetUsesCoarseClock(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		c := newTTLRelabelCache(time.Minute, newTestEvictionsCounter())
+		c.start()
+		defer c.close()
+
+		c.add(1, labels.FromStrings("a", "b"))
+		time.Sleep(30 * time.Second)
+		synctest.Wait()
+
+		_, ok := c.get(1)
+		require.True(t, ok)
+
+		c.mu.RLock()
+		expires := c.entries[1].expires.Load()
+		c.mu.RUnlock()
+		require.Equal(t, time.Now().Unix()+60, expires, "expiry slides from the cached clock")
+	})
+}
+
+// TestTTLRelabelCache_GetSlidesBeforeStart covers the window between
+// construction and start, when nothing refreshes the cached clock yet:
+// the constructor seeds it, and add refreshes it, so a Get still slides
+// the expiry to a sane value.
+func TestTTLRelabelCache_GetSlidesBeforeStart(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		c := newTTLRelabelCache(time.Minute, newTestEvictionsCounter())
+		defer c.close()
+
+		time.Sleep(10 * time.Second)
+		c.add(1, labels.FromStrings("a", "b"))
+		_, ok := c.get(1)
+		require.True(t, ok)
+
+		c.mu.RLock()
+		expires := c.entries[1].expires.Load()
+		c.mu.RUnlock()
+		require.Equal(t, time.Now().Unix()+60, expires, "add refreshes the cached clock")
+	})
+}
+
+func BenchmarkTTLRelabelCache_Get(b *testing.B) {
+	c := newTTLRelabelCache(time.Minute, newTestEvictionsCounter())
+	c.start()
+	defer c.close()
+	c.add(1, labels.FromStrings("a", "b"))
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if _, ok := c.get(1); !ok {
+			b.Fatal("expected a hit")
+		}
+	}
 }
