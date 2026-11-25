@@ -18,4 +18,6 @@ func (n *Nop) PutString(path string, labels string, pos string) {}
 
 func (n *Nop) Remove(path string, labels string) {}
 
+func (n *Nop) RemoveIf(drop func(Entry) bool) {}
+
 func (n *Nop) Stop() {}
