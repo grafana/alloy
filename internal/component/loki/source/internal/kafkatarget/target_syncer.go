@@ -52,27 +52,9 @@ func NewSyncer(
 	if err := validateConfig(&cfg); err != nil {
 		return nil, err
 	}
-	version, err := sarama.ParseKafkaVersion(cfg.KafkaConfig.Version)
+	config, err := newSaramaConfig(cfg)
 	if err != nil {
 		return nil, err
-	}
-	config := sarama.NewConfig()
-	config.Version = version
-	config.Consumer.Offsets.Initial = sarama.OffsetOldest
-
-	switch cfg.KafkaConfig.Assignor {
-	case sarama.StickyBalanceStrategyName:
-		config.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategySticky()
-	case sarama.RoundRobinBalanceStrategyName:
-		config.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategyRoundRobin()
-	case sarama.RangeBalanceStrategyName, "":
-		config.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategyRange()
-	default:
-		return nil, fmt.Errorf("unrecognized consumer group partition assignor: %s", cfg.KafkaConfig.Assignor)
-	}
-	config, err = withAuthentication(*config, cfg.KafkaConfig.Authentication)
-	if err != nil {
-		return nil, fmt.Errorf("error setting up kafka authentication: %w", err)
 	}
 	client, err := sarama.NewClient(cfg.KafkaConfig.Brokers, config)
 	if err != nil {
@@ -111,6 +93,36 @@ func NewSyncer(
 	t.discoverer = t
 	t.loop()
 	return t, nil
+}
+
+// newSaramaConfig builds the Sarama client configuration used by both the
+// client and the consumer group.
+func newSaramaConfig(cfg Config) (*sarama.Config, error) {
+	version, err := sarama.ParseKafkaVersion(cfg.KafkaConfig.Version)
+	if err != nil {
+		return nil, err
+	}
+	config := sarama.NewConfig()
+	config.Version = version
+	config.Consumer.Offsets.Initial = sarama.OffsetOldest
+	config.RackID = cfg.KafkaConfig.RackID
+
+	switch cfg.KafkaConfig.Assignor {
+	case sarama.StickyBalanceStrategyName:
+		config.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategySticky()
+	case sarama.RoundRobinBalanceStrategyName:
+		config.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategyRoundRobin()
+	case sarama.RangeBalanceStrategyName, "":
+		config.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategyRange()
+	default:
+		return nil, fmt.Errorf("unrecognized consumer group partition assignor: %s", cfg.KafkaConfig.Assignor)
+	}
+
+	config, err = withAuthentication(*config, cfg.KafkaConfig.Authentication)
+	if err != nil {
+		return nil, fmt.Errorf("error setting up kafka authentication: %w", err)
+	}
+	return config, nil
 }
 
 func withAuthentication(cfg sarama.Config, authCfg Authentication) (*sarama.Config, error) {
