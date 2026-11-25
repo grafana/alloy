@@ -13,12 +13,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	cerrdefs "github.com/containerd/errdefs"
+	"github.com/grafana/dskit/backoff"
 	"github.com/moby/moby/api/pkg/stdcopy"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
@@ -35,6 +37,8 @@ import (
 )
 
 const restartInterval = 20 * time.Millisecond
+
+var testRestartBackoff = backoff.Config{MinBackoff: restartInterval, MaxBackoff: restartInterval}
 
 func TestTailer(t *testing.T) {
 	server := newDockerServer(t)
@@ -62,7 +66,7 @@ func TestTailer(t *testing.T) {
 		model.LabelSet{"job": "docker"},
 		[]*relabel.Config{},
 		client,
-		restartInterval,
+		testRestartBackoff,
 		func() bool { return false },
 	)
 	require.NoError(t, err)
@@ -105,57 +109,6 @@ func TestTailer(t *testing.T) {
 	assert.EventuallyWithT(t, func(c *assert.CollectT) {
 		assertExpectedLog(c, entryHandler, expectedLinesAfterRestart)
 	}, 5*time.Second, 100*time.Millisecond, "Expected log lines after restart were not found within the time limit.")
-}
-
-func TestTailerStartStopStressTest(t *testing.T) {
-	server := newDockerServer(t)
-	defer server.Close()
-
-	var (
-		logger       = logging.NewSlogNop()
-		entryHandler = loki.NewCollectingHandler()
-	)
-
-	ps, err := positions.New(logger, positions.Config{
-		Path: t.TempDir() + "/positions.yml",
-	})
-	require.NoError(t, err)
-
-	client, err := client.New(client.WithHost(server.URL))
-	require.NoError(t, err)
-
-	tgt, err := newTailer(
-		newMetrics(prometheus.NewRegistry()),
-		logger,
-		entryHandler.Receiver(),
-		ps,
-		"flog",
-		model.LabelSet{"job": "docker"},
-		[]*relabel.Config{},
-		client,
-		restartInterval,
-		func() bool { return false },
-	)
-	require.NoError(t, err)
-
-	tgt.startIfNotRunning(t.Context())
-
-	// Stress test the concurrency of StartIfNotRunning and Stop
-	wg := sync.WaitGroup{}
-	for range 1000 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			tgt.startIfNotRunning(t.Context())
-		}()
-
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			tgt.stop()
-		}()
-	}
-	wg.Wait()
 }
 
 func TestTailerRestart(t *testing.T) {
@@ -286,8 +239,6 @@ func TestTailerConsumeLines(t *testing.T) {
 			positions:         positions.NewNop(),
 			containerID:       "test",
 			metrics:           newMetrics(prometheus.DefaultRegisterer),
-			running:           true,
-			wg:                sync.WaitGroup{},
 			last:              atomic.NewInt64(0),
 			since:             atomic.NewInt64(0),
 			componentStopping: func() bool { return false },
@@ -298,7 +249,6 @@ func TestTailerConsumeLines(t *testing.T) {
 		_, err := writer.Write([]byte("2023-12-09T12:00:00.000000000Z \n2023-12-09T12:00:00.000000000Z line\n"))
 		require.NoError(t, err)
 
-		tailer.wg.Add(3)
 		go func() {
 			tailer.processLoop(t.Context(), false, newStringReader(bb.String()))
 		}()
@@ -325,8 +275,6 @@ func TestTailerConsumeLines(t *testing.T) {
 			positions:         positions.NewNop(),
 			containerID:       "test",
 			metrics:           newMetrics(prometheus.DefaultRegisterer),
-			running:           true,
-			wg:                sync.WaitGroup{},
 			last:              atomic.NewInt64(0),
 			since:             atomic.NewInt64(0),
 			componentStopping: func() bool { return false },
@@ -343,8 +291,6 @@ func TestTailerConsumeLines(t *testing.T) {
 
 		_, err = writer.Write([]byte("2023-12-09T12:00:00.000000000Z next line\n"))
 		require.NoError(t, err)
-
-		tailer.wg.Add(3)
 
 		go func() {
 			tailer.processLoop(t.Context(), false, newStringReader(bb.String()))
@@ -463,7 +409,7 @@ func assertExpectedLog(c *assert.CollectT, entryHandler *loki.CollectingHandler,
 	logLines := entryHandler.Received()
 	testLogLines := make(map[string]int)
 	for _, l := range logLines {
-		if containsString(expectedLines, l.Line) {
+		if slices.Contains(expectedLines, l.Line) {
 			testLogLines[l.Line] += 1
 		}
 	}
@@ -473,15 +419,6 @@ func assertExpectedLog(c *assert.CollectT, entryHandler *loki.CollectingHandler,
 	for _, v := range testLogLines {
 		assert.Equal(c, v, 1)
 	}
-}
-
-func containsString(slice []string, str string) bool {
-	for _, item := range slice {
-		if item == str {
-			return true
-		}
-	}
-	return false
 }
 
 func setupTailer(t *testing.T, client clientMock) (*tailer, *loki.CollectingHandler) {
@@ -504,7 +441,7 @@ func setupTailer(t *testing.T, client clientMock) (*tailer, *loki.CollectingHand
 		model.LabelSet{"job": "docker"},
 		[]*relabel.Config{},
 		client,
-		restartInterval,
+		testRestartBackoff,
 		func() bool { return false },
 	)
 	require.NoError(t, err)
@@ -632,18 +569,16 @@ func TestTailerStartStopsWhenContextIsCanceled(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		tailer.startIfNotRunning(ctx)
+		tailer.tail(ctx)
 		close(done)
 	}()
 
 	select {
 	case <-done:
 	case <-time.After(5 * time.Second):
-		t.Fatal("startIfNotRunning did not return after its context was canceled")
+		t.Fatal("tail did not return after its context was canceled")
 	}
 
-	tailer.mu.Lock()
-	defer tailer.mu.Unlock()
-	require.False(t, tailer.running)
-	require.NoError(t, tailer.err, "a canceled start is a normal stop, not an error")
+	require.False(t, tailer.running.Load())
+	require.NoError(t, tailer.err.Load(), "a canceled tail is a normal stop, not an error")
 }

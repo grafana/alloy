@@ -237,7 +237,7 @@ func (c *Component) Update(args component.Arguments) error {
 				target.labels,
 				c.rcs,
 				c.client,
-				5*time.Second,
+				restartBackoff,
 				func() bool { return c.exited.Load() },
 			)
 		},
