@@ -2,7 +2,6 @@ package otelcolconvert
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/connector/spanmetrics"
@@ -53,101 +52,10 @@ func toSpanmetricsConnector(state *State, id componentstatus.InstanceID, cfg *sp
 		nextMetrics = state.Next(id, pipeline.SignalMetrics)
 	)
 
-	var exponential *spanmetrics.ExponentialHistogramConfig
-	if cfg.Histogram.Exponential.HasValue() {
-		exponential = &spanmetrics.ExponentialHistogramConfig{
-			MaxSize: cfg.Histogram.Exponential.Get().MaxSize,
-		}
+	args := spanmetrics.ArgumentsFromUpstream(cfg)
+	args.Output = &otelcol.ConsumerArguments{
+		Metrics: ToTokenizedConsumers(nextMetrics),
 	}
-
-	var explicit *spanmetrics.ExplicitHistogramConfig
-	if cfg.Histogram.Explicit.HasValue() {
-		explicit = &spanmetrics.ExplicitHistogramConfig{
-			Buckets: cfg.Histogram.Explicit.Get().Buckets,
-		}
-	}
-
-	// If none have been explicitly set, assign the upstream default.
-	if exponential == nil && explicit == nil {
-		explicit = &spanmetrics.ExplicitHistogramConfig{Buckets: []time.Duration{}}
-		explicit.SetToDefault()
-	}
-
-	var dimensions []spanmetrics.Dimension
-	for _, d := range cfg.Dimensions {
-		dimensions = append(dimensions, spanmetrics.Dimension{
-			Name:    d.Name,
-			Default: d.Default,
-			Glob:    d.Glob,
-		})
-	}
-
-	var callsDimensions []spanmetrics.Dimension
-	for _, d := range cfg.CallsDimensions {
-		callsDimensions = append(callsDimensions, spanmetrics.Dimension{
-			Name:    d.Name,
-			Default: d.Default,
-			Glob:    d.Glob,
-		})
-	}
-
-	var histogramDimensions []spanmetrics.Dimension
-	for _, d := range cfg.Histogram.Dimensions {
-		histogramDimensions = append(histogramDimensions, spanmetrics.Dimension{
-			Name:    d.Name,
-			Default: d.Default,
-			Glob:    d.Glob,
-		})
-	}
-
-	var eventDimensions []spanmetrics.Dimension
-	for _, d := range cfg.Dimensions {
-		eventDimensions = append(eventDimensions, spanmetrics.Dimension{
-			Name:    d.Name,
-			Default: d.Default,
-			Glob:    d.Glob,
-		})
-	}
-
-	timestampCacheSize := spanmetrics.DefaultArguments.TimestampCacheSize
-	if cfg.TimestampCacheSize != nil {
-		timestampCacheSize = *cfg.TimestampCacheSize
-	}
-
-	return &spanmetrics.Arguments{
-		Dimensions:             dimensions,
-		CallsDimensions:        callsDimensions,
-		ExcludeDimensions:      cfg.ExcludeDimensions,
-		DimensionsCacheSize:    cfg.DimensionsCacheSize,
-		AggregationTemporality: spanmetrics.FromOTelAggregationTemporality(cfg.AggregationTemporality),
-		Histogram: spanmetrics.HistogramConfig{
-			Disable:     cfg.Histogram.Disable,
-			Unit:        cfg.Histogram.Unit.String(),
-			Exponential: exponential,
-			Explicit:    explicit,
-			Dimensions:  histogramDimensions,
-		},
-		MetricsFlushInterval:         cfg.MetricsFlushInterval,
-		MetricsExpiration:            cfg.MetricsExpiration,
-		TimestampCacheSize:           timestampCacheSize,
-		Namespace:                    cfg.Namespace,
-		ResourceMetricsCacheSize:     cfg.ResourceMetricsCacheSize,
-		AggregationCardinalityLimit:  cfg.AggregationCardinalityLimit,
-		ResourceMetricsKeyAttributes: cfg.ResourceMetricsKeyAttributes,
-		Exemplars: spanmetrics.ExemplarsConfig{
-			Enabled:         cfg.Exemplars.Enabled,
-			MaxPerDataPoint: cfg.Exemplars.MaxPerDataPoint,
-		},
-		Events: spanmetrics.EventsConfig{
-			Enabled:    cfg.Events.Enabled,
-			Dimensions: eventDimensions,
-		},
-		IncludeInstrumentationScope: cfg.IncludeInstrumentationScope,
-
-		Output: &otelcol.ConsumerArguments{
-			Metrics: ToTokenizedConsumers(nextMetrics),
-		},
-
-		DebugMetrics: common.DefaultValue[spanmetrics.Arguments]().DebugMetrics,
-	}
+	args.DebugMetrics = common.DefaultValue[spanmetrics.Arguments]().DebugMetrics
+	return &args
 }
