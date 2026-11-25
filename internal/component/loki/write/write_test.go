@@ -17,6 +17,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
+	"golang.org/x/time/rate"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -717,8 +718,9 @@ func newFakeWALComponent(t *testing.T, pipelineV2 bool, failures int64) (*Compon
 			Logger:     logging.NewSlogNop(),
 			Registerer: prometheus.NewRegistry(),
 		},
-		pipelineV2: pipelineV2,
-		wal:        wl,
+		pipelineV2:   pipelineV2,
+		wal:          wl,
+		retryWarning: rate.NewLimiter(rate.Every(10*time.Second), 1),
 	}
 
 	c.stopCtx, c.stop = context.WithCancel(context.Background())

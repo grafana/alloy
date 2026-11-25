@@ -12,6 +12,7 @@ import (
 
 	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/common/model"
+	"golang.org/x/time/rate"
 
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/component"
@@ -57,6 +58,9 @@ type Component struct {
 	stopCtx context.Context
 	stop    context.CancelFunc
 
+	// retryWarning limits how often a failed write is logged while Consume retries it.
+	retryWarning *rate.Limiter
+
 	mut            sync.RWMutex
 	args           Arguments
 	externalLabels model.LabelSet
@@ -77,8 +81,9 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 
 	c := &Component{
-		opts:       o,
-		pipelineV2: svc.(lokipipelinev2.Data).PipelineV2Enabled(),
+		opts:         o,
+		pipelineV2:   svc.(lokipipelinev2.Data).PipelineV2Enabled(),
+		retryWarning: rate.NewLimiter(rate.Every(10*time.Second), 1),
 	}
 
 	c.stopCtx, c.stop = context.WithCancel(context.Background())
@@ -317,8 +322,9 @@ func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
 			})
 		}
 
-		// TODO(kalleep): Errors should be logged at warning level but also use rate limiting so we don't flood logs.
-		c.opts.Logger.Debug("failed to write batch, retrying", "attempt", bo.NumRetries()+1, "err", err)
+		if c.retryWarning.Allow() {
+			c.opts.Logger.Warn("failed to write batch, retrying", "attempt", bo.NumRetries()+1, "err", err)
+		}
 		bo.Wait()
 	}
 }
@@ -375,7 +381,9 @@ func (c *Component) consumeEntry(ctx context.Context, e loki.Entry) {
 			})
 		}
 
-		c.opts.Logger.Debug("failed to write entry, retrying", "attempt", bo.NumRetries()+1, "err", err)
+		if c.retryWarning.Allow() {
+			c.opts.Logger.Warn("failed to write entry, retrying", "attempt", bo.NumRetries()+1, "err", err)
+		}
 		bo.Wait()
 	}
 }
