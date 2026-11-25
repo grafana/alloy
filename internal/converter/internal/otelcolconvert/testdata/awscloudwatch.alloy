@@ -14,8 +14,25 @@ otelcol.receiver.awscloudwatch "default" {
 		initial_lookback = "45m0s"
 	}
 
+	metrics {
+		query {
+			namespace   = "AWS/EC2"
+			metric_name = "CPUUtilization"
+			dimensions  = {
+				InstanceId = "i-1234567890abcdef0",
+			}
+			stats = ["Average", "p99"]
+		}
+
+		query {
+			namespace   = "AWS/DynamoDB"
+			metric_name = "SuccessfulRequestLatency"
+		}
+	}
+
 	output {
-		logs = [otelcol.exporter.otlp.default.input]
+		metrics = [otelcol.exporter.otlp.default.input]
+		logs    = [otelcol.exporter.otlp.default.input]
 	}
 }
 
