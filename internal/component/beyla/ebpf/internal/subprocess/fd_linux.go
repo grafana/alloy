@@ -27,6 +27,17 @@ func WriteAll(fd int, data []byte) error {
 	return nil
 }
 
+func fdAtOrAbove(fd, minFD int) (int, error) {
+	if fd >= minFD {
+		return fd, nil
+	}
+
+	dup, err := unix.FcntlInt(uintptr(fd), unix.F_DUPFD_CLOEXEC, minFD)
+	unix.Close(fd)
+
+	return dup, err
+}
+
 func createExecMemfd(name string) (int, error) {
 	// MFD_EXEC is required on kernels >= 6.3 when vm.memfd_noexec > 0
 	fd, err := unix.MemfdCreate(name, unix.MFD_CLOEXEC|unix.MFD_EXEC)

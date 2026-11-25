@@ -184,9 +184,15 @@ func retrieveAPIEndpoint(httpClient http.Client, srvAddress, endpoint string) ([
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return nil, fmt.Errorf("unexpected status %q from %s", resp.Status, url)
+	}
+
 	res, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("reading response from %s: %w", url, err)
 	}
 
 	return res, nil

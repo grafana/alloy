@@ -90,16 +90,32 @@ This approach ensures more consistent resource utilization across your deploymen
 
 ### Use `--cluster.wait-for-size`, but with caution
 
-When you use clustering in a deployment where a single instance can't handle the entire load, use the `--cluster.wait-for-size` flag to ensure a minimum cluster size before accepting traffic.
-However, leave a significant safety margin when you configure this value by setting it significantly smaller than your typical expected operational number of instances.
-When this condition isn't met, the instances stop processing traffic in cluster-enabled components, so it's important to leave room for any unexpected events.
+Use the `--cluster.wait-for-size` flag when a single instance can't handle the entire load.
+The flag sets a minimum cluster size.
+Until the cluster reaches this size, instances don't process traffic in cluster-enabled components.
+This stops the first instance that starts from receiving all the traffic.
 
-For example, if you're using Horizontal Pod Autoscalers (HPA) or PodDisruptionBudgets (PDB) in Kubernetes, set the `--cluster.wait-for-size` flag to a value well below what your HPA and PDB minimums allow.
-This prevents traffic from stopping when Kubernetes instance counts temporarily drop below these thresholds during normal operations like Pod termination or rolling updates.
+The minimum cluster size only applies at startup.
+After an instance sees the cluster reach the minimum size, it keeps processing traffic.
+This is true even if the cluster shrinks below the minimum size later.
+The remaining instances then process the extra load.
 
-It's recommended to use the `--cluster.wait-timeout` flag to set a reasonable timeout for the waiting period to limit the impact of potential misconfiguration.
-You can base the timeout duration on how quickly you expect your orchestration or incident response team to provision the required number of instances.
-Be aware that when the timeout passes, the cluster may be too small to handle traffic and can run into further issues.
+Set the minimum cluster size well below the number of instances you usually run.
+A large minimum cluster size makes startup slower, because instances wait for more peers.
+For example, if you use Horizontal Pod Autoscalers (HPA) or PodDisruptionBudgets (PDB) in Kubernetes, set the value well below the HPA and PDB minimums.
+
+A cluster that runs below the minimum size is degraded or misconfigured.
+In this state, a new instance that joins the cluster waits for the cluster to reach the minimum size.
+The other instances continue to process traffic.
+The new instance doesn't process its share of the traffic until the wait ends.
+The wait ends when your environment starts enough instances to reach the minimum size, or when the wait timeout passes.
+
+Use the `--cluster.wait-timeout` flag to set a maximum wait time.
+This limits the impact of a misconfiguration or a cluster that can't grow.
+Set the timeout to a duration within which your environment can start the minimum number of instances.
+For example, in a Kubernetes cluster with free node capacity, new Pods usually start in a few minutes.
+A timeout of 15 minutes is generous for most environments, but 5 minutes can be too short for some.
+When the timeout passes, the cluster can be too small to handle the traffic and can have more issues.
 
 ### Don't enable clustering if you don't need it
 
