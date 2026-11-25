@@ -110,7 +110,7 @@ func TestLokiSourceAPI_Simple(t *testing.T) {
 	defer lokiClient.Stop()
 
 	now := time.Now()
-	require.NoError(t, lokiClient.ConsumeEntry(
+	require.NoError(t, lokiClient.ConsumeV1(
 		ctx,
 		loki.NewEntry(
 			model.LabelSet{"source": "test"},
@@ -155,7 +155,7 @@ func TestLokiSourceAPI_Update(t *testing.T) {
 	defer lokiClient.Stop()
 
 	now := time.Now()
-	require.NoError(t, lokiClient.ConsumeEntry(
+	require.NoError(t, lokiClient.ConsumeV1(
 		ctx,
 		loki.NewEntry(
 			model.LabelSet{"source": "test"},
@@ -184,7 +184,7 @@ func TestLokiSourceAPI_Update(t *testing.T) {
 
 	receiver.Clear()
 
-	require.NoError(t, lokiClient.ConsumeEntry(
+	require.NoError(t, lokiClient.ConsumeV1(
 		ctx,
 		loki.NewEntry(
 			model.LabelSet{"source": "test"},
@@ -236,7 +236,7 @@ func TestLokiSourceAPI_FanOut(t *testing.T) {
 
 	const messagesCount = 100
 	for i := range messagesCount {
-		require.NoError(t, lokiClient.ConsumeEntry(
+		require.NoError(t, lokiClient.ConsumeV1(
 			ctx,
 			loki.NewEntry(
 				model.LabelSet{"source": "test"},
@@ -379,7 +379,7 @@ func TestLokiSourceAPI_TLS(t *testing.T) {
 
 	require.NoError(
 		t,
-		lokiClient.ConsumeEntry(
+		lokiClient.ConsumeV1(
 			ctx,
 			loki.NewEntry(
 				model.LabelSet{"source": "test"},
