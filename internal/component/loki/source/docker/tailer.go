@@ -96,7 +96,7 @@ func (t *tailer) Run(ctx, stop context.Context) {
 
 	for bo.Ongoing() {
 		start := time.Now()
-		t.tail(ctx)
+		t.tail(ctx, stop)
 		// Only short-lived sessions can cause a tight restart loop, so a
 		// session that outlived the maximum backoff resets it.
 		if time.Since(start) >= t.restartBackoff.MaxBackoff {
@@ -143,7 +143,8 @@ func (t *tailer) waitForRestart(ctx context.Context, bo *backoff.Backoff) bool {
 }
 
 // tail reads container logs until the log stream ends or ctx is canceled.
-func (t *tailer) tail(ctx context.Context) {
+// Entries not yet forwarded when stop is canceled are dropped.
+func (t *tailer) tail(ctx, stop context.Context) {
 	t.running.Store(true)
 	defer t.running.Store(false)
 	t.logger.Info("starting tailing container")
@@ -174,7 +175,7 @@ func (t *tailer) tail(ctx context.Context) {
 		return
 	}
 
-	t.processLoop(ctx, info.Container.Config.Tty, reader)
+	t.processLoop(ctx, stop, info.Container.Config.Tty, reader)
 	t.logger.Info("stopped tailing container")
 }
 
@@ -205,7 +206,7 @@ func (t *tailer) DebugInfo() sourceInfo {
 }
 
 // processLoop reads reader until it ends or ctx is canceled.
-func (t *tailer) processLoop(ctx context.Context, tty bool, reader io.ReadCloser) {
+func (t *tailer) processLoop(ctx, stop context.Context, tty bool, reader io.ReadCloser) {
 	defer reader.Close()
 	stopClose := context.AfterFunc(ctx, func() { reader.Close() })
 	defer stopClose()
@@ -244,14 +245,20 @@ func (t *tailer) processLoop(ctx context.Context, tty bool, reader io.ReadCloser
 		}
 	})
 
-	wg.Go(func() { t.processStream(rstdout, t.getStreamLabels("stdout")) })
-	wg.Go(func() { t.processStream(rstderr, t.getStreamLabels("stderr")) })
+	wg.Go(func() {
+		defer rstdout.Close()
+		t.processStream(stop, rstdout, t.getStreamLabels("stdout"))
+	})
+	wg.Go(func() {
+		defer rstderr.Close()
+		t.processStream(stop, rstderr, t.getStreamLabels("stderr"))
+	})
 
 	wg.Wait()
 	t.logger.Debug("done processing Docker logs")
 }
 
-func (t *tailer) processStream(r io.Reader, logStreamLset model.LabelSet) {
+func (t *tailer) processStream(stop context.Context, r io.Reader, logStreamLset model.LabelSet) {
 	const (
 		// initialBufSize is the size that bufio.Scanner would allocate without a Buffer call.
 		initialBufSize = 4096
@@ -304,10 +311,14 @@ func (t *tailer) processStream(r io.Reader, logStreamLset model.LabelSet) {
 			continue
 		}
 
-		t.recv.Chan() <- loki.NewEntry(logStreamLset, push.Entry{
+		select {
+		case t.recv.Chan() <- loki.NewEntry(logStreamLset, push.Entry{
 			Timestamp: ts,
 			Line:      string(content),
-		})
+		}):
+		case <-stop.Done():
+			return
+		}
 		t.metrics.dockerEntries.Inc()
 
 		// NOTE(@tpaschalis) We don't save the positions entry with the

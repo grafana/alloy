@@ -144,13 +144,10 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
+		c.mut.Lock()
+		defer c.mut.Unlock()
+		c.scheduler.Stop()
 		c.posFile.Stop()
-
-		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
-			c.mut.Lock()
-			defer c.mut.Unlock()
-			c.scheduler.Stop()
-		})
 	}()
 
 	// Start consume and fanout loop

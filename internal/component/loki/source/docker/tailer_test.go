@@ -177,7 +177,7 @@ func TestTailerConsumeLines(t *testing.T) {
 		require.NoError(t, err)
 
 		go func() {
-			tailer.processLoop(t.Context(), false, newStringReader(bb.String()))
+			tailer.processLoop(t.Context(), t.Context(), false, newStringReader(bb.String()))
 		}()
 
 		require.Eventually(t, func() bool {
@@ -219,7 +219,7 @@ func TestTailerConsumeLines(t *testing.T) {
 		require.NoError(t, err)
 
 		go func() {
-			tailer.processLoop(t.Context(), false, newStringReader(bb.String()))
+			tailer.processLoop(t.Context(), t.Context(), false, newStringReader(bb.String()))
 		}()
 
 		require.Eventually(t, func() bool {
@@ -355,7 +355,7 @@ func TestTailerStartStopsWhenContextIsCanceled(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		tailer.tail(ctx)
+		tailer.tail(ctx, ctx)
 		close(done)
 	}()
 

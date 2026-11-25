@@ -144,6 +144,56 @@ func TestComponentUpdateDoesNotReread(t *testing.T) {
 	})
 }
 
+func TestComponentStopWhileBlocked(t *testing.T) {
+	lokitest.TestV1(t, func(t *testing.T, env lokitest.Env) {
+		base := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+		server := dockertest.NewServer(t)
+		server.AddContainer("flog")
+		server.Log("flog", base, "line 1")
+		server.Log("flog", base.Add(time.Second), "line 2")
+
+		recv := env.NewReceiver(t)
+
+		args := GetDefaultArguments()
+		args.Host = server.URL
+		args.Targets = []discovery.Target{discovery.NewTargetFromMap(map[string]string{dockerLabelContainerID: "flog"})}
+		args.ForwardTo = []loki.LogsReceiver{recv}
+
+		ctrl, stop := env.Run(t, "loki.source.docker", args)
+
+		require.Equal(t, []string{"line 1", "line 2"}, entryLines(recv.Next(t, 2)))
+
+		// The receiver holds back the next lines, so the tailer blocks forwarding them.
+		recv.Pause()
+		server.Log("flog", base.Add(2*time.Second), "line 3")
+		server.Log("flog", base.Add(3*time.Second), "line 4")
+		server.Log("flog", base.Add(4*time.Second), "line 5")
+
+		c, err := ctrl.GetComponent()
+		require.NoError(t, err)
+		posFile := c.(*Component).posFile
+		key := `{__meta_docker_container_id="flog"}`
+
+		// Wait until line 3 has been handed off. The tailer is then blocked
+		// forwarding a later line.
+		require.Eventually(t, func() bool {
+			pos, err := posFile.Get(positions.CursorKey("flog"), key)
+			return err == nil && pos >= base.Add(2*time.Second).Unix()
+		}, 5*time.Second, 10*time.Millisecond)
+
+		// Stopping waits for the component to exit, so it would hang if the
+		// tailer kept waiting to forward.
+		stop()
+
+		// Line 5 can never be handed off while the receiver is paused, so the
+		// position must not reach it.
+		pos, err := posFile.Get(positions.CursorKey("flog"), key)
+		require.NoError(t, err)
+		require.Less(t, pos, base.Add(4*time.Second).Unix())
+	})
+}
+
 func TestRequiresReset(t *testing.T) {
 	tests := []struct {
 		desc     string
