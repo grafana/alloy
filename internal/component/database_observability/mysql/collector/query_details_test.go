@@ -1106,10 +1106,10 @@ func TestQueryDetails_Throttling(t *testing.T) {
 			DB: db, StatementsLimit: 250, EntryHandler: logs, Logger: util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
-		base := time.Now()
+		startTime := time.Now()
 		poll := func(elapsed time.Duration, schemas ...string) {
 			t.Helper()
-			c.now = func() time.Time { return base.Add(elapsed) }
+			c.now = func() time.Time { return startTime.Add(elapsed) }
 			rows := sqlmock.NewRows([]string{"digest", "digest_text", "schema_name", "query_sample_text"})
 			for _, schema := range schemas {
 				rows.AddRow("abc123", "SELECT * FROM books", schema, "SELECT * FROM books")
@@ -1119,7 +1119,7 @@ func TestQueryDetails_Throttling(t *testing.T) {
 		}
 
 		poll(0, "shop")
-		poll(time.Minute, "shop", "other_shop")
+		poll(time.Minute, "shop", "other_shop") // assertion below shows "shop" query is throttled
 
 		logs.Stop()
 		entries := logs.Received()
@@ -1129,14 +1129,13 @@ func TestQueryDetails_Throttling(t *testing.T) {
 		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAMES_V2}, entries[1].Labels)
 		require.Contains(t, entries[1].Line, `schema="shop"`)
 
-		// "shop" query is throttled
 		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, entries[2].Labels)
 		require.Contains(t, entries[2].Line, `schema="other_shop"`)
 		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAMES_V2}, entries[3].Labels)
 		require.Contains(t, entries[3].Line, `schema="other_shop"`)
 	})
 
-	t.Run("queries that disappear are pruned", func(t *testing.T) {
+	t.Run("query is throttled for EmitInterval time period", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		t.Cleanup(func() {
@@ -1151,35 +1150,36 @@ func TestQueryDetails_Throttling(t *testing.T) {
 			DB: db, StatementsLimit: 250, EntryHandler: logs, TableRegistry: tableRegistry, Logger: util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
-		base := time.Now()
+		startTime := time.Now()
 		key := queryDetailsKey{schema: "shop", digest: "abc123"}
-		poll := func(elapsed time.Duration, includeShop bool) {
+		poll := func(elapsed time.Duration, includeQuery bool) {
 			t.Helper()
-			c.now = func() time.Time { return base.Add(elapsed) }
+			c.now = func() time.Time { return startTime.Add(elapsed) }
 			rows := sqlmock.NewRows([]string{"digest", "digest_text", "schema_name", "query_sample_text"})
-			if includeShop {
+			if includeQuery {
 				rows.AddRow("abc123", "SELECT * FROM books", "shop", "SELECT * FROM books")
 			}
 			mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, exclusionClause, 250)).WillReturnRows(rows)
 			require.NoError(t, c.tablesFromEventsStatements(t.Context()))
 		}
 
-		// Poll 1: the query is present, so it is emitted and added to the throttle state.
+		// Poll 1: successful scan finds query, emits it, and records it for throttling
 		poll(0, true)
-		require.Equal(t, base, c.lastEmittedAt[key])
-		require.Contains(t, c.unvalidated, key)
+		require.Equal(t, startTime, c.lastEmittedAt[key])
 
-		// Poll 2: a successful scan no longer finds the query, so its throttle state is pruned.
-		poll(time.Minute, false)
-		require.Empty(t, c.lastEmittedAt)
-		require.Empty(t, c.unvalidated)
+		// Poll 2: successful scan, query no longer present
+		poll(database_observability.EmitInterval/3, false)
+		require.Equal(t, startTime, c.lastEmittedAt[key])
 
-		// Poll 3: the query returns before EmitInterval expires. Since Poll 2 pruned
-		// its throttle state, it can be emitted again.
-		poll(2*time.Minute, true)
-		require.Equal(t, base.Add(2*time.Minute), c.lastEmittedAt[key])
-		require.Contains(t, c.unvalidated, key)
+		// Poll 3: query is back before EmitInterval expires: stays throttled
+		poll(2*database_observability.EmitInterval/3, true)
+		require.Equal(t, startTime, c.lastEmittedAt[key])
 
+		// Poll 4: EmitInterval has expired, query is emitted again
+		poll(database_observability.EmitInterval+time.Second, true)
+		require.Equal(t, startTime.Add(database_observability.EmitInterval+time.Second), c.lastEmittedAt[key])
+
+		// One query emission created two entries; assertion of 4 confirms emission after Poll 1 and Poll 4
 		logs.Stop()
 		require.Len(t, logs.Received(), 4)
 	})

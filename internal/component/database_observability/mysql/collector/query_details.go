@@ -156,7 +156,6 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 	defer rs.Close()
 
 	now := c.now()
-	seen := map[queryDetailsKey]struct{}{}
 	for rs.Next() {
 		var digest, digestText, schema string
 		var sampleText sql.NullString
@@ -166,7 +165,6 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 		}
 
 		key := queryDetailsKey{schema: schema, digest: digest}
-		seen[key] = struct{}{}
 		hasSchema := c.tableRegistry != nil && c.tableRegistry.HasSchema(schema)
 		if last, ok := c.lastEmittedAt[key]; ok && now.Sub(last) < database_observability.EmitInterval {
 			if _, pending := c.unvalidated[key]; !pending || !hasSchema {
@@ -187,7 +185,7 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 		return fmt.Errorf("failed to iterate over samples result set: %w", err)
 	}
 
-	c.pruneThrottle(seen)
+	c.pruneThrottle(now)
 	return nil
 }
 
@@ -238,12 +236,10 @@ func (c *QueryDetails) emit(schema, digest, digestText, sampleText string) bool 
 	return c.tableRegistry != nil && !c.tableRegistry.HasSchema(schema)
 }
 
-// pruneThrottle drops throttle entries for digests that were not observed in
-// the latest successful result-set iteration, so queries that leave Performance
-// Schema can be emitted immediately if they appear again.
-func (c *QueryDetails) pruneThrottle(seen map[queryDetailsKey]struct{}) {
-	for key := range c.lastEmittedAt {
-		if _, ok := seen[key]; !ok {
+//  pruneThrottle drops entries whose last emission was at least EmitInterval ago
+func (c *QueryDetails) pruneThrottle(now time.Time) {
+	for key, last := range c.lastEmittedAt {
+		if now.Sub(last) >= database_observability.EmitInterval {
 			delete(c.lastEmittedAt, key)
 			delete(c.unvalidated, key)
 		}
