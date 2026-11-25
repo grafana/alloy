@@ -3,7 +3,12 @@
 {{- $ingressSupportsIngressClassName := eq (include "alloy.ingress.supportsIngressClassName" .) "true" -}}
 {{- $ingressSupportsPathType := eq (include "alloy.ingress.supportsPathType" .) "true" -}}
 {{- $fullName := include "alloy.fullname" . -}}
+{{- $serviceName := $fullName -}}
 {{- $servicePort := .Values.ingress.faroPort -}}
+{{- if .Values.gateway.enabled -}}
+{{- $serviceName = printf "%s-gateway" $fullName -}}
+{{- $servicePort = .Values.gateway.port -}}
+{{- end -}}
 {{- $ingressPath := .Values.ingress.path -}}
 {{- $ingressPathType := .Values.ingress.pathType -}}
 {{- $extraPaths := .Values.ingress.extraPaths -}}
@@ -48,11 +53,11 @@ spec:
             backend:
               {{- if $ingressApiIsStable }}
               service:
-                name: {{ $fullName }}
+                name: {{ $serviceName }}
                 port:
                   number: {{ $servicePort }}
               {{- else }}
-              serviceName: {{ $fullName }}
+              serviceName: {{ $serviceName }}
               servicePort: {{ $servicePort }}
               {{- end }}
   {{- end }}
@@ -62,11 +67,11 @@ spec:
           - backend:
               {{- if $ingressApiIsStable }}
               service:
-                name: {{ $fullName }}
+                name: {{ $serviceName }}
                 port:
                   number: {{ $servicePort }}
               {{- else }}
-              serviceName: {{ $fullName }}
+              serviceName: {{ $serviceName }}
               servicePort: {{ $servicePort }}
               {{- end }}
             {{- with $ingressPath }}
