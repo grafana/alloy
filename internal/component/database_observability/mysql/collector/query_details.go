@@ -172,7 +172,7 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 			}
 		}
 
-		pendingValidation := c.emit(schema, digest, digestText, sampleText.String)
+		pendingValidation := c.emit(schema, digest, digestText, sampleText.String, hasSchema)
 		c.lastEmittedAt[key] = now
 		if pendingValidation {
 			c.unvalidated[key] = struct{}{}
@@ -192,7 +192,7 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 // emit logs the query association and any table names parsed from the query.
 // It returns true when parsed tables were emitted without schema data, so the
 // query can be re-emitted once schema collection populates tableRegistry.
-func (c *QueryDetails) emit(schema, digest, digestText, sampleText string) bool {
+func (c *QueryDetails) emit(schema, digest, digestText, sampleText string, hasSchema bool) bool {
 	tables, parserErr := c.tryParseTableNames(sampleText, digestText)
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 		logging.LevelInfo,
@@ -233,7 +233,7 @@ func (c *QueryDetails) emit(schema, digest, digestText, sampleText string) bool 
 		fmt.Sprintf(`schema=%q digest=%q tables=%q`, schema, digest, tablesJSON),
 	)
 
-	return c.tableRegistry != nil && !c.tableRegistry.HasSchema(schema)
+	return c.tableRegistry != nil && !hasSchema
 }
 
 // pruneThrottle drops entries whose last emission was at least EmitInterval ago
