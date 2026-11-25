@@ -1,13 +1,14 @@
 package stages
 
 import (
-	"fmt"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 var testTimestampLogLine = `
@@ -425,47 +426,42 @@ func TestTimestampStage(t *testing.T) {
 
 func TestValidateTimestampConfig(t *testing.T) {
 	tests := map[string]struct {
-		config *TimestampConfig
-		// Note the error text validation is a little loose as it only validates with strings.HasPrefix
-		// this is to work around different errors related to timezone loading on different systems
-		err            error
+		config         string
+		expectErr      bool
 		testString     string
 		expectedTime   time.Time
 		expectedConfig *TimestampConfig
 	}{
 		"missing source": {
-			config: &TimestampConfig{},
-			err:    errTimestampSourceRequired,
+			config: `
+				source = ""
+				format = "2006-01-02"`,
+			expectErr: true,
 		},
 		"missing format": {
-			config: &TimestampConfig{
-				Source: "source1",
-			},
-			err: errTimestampFormatRequired,
+			config: `
+				source = "source1"
+				format = ""`,
+			expectErr: true,
 		},
 		"invalid location": {
-			config: &TimestampConfig{
-				Source:   "source1",
-				Format:   "2006-01-02",
-				Location: &invalidLocationString,
-			},
-			err: fmt.Errorf(errInvalidLocation.Error(), ""),
+			config: `
+				source   = "source1"
+				format   = "2006-01-02"
+				location = "` + invalidLocationString + `"`,
+			expectErr: true,
 		},
 		"standard format": {
-			config: &TimestampConfig{
-				Source: "source1",
-				Format: time.RFC3339,
-			},
-			err:          nil,
+			config: `
+				source = "source1"
+				format = "` + time.RFC3339 + `"`,
 			testString:   "2012-11-01T22:08:41-04:00",
 			expectedTime: time.Date(2012, 11, 01, 22, 8, 41, 0, time.FixedZone("", -4*60*60)),
 		},
 		"sets default action on failure and on duplicate timestamp": {
-			config: &TimestampConfig{
-				Source: "source1",
-				Format: time.RFC3339,
-			},
-			err: nil,
+			config: `
+				source = "source1"
+				format = "` + time.RFC3339 + `"`,
 			expectedConfig: &TimestampConfig{
 				Source:                     "source1",
 				Format:                     time.RFC3339,
@@ -474,92 +470,90 @@ func TestValidateTimestampConfig(t *testing.T) {
 			},
 		},
 		"custom format with year": {
-			config: &TimestampConfig{
-				Source: "source1",
-				Format: "2006-01-02",
-			},
-			err:          nil,
+			config: `
+				source = "source1"
+				format = "2006-01-02"`,
 			testString:   "2009-01-01",
 			expectedTime: time.Date(2009, 01, 01, 00, 00, 00, 0, time.UTC),
 		},
 		"custom format without year": {
-			config: &TimestampConfig{
-				Source: "source1",
-				Format: "Jan 02 15:04:05",
-			},
-			err:          nil,
+			config: `
+				source = "source1"
+				format = "Jan 02 15:04:05"`,
 			testString:   "Jul 15 01:02:03",
 			expectedTime: time.Date(time.Now().Year(), 7, 15, 1, 2, 3, 0, time.UTC),
 		},
 		"custom format with location": {
-			config: &TimestampConfig{
-				Source:   "source1",
-				Format:   "2006-01-02 15:04:05",
-				Location: &validLocationString,
-			},
-			err:          nil,
+			config: `
+				source   = "source1"
+				format   = "2006-01-02 15:04:05"
+				location = "` + validLocationString + `"`,
 			testString:   "2009-07-01 03:30:20",
 			expectedTime: time.Date(2009, 7, 1, 3, 30, 20, 0, validLocation),
 		},
 		"unix_ms": {
-			config: &TimestampConfig{
-				Source: "source1",
-				Format: "UnixMs",
-			},
-			err:          nil,
+			config: `
+				source = "source1"
+				format = "UnixMs"`,
 			testString:   "1562708916919",
 			expectedTime: time.Date(2019, 7, 9, 21, 48, 36, 919*1000000, time.UTC),
 		},
 		"should fail on invalid action on failure": {
-			config: &TimestampConfig{
-				Source:          "source1",
-				Format:          time.RFC3339,
-				ActionOnFailure: "foo",
-			},
-			err: fmt.Errorf(errInvalidActionOnFailure.Error(), timestampActionOnFailureOptions),
+			config: `
+				source            = "source1"
+				format            = "` + time.RFC3339 + `"
+				action_on_failure = "foo"`,
+			expectErr: true,
 		},
 		"should fail on invalid action on duplicate timestamp": {
-			config: &TimestampConfig{
-				Source:                     "source1",
-				Format:                     time.RFC3339,
-				ActionOnDuplicateTimestamp: "invalid",
-			},
-			err: fmt.Errorf(errInvalidActionOnDuplicateTimestamp.Error(), timestampActionOnDuplicateTimestampOptions),
+			config: `
+				source                        = "source1"
+				format                        = "` + time.RFC3339 + `"
+				action_on_duplicate_timestamp = "invalid"`,
+			expectErr: true,
+		},
+		"should fail on empty action on failure": {
+			config: `
+				source            = "source1"
+				format            = "` + time.RFC3339 + `"
+				action_on_failure = ""`,
+			expectErr: true,
+		},
+		"should fail on empty action on duplicate timestamp": {
+			config: `
+				source                        = "source1"
+				format                        = "` + time.RFC3339 + `"
+				action_on_duplicate_timestamp = ""`,
+			expectErr: true,
 		},
 		"fallback formats contains the format": {
-			config: &TimestampConfig{
-				Source:          "source1",
-				Format:          "UnixMs",
-				FallbackFormats: []string{"2006-01-02 03:04:05.000000000 +0000 UTC", time.RFC3339},
-			},
-			err:          nil,
+			config: `
+				source           = "source1"
+				format           = "UnixMs"
+				fallback_formats = ["2006-01-02 03:04:05.000000000 +0000 UTC", "` + time.RFC3339 + `"]`,
 			testString:   "2012-11-01T22:08:41-04:00",
 			expectedTime: time.Date(2012, 11, 01, 22, 8, 41, 0, time.FixedZone("", -4*60*60)),
 		},
 	}
 	for name, test := range tests {
-		test := test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			parser, err := validateTimestampConfig(test.config)
-			if (err != nil) != (test.err != nil) {
-				t.Errorf("validateTimestampConfig() expected error = %v, actual error = %v", test.err, err)
+			var cfg TimestampConfig
+			err := syntax.Unmarshal([]byte(test.config), &cfg)
+			if test.expectErr {
+				require.Error(t, err)
 				return
 			}
-			if (err != nil) && !strings.HasPrefix(err.Error(), test.err.Error()) {
-				t.Errorf("validateTimestampConfig() expected error = %v, actual error = %v", test.err, err)
-				return
-			}
+			require.NoError(t, err)
+
+			parser := newTimestampParser(cfg)
 			if test.testString != "" {
 				ts, err := parser(test.testString)
-				if err != nil {
-					t.Errorf("validateTimestampConfig() unexpected error parsing test time: %v", err)
-					return
-				}
+				require.NoError(t, err)
 				assert.Equal(t, test.expectedTime.UnixNano(), ts.UnixNano())
 			}
 			if test.expectedConfig != nil {
-				assert.Equal(t, test.expectedConfig, test.config)
+				assert.Equal(t, test.expectedConfig, &cfg)
 			}
 		})
 	}
