@@ -1,0 +1,14 @@
+mimir.rules.kubernetes "default" {
+  address       = "http://mimir:9009"
+  sync_interval = "5s"
+  rule_namespace_selector {
+    match_labels = {
+      "alloy-integration-test" = "true",
+    }
+  }
+  rule_selector {
+    match_labels = {
+      "alloy-integration-test" = "true",
+    }
+  }
+}

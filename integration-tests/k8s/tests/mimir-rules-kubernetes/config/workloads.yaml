@@ -1,0 +1,36 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: control
+  namespace: ${NAMESPACE}
+  labels:
+    alloy-integration-test: "true"
+spec:
+  groups:
+    - name: control
+      rules:
+        - record: control_rule
+          expr: vector(1)
+---
+# Reproduces https://github.com/grafana/alloy/issues/7500. The folded block
+# starts with a blank line and its continuation lines are indented further.
+# Do NOT reformat the expression; the test asserts how Alloy handles it.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: leading-whitespace
+  namespace: ${NAMESPACE}
+  labels:
+    alloy-integration-test: "true"
+spec:
+  groups:
+    - name: leading-whitespace
+      interval: 1m
+      rules:
+        - record: leading_whitespace_rule
+          expr: >-
+
+            # The blank line and nested indentation are intentional.
+              (
+                up
+              )
