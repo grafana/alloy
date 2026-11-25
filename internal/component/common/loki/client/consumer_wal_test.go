@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/grafana/dskit/flagext"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -698,4 +700,26 @@ func TestWALConsumer_NoLeakOnFailedEndpoint(t *testing.T) {
 	// Using two different configs but endpoint cannot be created by the second one.
 	_, err = NewWALConsumer(logger, reg, wl, walConfig, cfg, invalidClientCfg)
 	require.Error(t, err)
+}
+
+func TestWALEndpointAdapter_StreamNotFound(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	// Entries for an unknown stream never reach the endpoint or the tracker.
+	adapter := newWalEndpointAdapter(nil, logging.NewSlogNop(), newWALEndpointMetrics(reg).CurryWithId("test"), nil)
+
+	expected := func(count int) string {
+		return fmt.Sprintf(`
+# HELP loki_write_wal_entries_stream_not_found_total Number of log entries read from the WAL and dropped because their stream was not found.
+# TYPE loki_write_wal_entries_stream_not_found_total counter
+loki_write_wal_entries_stream_not_found_total{id="test"} %d
+`, count)
+	}
+	require.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(expected(0)), "loki_write_wal_entries_stream_not_found_total"))
+
+	require.NoError(t, adapter.AppendEntries(t.Context(), wal.RefEntries{
+		Ref:     chunks.HeadSeriesRef(1),
+		Entries: []push.Entry{{Timestamp: time.Now(), Line: "a"}, {Timestamp: time.Now(), Line: "b"}},
+	}, 0))
+
+	require.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(expected(2)), "loki_write_wal_entries_stream_not_found_total"))
 }
