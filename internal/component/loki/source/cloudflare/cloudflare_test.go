@@ -24,10 +24,6 @@ import (
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
-// realGetClient keeps the production client constructor, since the tailer
-// tests replace getClient with a fake and do not restore it.
-var realGetClient = getClient
-
 // logpullRequest is what a stub Logpull API saw in one request.
 type logpullRequest struct {
 	path, auth, fields string
@@ -81,13 +77,8 @@ func (s *logpullStub) firstRequest(t *testing.T) logpullRequest {
 	return s.requests[0]
 }
 
-// TestComponent runs the whole component against a stub Logpull API. The
-// tailer tests cover the pull loop with a fake client, so this is the test that
-// covers the component and the real client together.
+// TestComponent runs the whole component against a stub Logpull API.
 func TestComponent(t *testing.T) {
-	getClient = realGetClient
-	t.Cleanup(func() { getClient = realGetClient })
-
 	lines := []string{
 		`{"EdgeStartTimestamp":1000000001,"ClientIP":"192.168.0.1","ClientRequestMethod":"GET","EdgeResponseStatus":200,"RayID":"test-ray-001"}`,
 		`{"EdgeStartTimestamp":1000000002,"ClientIP":"10.0.0.2","ClientRequestMethod":"POST","EdgeResponseStatus":201,"RayID":"test-ray-002"}`,
