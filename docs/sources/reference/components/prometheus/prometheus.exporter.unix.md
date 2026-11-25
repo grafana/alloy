@@ -74,6 +74,7 @@ You can use the following blocks with `prometheus.exporter.unix`:
 | [`netstat`][netstat]         | Configures the `netstat` collector.     | no       |
 | [`perf`][perf]               | Configures the `perf` collector.        | no       |
 | [`powersupply`][powersupply] | Configures the `powersupply` collector. | no       |
+| [`qdisc`][qdisc]             | Configures the `qdisc` collector.       | no       |
 | [`runit`][runit]             | Configures the `runit` collector.       | no       |
 | [`supervisord`][supervisord] | Configures the `supervisord` collector. | no       |
 | [`sysctl`][sysctl]           | Configures the `sysctl` collector.      | no       |
@@ -96,6 +97,7 @@ You can use the following blocks with `prometheus.exporter.unix`:
 [ntp]: #ntp
 [perf]: #perf
 [powersupply]: #powersupply
+[qdisc]: #qdisc
 [runit]: #runit
 [supervisord]: #supervisord
 [sysctl]: #sysctl
@@ -261,6 +263,18 @@ The default values vary by the operating system {{< param "PRODUCT_NAME" >}} run
 | Name               | Type     | Description                                                                          | Default | Required |
 | ------------------ | -------- | ------------------------------------------------------------------------------------ | ------- | -------- |
 | `ignored_supplies` | `string` | Regular expression of power supplies to ignore for the `powersupplyclass` collector. | `"^$"`  | no       |
+
+### `qdisc`
+
+The `qdisc` block configures device filtering for the `qdisc` collector.
+You must enable the collector with `enable_collectors` or `set_collectors` to collect its metrics.
+
+| Name             | Type     | Description                                                                       | Default | Required |
+| ---------------- | -------- | --------------------------------------------------------------------------------- | ------- | -------- |
+| `device_exclude` | `string` | Regular expression of devices to exclude. Mutually exclusive with `device_include`. | `""`    | no       |
+| `device_include` | `string` | Regular expression of devices to include. Mutually exclusive with `device_exclude`. | `""`    | no       |
+
+By default, the collector includes all devices.
 
 ### `runit`
 

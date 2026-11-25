@@ -140,6 +140,8 @@ type Config struct {
 	PerfSoftwareProfilers            flagext.StringSlice `yaml:"perf_software_profilers,omitempty"`
 	PerfCacheProfilers               flagext.StringSlice `yaml:"perf_cache_profilers,omitempty"`
 	PowersupplyIgnoredSupplies       string              `yaml:"powersupply_ignored_supplies,omitempty"`
+	QdiscDeviceExclude               string              `yaml:"qdisc_device_exclude,omitempty"`
+	QdiscDeviceInclude               string              `yaml:"qdisc_device_include,omitempty"`
 	RunitServiceDir                  string              `yaml:"runit_service_dir,omitempty"`
 	SupervisordURL                   string              `yaml:"supervisord_url,omitempty"`
 	SysctlInclude                    flagext.StringSlice `yaml:"sysctl_include,omitempty"`
@@ -501,12 +503,14 @@ func (c *Config) mapConfigToNodeConfig() *collector.NodeCollectorConfig {
 		Softirq: &blankBool,
 	}
 
+	// The pinned node_exporter fork filters on OldDeviceExclude. Its constructor
+	// copies that value into DeviceExclude, which must not share blankString.
 	cfg.Qdisc = collector.QdiscConfig{
 		Fixtures:         &blankString,
-		DeviceInclude:    &blankString,
+		DeviceInclude:    &c.QdiscDeviceInclude,
 		OldDeviceInclude: &blankString,
-		DeviceExclude:    &blankString,
-		OldDeviceExclude: &blankString,
+		DeviceExclude:    new(string),
+		OldDeviceExclude: &c.QdiscDeviceExclude,
 	}
 
 	cfg.Rapl = collector.RaplConfig{
