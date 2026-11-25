@@ -277,7 +277,6 @@ func (c *Component) Run(ctx context.Context) error {
 	}
 
 	wg.Go(func() {
-
 		const prunePositionsPeriod = 10 * time.Second
 		pruneTicker := time.NewTicker(prunePositionsPeriod)
 		defer pruneTicker.Stop()
