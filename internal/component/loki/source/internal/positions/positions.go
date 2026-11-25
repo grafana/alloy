@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -20,7 +19,7 @@ const (
 	cursorKeyPrefix = "cursor-"
 )
 
-// CursorKey returns a key that can be saved as a cursor that is never deleted.
+// CursorKey returns a key for a position that is a cursor and not a file path.
 func CursorKey(key string) string {
 	return cursorKeyPrefix + key
 }
@@ -146,7 +145,6 @@ func (p *File) run() {
 			return
 		case <-ticker.C:
 			p.save()
-			p.cleanup()
 		}
 	}
 }
@@ -158,32 +156,6 @@ func (p *File) save() {
 
 	if err := writePositionFile(p.cfg.Path, positions); err != nil {
 		p.logger.Error("error writing positions file", "error", err)
-	}
-}
-
-func (p *File) cleanup() {
-	p.mtx.Lock()
-	defer p.mtx.Unlock()
-	toRemove := []Entry{}
-	for k := range p.positions {
-		// If the position file is prefixed with cursor, it's a
-		// cursor and not a file on disk.
-		if strings.HasPrefix(k.Path, cursorKeyPrefix) {
-			continue
-		}
-
-		if _, err := os.Stat(k.Path); err != nil {
-			if os.IsNotExist(err) {
-				// File no longer exists.
-				toRemove = append(toRemove, k)
-			} else {
-				// Can't determine if file exists or not, some other error.
-				p.logger.Warn("could not determine if log file still exists while cleaning positions file", "error", err)
-			}
-		}
-	}
-	for _, tr := range toRemove {
-		p.remove(tr.Path, tr.Labels)
 	}
 }
 
