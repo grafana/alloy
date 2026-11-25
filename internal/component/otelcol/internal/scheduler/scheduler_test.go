@@ -235,6 +235,29 @@ func TestScheduler_Async(t *testing.T) {
 		componenttest.RunInBackground(t, cs.Run)
 		require.NoError(t, nextStarted.Wait(timeout), "new component did not start")
 	})
+
+	t.Run("Run with a canceled context does not start components", func(t *testing.T) {
+		var (
+			l  = util.TestAlloyLogger(t)
+			cs = scheduler.New(l.Slog())
+			h  = scheduler.NewHost()
+		)
+
+		c, started, _ := newTriggerComponent()
+		cs.Schedule(t.Context(), func() {}, h, c)
+
+		// select picks at random when both cases are ready, so try many times.
+		canceled, cancel := context.WithCancel(t.Context())
+		cancel()
+		for range 50 {
+			require.NoError(t, cs.Run(canceled))
+		}
+		require.False(t, triggered(started), "component started after the context was canceled")
+
+		// The next Run starts the components.
+		componenttest.RunInBackground(t, cs.Run)
+		require.NoError(t, started.Wait(timeout), "component did not start")
+	})
 }
 
 // triggered reports whether wt has been triggered. Use it to check that

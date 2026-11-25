@@ -122,6 +122,12 @@ func (cs *Scheduler) Run(ctx context.Context) error {
 			return nil
 		case s = <-cs.next:
 		}
+		if ctx.Err() != nil {
+			// select picks at random when both cases are ready. Don't start
+			// components that we would stop at once. Keep them for the next Run.
+			cs.requeue(s)
+			return nil
+		}
 
 		// The new components must be setup in this order:
 		//
@@ -159,15 +165,20 @@ func (cs *Scheduler) Run(ctx context.Context) error {
 		if err != nil {
 			if first && len(running) == 0 {
 				// Keep the components, so that the next Run tries to start them
-				// again, unless Schedule has given newer ones.
-				select {
-				case cs.next <- s:
-				default:
-				}
+				// again.
+				cs.requeue(s)
 				return fmt.Errorf("no components started successfully: %w", err)
 			}
 			cs.log.Error("failed to start some scheduled components", "err", err)
 		}
+	}
+}
+
+// requeue gives s to the next Run, unless Schedule has given newer components.
+func (cs *Scheduler) requeue(s scheduled) {
+	select {
+	case cs.next <- s:
+	default:
 	}
 }
 
