@@ -1184,7 +1184,7 @@ func TestQueryDetails_Throttling(t *testing.T) {
 		require.Len(t, logs.Received(), 4)
 	})
 
-	t.Run("prunes expired query throttle state", func(t *testing.T) {
+	t.Run("pruneThrottle removes queries absent after EmitInterval throttle state", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		t.Cleanup(func() {
