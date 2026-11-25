@@ -157,7 +157,6 @@ func (wrt *Writer) WriteBatch(batch loki.Batch) error {
 	}
 
 	if err := wrt.wal.Log(rec); err != nil {
-		wrt.logger.Error("failed to write batch", "err", err)
 		return err
 	}
 
