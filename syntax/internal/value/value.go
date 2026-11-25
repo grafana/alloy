@@ -517,6 +517,16 @@ func convertValue(val Value, toType Type) (Value, error) {
 			case sourceStr == "":
 				return Null, TypeError{Value: val, Expected: toType}
 
+			case strings.ContainsAny(sourceStr, ".eE"):
+				// String contains something that a floating-point number would use;
+				// convert. This is checked before the signed-int case so that
+				// negative floats such as "-1.5" are parsed as floats instead of
+				// failing an integer parse.
+				parsed, err := strconv.ParseFloat(sourceStr, 64)
+				if err != nil {
+					return Null, TypeError{Value: val, Expected: toType}
+				}
+				return Float(parsed), nil
 			case sourceStr[0] == '-':
 				// String starts with a -; parse as a signed int.
 				parsed, err := strconv.ParseInt(sourceStr, 10, 64)
@@ -524,14 +534,6 @@ func convertValue(val Value, toType Type) (Value, error) {
 					return Null, TypeError{Value: val, Expected: toType}
 				}
 				return Int(parsed), nil
-			case strings.ContainsAny(sourceStr, ".eE"):
-				// String contains something that a floating-point number would use;
-				// convert.
-				parsed, err := strconv.ParseFloat(sourceStr, 64)
-				if err != nil {
-					return Null, TypeError{Value: val, Expected: toType}
-				}
-				return Float(parsed), nil
 			default:
 				// Otherwise, treat the number as an unsigned int.
 				parsed, err := strconv.ParseUint(sourceStr, 10, 64)
