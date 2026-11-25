@@ -10,11 +10,11 @@ import (
 	"github.com/grafana/alloy/internal/component"
 )
 
-// AuthExtensionScheduler is a specialized scheduler for auth extensions.
+// ExtensionScheduler is a specialized scheduler for extensions.
 //
-// Auth handlers are exported in Update and can be consumed immediately.
+// Extensions export handlers in Update, and other components can use them immediately.
 // This scheduler starts components in Schedule so exported handlers always point to started extensions.
-type AuthExtensionScheduler struct {
+type ExtensionScheduler struct {
 	log *slog.Logger
 
 	healthMut sync.RWMutex
@@ -24,15 +24,15 @@ type AuthExtensionScheduler struct {
 	schedComponents []otelcomponent.Component
 }
 
-// NewAuthExtensionScheduler creates a scheduler for auth extensions.
-func NewAuthExtensionScheduler(l *slog.Logger) *AuthExtensionScheduler {
-	return &AuthExtensionScheduler{
+// NewExtensionScheduler creates a scheduler for auth extensions.
+func NewExtensionScheduler(l *slog.Logger) *ExtensionScheduler {
+	return &ExtensionScheduler{
 		log: l,
 	}
 }
 
 // Schedule stops any running components and starts components provided by cc.
-func (s *AuthExtensionScheduler) Schedule(ctx context.Context, h otelcomponent.Host, cc ...otelcomponent.Component) {
+func (s *ExtensionScheduler) Schedule(ctx context.Context, h otelcomponent.Host, cc ...otelcomponent.Component) {
 	s.schedMut.Lock()
 	defer s.schedMut.Unlock()
 
@@ -47,20 +47,20 @@ func (s *AuthExtensionScheduler) Schedule(ctx context.Context, h otelcomponent.H
 }
 
 // Stop stops all running components.
-func (s *AuthExtensionScheduler) Stop() {
+func (s *ExtensionScheduler) Stop() {
 	s.schedMut.Lock()
 	defer s.schedMut.Unlock()
 	stopComponents(context.Background(), s.log, s.schedComponents...)
 }
 
 // CurrentHealth reports the most recent component health status.
-func (s *AuthExtensionScheduler) CurrentHealth() component.Health {
+func (s *ExtensionScheduler) CurrentHealth() component.Health {
 	s.healthMut.RLock()
 	defer s.healthMut.RUnlock()
 	return s.health
 }
 
-func (s *AuthExtensionScheduler) setHealth(h component.Health) {
+func (s *ExtensionScheduler) setHealth(h component.Health) {
 	s.healthMut.Lock()
 	defer s.healthMut.Unlock()
 	s.health = h

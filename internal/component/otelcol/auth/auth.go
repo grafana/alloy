@@ -160,7 +160,7 @@ type Auth struct {
 	factory otelextension.Factory
 
 	collector *lazycollector.Collector
-	sched     *scheduler.AuthExtensionScheduler
+	sched     *scheduler.ExtensionScheduler
 }
 
 var (
@@ -189,7 +189,7 @@ func New(opts component.Options, f otelextension.Factory, args Arguments) (*Auth
 		opts:    opts,
 		factory: f,
 
-		sched:     scheduler.NewAuthExtensionScheduler(opts.Logger),
+		sched:     scheduler.NewExtensionScheduler(opts.Logger),
 		collector: collector,
 	}
 	if err := r.Update(args); err != nil {

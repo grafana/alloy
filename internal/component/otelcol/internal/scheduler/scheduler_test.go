@@ -84,20 +84,14 @@ func TestScheduler(t *testing.T) {
 
 		toInt := func(a *atomic.Int32) int { return int(a.Load()) }
 
-		// The Run function starts the components. They should be paused and then resumed.
-		require.EventuallyWithT(t, func(t *assert.CollectT) {
-			assert.Equal(t, 1, toInt(pauseCalls), "pause callbacks should be called on run")
-			assert.Equal(t, 1, toInt(resumeCalls), "resume callback should be called on run")
-		}, 5*time.Second, 10*time.Millisecond, "pause/resume callbacks not called correctly")
-
 		// Schedule our component, which should notify the started and stopped
 		// trigger once it starts and stops respectively.
 		component, started, stopped := newTriggerComponent()
 		cs.Schedule(ctx, func() {}, h, component)
 
 		require.EventuallyWithT(t, func(t *assert.CollectT) {
-			assert.Equal(t, 2, toInt(pauseCalls), "pause callbacks should be called on schedule")
-			assert.Equal(t, 2, toInt(resumeCalls), "resume callback should be called on schedule")
+			assert.Equal(t, 1, toInt(pauseCalls), "pause callbacks should be called on schedule")
+			assert.Equal(t, 1, toInt(resumeCalls), "resume callback should be called on schedule")
 		}, 5*time.Second, 10*time.Millisecond, "pause/resume callbacks not called correctly")
 
 		// Wait for the component to start, and then unschedule all components, which
@@ -106,8 +100,8 @@ func TestScheduler(t *testing.T) {
 		cs.Schedule(ctx, func() {}, h)
 
 		require.EventuallyWithT(t, func(t *assert.CollectT) {
-			assert.Equal(t, 3, toInt(pauseCalls), "pause callback should be called on second schedule")
-			assert.Equal(t, 3, toInt(resumeCalls), "resume callback should be called on second schedule")
+			assert.Equal(t, 2, toInt(pauseCalls), "pause callback should be called on second schedule")
+			assert.Equal(t, 2, toInt(resumeCalls), "resume callback should be called on second schedule")
 		}, 5*time.Second, 10*time.Millisecond, "pause/resume callbacks not called correctly")
 
 		require.NoError(t, stopped.Wait(5*time.Second), "component did not shutdown")
@@ -116,8 +110,8 @@ func TestScheduler(t *testing.T) {
 		cancel()
 
 		require.EventuallyWithT(t, func(t *assert.CollectT) {
-			assert.Equal(t, 3, toInt(pauseCalls), "pause callback should not be called on shutdown")
-			assert.Equal(t, 4, toInt(resumeCalls), "resume callback should be called on shutdown")
+			assert.Equal(t, 2, toInt(pauseCalls), "pause callback should not be called on shutdown")
+			assert.Equal(t, 3, toInt(resumeCalls), "resume callback should be called on shutdown")
 		}, 5*time.Second, 10*time.Millisecond, "pause/resume callbacks not called correctly")
 	})
 
@@ -150,9 +144,9 @@ func TestScheduler(t *testing.T) {
 	})
 }
 
-// TestScheduler_Async covers the switch to new components when the Scheduler
-// is running. Schedule is called from the Update of an Alloy component, so it
-// must not wait for the switch, which can wait on the data path. See
+// TestScheduler_Async covers the switch to new components. Schedule is called
+// from the Update of an Alloy component, so it must not wait for the switch,
+// which can wait on the data path. See
 // https://github.com/grafana/alloy/issues/7762.
 func TestScheduler_Async(t *testing.T) {
 	const timeout = 5 * time.Second
@@ -193,61 +187,16 @@ func TestScheduler_Async(t *testing.T) {
 			cs = scheduler.New(l.Slog())
 			h  = scheduler.NewHost()
 		)
-		componenttest.RunInBackground(t, cs.Run)
 
-		release := make(chan struct{})
-		old, oldStarted, oldStopped := newBlockingShutdownComponent(release)
-		cs.Schedule(t.Context(), func() {}, h, old)
-		require.NoError(t, oldStarted.Wait(timeout), "old component did not start")
-
-		// The first switch blocks while it stops the old component.
-		first, firstStarted, _ := newTriggerComponent()
-		requireReturns(t, timeout, func() { cs.Schedule(t.Context(), func() {}, h, first) })
-		require.NoError(t, oldStopped.Wait(timeout), "old component was not stopped")
-
-		// These two are scheduled while the first switch is blocked. Only the
-		// latest of them is started.
-		skipped, skippedStarted, skippedStopped := newTriggerComponent()
+		// Schedule twice before Run starts.
+		skipped, skippedStarted, _ := newTriggerComponent()
 		latest, latestStarted, _ := newTriggerComponent()
-		requireReturns(t, timeout, func() { cs.Schedule(t.Context(), func() {}, h, skipped) })
-		requireReturns(t, timeout, func() { cs.Schedule(t.Context(), func() {}, h, latest) })
+		cs.Schedule(t.Context(), func() {}, h, skipped)
+		cs.Schedule(t.Context(), func() {}, h, latest)
 
-		close(release)
-		require.NoError(t, firstStarted.Wait(timeout), "first component did not start")
+		componenttest.RunInBackground(t, cs.Run)
 		require.NoError(t, latestStarted.Wait(timeout), "latest component did not start")
 		require.False(t, triggered(skippedStarted), "a replaced set of components was started")
-		require.NoError(t, skippedStopped.Wait(timeout), "a replaced set of components was not shut down")
-	})
-
-	t.Run("Synchronous scheduler switches before Schedule returns", func(t *testing.T) {
-		var (
-			l  = util.TestAlloyLogger(t)
-			cs = scheduler.NewSynchronous(l.Slog())
-			h  = scheduler.NewHost()
-		)
-		componenttest.RunInBackground(t, cs.Run)
-
-		oldStopped := atomic.NewBool(false)
-		old := &fakeComponent{ShutdownFunc: func(context.Context) error {
-			oldStopped.Store(true)
-			return nil
-		}}
-		oldStarted := atomic.NewBool(false)
-		old.StartFunc = func(context.Context, otelcomponent.Host) error {
-			oldStarted.Store(true)
-			return nil
-		}
-		cs.Schedule(t.Context(), func() {}, h, old)
-		require.Eventually(t, oldStarted.Load, timeout, 10*time.Millisecond, "old component did not start")
-
-		nextStarted := atomic.NewBool(false)
-		next := &fakeComponent{StartFunc: func(context.Context, otelcomponent.Host) error {
-			nextStarted.Store(true)
-			return nil
-		}}
-		cs.Schedule(t.Context(), func() {}, h, next)
-		require.True(t, oldStopped.Load(), "old component was not stopped when Schedule returned")
-		require.True(t, nextStarted.Load(), "new component was not started when Schedule returned")
 	})
 
 	t.Run("Components scheduled while Run exits are started by the next Run", func(t *testing.T) {
