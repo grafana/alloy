@@ -35,16 +35,15 @@ var restartBackoff = backoff.Config{
 
 // tailer for Docker container logs.
 type tailer struct {
-	logger            *slog.Logger
-	recv              loki.LogsReceiver
-	positions         positions.Positions
-	containerID       string
-	labels            model.LabelSet
-	labelsStr         string
-	relabelConfig     []*relabel.Config
-	metrics           *metrics
-	restartBackoff    backoff.Config
-	componentStopping func() bool
+	logger         *slog.Logger
+	recv           loki.LogsReceiver
+	positions      positions.Positions
+	containerID    string
+	labels         model.LabelSet
+	labelsStr      string
+	relabelConfig  []*relabel.Config
+	metrics        *metrics
+	restartBackoff backoff.Config
 
 	client client.APIClient
 
@@ -58,7 +57,6 @@ type tailer struct {
 func newTailer(
 	metrics *metrics, logger *slog.Logger, recv loki.LogsReceiver, position positions.Positions, containerID string,
 	labels model.LabelSet, relabelConfig []*relabel.Config, client client.APIClient, restartBackoff backoff.Config,
-	componentStopping func() bool,
 ) (*tailer, error) {
 
 	labelsStr := labels.String()
@@ -68,29 +66,28 @@ func newTailer(
 	}
 
 	return &tailer{
-		logger:            logger.With("container", containerID),
-		recv:              recv,
-		positions:         position,
-		containerID:       containerID,
-		labels:            labels,
-		labelsStr:         labelsStr,
-		relabelConfig:     relabelConfig,
-		metrics:           metrics,
-		client:            client,
-		restartBackoff:    restartBackoff,
-		componentStopping: componentStopping,
-		running:           atomic.NewBool(false),
-		err:               atomic.NewError(nil),
-		since:             atomic.NewInt64(pos),
-		last:              atomic.NewInt64(0),
+		logger:         logger.With("container", containerID),
+		recv:           recv,
+		positions:      position,
+		containerID:    containerID,
+		labels:         labels,
+		labelsStr:      labelsStr,
+		relabelConfig:  relabelConfig,
+		metrics:        metrics,
+		client:         client,
+		restartBackoff: restartBackoff,
+		running:        atomic.NewBool(false),
+		err:            atomic.NewError(nil),
+		since:          atomic.NewInt64(pos),
+		last:           atomic.NewInt64(0),
 	}, nil
 }
 
-func (t *tailer) Run(ctx, _ context.Context) {
+func (t *tailer) Run(ctx, stop context.Context) {
 	defer func() {
-		// If the component is not stopping, then it means that the target for this component is gone and that
-		// we should clear the entry from the positions file.
-		if !t.componentStopping() {
+		// stop is only canceled on shutdown or reset. Otherwise the target or
+		// container is gone and its position is no longer needed.
+		if stop.Err() == nil {
 			t.positions.Remove(positions.CursorKey(t.containerID), t.labelsStr)
 		}
 	}()

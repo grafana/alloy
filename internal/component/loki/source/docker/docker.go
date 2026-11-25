@@ -17,7 +17,6 @@ import (
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
-	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
 	types "github.com/grafana/alloy/internal/component/common/config"
@@ -97,11 +96,9 @@ var (
 	_ component.DebugComponent = (*Component)(nil)
 )
 
-// Component implements the loki.source.file component.
 type Component struct {
 	opts    component.Options
 	metrics *metrics
-	exited  *atomic.Bool
 
 	mut       sync.RWMutex
 	args      Arguments
@@ -130,7 +127,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:      o,
 		metrics:   newMetrics(o.Registerer),
-		exited:    atomic.NewBool(false),
 		handler:   loki.NewLogsReceiver(),
 		scheduler: source.NewScheduler[positions.Entry](),
 		fanout:    loki.NewFanout(args.ForwardTo),
@@ -148,7 +144,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		c.exited.Store(true)
 		c.posFile.Stop()
 
 		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
@@ -238,7 +233,6 @@ func (c *Component) Update(args component.Arguments) error {
 				c.rcs,
 				c.client,
 				restartBackoff,
-				func() bool { return c.exited.Load() },
 			)
 		},
 	)

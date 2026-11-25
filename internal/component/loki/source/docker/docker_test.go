@@ -105,7 +105,6 @@ func TestComponentDuplicateTargets(t *testing.T) {
 }
 
 func TestComponentUpdateDoesNotReread(t *testing.T) {
-
 	lines := func(entries []loki.Entry) []string {
 		lines := make([]string, 0, len(entries))
 		for _, e := range entries {

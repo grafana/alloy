@@ -67,7 +67,6 @@ func TestTailer(t *testing.T) {
 		[]*relabel.Config{},
 		client,
 		testRestartBackoff,
-		func() bool { return false },
 	)
 	require.NoError(t, err)
 
@@ -234,14 +233,13 @@ func TestTailerConsumeLines(t *testing.T) {
 	t.Run("skip empty line", func(t *testing.T) {
 		collector := loki.NewCollectingHandler()
 		tailer := &tailer{
-			logger:            logging.NewSlogNop(),
-			recv:              collector.Receiver(),
-			positions:         positions.NewNop(),
-			containerID:       "test",
-			metrics:           newMetrics(prometheus.DefaultRegisterer),
-			last:              atomic.NewInt64(0),
-			since:             atomic.NewInt64(0),
-			componentStopping: func() bool { return false },
+			logger:      logging.NewSlogNop(),
+			recv:        collector.Receiver(),
+			positions:   positions.NewNop(),
+			containerID: "test",
+			metrics:     newMetrics(prometheus.DefaultRegisterer),
+			last:        atomic.NewInt64(0),
+			since:       atomic.NewInt64(0),
 		}
 
 		bb := &bytes.Buffer{}
@@ -270,14 +268,13 @@ func TestTailerConsumeLines(t *testing.T) {
 	t.Run("bigger than max size", func(t *testing.T) {
 		collector := loki.NewCollectingHandler()
 		tailer := &tailer{
-			logger:            logging.NewSlogNop(),
-			recv:              collector.Receiver(),
-			positions:         positions.NewNop(),
-			containerID:       "test",
-			metrics:           newMetrics(prometheus.DefaultRegisterer),
-			last:              atomic.NewInt64(0),
-			since:             atomic.NewInt64(0),
-			componentStopping: func() bool { return false },
+			logger:      logging.NewSlogNop(),
+			recv:        collector.Receiver(),
+			positions:   positions.NewNop(),
+			containerID: "test",
+			metrics:     newMetrics(prometheus.DefaultRegisterer),
+			last:        atomic.NewInt64(0),
+			since:       atomic.NewInt64(0),
 		}
 
 		bb := &bytes.Buffer{}
@@ -442,7 +439,6 @@ func setupTailer(t *testing.T, client clientMock) (*tailer, *loki.CollectingHand
 		[]*relabel.Config{},
 		client,
 		testRestartBackoff,
-		func() bool { return false },
 	)
 	require.NoError(t, err)
 
