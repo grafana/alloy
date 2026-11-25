@@ -9,6 +9,7 @@ import (
 	"github.com/grafana/alloy/syntax"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configoptional"
+	"go.opentelemetry.io/collector/config/configstorage"
 	otelexporterhelper "go.opentelemetry.io/collector/exporter/exporterhelper"
 )
 
@@ -99,7 +100,7 @@ func (args *QueueArguments) Convert() (configoptional.Optional[otelexporterhelpe
 			return configoptional.None[otelexporterhelper.QueueBatchConfig](), fmt.Errorf("missing storage extension")
 		}
 
-		q.StorageID = &args.Storage.ID
+		q.StorageID = configoptional.Some(configstorage.ID(args.Storage.ID))
 	}
 
 	return configoptional.Some(q), nil

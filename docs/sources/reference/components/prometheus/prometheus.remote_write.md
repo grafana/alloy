@@ -299,10 +299,10 @@ In those cases, exported fields are kept at their last healthy values.
 * `prometheus_remote_storage_exemplars_retried_total` (counter): Total number of exemplars that failed to send to remote storage but were retried due to recoverable errors.
 * `prometheus_remote_storage_exemplars_total` (counter): Total number of exemplars sent to remote storage.
 * `prometheus_remote_storage_max_samples_per_send` (gauge): The maximum number of samples each shard is allowed to send in a single request.
-* `prometheus_remote_storage_metadata_bytes_total` (counter): Total number of bytes of metadata sent by queues after compression.
-* `prometheus_remote_storage_metadata_failed_total` (counter): Total number of metadata entries that failed to send to remote storage due to non-recoverable errors.
-* `prometheus_remote_storage_metadata_retried_total` (counter): Total number of metadata entries that failed to send to remote storage but were retried due to recoverable errors.
-* `prometheus_remote_storage_metadata_total` (counter): Total number of metadata entries sent to remote storage.
+* `prometheus_remote_storage_metadata_bytes_total` (counter): Total number of bytes of metadata sent by queues after compression. Only reported for Remote Write 1.0 queues. Remote Write 2.0 sends metadata with the samples.
+* `prometheus_remote_storage_metadata_failed_total` (counter): Total number of metadata entries that failed to send to remote storage due to non-recoverable errors. Only reported for Remote Write 1.0 queues. Remote Write 2.0 sends metadata with the samples.
+* `prometheus_remote_storage_metadata_retried_total` (counter): Total number of metadata entries that failed to send to remote storage but were retried due to recoverable errors. Only reported for Remote Write 1.0 queues. Remote Write 2.0 sends metadata with the samples.
+* `prometheus_remote_storage_metadata_total` (counter): Total number of metadata entries sent to remote storage. Only reported for Remote Write 1.0 queues. Remote Write 2.0 sends metadata with the samples.
 * `prometheus_remote_storage_queue_highest_sent_timestamp_seconds` (gauge): Unix timestamp of the latest WAL sample successfully sent by a queue.
 * `prometheus_remote_storage_samples_dropped_total` (counter): Total number of samples which were dropped after being read from the WAL before being sent to `remote_write` because of an unknown reference ID.
 * `prometheus_remote_storage_samples_failed_total` (counter): Total number of samples that failed to send to remote storage due to non-recoverable errors.

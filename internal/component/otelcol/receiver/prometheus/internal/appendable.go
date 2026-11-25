@@ -7,6 +7,7 @@ import (
 	"context"
 	"regexp"
 
+	"github.com/grafana/alloy/internal/component/prometheus/appenders/adapter"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 	"go.opentelemetry.io/collector/consumer"
@@ -61,9 +62,10 @@ func (o *appendable) Appender(ctx context.Context) storage.Appender {
 // AppenderV2 satisfies the AppendableV2 interface.
 //
 // TODO(v2 migration step 5): migrate the otelcol.receiver.prometheus
-// transaction to use AppenderV2 natively. It currently panics because
-// nothing calls it in production yet; all active append paths still go
-// through Appender (V1). See https://github.com/grafana/alloy/issues/6896
-func (o *appendable) AppenderV2(_ context.Context) storage.AppenderV2 {
-	panic("AppenderV2 not yet implemented for otelcol.receiver.prometheus")
+// transaction to use AppenderV2 natively. Until then, it adapts the V1
+// transaction. prometheus.receive_http reaches this path through a fanout,
+// because the Prometheus remote write receiver only writes through AppenderV2.
+// See https://github.com/grafana/alloy/issues/6896
+func (o *appendable) AppenderV2(ctx context.Context) storage.AppenderV2 {
+	return adapter.AppenderV1AsV2(o.Appender(ctx))
 }

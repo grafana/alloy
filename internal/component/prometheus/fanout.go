@@ -20,6 +20,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/prometheus/appenders"
+	"github.com/grafana/alloy/internal/component/prometheus/appenders/adapter"
 	"github.com/grafana/alloy/internal/service/labelstore"
 )
 
@@ -387,7 +388,10 @@ type appenderV2 struct {
 	fanout            *Fanout
 }
 
-var _ storage.AppenderV2 = (*appenderV2)(nil)
+var (
+	_ storage.AppenderV2         = (*appenderV2)(nil)
+	_ storage.ExemplarAppenderV2 = (*appenderV2)(nil)
+)
 
 // Append satisfies the AppenderV2 interface.
 func (a *appenderV2) Append(ref storage.SeriesRef, l labels.Labels, st, t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, opts storage.AppendV2Options) (storage.SeriesRef, error) {
@@ -427,6 +431,34 @@ func (a *appenderV2) Append(ref storage.SeriesRef, l labels.Labels, st, t int64,
 	}
 	if updated && isFloat {
 		a.fanout.samplesCounter.Inc()
+	}
+	if multiErr != nil {
+		return ref, multiErr
+	}
+	return ref, partialErr.ToError()
+}
+
+// AppendExemplars satisfies the storage.ExemplarAppenderV2 interface. It
+// forwards the exemplars to every child. Partial errors from the children are
+// merged, so the caller can tell which exemplars were rejected.
+func (a *appenderV2) AppendExemplars(ref storage.SeriesRef, l labels.Labels, exemplars []exemplar.Exemplar) (storage.SeriesRef, error) {
+	if a.start.IsZero() {
+		a.start = time.Now()
+	}
+	if ref == 0 {
+		ref = storage.SeriesRef(a.fanout.ls.GetOrAddGlobalRefID(l))
+	}
+
+	var (
+		multiErr   error
+		partialErr *storage.AppendPartialError
+	)
+	for _, x := range a.children {
+		_, err := adapter.AppendExemplars(x, ref, l, exemplars)
+		partialErr, err = partialErr.Handle(err)
+		if err != nil {
+			multiErr = multierror.Append(multiErr, err)
+		}
 	}
 	if multiErr != nil {
 		return ref, multiErr

@@ -60,8 +60,7 @@ func TestConfigConversion(t *testing.T) {
 					Timeout:         10 * time.Second,
 					Compression:     "none",
 					WriteBufferSize: 512 * 1024,
-					MaxIdleConns:    100,              //nolint:staticcheck // migrate to confighttp Keepalive
-					IdleConnTimeout: 90 * time.Second, //nolint:staticcheck // migrate to confighttp Keepalive
+					Keepalive:       configoptional.Some(confighttp.KeepaliveClientConfig{IdleConnTimeout: 90 * time.Second, MaxIdleConns: 100}),
 					Headers: configopaque.MapList{
 						configopaque.Pair{Name: "X-Scope-OrgID", Value: "123"},
 					},
@@ -91,8 +90,7 @@ func TestConfigConversion(t *testing.T) {
 					Timeout:           defaultTimeout,
 					Compression:       "gzip",
 					WriteBufferSize:   512 * 1024,
-					MaxIdleConns:      100,              //nolint:staticcheck // migrate to confighttp Keepalive
-					IdleConnTimeout:   90 * time.Second, //nolint:staticcheck // migrate to confighttp Keepalive
+					Keepalive:         configoptional.Some(confighttp.KeepaliveClientConfig{IdleConnTimeout: 90 * time.Second, MaxIdleConns: 100}),
 					Headers:           configopaque.MapList{},
 					ForceAttemptHTTP2: true,
 				},

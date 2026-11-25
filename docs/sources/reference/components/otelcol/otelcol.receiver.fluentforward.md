@@ -39,9 +39,10 @@ otelcol.receiver.fluentforward "<LABEL>" {
 
 You can use the following arguments with `otelcol.receiver.fluentforward`:
 
-| Name       | Type     | Description                                                                            | Default | Required |
-|------------|----------|----------------------------------------------------------------------------------------|---------|----------|
-| `endpoint` | `string` | The `<HOST:PORT>` or `unix://<path to socket>` address to listen to for logs messages. |         | yes      |
+| Name              | Type     | Description                                                                                                                     | Default | Required |
+|-------------------|----------|---------------------------------------------------------------------------------------------------------------------------------|---------|----------|
+| `endpoint`        | `string` | The `<HOST:PORT>` or `unix://<path to socket>` address to listen to for logs messages.                                          |         | yes      |
+| `max_connections` | `int`    | The maximum number of open connections. Connections over the limit wait until a slot frees. Set to `0` for no limit.            | `100`   | no       |
 
 ## Blocks
 

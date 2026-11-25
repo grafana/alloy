@@ -14,6 +14,7 @@ import (
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension"
 	otelcomponent "go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/pipeline"
 )
 
@@ -60,7 +61,8 @@ func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 		}
 
 		if h.Value != nil {
-			upstreamHeader.Value = &h.Value.Value
+			value := configopaque.String(h.Value.Value)
+			upstreamHeader.Value = &value
 		}
 		if h.FromContext != nil {
 			upstreamHeader.FromContext = h.FromContext

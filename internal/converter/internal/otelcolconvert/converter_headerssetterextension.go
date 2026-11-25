@@ -48,7 +48,7 @@ func toHeadersSetterExtension(cfg *headerssetterextension.Config) *headers.Argum
 		if h.Value != nil {
 			val = &alloytypes.OptionalSecret{
 				IsSecret: false, // we default to non-secret so that the converted configuration includes the actual value instead of (secret).
-				Value:    *h.Value,
+				Value:    string(*h.Value),
 			}
 		}
 

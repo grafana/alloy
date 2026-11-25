@@ -2,6 +2,7 @@ package prometheus_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"testing"
@@ -320,4 +321,60 @@ func TestFanout_PassthroughToSeriesRefMappingTransition(t *testing.T) {
 		"child1 must be called with 0, not the stale passthrough ref")
 	require.Equal(t, storage.SeriesRef(0), child2.appender.appendRefs[1],
 		"child2 must be called with 0, not the stale passthrough ref")
+}
+
+// exemplarAppenderV2 is an AppenderV2 that records AppendExemplars calls.
+type exemplarAppenderV2 struct {
+	storage.AppenderV2
+
+	refs      []storage.SeriesRef
+	exemplars [][]exemplar.Exemplar
+	err       error
+}
+
+var _ storage.ExemplarAppenderV2 = (*exemplarAppenderV2)(nil)
+
+func (a *exemplarAppenderV2) AppendExemplars(ref storage.SeriesRef, _ labels.Labels, exemplars []exemplar.Exemplar) (storage.SeriesRef, error) {
+	a.refs = append(a.refs, ref)
+	a.exemplars = append(a.exemplars, exemplars)
+	return ref, a.err
+}
+
+type exemplarStore struct{ app storage.AppenderV2 }
+
+func (s exemplarStore) AppenderV2(context.Context) storage.AppenderV2 { return s.app }
+
+func TestFanoutAppenderV2_AppendExemplars(t *testing.T) {
+	lbls := labels.FromStrings("job", "test")
+	exemplars := []exemplar.Exemplar{{Value: 1, Ts: 10, HasTs: true}}
+	exemplarErr := errors.New("rejected")
+
+	t.Run("forwards to every child with one global ref and merges partial errors", func(t *testing.T) {
+		child1 := &exemplarAppenderV2{err: &storage.AppendPartialError{ExemplarErrors: []storage.ExemplarError{{Index: 0, Err: exemplarErr}}}}
+		child2 := &exemplarAppenderV2{}
+		ls := labelstore.New(nil, promclient.NewRegistry())
+		fanout := prometheus.NewFanout([]storage.AppendableV2{exemplarStore{child1}, exemplarStore{child2}}, "", promclient.NewRegistry(), ls)
+
+		app := fanout.AppenderV2(t.Context()).(storage.ExemplarAppenderV2)
+		ref, err := app.AppendExemplars(0, lbls, exemplars)
+
+		// Unknown series get a global ref, which both children receive.
+		require.NotZero(t, ref)
+		require.Equal(t, []storage.SeriesRef{ref}, child1.refs)
+		require.Equal(t, []storage.SeriesRef{ref}, child2.refs)
+		require.Equal(t, [][]exemplar.Exemplar{exemplars}, child2.exemplars)
+
+		var partialErr *storage.AppendPartialError
+		require.ErrorAs(t, err, &partialErr)
+		require.Equal(t, []storage.ExemplarError{{Index: 0, Err: exemplarErr}}, partialErr.ExemplarErrors)
+	})
+
+	t.Run("a hard child error is returned", func(t *testing.T) {
+		child := &exemplarAppenderV2{err: exemplarErr}
+		ls := labelstore.New(nil, promclient.NewRegistry())
+		fanout := prometheus.NewFanout([]storage.AppendableV2{exemplarStore{child}}, "", promclient.NewRegistry(), ls)
+
+		_, err := fanout.AppenderV2(t.Context()).(storage.ExemplarAppenderV2).AppendExemplars(1, lbls, exemplars)
+		require.ErrorIs(t, err, exemplarErr)
+	})
 }

@@ -1046,8 +1046,8 @@ func TestSeriesRefMappingV2_PartialErrorsDoNotFailAppend(t *testing.T) {
 	err1 := errors.New("exemplar 1 failed")
 	err2 := errors.New("exemplar 2 failed")
 	store := newMockMappingStore()
-	child1 := &mockAppenderV2{nextRef: 100, err: &storage.AppendPartialError{ExemplarErrors: []error{err1}}}
-	child2 := &mockAppenderV2{nextRef: 200, err: &storage.AppendPartialError{ExemplarErrors: []error{err2}}}
+	child1 := &mockAppenderV2{nextRef: 100, err: &storage.AppendPartialError{ExemplarErrors: []storage.ExemplarError{{Err: err1}}}}
+	child2 := &mockAppenderV2{nextRef: 200, err: &storage.AppendPartialError{ExemplarErrors: []storage.ExemplarError{{Err: err2}}}}
 	app := NewSeriesRefMappingV2([]storage.AppenderV2{child1, child2}, store, newTestHistogram(), newTestCounter())
 
 	ref, err := app.Append(0, labels.FromStrings("job", "test"), 0, 1, 1, nil, nil, storage.AppendV2Options{})
@@ -1058,7 +1058,7 @@ func TestSeriesRefMappingV2_PartialErrorsDoNotFailAppend(t *testing.T) {
 	require.Len(t, store.createCalls, 1)
 	var partialErr *storage.AppendPartialError
 	require.ErrorAs(t, err, &partialErr)
-	require.Equal(t, []error{err1, err2}, partialErr.ExemplarErrors)
+	require.Equal(t, []storage.ExemplarError{{Err: err1}, {Err: err2}}, partialErr.ExemplarErrors)
 }
 
 func TestSeriesRefMappingV2_HardErrorFailsAppend(t *testing.T) {
@@ -1092,9 +1092,25 @@ type mockAppenderV2 struct {
 	appendRefs    []storage.SeriesRef
 	commitCalls   int
 	rollbackCalls int
+
+	exemplarRefs  []storage.SeriesRef
+	exemplarCalls [][]exemplar.Exemplar
+	exemplarErr   error
 }
 
-var _ storage.AppenderV2 = (*mockAppenderV2)(nil)
+var (
+	_ storage.AppenderV2         = (*mockAppenderV2)(nil)
+	_ storage.ExemplarAppenderV2 = (*mockAppenderV2)(nil)
+)
+
+func (m *mockAppenderV2) AppendExemplars(ref storage.SeriesRef, _ labels.Labels, exemplars []exemplar.Exemplar) (storage.SeriesRef, error) {
+	m.exemplarRefs = append(m.exemplarRefs, ref)
+	m.exemplarCalls = append(m.exemplarCalls, exemplars)
+	return ref, m.exemplarErr
+}
+
+// noExemplarAppenderV2 is an AppenderV2 that does not support AppendExemplars.
+type noExemplarAppenderV2 struct{ storage.AppenderV2 }
 
 func (m *mockAppenderV2) Append(ref storage.SeriesRef, _ labels.Labels, _, _ int64, _ float64, _ *histogram.Histogram, _ *histogram.FloatHistogram, _ storage.AppendV2Options) (storage.SeriesRef, error) {
 	m.appendRefs = append(m.appendRefs, ref)
@@ -1113,4 +1129,38 @@ func (m *mockAppenderV2) Commit() error {
 func (m *mockAppenderV2) Rollback() error {
 	m.rollbackCalls++
 	return nil
+}
+
+func TestSeriesRefMappingV2_AppendExemplars(t *testing.T) {
+	lbls := labels.FromStrings("job", "test")
+	exemplars := []exemplar.Exemplar{{Value: 1, Ts: 10, HasTs: true}}
+
+	t.Run("children get their mapped refs and partial errors are merged", func(t *testing.T) {
+		err1, err2 := errors.New("e1"), errors.New("e2")
+		child1 := &mockAppenderV2{nextRef: 100, exemplarErr: &storage.AppendPartialError{ExemplarErrors: []storage.ExemplarError{{Err: err1}}}}
+		child2 := &mockAppenderV2{nextRef: 200, exemplarErr: &storage.AppendPartialError{ExemplarErrors: []storage.ExemplarError{{Err: err2}}}}
+		app := NewSeriesRefMappingV2([]storage.AppenderV2{child1, child2}, newMockMappingStore(), newTestHistogram(), newTestCounter())
+
+		ref, err := app.Append(0, lbls, 0, 1, 1, nil, nil, storage.AppendV2Options{})
+		require.NoError(t, err)
+
+		_, err = app.(storage.ExemplarAppenderV2).AppendExemplars(ref, lbls, exemplars)
+		var partialErr *storage.AppendPartialError
+		require.ErrorAs(t, err, &partialErr)
+		require.Equal(t, []storage.ExemplarError{{Err: err1}, {Err: err2}}, partialErr.ExemplarErrors)
+		require.Equal(t, []storage.SeriesRef{101}, child1.exemplarRefs)
+		require.Equal(t, []storage.SeriesRef{201}, child2.exemplarRefs)
+		require.Equal(t, [][]exemplar.Exemplar{exemplars}, child1.exemplarCalls)
+	})
+
+	t.Run("a child without exemplar support fails the call", func(t *testing.T) {
+		child := &noExemplarAppenderV2{AppenderV2: &mockAppenderV2{nextRef: 100}}
+		app := NewSeriesRefMappingV2([]storage.AppenderV2{child}, newMockMappingStore(), newTestHistogram(), newTestCounter())
+
+		ref, err := app.Append(0, lbls, 0, 1, 1, nil, nil, storage.AppendV2Options{})
+		require.NoError(t, err)
+
+		_, err = app.(storage.ExemplarAppenderV2).AppendExemplars(ref, lbls, exemplars)
+		require.ErrorContains(t, err, "does not support appending exemplars")
+	})
 }

@@ -143,10 +143,29 @@ func TestAppenderV1AsV2_ExemplarErrorsArePartial(t *testing.T) {
 	// other exemplar failures are reported as a partial error.
 	var partialErr *storage.AppendPartialError
 	require.ErrorAs(t, err, &partialErr)
-	require.Equal(t, []error{oooErr}, partialErr.ExemplarErrors)
+	require.Equal(t, []storage.ExemplarError{{Index: 2, Err: oooErr}}, partialErr.ExemplarErrors)
 
 	// Metadata is still updated after exemplar failures.
 	require.Equal(t, call{method: "UpdateMetadata", ref: 3, m: meta}, rec.calls[len(rec.calls)-1])
+}
+
+func TestAppenderV1AsV2_AppendExemplars(t *testing.T) {
+	oooErr := storage.ErrOutOfOrderExemplar
+	rec := &recordingAppender{exemplarErrs: []error{nil, storage.ErrDuplicateExemplar, oooErr}}
+	app := adapter.AppenderV1AsV2(rec)
+
+	ref, err := adapter.AppendExemplars(app, 3, testLabels, []exemplar.Exemplar{
+		{Value: 1, Ts: 900, HasTs: true},
+		{Value: 2, Ts: 900, HasTs: true},
+		{Value: 3, Ts: 800, HasTs: true},
+	})
+	require.Equal(t, storage.SeriesRef(3), ref)
+
+	// Duplicates are dropped silently; other failures are reported with their index.
+	var partialErr *storage.AppendPartialError
+	require.ErrorAs(t, err, &partialErr)
+	require.Equal(t, []storage.ExemplarError{{Index: 2, Err: oooErr}}, partialErr.ExemplarErrors)
+	require.Len(t, rec.calls, 3)
 }
 
 func TestAppenderV1AsV2_RejectOutOfOrder(t *testing.T) {
@@ -275,4 +294,55 @@ func (r *recordingAppender) Commit() error {
 func (r *recordingAppender) Rollback() error {
 	r.rollbacks++
 	return nil
+}
+
+func TestAppenderV1AsV2_MetadataSentOncePerSeries(t *testing.T) {
+	rec := &recordingAppender{}
+	app := adapter.AppenderV1AsV2(rec)
+
+	gauge := metadata.Metadata{Type: "gauge"}
+	counter := metadata.Metadata{Type: "counter"}
+	for _, tc := range []struct {
+		ts   int64
+		meta metadata.Metadata
+	}{
+		{1000, gauge},   // First time: sent.
+		{2000, gauge},   // Unchanged: skipped.
+		{3000, counter}, // Changed: sent.
+	} {
+		_, err := app.Append(3, testLabels, 0, tc.ts, 1, nil, nil, storage.AppendV2Options{Metadata: tc.meta})
+		require.NoError(t, err)
+	}
+
+	var sent []metadata.Metadata
+	for _, c := range rec.calls {
+		if c.method == "UpdateMetadata" {
+			sent = append(sent, c.m)
+		}
+	}
+	require.Equal(t, []metadata.Metadata{gauge, counter}, sent)
+}
+
+// Series that the V1 appender returns no ref for are told apart by their labels.
+func TestAppenderV1AsV2_MetadataSentForEachSeriesWithoutRef(t *testing.T) {
+	rec := &recordingAppender{}
+	app := adapter.AppenderV1AsV2(rec)
+
+	meta := metadata.Metadata{Type: "gauge"}
+	for _, ls := range []labels.Labels{
+		labels.FromStrings("__name__", "metric", "lbl", "HFnEaGl"),
+		labels.FromStrings("__name__", "metric", "lbl", "RqcXatm"),
+		labels.FromStrings("__name__", "metric", "lbl", "HFnEaGl"), // Repeated: skipped.
+	} {
+		_, err := app.Append(0, ls, 0, 1000, 1, nil, nil, storage.AppendV2Options{Metadata: meta})
+		require.NoError(t, err)
+	}
+
+	updates := 0
+	for _, c := range rec.calls {
+		if c.method == "UpdateMetadata" {
+			updates++
+		}
+	}
+	require.Equal(t, 2, updates)
 }

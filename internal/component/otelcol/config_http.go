@@ -70,8 +70,9 @@ func (args *HTTPServerArguments) Convert() (configoptional.Optional[otelconfight
 		return configoptional.None[otelconfighttp.ServerConfig](), nil
 	}
 
-	if args.KeepAlivesEnabled != nil && !*args.KeepAlivesEnabled && args.Keepalive != nil {
-		return configoptional.None[otelconfighttp.ServerConfig](), fmt.Errorf("keep_alives_enabled can't be false when keepalive is also configured; keepalive always re-enables keep-alives")
+	// The upstream server always enables keep-alives, so this can't be honored.
+	if args.KeepAlivesEnabled != nil && !*args.KeepAlivesEnabled {
+		return configoptional.None[otelconfighttp.ServerConfig](), fmt.Errorf("keep_alives_enabled can't be false; the OpenTelemetry Collector no longer supports disabling HTTP server keep-alives, so remove the argument")
 	}
 
 	// If auth is set by the user retrieve the associated extension from the handler.
@@ -90,26 +91,25 @@ func (args *HTTPServerArguments) Convert() (configoptional.Optional[otelconfight
 		})
 	}
 
-	// Default true boolean
-	keepAliveEnabled := true
-	if args.KeepAlivesEnabled != nil {
-		keepAliveEnabled = *args.KeepAlivesEnabled
+	// Upstream removed the flat keep-alive fields, so fold the legacy attributes into the
+	// Keepalive section.
+	keepalive := args.Keepalive.Convert()
+	if args.Keepalive == nil {
+		keepalive = configoptional.Some(otelconfighttp.KeepaliveServerConfig{IdleTimeout: args.IdleTimeout})
 	}
 
 	return configoptional.Some(otelconfighttp.ServerConfig{
 		NetAddr:               confignet.AddrConfig{Endpoint: args.Endpoint, Transport: confignet.TransportTypeTCP},
 		TLS:                   args.TLS.Convert(),
-		KeepAlivesEnabled:     keepAliveEnabled, //nolint:staticcheck // migrate to confighttp Keepalive
 		CORS:                  args.CORS.Convert(),
 		MaxRequestBodySize:    int64(args.MaxRequestBodySize),
 		IncludeMetadata:       args.IncludeMetadata,
 		CompressionAlgorithms: copyStringSlice(args.CompressionAlgorithms),
 		Auth:                  authentication,
-		IdleTimeout:           args.IdleTimeout, //nolint:staticcheck // migrate to confighttp Keepalive
 		ReadHeaderTimeout:     args.ReadHeaderTimeout,
 		WriteTimeout:          args.WriteTimeout,
 		ReadTimeout:           args.ReadTimeout,
-		Keepalive:             args.Keepalive.Convert(),
+		Keepalive:             keepalive,
 	}), nil
 }
 
@@ -286,6 +286,20 @@ func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error)
 		opaqueHeaders.Set(headerName, configopaque.String(headerVal))
 	}
 
+	// Upstream removed the flat keep-alive fields. The legacy attributes are folded into the
+	// Keepalive section. A None value disables keep-alives.
+	keepalive := args.Keepalive.Convert()
+	if args.Keepalive == nil {
+		keepalive = configoptional.None[otelconfighttp.KeepaliveClientConfig]()
+		if !args.DisableKeepAlives {
+			keepalive = configoptional.Some(otelconfighttp.KeepaliveClientConfig{
+				IdleConnTimeout:     args.IdleConnTimeout,
+				MaxIdleConns:        args.MaxIdleConns,
+				MaxIdleConnsPerHost: args.MaxIdleConnsPerHost,
+			})
+		}
+	}
+
 	v := otelconfighttp.ClientConfig{
 		Endpoint: args.Endpoint,
 
@@ -299,11 +313,7 @@ func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error)
 		WriteBufferSize:      int(args.WriteBufferSize),
 		Timeout:              args.Timeout,
 		Headers:              opaqueHeaders,
-		MaxIdleConns:         args.MaxIdleConns,        //nolint:staticcheck // migrate to confighttp Keepalive
-		MaxIdleConnsPerHost:  args.MaxIdleConnsPerHost, //nolint:staticcheck // migrate to confighttp Keepalive
 		MaxConnsPerHost:      args.MaxConnsPerHost,
-		IdleConnTimeout:      args.IdleConnTimeout,   //nolint:staticcheck // migrate to confighttp Keepalive
-		DisableKeepAlives:    args.DisableKeepAlives, //nolint:staticcheck // migrate to confighttp Keepalive
 		HTTP2ReadIdleTimeout: args.HTTP2ReadIdleTimeout,
 		HTTP2PingTimeout:     args.HTTP2PingTimeout,
 		ForceAttemptHTTP2:    args.ForceAttemptHTTP2,
@@ -311,7 +321,7 @@ func (args *HTTPClientArguments) Convert() (*otelconfighttp.ClientConfig, error)
 		Auth: authentication,
 
 		Cookies:   args.Cookies.Convert(),
-		Keepalive: args.Keepalive.Convert(),
+		Keepalive: keepalive,
 	}
 
 	if args.CompressionParams != nil {

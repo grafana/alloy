@@ -287,7 +287,10 @@ type echoAppenderV2 struct {
 	buf *echoAppender
 }
 
-var _ storage.AppenderV2 = (*echoAppenderV2)(nil)
+var (
+	_ storage.AppenderV2         = (*echoAppenderV2)(nil)
+	_ storage.ExemplarAppenderV2 = (*echoAppenderV2)(nil)
+)
 
 func (a *echoAppenderV2) Append(ref storage.SeriesRef, l labels.Labels, st, t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, opts storage.AppendV2Options) (storage.SeriesRef, error) {
 	a.buf.mut.Lock()
@@ -341,6 +344,23 @@ func (a *echoAppenderV2) Append(ref storage.SeriesRef, l labels.Labels, st, t in
 	}
 
 	// Zero indicates echo does not care about SeriesRefs
+	return 0, nil
+}
+
+// AppendExemplars satisfies the storage.ExemplarAppenderV2 interface. Like
+// Append, it keeps only the last exemplar of a series.
+func (a *echoAppenderV2) AppendExemplars(_ storage.SeriesRef, l labels.Labels, exemplars []exemplar.Exemplar) (storage.SeriesRef, error) {
+	if len(exemplars) == 0 {
+		return 0, nil
+	}
+
+	a.buf.mut.Lock()
+	defer a.buf.mut.Unlock()
+
+	a.buf.exemplars[l.String()] = seriesExemplar{
+		Labels:   l.Copy(),
+		Exemplar: exemplars[len(exemplars)-1],
+	}
 	return 0, nil
 }
 

@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/grafana/alloy/internal/component/prometheus/appenders/adapter"
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/exemplar"
@@ -273,6 +274,24 @@ func (s *seriesRefMappingV2) Append(ref storage.SeriesRef, l labels.Labels, st, 
 	}
 	return newRef, partialErr.ToError()
 }
+
+// AppendExemplars satisfies the storage.ExemplarAppenderV2 interface. It
+// forwards the exemplars to every child and merges their partial errors.
+func (s *seriesRefMappingV2) AppendExemplars(ref storage.SeriesRef, l labels.Labels, exemplars []exemplar.Exemplar) (storage.SeriesRef, error) {
+	var partialErr *storage.AppendPartialError
+
+	newRef, err := appendToChildren(&s.seriesRefMappingCore, s.children, ref, l, func(appender storage.AppenderV2, ref storage.SeriesRef) (storage.SeriesRef, error) {
+		newRef, err := adapter.AppendExemplars(appender, ref, l, exemplars)
+		partialErr, err = partialErr.Handle(err)
+		return newRef, err
+	})
+	if err != nil {
+		return newRef, err
+	}
+	return newRef, partialErr.ToError()
+}
+
+var _ storage.ExemplarAppenderV2 = (*seriesRefMappingV2)(nil)
 
 type uniqRefChildren struct {
 	childRefs []storage.SeriesRef

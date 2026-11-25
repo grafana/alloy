@@ -12,6 +12,7 @@ import (
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/configopaque"
+	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/pipeline"
 )
@@ -191,17 +192,24 @@ func (args *SplunkHecClientArguments) Convert() *confighttp.ClientConfig {
 	if args == nil {
 		return nil
 	}
+	// Upstream removed the flat keep-alive fields. A None keepalive disables keep-alives.
+	keepalive := configoptional.None[confighttp.KeepaliveClientConfig]()
+	if !args.DisableKeepAlives {
+		keepalive = configoptional.Some(confighttp.KeepaliveClientConfig{
+			IdleConnTimeout:     args.IdleConnTimeout,
+			MaxIdleConns:        args.MaxIdleConns,
+			MaxIdleConnsPerHost: args.MaxIdleConnsPerHost,
+		})
+	}
+
 	return &confighttp.ClientConfig{
-		Endpoint:            args.Endpoint,
-		ReadBufferSize:      args.ReadBufferSize,
-		WriteBufferSize:     args.WriteBufferSize,
-		Timeout:             args.Timeout,
-		MaxIdleConns:        args.MaxIdleConns,        //nolint:staticcheck // migrate to confighttp Keepalive
-		MaxIdleConnsPerHost: args.MaxIdleConnsPerHost, //nolint:staticcheck // migrate to confighttp Keepalive
-		MaxConnsPerHost:     args.MaxConnsPerHost,
-		IdleConnTimeout:     args.IdleConnTimeout,   //nolint:staticcheck // migrate to confighttp Keepalive
-		DisableKeepAlives:   args.DisableKeepAlives, //nolint:staticcheck // migrate to confighttp Keepalive
-		ForceAttemptHTTP2:   args.ForceAttemptHTTP2,
+		Endpoint:          args.Endpoint,
+		ReadBufferSize:    args.ReadBufferSize,
+		WriteBufferSize:   args.WriteBufferSize,
+		Timeout:           args.Timeout,
+		MaxConnsPerHost:   args.MaxConnsPerHost,
+		Keepalive:         keepalive,
+		ForceAttemptHTTP2: args.ForceAttemptHTTP2,
 		TLS: configtls.ClientConfig{
 			InsecureSkipVerify: args.InsecureSkipVerify,
 		},

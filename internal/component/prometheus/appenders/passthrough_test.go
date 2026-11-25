@@ -259,7 +259,7 @@ func TestPassthroughV2_ZerosDeadRefs(t *testing.T) {
 }
 
 func TestPassthroughV2_CountsFloatSamples(t *testing.T) {
-	partialErr := &storage.AppendPartialError{ExemplarErrors: []error{storage.ErrOutOfOrderExemplar}}
+	partialErr := &storage.AppendPartialError{ExemplarErrors: []storage.ExemplarError{{Err: storage.ErrOutOfOrderExemplar}}}
 	hardErr := errors.New("append failed")
 
 	for _, tc := range []struct {
@@ -293,4 +293,39 @@ func TestPassthroughV2_CommitAndRollback(t *testing.T) {
 	require.NoError(t, app.Rollback())
 	require.Equal(t, 1, child.commitCalls)
 	require.Equal(t, 1, child.rollbackCalls)
+}
+
+func TestPassthroughV2_AppendExemplars(t *testing.T) {
+	lbls := labels.FromStrings("job", "test")
+	exemplars := []exemplar.Exemplar{{Value: 1, Ts: 10, HasTs: true}}
+
+	t.Run("zeros dead refs like Append", func(t *testing.T) {
+		child := &mockAppenderV2{}
+		app := NewPassthroughV2(child, 10, newTestHistogram(), newTestCounter()).(storage.ExemplarAppenderV2)
+
+		_, err := app.AppendExemplars(9, lbls, exemplars)
+		require.NoError(t, err)
+		_, err = app.AppendExemplars(10, lbls, exemplars)
+		require.NoError(t, err)
+
+		require.Equal(t, []storage.SeriesRef{0, 10}, child.exemplarRefs)
+	})
+
+	t.Run("partial errors from the child are returned", func(t *testing.T) {
+		partialErr := &storage.AppendPartialError{ExemplarErrors: []storage.ExemplarError{{Index: 1, Err: storage.ErrOutOfOrderExemplar}}}
+		child := &mockAppenderV2{exemplarErr: partialErr}
+		app := NewPassthroughV2(child, 0, newTestHistogram(), newTestCounter()).(storage.ExemplarAppenderV2)
+
+		_, err := app.AppendExemplars(1, lbls, exemplars)
+		var got *storage.AppendPartialError
+		require.ErrorAs(t, err, &got)
+		require.Equal(t, partialErr.ExemplarErrors, got.ExemplarErrors)
+	})
+
+	t.Run("child without exemplar support", func(t *testing.T) {
+		app := NewPassthroughV2(&noExemplarAppenderV2{AppenderV2: &mockAppenderV2{}}, 0, newTestHistogram(), newTestCounter()).(storage.ExemplarAppenderV2)
+
+		_, err := app.AppendExemplars(1, lbls, exemplars)
+		require.ErrorContains(t, err, "does not support appending exemplars")
+	})
 }

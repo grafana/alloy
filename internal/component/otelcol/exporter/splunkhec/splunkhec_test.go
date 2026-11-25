@@ -45,11 +45,8 @@ func TestConfigConversion(t *testing.T) {
 			Headers:              nil,
 			Auth:                 configoptional.None[configauth.Config](),
 			Compression:          "",
-			MaxIdleConns:         100, //nolint:staticcheck // migrate to confighttp Keepalive
-			MaxIdleConnsPerHost:  0,   //nolint:staticcheck // migrate to confighttp Keepalive
 			MaxConnsPerHost:      0,
-			IdleConnTimeout:      90000000000, //nolint:staticcheck // migrate to confighttp Keepalive
-			DisableKeepAlives:    false,       //nolint:staticcheck // migrate to confighttp Keepalive
+			Keepalive:            configoptional.Some(confighttp.KeepaliveClientConfig{IdleConnTimeout: 90000000000, MaxIdleConns: 100}),
 			HTTP2ReadIdleTimeout: 0,
 			HTTP2PingTimeout:     0,
 			Cookies:              configoptional.None[confighttp.CookiesConfig](),
@@ -58,7 +55,6 @@ func TestConfigConversion(t *testing.T) {
 		QueueSettings: configoptional.Some(exporterhelper.QueueBatchConfig{
 			NumConsumers: 10,
 			QueueSize:    1000,
-			StorageID:    nil,
 			Sizer:        exporterhelper.RequestSizerTypeRequests,
 			Batch: configoptional.Some(batchWithDefaultPartition(exporterhelper.BatchConfig{
 				FlushTimeout: 200000000,
@@ -133,11 +129,8 @@ func TestConfigConversion(t *testing.T) {
 			Headers:              nil,
 			Auth:                 configoptional.None[configauth.Config](),
 			Compression:          "",
-			MaxIdleConns:         100, //nolint:staticcheck // migrate to confighttp Keepalive
-			MaxIdleConnsPerHost:  0,   //nolint:staticcheck // migrate to confighttp Keepalive
 			MaxConnsPerHost:      0,
-			IdleConnTimeout:      90000000000, //nolint:staticcheck // migrate to confighttp Keepalive
-			DisableKeepAlives:    false,       //nolint:staticcheck // migrate to confighttp Keepalive
+			Keepalive:            configoptional.Some(confighttp.KeepaliveClientConfig{IdleConnTimeout: 90000000000, MaxIdleConns: 100}),
 			HTTP2ReadIdleTimeout: 0,
 			HTTP2PingTimeout:     0,
 			ForceAttemptHTTP2:    true,

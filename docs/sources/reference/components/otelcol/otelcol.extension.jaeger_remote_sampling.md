@@ -171,7 +171,7 @@ The following arguments are supported:
 | `endpoint`               | `string`                   | `host:port` to listen for traffic on.                                        | `"0.0.0.0:5778"`                                           | no       |
 | `idle_timeout`           | `duration`                 | Maximum idle time before closing a keep-alive connection.                    | `"1m"`                                                     | no       |
 | `include_metadata`       | `boolean`                  | Propagate incoming connection metadata to downstream consumers.              |                                                            | no       |
-| `keep_alives_enabled`    | `boolean`                  | Whether or not HTTP keep-alives are enabled                                  | `true`                                                     | no       |
+| `keep_alives_enabled`    | `boolean`                  | Deprecated. HTTP keep-alives are always enabled, and setting this to `false` returns an error. | `true`                                                     | no       |
 | `max_request_body_size`  | `string`                   | Maximum request body size the server will allow.                             | `"20MiB"`                                                  | no       |
 | `read_header_timeout`    | `duration`                 | Maximum time allowed to read request headers.                                | `"1m"`                                                     | no       |
 | `read_timeout`           | `duration`                 | Maximum time allowed to read an HTTP request, including the body.            | `""`                                                       | no       |

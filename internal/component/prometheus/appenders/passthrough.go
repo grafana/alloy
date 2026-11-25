@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/grafana/alloy/internal/component/prometheus/appenders/adapter"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
@@ -112,6 +113,8 @@ func (p *passthrough) AppendSTZeroSample(ref storage.SeriesRef, l labels.Labels,
 }
 
 // passthroughV2 is the storage.AppenderV2 counterpart of passthrough.
+var _ storage.ExemplarAppenderV2 = (*passthroughV2)(nil)
+
 type passthroughV2 struct {
 	wrapping         storage.AppenderV2
 	start            time.Time
@@ -147,6 +150,17 @@ func (p *passthroughV2) Append(ref storage.SeriesRef, l labels.Labels, st, t int
 	}
 
 	return ref, err
+}
+
+// AppendExemplars satisfies the storage.ExemplarAppenderV2 interface.
+func (p *passthroughV2) AppendExemplars(ref storage.SeriesRef, l labels.Labels, exemplars []exemplar.Exemplar) (storage.SeriesRef, error) {
+	if p.start.IsZero() {
+		p.start = time.Now()
+	}
+	if ref != 0 && ref < p.deadRefThreshold {
+		ref = 0
+	}
+	return adapter.AppendExemplars(p.wrapping, ref, l, exemplars)
 }
 
 func (p *passthroughV2) Commit() error {

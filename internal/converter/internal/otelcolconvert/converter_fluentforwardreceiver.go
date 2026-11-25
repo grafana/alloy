@@ -44,8 +44,9 @@ func (fluentforwardReceiverConverter) ConvertAndAppend(state *State, id componen
 
 func toOtelcolReceiverfluentforward(cfg *fluentforwardreceiver.Config) *fluentforward.Arguments {
 	args := &fluentforward.Arguments{
-		Endpoint:     cfg.ListenAddress,
-		DebugMetrics: common.DefaultValue[fluentforward.Arguments]().DebugMetrics,
+		Endpoint:       cfg.ListenAddress,
+		MaxConnections: cfg.MaxConnections,
+		DebugMetrics:   common.DefaultValue[fluentforward.Arguments]().DebugMetrics,
 	}
 
 	return args

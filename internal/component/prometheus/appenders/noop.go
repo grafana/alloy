@@ -66,9 +66,16 @@ func (n Noop) AppendSTZeroSample(ref storage.SeriesRef, _ labels.Labels, _, _ in
 // sample and returns the ref it was given.
 type NoopV2 struct{}
 
-var _ storage.AppenderV2 = NoopV2{}
+var (
+	_ storage.AppenderV2         = NoopV2{}
+	_ storage.ExemplarAppenderV2 = NoopV2{}
+)
 
 func (n NoopV2) Append(ref storage.SeriesRef, _ labels.Labels, _, _ int64, _ float64, _ *histogram.Histogram, _ *histogram.FloatHistogram, _ storage.AppendV2Options) (storage.SeriesRef, error) {
+	return ref, nil
+}
+
+func (n NoopV2) AppendExemplars(ref storage.SeriesRef, _ labels.Labels, _ []exemplar.Exemplar) (storage.SeriesRef, error) {
 	return ref, nil
 }
 

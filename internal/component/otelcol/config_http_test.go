@@ -9,6 +9,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
+	otelconfighttp "go.opentelemetry.io/collector/config/confighttp"
 )
 
 // Convert passes timeouts through unchanged; defaults are applied by each
@@ -22,8 +23,7 @@ func TestHTTPServerArguments_ConvertTimeoutZeroValue(t *testing.T) {
 
 	server := cfg.Get()
 	require.NotNil(t, server)
-	//nolint:staticcheck // IdleTimeout remains the source of truth for an already-unmarshaled ServerConfig.
-	require.Equal(t, time.Duration(0), server.IdleTimeout)
+	require.Equal(t, time.Duration(0), server.Keepalive.Get().IdleTimeout)
 	require.Equal(t, time.Duration(0), server.ReadHeaderTimeout)
 	require.Equal(t, time.Duration(0), server.WriteTimeout)
 	require.Equal(t, time.Duration(0), server.ReadTimeout)
@@ -47,6 +47,15 @@ func TestCORSArguments_ConvertExposedHeaders(t *testing.T) {
 func TestHTTPClientArguments_ConvertKeepalive(t *testing.T) {
 	t.Run("unset", func(t *testing.T) {
 		args := &otelcol.HTTPClientArguments{}
+		cfg, err := args.Convert()
+		require.NoError(t, err)
+		// Keep-alives stay enabled unless disable_keep_alives is set.
+		require.True(t, cfg.Keepalive.HasValue())
+		require.Equal(t, otelconfighttp.KeepaliveClientConfig{}, *cfg.Keepalive.Get())
+	})
+
+	t.Run("disabled", func(t *testing.T) {
+		args := &otelcol.HTTPClientArguments{DisableKeepAlives: true}
 		cfg, err := args.Convert()
 		require.NoError(t, err)
 		require.False(t, cfg.Keepalive.HasValue())
@@ -92,7 +101,15 @@ func TestHTTPServerArguments_ConvertKeepalive(t *testing.T) {
 		args := &otelcol.HTTPServerArguments{}
 		cfg, err := args.Convert()
 		require.NoError(t, err)
-		require.False(t, cfg.Get().Keepalive.HasValue())
+		require.True(t, cfg.Get().Keepalive.HasValue())
+		require.Equal(t, time.Duration(0), cfg.Get().Keepalive.Get().IdleTimeout)
+	})
+
+	t.Run("keep alives disabled", func(t *testing.T) {
+		disabled := false
+		args := &otelcol.HTTPServerArguments{KeepAlivesEnabled: &disabled}
+		_, err := args.Convert()
+		require.Error(t, err)
 	})
 
 	t.Run("set", func(t *testing.T) {
@@ -136,8 +153,7 @@ func TestHTTPServerArguments_ConvertTimeoutCustom(t *testing.T) {
 
 	server := cfg.Get()
 	require.NotNil(t, server)
-	//nolint:staticcheck // IdleTimeout remains the source of truth for an already-unmarshaled ServerConfig.
-	require.Equal(t, 2*time.Minute, server.IdleTimeout)
+	require.Equal(t, 2*time.Minute, server.Keepalive.Get().IdleTimeout)
 	require.Equal(t, 10*time.Second, server.ReadTimeout)
 	require.Equal(t, 45*time.Second, server.WriteTimeout)
 	require.Equal(t, 15*time.Second, server.ReadHeaderTimeout)

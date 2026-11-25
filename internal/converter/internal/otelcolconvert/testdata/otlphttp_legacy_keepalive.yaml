@@ -1,0 +1,18 @@
+# The flat keep-alive keys were removed upstream. They must be written in the
+# keepalive section, and the converter reports a critical diagnostic otherwise.
+receivers:
+  otlp:
+    protocols:
+      http:
+
+exporters:
+  otlphttp:
+    endpoint: database:4318
+    max_idle_conns: 50
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: []
+      exporters: [otlphttp]

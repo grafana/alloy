@@ -327,3 +327,25 @@ func printedMetrics(t *testing.T, buf *bytes.Buffer) string {
 	require.NoError(t, err)
 	return metrics
 }
+
+// AppendExemplars keeps only the last exemplar of a series, like the exemplars
+// passed to Append.
+func TestAppenderV2_AppendExemplars(t *testing.T) {
+	comp, _ := newTestComponent(t, Arguments{Format: "openmetrics"})
+	app := comp.AppenderV2(t.Context()).(*echoAppenderV2)
+
+	lbls := labels.FromStrings("__name__", "requests_total", "job", "test")
+	_, err := app.Append(0, lbls, 0, 1000, 1, nil, nil, storage.AppendV2Options{})
+	require.NoError(t, err)
+
+	first := exemplar.Exemplar{Labels: labels.FromStrings("trace_id", "abc"), Value: 1, Ts: 900, HasTs: true}
+	last := exemplar.Exemplar{Labels: labels.FromStrings("trace_id", "def"), Value: 2, Ts: 950, HasTs: true}
+	_, err = app.AppendExemplars(0, lbls, []exemplar.Exemplar{first, last})
+	require.NoError(t, err)
+	_, err = app.AppendExemplars(0, lbls, nil)
+	require.NoError(t, err)
+
+	require.Equal(t, map[string]seriesExemplar{
+		lbls.String(): {Labels: lbls, Exemplar: last},
+	}, app.buf.exemplars)
+}

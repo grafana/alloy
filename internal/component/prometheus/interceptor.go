@@ -293,7 +293,10 @@ type interceptappenderV2 struct {
 	child       storage.AppenderV2
 }
 
-var _ storage.AppenderV2 = (*interceptappenderV2)(nil)
+var (
+	_ storage.AppenderV2         = (*interceptappenderV2)(nil)
+	_ storage.ExemplarAppenderV2 = (*interceptappenderV2)(nil)
+)
 
 // Append satisfies the AppenderV2 interface.
 func (a *interceptappenderV2) Append(ref storage.SeriesRef, l labels.Labels, st, t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, opts storage.AppendV2Options) (storage.SeriesRef, error) {
@@ -304,6 +307,16 @@ func (a *interceptappenderV2) Append(ref storage.SeriesRef, l labels.Labels, st,
 		return 0, nil
 	}
 	return a.child.Append(ref, l, st, t, v, h, fh, opts)
+}
+
+// AppendExemplars satisfies the storage.ExemplarAppenderV2 interface. AppenderV2
+// has no exemplar hook, so the exemplars go straight to the child. Interceptors
+// with V1 hooks use the V1 adapter instead, which runs the V1 exemplar hook.
+func (a *interceptappenderV2) AppendExemplars(ref storage.SeriesRef, l labels.Labels, exemplars []exemplar.Exemplar) (storage.SeriesRef, error) {
+	if a.child == nil {
+		return 0, nil
+	}
+	return adapter.AppendExemplars(a.child, ref, l, exemplars)
 }
 
 // Commit satisfies the AppenderV2 interface.

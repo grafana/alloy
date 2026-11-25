@@ -38,6 +38,10 @@ type Arguments struct {
 	// domain socket).
 	Endpoint string `alloy:"endpoint,attr"`
 
+	// MaxConnections caps the number of open connections. Connections over the
+	// cap wait until a slot frees. Zero means no limit.
+	MaxConnections int `alloy:"max_connections,attr,optional"`
+
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolConfig.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 
@@ -49,10 +53,15 @@ func (a *Arguments) Validate() error {
 	if a.Endpoint == "" {
 		return fmt.Errorf("endpoint must not be empty")
 	}
+	if a.MaxConnections < 0 {
+		return fmt.Errorf("max_connections must be greater than or equal to 0")
+	}
 	return nil
 }
 
 func (a *Arguments) SetToDefault() {
+	// Matches the default of the upstream receiver.
+	a.MaxConnections = 100
 	a.DebugMetrics.SetToDefault()
 }
 
@@ -63,6 +72,7 @@ type ConsumerArguments struct {
 func (a Arguments) Convert() (collectorComponent.Config, error) {
 	cfg := fluentforwardreceiver.NewFactory().CreateDefaultConfig().(*fluentforwardreceiver.Config)
 	cfg.ListenAddress = a.Endpoint
+	cfg.MaxConnections = a.MaxConnections
 	return cfg, nil
 }
 

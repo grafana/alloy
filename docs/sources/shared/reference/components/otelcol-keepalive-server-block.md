@@ -11,6 +11,5 @@ The following arguments are supported:
 | `idle_timeout` | `duration` | Maximum idle time before closing a keep-alive connection. | `"1m"`  | no       |
 
 When set, `keepalive` takes precedence over the deprecated `idle_timeout` argument, which is then ignored.
-Setting the `keepalive` block also enables keep-alives unconditionally, so it can't be combined with
-`keep_alives_enabled = false`. To disable keep-alives, don't set the `keepalive` block, and set
-`keep_alives_enabled` to `false` instead.
+HTTP server keep-alives are always enabled. The deprecated `keep_alives_enabled` argument returns an error
+when you set it to `false`, because the OpenTelemetry Collector no longer supports disabling them.

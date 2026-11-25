@@ -7,6 +7,7 @@ import (
 	"github.com/alecthomas/units"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/cloudflarereceiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/pipeline"
 
 	"github.com/grafana/alloy/internal/component"
@@ -69,7 +70,7 @@ func (args *Arguments) SetToDefault() {
 func (args Arguments) receiverConfig() *cloudflarereceiver.Config {
 	tlsCfg := args.TLS.Convert()
 	cfg := cloudflarereceiver.NewFactory().CreateDefaultConfig().(*cloudflarereceiver.Config)
-	cfg.Logs.Secret = string(args.Secret)
+	cfg.Logs.Secret = configopaque.String(args.Secret)
 	cfg.Logs.Endpoint = args.Endpoint
 	cfg.Logs.TLS = tlsCfg.Get()
 	cfg.Logs.Attributes = args.Attributes

@@ -3,9 +3,12 @@ package adapter
 
 import (
 	"errors"
+	"fmt"
 
+	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/storage"
 )
 
@@ -35,9 +38,43 @@ type v1AsV2 struct {
 	// that SetOptions is only called when AppendV2Options.RejectOutOfOrder
 	// changes between appends.
 	discardOutOfOrder bool
+
+	// lastMetadata holds the last metadata sent for each series in this
+	// transaction. V2 callers attach the metadata to every sample of a series
+	// and expect the storage to persist it only when it changed. V1 callers
+	// call UpdateMetadata once per series.
+	lastMetadata map[metadataKey]metadata.Metadata
 }
 
-var _ storage.AppenderV2 = (*v1AsV2)(nil)
+// metadataKey identifies a series within a transaction. The series ref is
+// exact. Appenders that don't return refs (ref 0) fall back to the labels, so
+// two different series never share a key.
+type metadataKey struct {
+	ref  storage.SeriesRef
+	lbls string
+}
+
+// metadataChanged reports whether m differs from the metadata last sent for
+// the series (ref, ls) in this transaction, and records m.
+func (a *v1AsV2) metadataChanged(ref storage.SeriesRef, ls labels.Labels, m metadata.Metadata) bool {
+	key := metadataKey{ref: ref}
+	if ref == 0 {
+		key.lbls = ls.String()
+	}
+	if prev, ok := a.lastMetadata[key]; ok && prev == m {
+		return false
+	}
+	if a.lastMetadata == nil {
+		a.lastMetadata = make(map[metadataKey]metadata.Metadata)
+	}
+	a.lastMetadata[key] = m
+	return true
+}
+
+var (
+	_ storage.AppenderV2         = (*v1AsV2)(nil)
+	_ storage.ExemplarAppenderV2 = (*v1AsV2)(nil)
+)
 
 func (a *v1AsV2) Append(ref storage.SeriesRef, ls labels.Labels, st, t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, opts storage.AppendV2Options) (storage.SeriesRef, error) {
 	if opts.RejectOutOfOrder != a.discardOutOfOrder {
@@ -69,21 +106,43 @@ func (a *v1AsV2) Append(ref storage.SeriesRef, ls labels.Labels, st, t int64, v 
 		return ref, err
 	}
 
-	var partialErr *storage.AppendPartialError
-	for _, e := range opts.Exemplars {
-		if _, err := a.app.AppendExemplar(ref, ls, e); err != nil && !errors.Is(err, storage.ErrDuplicateExemplar) {
-			if partialErr == nil {
-				partialErr = &storage.AppendPartialError{}
-			}
-			partialErr.ExemplarErrors = append(partialErr.ExemplarErrors, err)
-		}
-	}
+	partialErr := a.appendExemplars(ref, ls, opts.Exemplars)
 
-	if !opts.Metadata.IsEmpty() {
+	if !opts.Metadata.IsEmpty() && a.metadataChanged(ref, ls, opts.Metadata) {
 		_, _ = a.app.UpdateMetadata(ref, ls, opts.Metadata)
 	}
 
 	return ref, partialErr.ToError()
+}
+
+// AppendExemplars satisfies the storage.ExemplarAppenderV2 interface. It calls
+// AppendExemplar of the V1 appender for each exemplar. Failures other than
+// duplicates are returned as a *storage.AppendPartialError.
+func (a *v1AsV2) AppendExemplars(ref storage.SeriesRef, ls labels.Labels, exemplars []exemplar.Exemplar) (storage.SeriesRef, error) {
+	return ref, a.appendExemplars(ref, ls, exemplars).ToError()
+}
+
+func (a *v1AsV2) appendExemplars(ref storage.SeriesRef, ls labels.Labels, exemplars []exemplar.Exemplar) *storage.AppendPartialError {
+	var partialErr *storage.AppendPartialError
+	for i, e := range exemplars {
+		if _, err := a.app.AppendExemplar(ref, ls, e); err != nil && !errors.Is(err, storage.ErrDuplicateExemplar) {
+			if partialErr == nil {
+				partialErr = &storage.AppendPartialError{}
+			}
+			partialErr.ExemplarErrors = append(partialErr.ExemplarErrors, storage.ExemplarError{Index: i, Err: err})
+		}
+	}
+	return partialErr
+}
+
+// AppendExemplars forwards the exemplars to app. It returns an error if app
+// does not implement storage.ExemplarAppenderV2.
+func AppendExemplars(app storage.AppenderV2, ref storage.SeriesRef, ls labels.Labels, exemplars []exemplar.Exemplar) (storage.SeriesRef, error) {
+	ea, ok := app.(storage.ExemplarAppenderV2)
+	if !ok {
+		return ref, fmt.Errorf("appender %T does not support appending exemplars", app)
+	}
+	return ea.AppendExemplars(ref, ls, exemplars)
 }
 
 func (a *v1AsV2) Commit() error {

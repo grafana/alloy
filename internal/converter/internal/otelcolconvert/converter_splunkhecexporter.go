@@ -35,7 +35,7 @@ func (splunkhecExporterConverter) ConvertAndAppend(state *State, id componentsta
 		switch val.(type) {
 		case extension.ExtensionHandler:
 			queue := cfg.(*splunkhecexporter.Config).QueueSettings.GetOrInsertDefault()
-			ext := state.LookupExtension(*queue.StorageID)
+			ext := state.LookupExtension(queue.StorageID.Get().ComponentID())
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
 		return common.GetAlloyTypesOverrideHook()(val)
@@ -74,19 +74,17 @@ func toSplunkHecExporter(cfg *splunkhecexporter.Config) *splunkhec_config.Splunk
 func toSplunkHecHTTPClientArguments(cfg *splunkhecexporter.Config) splunkhec_config.SplunkHecClientArguments {
 	keepalive := effectiveClientKeepalive(cfg.ClientConfig)
 	return splunkhec_config.SplunkHecClientArguments{
-		Endpoint:        cfg.ClientConfig.Endpoint,
-		Timeout:         cfg.ClientConfig.Timeout,
-		ReadBufferSize:  cfg.ClientConfig.ReadBufferSize,
-		WriteBufferSize: cfg.ClientConfig.WriteBufferSize,
-		// The keepalive settings live in either the keepalive section or the deprecated fields.
+		Endpoint:            cfg.ClientConfig.Endpoint,
+		Timeout:             cfg.ClientConfig.Timeout,
+		ReadBufferSize:      cfg.ClientConfig.ReadBufferSize,
+		WriteBufferSize:     cfg.ClientConfig.WriteBufferSize,
 		MaxIdleConns:        keepalive.MaxIdleConns,
 		MaxIdleConnsPerHost: keepalive.MaxIdleConnsPerHost,
 		MaxConnsPerHost:     cfg.ClientConfig.MaxConnsPerHost,
 		IdleConnTimeout:     keepalive.IdleConnTimeout,
-		//nolint:staticcheck
-		DisableKeepAlives:  cfg.ClientConfig.DisableKeepAlives,
-		InsecureSkipVerify: cfg.ClientConfig.TLS.Insecure,
-		ForceAttemptHTTP2:  cfg.ClientConfig.ForceAttemptHTTP2,
+		DisableKeepAlives:   keepalive.Disabled,
+		InsecureSkipVerify:  cfg.ClientConfig.TLS.Insecure,
+		ForceAttemptHTTP2:   cfg.ClientConfig.ForceAttemptHTTP2,
 	}
 }
 

@@ -39,7 +39,7 @@ func (datadogExporterConverter) ConvertAndAppend(state *State, id componentstatu
 		switch val.(type) {
 		case extension.ExtensionHandler:
 			queue := cfg.(*datadogOtelconfig.Config).QueueSettings.GetOrInsertDefault()
-			ext := state.LookupExtension(*queue.StorageID)
+			ext := state.LookupExtension(queue.StorageID.Get().ComponentID())
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
 		return common.GetAlloyTypesOverrideHook()(val)
@@ -77,17 +77,15 @@ func toDatadogExporter(cfg *datadogOtelconfig.Config) *datadog.Arguments {
 func toDatadogHTTPClientArguments(cfg confighttp.ClientConfig) datadog_config.DatadogClientArguments {
 	keepalive := effectiveClientKeepalive(cfg)
 	return datadog_config.DatadogClientArguments{
-		Timeout:         cfg.Timeout,
-		ReadBufferSize:  cfg.ReadBufferSize,
-		WriteBufferSize: cfg.WriteBufferSize,
-		// The keepalive settings live in either the keepalive section or the deprecated fields.
+		Timeout:             cfg.Timeout,
+		ReadBufferSize:      cfg.ReadBufferSize,
+		WriteBufferSize:     cfg.WriteBufferSize,
 		MaxIdleConns:        keepalive.MaxIdleConns,
 		MaxIdleConnsPerHost: keepalive.MaxIdleConnsPerHost,
 		MaxConnsPerHost:     cfg.MaxConnsPerHost,
 		IdleConnTimeout:     keepalive.IdleConnTimeout,
-		//nolint:staticcheck
-		DisableKeepAlives:  cfg.DisableKeepAlives,
-		InsecureSkipVerify: cfg.TLS.Insecure,
+		DisableKeepAlives:   keepalive.Disabled,
+		InsecureSkipVerify:  cfg.TLS.Insecure,
 	}
 }
 

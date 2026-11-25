@@ -43,7 +43,7 @@ func (otlpHTTPExporterConverter) ConvertAndAppend(state *State, id componentstat
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		case extension.ExtensionHandler:
 			queue := cfg.(*otlphttpexporter.Config).QueueConfig.GetOrInsertDefault()
-			ext := state.LookupExtension(*queue.StorageID)
+			ext := state.LookupExtension(queue.StorageID.Get().ComponentID())
 			return common.CustomTokenizer{Expr: fmt.Sprintf("%s.%s.handler", strings.Join(ext.Name, "."), ext.Label)}
 		}
 		return common.GetAlloyTypesOverrideHook()(val)
@@ -73,29 +73,23 @@ func toOtelcolExporterOTLPHTTP(cfg *otlphttpexporter.Config) *otlphttp.Arguments
 
 // clientKeepalive holds the effective HTTP client keep-alive settings.
 type clientKeepalive struct {
+	Disabled            bool
 	IdleConnTimeout     time.Duration
 	MaxIdleConns        int
 	MaxIdleConnsPerHost int
 }
 
 // effectiveClientKeepalive returns the keep-alive settings of cfg. Upstream
-// keeps them in the keepalive section when the pkg.confighttp.PrioritizeNewKeepalive
-// feature gate is enabled, and in the deprecated flat fields otherwise.
+// disables keep-alives when the keepalive section is unset.
 func effectiveClientKeepalive(cfg confighttp.ClientConfig) clientKeepalive {
-	if ka := cfg.Keepalive.Get(); ka != nil {
-		return clientKeepalive{
-			IdleConnTimeout:     ka.IdleConnTimeout,
-			MaxIdleConns:        ka.MaxIdleConns,
-			MaxIdleConnsPerHost: ka.MaxIdleConnsPerHost,
-		}
+	ka := cfg.Keepalive.Get()
+	if ka == nil {
+		return clientKeepalive{Disabled: true}
 	}
 	return clientKeepalive{
-		//nolint:staticcheck
-		IdleConnTimeout: cfg.IdleConnTimeout,
-		//nolint:staticcheck
-		MaxIdleConns: cfg.MaxIdleConns,
-		//nolint:staticcheck
-		MaxIdleConnsPerHost: cfg.MaxIdleConnsPerHost,
+		IdleConnTimeout:     ka.IdleConnTimeout,
+		MaxIdleConns:        ka.MaxIdleConns,
+		MaxIdleConnsPerHost: ka.MaxIdleConnsPerHost,
 	}
 }
 
@@ -114,15 +108,13 @@ func toHTTPClientArguments(cfg confighttp.ClientConfig) otelcol.HTTPClientArgume
 		ReadBufferSize:  units.Base2Bytes(cfg.ReadBufferSize),
 		WriteBufferSize: units.Base2Bytes(cfg.WriteBufferSize),
 
-		Timeout: cfg.Timeout,
-		Headers: toHeadersMap(cfg.Headers),
-		// The keepalive settings live in either the keepalive section or the deprecated fields.
-		MaxIdleConns:        keepalive.MaxIdleConns,
-		MaxIdleConnsPerHost: keepalive.MaxIdleConnsPerHost,
-		MaxConnsPerHost:     cfg.MaxConnsPerHost,
-		IdleConnTimeout:     keepalive.IdleConnTimeout,
-		//nolint:staticcheck
-		DisableKeepAlives:    cfg.DisableKeepAlives,
+		Timeout:              cfg.Timeout,
+		Headers:              toHeadersMap(cfg.Headers),
+		MaxIdleConns:         keepalive.MaxIdleConns,
+		MaxIdleConnsPerHost:  keepalive.MaxIdleConnsPerHost,
+		MaxConnsPerHost:      cfg.MaxConnsPerHost,
+		IdleConnTimeout:      keepalive.IdleConnTimeout,
+		DisableKeepAlives:    keepalive.Disabled,
 		HTTP2PingTimeout:     cfg.HTTP2PingTimeout,
 		HTTP2ReadIdleTimeout: cfg.HTTP2ReadIdleTimeout,
 		ForceAttemptHTTP2:    cfg.ForceAttemptHTTP2,

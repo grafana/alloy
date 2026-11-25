@@ -136,7 +136,7 @@ func (t *TPMConfig) Convert() configtls.TPMConfig {
 	return configtls.TPMConfig{
 		Enabled:   t.Enabled,
 		Path:      t.Path,
-		OwnerAuth: string(t.OwnerAuth),
-		Auth:      string(t.Auth),
+		OwnerAuth: configopaque.String(t.OwnerAuth),
+		Auth:      configopaque.String(t.Auth),
 	}
 }

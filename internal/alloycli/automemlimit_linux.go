@@ -4,6 +4,7 @@ package alloycli
 
 import (
 	"log/slog"
+	"os"
 
 	"github.com/KimMachineGun/automemlimit/memlimit"
 
@@ -11,6 +12,7 @@ import (
 )
 
 func applyAutoMemLimit(l *logging.Logger) error {
-	_, err := memlimit.SetGoMemLimitWithOpts(memlimit.WithLogger(slog.New(l.Handler())))
+	provider := withSystemFallback(memlimit.FromCgroup, os.Getenv("AUTOMEMLIMIT_EXPERIMENT"))
+	_, err := memlimit.Set(memlimit.WithProvider(provider), memlimit.WithLogger(slog.New(l.Handler())))
 	return err
 }

@@ -13,6 +13,7 @@ import (
 func TestConfig(t *testing.T) {
 	alloyCfg := `
 		endpoint = "localhost:1514"
+		max_connections = 5
 		output {
 		}
 	`
@@ -28,6 +29,7 @@ func TestConfig(t *testing.T) {
 	require.True(t, ok)
 
 	assert.Equal(t, "localhost:1514", fluentComCfg.ListenAddress)
+	assert.Equal(t, 5, fluentComCfg.MaxConnections)
 }
 
 func TestConfigDefault(t *testing.T) {
@@ -36,9 +38,15 @@ func TestConfigDefault(t *testing.T) {
 
 	fCfg, err := args.Convert()
 	require.NoError(t, err)
-	// Canary for the upstream defaults, which are empty today. If this fails, a contrib
-	// bump added one: document it, then update these values.
-	assert.Equal(t, &fluentforwardreceiver.Config{}, fCfg)
+	// Canary for the upstream defaults. If this fails, a contrib bump changed one:
+	// document it, then update these values.
+	assert.Equal(t, &fluentforwardreceiver.Config{MaxConnections: 100}, fCfg)
 
+	assert.Error(t, args.Validate())
+
+	// A negative connection limit is invalid.
+	args.Endpoint = "localhost:1514"
+	require.NoError(t, args.Validate())
+	args.MaxConnections = -1
 	assert.Error(t, args.Validate())
 }

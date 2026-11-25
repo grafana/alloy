@@ -45,9 +45,8 @@ func TestConfigConversion(t *testing.T) {
 		}
 
 		defaultClient = confighttp.ClientConfig{
-			Timeout:         defaultTimeout,
-			MaxIdleConns:    100,              //nolint:staticcheck // migrate to confighttp Keepalive
-			IdleConnTimeout: 90 * time.Second, //nolint:staticcheck // migrate to confighttp Keepalive
+			Timeout:   defaultTimeout,
+			Keepalive: configoptional.Some(confighttp.KeepaliveClientConfig{IdleConnTimeout: 90 * time.Second, MaxIdleConns: 100}),
 		}
 		connsPerHost = 10
 	)
@@ -100,7 +99,7 @@ func TestConfigConversion(t *testing.T) {
 				}
 			`,
 			expected: datadogOtelconfig.Config{
-				ClientConfig:             confighttp.ClientConfig{Timeout: 10 * time.Second, Endpoint: "", MaxConnsPerHost: connsPerHost, MaxIdleConns: 100, IdleConnTimeout: 90 * time.Second}, //nolint:staticcheck // migrate to confighttp Keepalive
+				ClientConfig:             confighttp.ClientConfig{Timeout: 10 * time.Second, Endpoint: "", MaxConnsPerHost: connsPerHost, Keepalive: configoptional.Some(confighttp.KeepaliveClientConfig{MaxIdleConns: 100, IdleConnTimeout: 90 * time.Second})},
 				QueueSettings:            defaultQueueConfig,
 				BackOffConfig:            defaultRetrySettings,
 				TagsConfig:               datadogOtelconfig.TagsConfig{Hostname: "customhostname"},

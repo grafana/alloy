@@ -1,0 +1,5 @@
+(Critical) failed to get otelcol config: cannot unmarshal the configuration: decoding failed due to the following error(s):
+
+'exporters' error reading configuration for "otlphttp": decoding failed due to the following error(s):
+
+'otlphttpexporter.Config' has invalid keys: max_idle_conns

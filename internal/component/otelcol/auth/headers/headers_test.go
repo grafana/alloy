@@ -180,7 +180,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 
 		require.Equal(t, len(otelArgs.HeadersConfig), 1)
 		require.Equal(t, *otelArgs.HeadersConfig[0].Key, tc.expectedKey)
-		require.Equal(t, *otelArgs.HeadersConfig[0].Value, tc.expectedValue)
+		require.Equal(t, tc.expectedValue, string(*otelArgs.HeadersConfig[0].Value))
 		require.Equal(t, otelArgs.HeadersConfig[0].Action, tc.expectedAction)
 	}
 }

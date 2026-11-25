@@ -89,9 +89,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				CompressionParams: configcompression.CompressionParams{
 					Level: 0,
 				},
-				FlushMaxMessages:       10000,
-				AllowAutoTopicCreation: true,
-				Linger:                 10 * time.Millisecond,
+				FlushMaxMessages:             10000,
+				MaxInflightRequestsPerBroker: 1,
+				AllowAutoTopicCreation:       true,
+				Linger:                       10 * time.Millisecond,
 			},
 		}
 	}
@@ -369,9 +370,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					CompressionParams: configcompression.CompressionParams{
 						Level: 9,
 					},
-					FlushMaxMessages:       101,
-					AllowAutoTopicCreation: true,
-					Linger:                 10 * time.Millisecond,
+					FlushMaxMessages:             101,
+					MaxInflightRequestsPerBroker: 1,
+					AllowAutoTopicCreation:       true,
+					Linger:                       10 * time.Millisecond,
 				},
 				IncludeMetadataKeys:                  []string(nil),
 				TopicFromAttribute:                   "my-attr",
