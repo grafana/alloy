@@ -291,8 +291,8 @@ func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
 			return fmt.Errorf("%s: %w", c.opts.ID, loki.ErrConsumerStopped)
 		}
 
-		if err := ctx.Err(); err != nil {
-			return err
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return ctxErr
 		}
 
 		if !client.IsRetryableErr(err) {
