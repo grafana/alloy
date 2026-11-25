@@ -860,17 +860,53 @@ func BenchmarkRelabel(b *testing.B) {
 }
 
 func TestComponentToPromRelabelConfigs(t *testing.T) {
-	rule := `
-		action = "labeldrop"
-        regex  = "helm_sh_chart"
-	`
+	tests := []struct {
+		name string
+		rule string
+	}{
+		{
+			name: "labeldrop",
+			rule: `
+				action = "labeldrop"
+				regex  = "helm_sh_chart"
+			`,
+		},
+		{
+			name: "keepequal",
+			rule: `
+				action        = "keepequal"
+				source_labels = ["__meta_kubernetes_pod_node_name"]
+				target_label  = "__tmp_node"
+			`,
+		},
+		{
+			name: "dropequal",
+			rule: `
+				action        = "dropequal"
+				source_labels = ["__meta_kubernetes_pod_node_name"]
+				target_label  = "__tmp_node"
+			`,
+		},
+		{
+			name: "replace with custom regex",
+			rule: `
+				source_labels = ["__address__"]
+				regex         = "(.+):\\d+"
+				target_label  = "host"
+			`,
+		},
+	}
 
-	var cfg Config
-	require.NoError(t, syntax.Unmarshal([]byte(rule), &cfg))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var cfg Config
+			require.NoError(t, syntax.Unmarshal([]byte(tt.rule), &cfg))
 
-	converted := ComponentToPromRelabelConfigs([]*Config{&cfg})
-	for _, r := range converted {
-		require.NoError(t, r.Validate(model.LegacyValidation))
+			converted := ComponentToPromRelabelConfigs([]*Config{&cfg})
+			require.Len(t, converted, 1)
+			require.NoError(t, converted[0].Validate(model.LegacyValidation))
+			require.Equal(t, cfg.Regex.String(), converted[0].Regex.String())
+		})
 	}
 }
 

@@ -326,6 +326,14 @@ func ComponentToPromRelabelConfigs(rcs []*Config) []*relabel.Config {
 			}
 		}
 
+		// Prometheus checks keepequal/dropequal regexes against its default by pointer.
+		regex := relabel.Regexp{Regexp: rc.Regex.Regexp}
+		if (rc.Action == KeepEqual || rc.Action == DropEqual) && rc.Regex.Regexp != nil &&
+			rc.Regex.Regexp.String() == relabel.DefaultRelabelConfig.Regex.Regexp.String() {
+
+			regex = relabel.DefaultRelabelConfig.Regex
+		}
+
 		res[i] = &relabel.Config{
 			SourceLabels:         sourceLabels,
 			Separator:            rc.Separator,
@@ -333,7 +341,7 @@ func ComponentToPromRelabelConfigs(rcs []*Config) []*relabel.Config {
 			TargetLabel:          rc.TargetLabel,
 			Replacement:          rc.Replacement,
 			Action:               relabel.Action(rc.Action),
-			Regex:                relabel.Regexp{Regexp: rc.Regex.Regexp},
+			Regex:                regex,
 			NameValidationScheme: model.LegacyValidation,
 		}
 	}
