@@ -16,15 +16,17 @@ The `run` command runs the {{< param "PRODUCT_NAME" >}} Default Engine in the fo
 ## Usage
 
 ```shell
-alloy run [<FLAG> ...] <PATH_NAME>
+alloy run [<FLAG> ...] [<PATH_NAME>]
 ```
 
 Replace the following:
 
 * _`<FLAG>`_: One or more flags that define the input and output of the command.
-* _`<PATH_NAME>`_: Required. The {{< param "PRODUCT_NAME" >}} configuration file or directory path.
+* _`<PATH_NAME>`_: The {{< param "PRODUCT_NAME" >}} configuration file or directory path. Required unless you use `--config.base64` or `--config.base64.from-env`.
 
-If the _`<PATH_NAME>`_ argument isn't provided, or if the configuration path can't be loaded or contains errors during the initial load, the `run` command immediately exits and shows an error message.
+You must provide exactly one configuration source: the _`<PATH_NAME>`_ argument, `--config.base64`, or `--config.base64.from-env`.
+If you provide more than one, or none, the `run` command immediately exits and shows an error message.
+The `run` command also exits if the configuration can't be loaded or contains errors during the initial load.
 
 If you provide a directory path for the _`<PATH_NAME>`_, {{< param "PRODUCT_NAME" >}} finds `*.alloy` files, ignoring nested directories, and loads them as a single configuration source.
 However, component names must be **unique** across all {{< param "PRODUCT_NAME" >}} configuration files, and configuration blocks must not be repeated.
@@ -60,6 +62,8 @@ The following flags are supported:
 * `--cluster.tls-server-name`: Server name used for peer communication over TLS.
 * `--cluster.wait-for-size`: Wait for the cluster to reach the specified number of instances before allowing components that use clustering to begin processing. After the cluster reaches this size, processing continues even if the cluster shrinks below it. Zero means disabled (default `0`).
 * `--cluster.wait-timeout`: Maximum duration to wait for minimum cluster size before proceeding with available nodes. Zero means wait forever, no timeout (default `0`).
+* `--config.base64`: Base64-encoded {{< param "PRODUCT_NAME" >}} configuration to run instead of the _`<PATH_NAME>`_ argument. Refer to [Pass the configuration as base64][base64] for details.
+* `--config.base64.from-env`: Read the base64-encoded {{< param "PRODUCT_NAME" >}} configuration from the `ALLOY_CONFIG_BASE64` environment variable instead of the _`<PATH_NAME>`_ argument (default `false`).
 * `--config.format`: Specifies the source file format. Supported formats: `alloy`, `otelcol`, `prometheus`, `promtail`, and `static` (default `"alloy"`).
 * `--config.bypass-conversion-errors`: Enable bypassing errors during conversion (default `false`).
 * `--config.extra-args`: Extra arguments from the original format used by the converter.
@@ -102,6 +106,31 @@ When this happens, the [component controller][] synchronizes the set of running 
 Components that are no longer defined in the configuration file after reloading are shut down, and components that have been added to the configuration file since the previous reload are created.
 
 All components managed by the component controller are reevaluated after reloading.
+
+## Pass the configuration as base64
+
+Use `--config.base64` or `--config.base64.from-env` to pass the configuration directly instead of through a file.
+This is useful in environments where mounting a file is inconvenient, such as a container image without a shell.
+
+The value is the standard base64 encoding of a single {{< param "PRODUCT_NAME" >}} configuration file. Whitespace in the value is ignored, so you can use the output of the `base64` command as is.
+The configuration is shown as `config.alloy` in the UI and in the support bundle.
+The `module_path` keyword is an empty string because the configuration isn't read from the filesystem.
+
+For example, to run a configuration stored in a file:
+
+```shell
+ALLOY_CONFIG_BASE64="$(base64 < config.alloy)" alloy run --config.base64.from-env
+```
+
+Only one configuration source is accepted at a time, so there is no precedence to reason about.
+Combining the _`<PATH_NAME>`_ argument, `--config.base64` and `--config.base64.from-env` is an error.
+
+{{< admonition type="note" >}}
+Prefer `--config.base64.from-env` over `--config.base64`. Command-line arguments are visible to other processes on the same host, and your configuration can contain secrets.
+{{< /admonition >}}
+
+When you reload, {{< param "PRODUCT_NAME" >}} reads and decodes the configuration again from the same source.
+You can use `--config.format` to convert a base64-encoded configuration in another format.
 
 ## Permitted stability levels
 
@@ -182,6 +211,7 @@ Use this argument with caution because the resulting conversion may not be equiv
 Include `--config.extra-args` to pass additional command line flags from the original format to the converter.
 Refer to [alloy convert][] for more details on how `extra-args` work.
 
+[base64]: #pass-the-configuration-as-base64
 [alloy convert]: ../convert/
 [clustering]:  ../../../get-started/clustering/
 [configure-clustering]: ../../../configure/clustering/configure-alloy/

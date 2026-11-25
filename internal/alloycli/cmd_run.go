@@ -3,6 +3,7 @@ package alloycli
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -78,15 +79,16 @@ func runCommand(converter *clifeature.Converter) *cobra.Command {
 	r := newAlloyRun(converter)
 
 	cmd := &cobra.Command{
-		Use:   "run [flags] path",
+		Use:   "run [flags] [path]",
 		Short: "Run Grafana Alloy with Default Engine",
 		Long: `The run subcommand runs Grafana Alloy in the foreground until an interrupt
 is received.
 
-run must be provided an argument pointing at the Alloy configuration
-directory or file path to use. If the configuration directory or file path
-wasn't specified, can't be loaded, or contains errors, run will exit
-immediately.
+run must be provided exactly one source of the Alloy configuration: an
+argument pointing at the configuration directory or file path to use, or one
+of the --config.base64 and --config.base64.from-env flags. If the
+configuration wasn't specified, can't be loaded, or contains errors, run will
+exit immediately.
 
 If path is a directory, all *.alloy files in that directory will be combined
 into a single unit. Subdirectories are not recursively searched for further merging.
@@ -107,16 +109,22 @@ If reloading the config dir/file-path fails, Grafana Alloy will continue running
 its last valid state. Components which failed may be be listed as unhealthy,
 depending on the nature of the reload error.
 `,
-		Args:         cobra.ExactArgs(1),
+		Args:         cobra.MaximumNArgs(1),
 		SilenceUsage: true,
 
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return r.runCommand(cmd, args[0])
+			return r.runCommand(cmd, args)
 		},
 	}
 
 	mountRunFlags(r, cmd.Flags())
+	mountConfigSourceFlags(r, cmd.Flags())
 	return cmd
+}
+
+func mountConfigSourceFlags(r *alloyRun, fset *pflag.FlagSet) {
+	fset.StringVar(&r.configBase64, "config.base64", r.configBase64, "Base64-encoded Alloy configuration to run instead of a path argument. Mutually exclusive with the path argument and --config.base64.from-env. Prefer --config.base64.from-env, as command-line arguments are visible to other processes")
+	fset.BoolVar(&r.configBase64FromEnv, "config.base64.from-env", r.configBase64FromEnv, fmt.Sprintf("Read the base64-encoded Alloy configuration from the %s environment variable instead of a path argument. Mutually exclusive with the path argument and --config.base64", configBase64EnvVar))
 }
 
 type ExtensionModeParams struct {
@@ -283,6 +291,8 @@ type alloyRun struct {
 	configFormat                 string
 	configBypassConversionErrors bool
 	configExtraArgs              string
+	configBase64                 string
+	configBase64FromEnv          bool
 	disableSupportBundle         bool
 	windowsPriority              string
 	// Feature flags
@@ -320,22 +330,127 @@ func (fr *alloyRun) checkExperimentalFlags() error {
 	return nil
 }
 
-func (fr *alloyRun) runCommand(cmd *cobra.Command, configPath string) error {
-	if configPath == "" {
-		return fmt.Errorf("path argument not provided")
+const (
+	// configBase64EnvVar is the environment variable read when
+	// --config.base64.from-env is set.
+	configBase64EnvVar = "ALLOY_CONFIG_BASE64"
+
+	// inlineConfigName is the name under which a configuration passed through
+	// --config.base64 or --config.base64.from-env is shown in the UI, the
+	// support bundle and diagnostics.
+	inlineConfigName = "config.alloy"
+)
+
+// configSource reads the root configuration. It is called on startup and on
+// every reload, so that changes to the underlying source are picked up.
+type configSource struct {
+	// description identifies the source in error messages.
+	description string
+
+	// path is the config file or directory path, or empty if the configuration
+	// is passed inline.
+	path string
+
+	read func() (map[string][]byte, error)
+}
+
+// configSource validates that exactly one of the path argument,
+// --config.base64 and --config.base64.from-env is used, and returns the
+// matching source.
+func (fr *alloyRun) configSource(cmd *cobra.Command, args []string) (configSource, error) {
+	var used []string
+	if len(args) > 0 {
+		used = append(used, "the path argument")
+	}
+	if cmd.Flags().Changed("config.base64") {
+		used = append(used, "--config.base64")
+	}
+	if fr.configBase64FromEnv {
+		used = append(used, "--config.base64.from-env")
 	}
 
+	switch {
+	case len(used) == 0:
+		return configSource{}, errors.New("no config source provided: set the path argument, --config.base64 or --config.base64.from-env")
+	case len(used) > 1:
+		return configSource{}, fmt.Errorf("only one config source can be used at a time, but got %s", strings.Join(used, " and "))
+	}
+
+	switch {
+	case len(args) > 0:
+		if args[0] == "" {
+			return configSource{}, errors.New("path argument not provided")
+		}
+		path := args[0]
+		return configSource{
+			description: fmt.Sprintf("config path %q", path),
+			path:        path,
+			read: func() (map[string][]byte, error) {
+				return loadSourceFiles(path, fr.converter, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
+			},
+		}, nil
+
+	case fr.configBase64FromEnv:
+		return configSource{
+			description: fmt.Sprintf("base64 config from the %s environment variable", configBase64EnvVar),
+			read: func() (map[string][]byte, error) {
+				encoded := os.Getenv(configBase64EnvVar)
+				if encoded == "" {
+					return nil, fmt.Errorf("environment variable %s is not set or empty", configBase64EnvVar)
+				}
+				return fr.loadInlineSource(encoded)
+			},
+		}, nil
+
+	default:
+		encoded := fr.configBase64
+		if encoded == "" {
+			return configSource{}, errors.New("--config.base64 must not be empty")
+		}
+		return configSource{
+			description: "base64 config from --config.base64",
+			read: func() (map[string][]byte, error) {
+				return fr.loadInlineSource(encoded)
+			},
+		}, nil
+	}
+}
+
+// loadInlineSource decodes a base64-encoded configuration. Line breaks and
+// other whitespace are ignored, so the output of tools that wrap lines, such
+// as base64(1), can be used as is.
+func (fr *alloyRun) loadInlineSource(encoded string) (map[string][]byte, error) {
+	decoded, err := base64.StdEncoding.DecodeString(strings.Join(strings.Fields(encoded), ""))
+	if err != nil {
+		// Only the decoding error is returned, never the (possibly secret) input.
+		return nil, fmt.Errorf("decoding base64: %w", err)
+	}
+
+	decoded, err = convertConfig(decoded, fr.converter, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
+	if err != nil {
+		return nil, err
+	}
+	return map[string][]byte{inlineConfigName: decoded}, nil
+}
+
+func (fr *alloyRun) runCommand(cmd *cobra.Command, args []string) error {
+	src, err := fr.configSource(cmd, args)
+	if err != nil {
+		return err
+	}
+	configPath := src.path
+
 	loadConfig := func(rt *alloy_runtime.Runtime, httpSvc *httpservice.Service) (map[string][]byte, error) {
-		sources, err := loadSourceFiles(configPath, fr.converter, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
+		sources, err := src.read()
 		if err != nil {
 			instrumentation.InstrumentConfig(false, [32]byte{}, fr.clusterName)
-			return nil, fmt.Errorf("reading config path %q: %w", configPath, err)
+			return nil, fmt.Errorf("reading %s: %w", src.description, err)
 		}
 
 		alloySource, err := alloy_runtime.ParseSources(sources)
 		defer instrumentation.InstrumentConfig(err == nil, hashSourceFiles(sources), fr.clusterName)
 		if err != nil {
-			return sources, fmt.Errorf("reading config path %q: %w", configPath, err)
+			return sources, fmt.Errorf("reading %s: %w", src.description, err)
 		}
 
 		httpSvc.SetSources(alloySource.SourceFiles())
@@ -721,26 +836,36 @@ func loadSourceFiles(path string, converter *clifeature.Converter, converterSour
 	if err != nil {
 		return nil, err
 	}
-	if converterSourceFormat != "alloy" {
-		if converter == nil {
-			return nil, errors.New("config conversion is not included in this build of Alloy")
-		}
-
-		var diags convert_diag.Diagnostics
-		ea, err := parseExtraArgs(configExtraArgs)
-		if err != nil {
-			return nil, err
-		}
-
-		bb, diags = converter.Convert(bb, converterSourceFormat, ea)
-		hasError := hasErrorLevel(diags, convert_diag.SeverityLevelError)
-		hasCritical := hasErrorLevel(diags, convert_diag.SeverityLevelCritical)
-		if hasCritical || (!converterBypassErrors && hasError) {
-			return nil, diags
-		}
+	bb, err = convertConfig(bb, converter, converterSourceFormat, converterBypassErrors, configExtraArgs)
+	if err != nil {
+		return nil, err
 	}
 
 	return map[string][]byte{path: bb}, nil
+}
+
+// convertConfig converts bb from converterSourceFormat to the Alloy format. It
+// returns bb unchanged if converterSourceFormat is already "alloy".
+func convertConfig(bb []byte, converter *clifeature.Converter, converterSourceFormat string, converterBypassErrors bool, configExtraArgs string) ([]byte, error) {
+	if converterSourceFormat == "alloy" {
+		return bb, nil
+	}
+	if converter == nil {
+		return nil, errors.New("config conversion is not included in this build of Alloy")
+	}
+
+	ea, err := parseExtraArgs(configExtraArgs)
+	if err != nil {
+		return nil, err
+	}
+
+	bb, diags := converter.Convert(bb, converterSourceFormat, ea)
+	hasError := hasErrorLevel(diags, convert_diag.SeverityLevelError)
+	hasCritical := hasErrorLevel(diags, convert_diag.SeverityLevelCritical)
+	if hasCritical || (!converterBypassErrors && hasError) {
+		return nil, diags
+	}
+	return bb, nil
 }
 
 func hashSourceFiles(sources map[string][]byte) [sha256.Size]byte {
