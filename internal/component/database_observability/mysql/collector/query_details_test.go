@@ -1175,13 +1175,51 @@ func TestQueryDetails_Throttling(t *testing.T) {
 		poll(2*database_observability.EmitInterval/3, true)
 		require.Equal(t, startTime, c.lastEmittedAt[key])
 
-		// Poll 4: EmitInterval has expired, query is emitted again
+		// Poll 4: query is present, EmitInterval has expired, query is emitted again
 		poll(database_observability.EmitInterval+time.Second, true)
 		require.Equal(t, startTime.Add(database_observability.EmitInterval+time.Second), c.lastEmittedAt[key])
 
 		// One query emission created two entries; assertion of 4 confirms emission after Poll 1 and Poll 4
 		logs.Stop()
 		require.Len(t, logs.Received(), 4)
+	})
+
+	t.Run("prunes expired query throttle state", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			mock.ExpectClose()
+			require.NoError(t, db.Close())
+			require.NoError(t, mock.ExpectationsWereMet())
+		})
+		logs := loki.NewCollectingHandler()
+		t.Cleanup(logs.Stop)
+		c, err := NewQueryDetails(QueryDetailsArguments{
+			DB: db, StatementsLimit: 250, EntryHandler: logs, TableRegistry: NewTableRegistry(), Logger: util.TestAlloyLogger(t).Slog(),
+		})
+		require.NoError(t, err)
+		startTime := time.Now()
+		key := queryDetailsKey{schema: "shop", digest: "abc123"}
+		poll := func(elapsed time.Duration, includeQuery bool) {
+			t.Helper()
+			c.now = func() time.Time { return startTime.Add(elapsed) }
+			rows := sqlmock.NewRows([]string{"digest", "digest_text", "schema_name", "query_sample_text"})
+			if includeQuery {
+				rows.AddRow("abc123", "SELECT * FROM books", "shop", "SELECT * FROM books")
+			}
+			mock.ExpectQuery(fmt.Sprintf(selectQueryTablesSamples, exclusionClause, 250)).WillReturnRows(rows)
+			require.NoError(t, c.tablesFromEventsStatements(t.Context()))
+		}
+
+		// Poll 1: query present but no schema metadata, so both throttle maps contain it
+		poll(0, true)
+		require.Contains(t, c.lastEmittedAt, key)
+		require.Contains(t, c.unvalidated, key)
+
+		// Poll 2: query absent, EmitInterval expired: both entries pruned
+		poll(database_observability.EmitInterval+time.Second, false)
+		require.NotContains(t, c.lastEmittedAt, key)
+		require.NotContains(t, c.unvalidated, key)
 	})
 
 	t.Run("scan query error preserves throttling", func(t *testing.T) {
