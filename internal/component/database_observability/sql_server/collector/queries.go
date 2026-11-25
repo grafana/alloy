@@ -237,6 +237,8 @@ const selectQueryStoreState = `
 
 const selectMyPermissionsQuery = `SELECT ` + QueryMarker + ` permission_name FROM sys.fn_my_permissions(NULL, 'DATABASE')`
 
+const selectMyServerPermissionsQuery = `SELECT ` + QueryMarker + ` permission_name FROM sys.fn_my_permissions(NULL, 'SERVER')`
+
 const selectQueryStoreHasRowsQuery = `SELECT ` + QueryMarker + ` TOP 1 1 FROM sys.query_store_runtime_stats`
 
 const (

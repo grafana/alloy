@@ -183,6 +183,7 @@ func TestAdmitTrafficSequence_WithDeadline(t *testing.T) {
 	}, buildPeers(1), func() {
 		notifyChangeCallsCount.Inc()
 	})
+	defer s.alloyCluster.shutdown()
 
 	assert.False(t, s.alloyCluster.Ready()) // starts as not ready
 	assert.Equal(t, int32(0), notifyChangeCallsCount.Load())
@@ -191,34 +192,52 @@ func TestAdmitTrafficSequence_WithDeadline(t *testing.T) {
 	assert.True(t, s.alloyCluster.Ready())
 	assert.Equal(t, int32(0), notifyChangeCallsCount.Load())
 
-	updatePeers(s, &mockSharder{peers: buildPeers(minimumClusterSize - 1)}) // we dip back under the minimum = not ready
-	assert.False(t, s.alloyCluster.Ready())
+	updatePeers(s, &mockSharder{peers: buildPeers(minimumClusterSize - 1)}) // we dip back under the minimum = still ready
+	assert.True(t, s.alloyCluster.Ready())
 	assert.Equal(t, int32(0), notifyChangeCallsCount.Load())
 
-	time.Sleep(time.Second) // deadline passes though, so we are ready to admit traffic again
-	require.Eventually(t, func() bool {
-		return s.alloyCluster.Ready()
-	}, 3*time.Second, time.Millisecond)
-	assert.Equal(t, int32(1), notifyChangeCallsCount.Load()) // deadline pass mus trigger notify change callback
-
-	updatePeers(s, &mockSharder{peers: buildPeers(minimumClusterSize + 1)}) // we reach the minimum, should continue to be ready
+	time.Sleep(clusterSizeWaitTimeout + 200*time.Millisecond) // the deadline timer must not fire once ready
 	assert.True(t, s.alloyCluster.Ready())
-	assert.Equal(t, int32(1), notifyChangeCallsCount.Load())
+	assert.Equal(t, int32(0), notifyChangeCallsCount.Load())
 
-	updatePeers(s, &mockSharder{peers: buildPeers(minimumClusterSize - 5)}) // we dip back under the minimum = not ready, deadline should have reset
-	assert.False(t, s.alloyCluster.Ready())
-	assert.Equal(t, int32(1), notifyChangeCallsCount.Load())
+	updatePeers(s, &mockSharder{peers: buildPeers(1)}) // even a drastic drop doesn't make us not ready
+	assert.True(t, s.alloyCluster.Ready())
+	assert.Equal(t, int32(0), notifyChangeCallsCount.Load())
+}
 
-	time.Sleep(time.Second) // deadline passes again, so we are ready to admit traffic again
+func TestAdmitTrafficSequence_DeadlinePassedBeforeMinimumReached(t *testing.T) {
+	t.Parallel()
+	minimumClusterSize := 10
+	clusterSizeWaitTimeout := 500 * time.Millisecond
+
+	notifyChangeCallsCount := atomic.NewInt32(0)
+	s := newTestService(t, Options{
+		EnableClustering:       true,
+		MinimumClusterSize:     minimumClusterSize,
+		MinimumSizeWaitTimeout: clusterSizeWaitTimeout,
+	}, buildPeers(1), func() {
+		notifyChangeCallsCount.Inc()
+	})
+	defer s.alloyCluster.shutdown()
+
+	assert.False(t, s.alloyCluster.Ready()) // starts as not ready
+
 	require.Eventually(t, func() bool {
 		return s.alloyCluster.Ready()
-	}, 3*time.Second, time.Millisecond)
-	assert.Equal(t, int32(2), notifyChangeCallsCount.Load())
+	}, 3*time.Second, time.Millisecond) // deadline passes, so we are ready to admit traffic
+	assert.Equal(t, int32(1), notifyChangeCallsCount.Load()) // deadline pass must trigger notify change callback
 
 	updatePeers(s, &mockSharder{peers: buildPeers(minimumClusterSize)}) // we reach the minimum, should continue to be ready
 	assert.True(t, s.alloyCluster.Ready())
-	assert.Equal(t, int32(2), notifyChangeCallsCount.Load())
-	s.alloyCluster.shutdown()
+	assert.Equal(t, int32(1), notifyChangeCallsCount.Load())
+
+	updatePeers(s, &mockSharder{peers: buildPeers(minimumClusterSize - 5)}) // we dip back under the minimum = still ready
+	assert.True(t, s.alloyCluster.Ready())
+	assert.Equal(t, int32(1), notifyChangeCallsCount.Load())
+
+	time.Sleep(clusterSizeWaitTimeout + 200*time.Millisecond) // no new deadline is started, nothing changes
+	assert.True(t, s.alloyCluster.Ready())
+	assert.Equal(t, int32(1), notifyChangeCallsCount.Load())
 }
 
 func TestAdmitTrafficSequence_NoDeadline(t *testing.T) {
@@ -232,38 +251,30 @@ func TestAdmitTrafficSequence_NoDeadline(t *testing.T) {
 	}, buildPeers(1), func() {
 		notifyChangeCallsCount.Inc()
 	})
+	defer s.alloyCluster.shutdown()
 
 	assert.False(t, s.alloyCluster.Ready()) // starts as not ready
+	assert.Equal(t, int32(0), notifyChangeCallsCount.Load())
+
+	updatePeers(s, &mockSharder{peers: buildPeers(minimumClusterSize - 1)}) // growing, but not yet at the minimum
+	assert.False(t, s.alloyCluster.Ready())
 	assert.Equal(t, int32(0), notifyChangeCallsCount.Load())
 
 	updatePeers(s, &mockSharder{peers: buildPeers(minimumClusterSize)}) // we reach the minimum, should be ready now!
 	assert.True(t, s.alloyCluster.Ready())
 	assert.Equal(t, int32(0), notifyChangeCallsCount.Load())
 
-	updatePeers(s, &mockSharder{peers: buildPeers(minimumClusterSize - 1)}) // we dip back under the minimum = not ready
-	assert.False(t, s.alloyCluster.Ready())
-	assert.Equal(t, int32(0), notifyChangeCallsCount.Load())
-
-	time.Sleep(time.Second) // even though time passes by, there is no deadline, and we're still not ready
-	assert.False(t, s.alloyCluster.Ready())
-	assert.Equal(t, int32(0), notifyChangeCallsCount.Load())
-
-	updatePeers(s, &mockSharder{peers: buildPeers(minimumClusterSize + 1)}) // we reach the minimum, should be ready
+	updatePeers(s, &mockSharder{peers: buildPeers(minimumClusterSize - 1)}) // we dip back under the minimum = still ready
 	assert.True(t, s.alloyCluster.Ready())
 	assert.Equal(t, int32(0), notifyChangeCallsCount.Load())
 
-	updatePeers(s, &mockSharder{peers: buildPeers(minimumClusterSize - 5)}) // we dip back under the minimum = not ready
-	assert.False(t, s.alloyCluster.Ready())
-	assert.Equal(t, int32(0), notifyChangeCallsCount.Load())
-
-	time.Sleep(time.Second) // time passes, but nothing will change
-	assert.False(t, s.alloyCluster.Ready())
-	assert.Equal(t, int32(0), notifyChangeCallsCount.Load())
-
-	updatePeers(s, &mockSharder{peers: buildPeers(minimumClusterSize)}) // we reach the minimum, should become ready
+	updatePeers(s, &mockSharder{peers: buildPeers(minimumClusterSize - 5)}) // dip further = still ready
 	assert.True(t, s.alloyCluster.Ready())
 	assert.Equal(t, int32(0), notifyChangeCallsCount.Load())
-	s.alloyCluster.shutdown()
+
+	updatePeers(s, &mockSharder{peers: buildPeers(minimumClusterSize + 1)}) // grow again = still ready
+	assert.True(t, s.alloyCluster.Ready())
+	assert.Equal(t, int32(0), notifyChangeCallsCount.Load())
 }
 
 func updatePeers(service *Service, sharder *mockSharder) {

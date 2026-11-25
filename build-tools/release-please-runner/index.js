@@ -8,12 +8,14 @@
 import { GitHub, Manifest, VERSION } from 'release-please';
 import { registerVersioningStrategy } from 'release-please/build/src/factories/versioning-strategy-factory.js';
 import { MinorBreakingVersioningStrategy } from './minor-breaking-versioning.js';
+import { HelmAlloyCommitInjector } from './plugins/helm-alloy-commit-injector.js';
 import { outputReleasePullRequests } from './release-pr-output.js';
 import {
   installTagOnlyReleaseHandler,
   prepareTagOnlyPackages,
   getTagOnlyPathsFromConfig,
 } from './tag-only-releases.js';
+import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
 
 // Register the custom versioning strategy
@@ -21,31 +23,51 @@ registerVersioningStrategy('minor-breaking', (options) => new MinorBreakingVersi
 
 const DEFAULT_CONFIG_FILE = 'release-please-config.json';
 const DEFAULT_MANIFEST_FILE = '.release-please-manifest.json';
-const ROOT_PACKAGE_PATH = '.';
+
+export const usage = `Usage: node index.js [options]
+
+Options:
+  --include <path>  Keep only this package path in the manifest. Repeatable.
+                    Packages that are not listed are dropped. If omitted, all
+                    packages are kept.
+  -h, --help        Show this help.
+`;
 
 /**
- * Parse CLI flags from argv (process.argv.slice(2) by default).
- * Unknown flags are rejected.
+ * Returns a parser for the runner CLI. Unknown flags are rejected.
+ *
+ * Options:
+ *   --include <path>  Keep only this package path. Repeatable.
+ *   -h, --help        Show usage.
  */
-export function parseArgs(argv = process.argv.slice(2)) {
-  const args = {
-    rootOnly: false,
+export function createArgParser() {
+  return (argv = process.argv.slice(2)) => {
+    const { values } = parseArgs({
+      args: argv,
+      options: {
+        include: {
+          type: 'string',
+          multiple: true,
+          default: [],
+        },
+        help: {
+          type: 'boolean',
+          short: 'h',
+          default: false,
+        },
+      },
+    });
+    return { include: values.include, help: values.help };
   };
-
-  for (const arg of argv) {
-    switch (arg) {
-      case '--root-only':
-        args.rootOnly = true;
-        break;
-      default:
-        throw new Error(`Unknown argument: ${arg}`);
-    }
-  }
-
-  return args;
 }
 
 function parseInputs(argv = process.argv.slice(2)) {
+  const parse = createArgParser();
+  const cliArgs = parse(argv);
+  if (cliArgs.help) {
+    return { help: true, include: cliArgs.include };
+  }
+
   const token = process.env.GITHUB_TOKEN;
   if (!token) {
     throw new Error('GITHUB_TOKEN environment variable is required');
@@ -56,8 +78,6 @@ function parseInputs(argv = process.argv.slice(2)) {
     throw new Error('REPO_URL or GITHUB_REPOSITORY environment variable is required');
   }
 
-  const cliArgs = parseArgs(argv);
-
   return {
     token,
     repoUrl,
@@ -66,30 +86,47 @@ function parseInputs(argv = process.argv.slice(2)) {
     manifestFile: process.env.MANIFEST_FILE || DEFAULT_MANIFEST_FILE,
     skipGitHubRelease: process.env.SKIP_GITHUB_RELEASE === 'true',
     skipGitHubPullRequest: process.env.SKIP_GITHUB_PULL_REQUEST === 'true',
-    rootOnly: cliArgs.rootOnly,
+    include: cliArgs.include,
   };
 }
 
-function loadManifest(github, inputs) {
-  const onlyPath = inputs.rootOnly ? ROOT_PACKAGE_PATH : undefined;
-  if (onlyPath) {
-    console.log(`Loading manifest from config file (root-only: path=${onlyPath})`);
-  } else {
-    console.log('Loading manifest from config file');
-  }
-  return Manifest.fromManifest(
+function keepPaths(entries, paths) {
+  return Object.fromEntries(Object.entries(entries).filter(([path]) => paths.has(path)));
+}
+
+export function keepIncludedPackages(manifest, paths) {
+  const included = new Set(paths);
+  manifest.repositoryConfig = keepPaths(manifest.repositoryConfig, included);
+  manifest.releasedVersions = keepPaths(manifest.releasedVersions, included);
+}
+
+async function loadManifest(github, inputs) {
+  console.log('Loading manifest from config file');
+  const manifest = await Manifest.fromManifest(
     github,
     inputs.targetBranch || github.repository.defaultBranch,
     inputs.configFile,
     inputs.manifestFile,
-    {},
-    onlyPath
   );
+
+  if (inputs.include.length > 0) {
+    console.log(`Keeping packages: ${inputs.include.join(', ')}`);
+    keepIncludedPackages(manifest, inputs.include);
+  }
+
+  manifest.plugins.unshift(new HelmAlloyCommitInjector());
+
+  return manifest;
 }
 
 async function main() {
-  console.log(`Running release-please version: ${VERSION}`);
   const inputs = parseInputs();
+  if (inputs.help) {
+    console.log(usage);
+    return;
+  }
+
+  console.log(`Running release-please version: ${VERSION}`);
   const github = await getGitHubInstance(inputs);
 
   if (!inputs.skipGitHubRelease) {

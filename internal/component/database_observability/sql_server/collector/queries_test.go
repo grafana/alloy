@@ -18,6 +18,7 @@ func TestQueryMarkers(t *testing.T) {
 		"metrics":              selectQueryMetrics,
 		"query store state":    selectQueryStoreState,
 		"permissions":          selectMyPermissionsQuery,
+		"server permissions":   selectMyServerPermissionsQuery,
 		"query store rows":     selectQueryStoreHasRowsQuery,
 		"databases":            fmt.Sprintf(selectDatabasesTemplate, "('master', 'model')"),
 		"tables":               fmt.Sprintf(selectTablesTemplate, "('sys', 'information_schema')"),

@@ -12,21 +12,28 @@ loki.process "example" {
 	forward_to = [loki.write.default.receiver]
 
 	stage.match {
-		selector = "foobar"
+		selector = "{app=\"one\"}"
 
 		stage.docker { }
 
 		stage.match {
-			selector = "foobar_two"
+			selector = "{app=\"two\"}"
 
 			stage.cri { }
-			action              = "drop"
+			action              = "keep"
 			pipeline_name       = "two"
 			drop_counter_reason = "nope_two"
 		}
-		action              = "drop"
+		action              = "keep"
 		pipeline_name       = "one"
 		drop_counter_reason = "nope"
+	}
+
+	stage.match {
+		selector            = "{app=\"three\"}"
+		action              = "drop"
+		pipeline_name       = "three"
+		drop_counter_reason = "nope_three"
 	}
 }
 
