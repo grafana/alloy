@@ -1,0 +1,78 @@
+kind: pipelinetest
+version: 1
+
+# Tests config.alloy as it would run in production. The entry components are
+# replaced by inputs, the exit components by the sink, and the Kubernetes
+# discovery the test cannot run is removed.
+env:
+  CLUSTER_NAME: prod-eu
+
+config:
+  path: config.alloy
+  sinks:
+    - prometheus.remote_write.cloud
+    - loki.write.cloud
+    - otelcol.exporter.otlp.tempo
+  remove:
+    - discovery.kubernetes.pods
+    - discovery.relabel.pods
+
+inputs:
+  prometheus:
+    # The scrape no longer adds job and instance, so set what the pipeline needs.
+    - replace: prometheus.scrape.pods
+      samples:
+        - series: 'http_requests_total{namespace="shop", job="shop/api"}'
+          value: 42
+        - series: 'debug_goroutines{namespace="shop", job="shop/api"}'
+          value: 7
+  loki:
+    - replace: loki.source.file.app
+      entries:
+        - labels: {service_name: app}
+          line: 'level=info msg="request served"'
+        - labels: {service_name: app}
+          line: 'level=debug msg="cache miss"'
+  traces:
+    - replace: otelcol.receiver.otlp.default
+      spans:
+        - name: GET /checkout
+          service_name: shop
+          kind: server
+          attributes: {http.route: /checkout}
+        - name: GET /healthz
+          service_name: shop
+          kind: server
+          attributes: {http.route: /healthz}
+
+assert:
+  prometheus:
+    - name: samples gain the cluster label
+      match:
+        selector: 'http_requests_total{cluster="prod-eu", namespace="shop"}'
+        value: 42
+    - name: debug metrics are dropped
+      count: 0
+      match:
+        selector: '{__name__=~"debug_.*"}'
+  loki:
+    - name: the level becomes a label, and the writer adds the cluster
+      sink: loki.write.cloud
+      match:
+        selector: '{service_name="app", level="info", cluster="prod-eu"}'
+        line: 'level=info msg="request served"'
+    - name: debug lines are dropped
+      count: 0
+      match:
+        selector: '{level="debug"}'
+  traces:
+    - name: spans are tagged with the environment
+      match:
+        name: GET /checkout
+        service_name: shop
+        kind: server
+        attributes: {deployment.environment: production}
+    - name: health checks are dropped
+      count: 0
+      match:
+        attributes: {http.route: /healthz}

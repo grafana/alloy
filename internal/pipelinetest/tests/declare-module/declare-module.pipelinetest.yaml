@@ -1,0 +1,48 @@
+kind: pipelinetest
+version: 1
+
+# Replaces components inside the cluster_metrics module. A component in a
+# declare block is <module>/<component>.
+config:
+  path: config.alloy
+  sinks: [prometheus.remote_write.metrics_service]
+  # The sink applies the exit's write_relabel_config blocks.
+  keep_write_relabel: true
+  remove: [discovery.kubernetes.nodes]
+
+inputs:
+  targets:
+    - replace: cluster_metrics/discovery.kubernetes.nodes
+      targets:
+        - __address__: 10.0.0.1:10250
+          __meta_kubernetes_node_name: node-a
+  prometheus:
+    - replace: cluster_metrics/prometheus.scrape.nodes
+      samples:
+        - series: 'kubelet_running_pods{job="integrations/kubernetes/kubelet"}'
+          value: 12
+        - series: 'go_goroutines{job="integrations/kubernetes/kubelet"}'
+          value: 40
+        - series: 'kubelet_debug_info{job="integrations/kubernetes/kubelet"}'
+          value: 1
+
+assert:
+  targets:
+    - name: the module's relabel rules run on the test targets
+      # Read a component in a module through its instance.
+      from: cluster_metrics.feature/discovery.relabel.nodes.output
+      match:
+        labels: {node: node-a, __address__: 10.0.0.1:10250}
+  prometheus:
+    - name: write_relabel_config and external_labels apply
+      match:
+        selector: 'kubelet_running_pods{scraped_by="alloy", cluster="prod-eu"}'
+        value: 12
+    - name: the module drops go_ metrics
+      count: 0
+      match:
+        selector: '{__name__=~"go_.*"}'
+    - name: write_relabel_config drops debug metrics
+      count: 0
+      match:
+        selector: '{__name__=~"kubelet_debug_.*"}'

@@ -1,0 +1,130 @@
+// An example production config, used as is by test.yaml. It collects pod
+// metrics, application logs and OTLP traces, and sends them to remote
+// backends. The test swaps the entry and exit components for the harness, and
+// removes the Kubernetes discovery it cannot run.
+
+discovery.kubernetes "pods" {
+  role = "pod"
+}
+
+discovery.relabel "pods" {
+  targets = discovery.kubernetes.pods.targets
+
+  rule {
+    source_labels = ["__meta_kubernetes_namespace"]
+    target_label  = "namespace"
+  }
+}
+
+// Metrics: drop debug metrics and add the cluster label.
+
+prometheus.scrape "pods" {
+  targets    = discovery.relabel.pods.output
+  forward_to = [prometheus.relabel.default.receiver]
+}
+
+prometheus.relabel "default" {
+  rule {
+    source_labels = ["__name__"]
+    regex         = "debug_.*"
+    action        = "drop"
+  }
+
+  rule {
+    target_label = "cluster"
+    replacement  = "prod-eu"
+  }
+
+  forward_to = [prometheus.remote_write.cloud.receiver]
+}
+
+prometheus.remote_write "cloud" {
+  endpoint {
+    url = "https://prometheus.example.com/api/prom/push"
+
+    basic_auth {
+      username = "123456"
+      password = sys.env("CLOUD_TOKEN")
+    }
+  }
+}
+
+// Logs: parse logfmt, promote the level to a label, and drop debug lines.
+
+loki.source.file "app" {
+  targets    = [{"__path__" = "/var/log/app/*.log", "service_name" = "app"}]
+  forward_to = [loki.process.app.receiver]
+}
+
+loki.process "app" {
+  stage.logfmt {
+    mapping = {"level" = ""}
+  }
+
+  stage.labels {
+    values = {"level" = ""}
+  }
+
+  stage.drop {
+    source = "level"
+    value  = "debug"
+  }
+
+  forward_to = [loki.write.cloud.receiver]
+}
+
+loki.write "cloud" {
+  endpoint {
+    url = "https://logs.example.com/loki/api/v1/push"
+  }
+
+  external_labels = {
+    cluster = sys.env("CLUSTER_NAME"),
+  }
+}
+
+// Traces: tag spans with the environment, drop health checks, and batch.
+
+otelcol.receiver.otlp "default" {
+  grpc {
+    endpoint = "0.0.0.0:4317"
+  }
+
+  output {
+    traces = [otelcol.processor.attributes.env.input]
+  }
+}
+
+otelcol.processor.attributes "env" {
+  action {
+    key    = "deployment.environment"
+    value  = "production"
+    action = "insert"
+  }
+
+  output {
+    traces = [otelcol.processor.filter.healthchecks.input]
+  }
+}
+
+otelcol.processor.filter "healthchecks" {
+  traces {
+    span = [`attributes["http.route"] == "/healthz"`]
+  }
+
+  output {
+    traces = [otelcol.processor.batch.default.input]
+  }
+}
+
+otelcol.processor.batch "default" {
+  output {
+    traces = [otelcol.exporter.otlp.tempo.input]
+  }
+}
+
+otelcol.exporter.otlp "tempo" {
+  client {
+    endpoint = "tempo.example.com:4317"
+  }
+}

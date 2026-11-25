@@ -1,0 +1,67 @@
+kind: pipelinetest
+version: 1
+
+config: |
+  discovery.kubernetes "pods" {
+    role = "pod"
+  }
+
+  discovery.relabel "pods" {
+    targets = array.concat(discovery.kubernetes.pods.targets)
+
+    rule {
+      action        = "keep"
+      regex         = ".*-metrics"
+      source_labels = ["__meta_kubernetes_pod_container_port_name"]
+    }
+
+    rule {
+      action        = "drop"
+      regex         = "Succeeded|Failed"
+      source_labels = ["__meta_kubernetes_pod_phase"]
+    }
+
+    rule {
+      separator     = "/"
+      source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_label_name"]
+      target_label  = "job"
+    }
+
+    rule {
+      source_labels = ["__meta_kubernetes_pod_name"]
+      target_label  = "pod"
+    }
+  }
+
+inputs:
+  targets:
+    - replace: discovery.kubernetes.pods
+      targets:
+        - __address__: 10.0.0.1:8080
+          __meta_kubernetes_namespace: shop
+          __meta_kubernetes_pod_name: api-1
+          __meta_kubernetes_pod_label_name: api
+          __meta_kubernetes_pod_container_port_name: http-metrics
+          __meta_kubernetes_pod_phase: Running
+        - __address__: 10.0.0.2:8080
+          __meta_kubernetes_namespace: shop
+          __meta_kubernetes_pod_name: api-2
+          __meta_kubernetes_pod_label_name: api
+          __meta_kubernetes_pod_container_port_name: http
+          __meta_kubernetes_pod_phase: Running
+        - __address__: 10.0.0.3:8080
+          __meta_kubernetes_namespace: shop
+          __meta_kubernetes_pod_name: job-1
+          __meta_kubernetes_pod_label_name: batch
+          __meta_kubernetes_pod_container_port_name: http-metrics
+          __meta_kubernetes_pod_phase: Succeeded
+
+assert:
+  targets:
+    - name: only running pods with a metrics port are kept
+      from: discovery.relabel.pods.output
+      count: 1
+    - name: the kept pod gets its job and pod labels
+      from: discovery.relabel.pods.output
+      match:
+        labels: {__address__: 10.0.0.1:8080, job: shop/api, pod: api-1}

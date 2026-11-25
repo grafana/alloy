@@ -3,6 +3,7 @@ package harness
 import (
 	"fmt"
 	"reflect"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -101,6 +102,14 @@ func LokiEntryLine(line string) EntryMatcher {
 // LokiEntryLabels returns an EntryMatcher for Loki entry labels. When partial
 // is false, labels must match exactly. When partial is true, the entry labels
 // must contain at least the provided labels.
+// LokiEntryLineRegex matches entries whose line matches re anywhere.
+func LokiEntryLineRegex(re *regexp.Regexp) EntryMatcher {
+	return EntryMatcher{
+		match: func(entry loki.Entry) bool { return re.MatchString(entry.Line) },
+		text:  fmt.Sprintf("line_regex = %q", re.String()),
+	}
+}
+
 func LokiEntryLabels(labels model.LabelSet, partial bool) EntryMatcher {
 	var match func(entry loki.Entry) bool
 	if partial {

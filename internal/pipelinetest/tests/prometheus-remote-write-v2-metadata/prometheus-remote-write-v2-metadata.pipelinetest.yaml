@@ -1,3 +1,6 @@
+kind: pipelinetest
+version: 1
+
 config: |
   prometheus.exporter.self "default" {}
 
