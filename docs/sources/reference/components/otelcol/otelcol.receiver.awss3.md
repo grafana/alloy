@@ -10,15 +10,17 @@ title: otelcol.receiver.awss3
 
 # `otelcol.receiver.awss3`
 
-{{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/otelcol_experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.receiver.awss3` receives telemetry stored in S3 by the [AWS S3 Exporter](../otelcol.exporter.awss3/).
 
 {{< admonition type="warning" >}}
 `otelcol.receiver.awss3` is a wrapper over the upstream OpenTelemetry Collector [`awss3`][] receiver.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+Upstream [stability][otel-stability]: alpha for traces, metrics, and logs.
 
 [`awss3`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/awss3receiver
+[otel-stability]: https://github.com/open-telemetry/opentelemetry-collector/blob/{{< param "OTEL_VERSION" >}}/docs/component-stability.md
 {{< /admonition >}}
 
 The receiver has two modes of operation:

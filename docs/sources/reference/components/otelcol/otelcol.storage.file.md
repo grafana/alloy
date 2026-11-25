@@ -10,7 +10,7 @@ labels:
 
 # `otelcol.storage.file`
 
-{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="stability/otelcol_public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 `otelcol.storage.file` exposes a `handler` that other `otelcol` components can use to write state to a local directory.
 The current implementation of this component uses [`bbolt`][] to store and read data on disk.
@@ -18,8 +18,10 @@ The current implementation of this component uses [`bbolt`][] to store and read 
 {{< admonition type="note" >}}
 `otelcol.storage.file` is a wrapper over the upstream OpenTelemetry Collector [`filestorage`][] extension.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+Upstream [stability][otel-stability]: beta.
 
 [`filestorage`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/storage/filestorage
+[otel-stability]: https://github.com/open-telemetry/opentelemetry-collector/blob/{{< param "OTEL_VERSION" >}}/docs/component-stability.md
 {{< /admonition >}}
 
 You can specify multiple `otelcol.storage.file` components by giving them different labels.

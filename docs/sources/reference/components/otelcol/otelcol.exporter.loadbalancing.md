@@ -19,8 +19,10 @@ title: otelcol.exporter.loadbalancing
 {{< admonition type="note" >}}
 `otelcol.exporter.loadbalancing` is a wrapper over the upstream OpenTelemetry Collector [`loadbalancing`][] exporter.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+Upstream [stability][otel-stability]: beta for traces and logs, alpha for metrics.
 
 [`loadbalancing`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/exporter/loadbalancingexporter
+[otel-stability]: https://github.com/open-telemetry/opentelemetry-collector/blob/{{< param "OTEL_VERSION" >}}/docs/component-stability.md
 {{< /admonition >}}
 
 You can specify multiple `otelcol.exporter.loadbalancing` components by giving them different labels.

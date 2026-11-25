@@ -19,8 +19,10 @@ This component supports both server and client authentication.
 {{< admonition type="note" >}}
 `otelcol.auth.basic` is a wrapper over the upstream OpenTelemetry Collector [`basicauth`][] extension.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
+Upstream [stability][otel-stability]: beta.
 
 [`basicauth`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/basicauthextension
+[otel-stability]: https://github.com/open-telemetry/opentelemetry-collector/blob/{{< param "OTEL_VERSION" >}}/docs/component-stability.md
 {{< /admonition >}}
 
 You can specify multiple `otelcol.auth.basic` components by giving them different labels.
