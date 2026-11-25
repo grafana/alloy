@@ -25,22 +25,22 @@ import (
 
 type consumeFunc func(ctx context.Context, c Consumer, entries []loki.Entry) error
 
-// runConsumerTest runs fn as a subtest once for Consume and once for ConsumeEntry.
+// runConsumerTest runs fn as a subtest once for ConsumeV2 and once for ConsumeV1.
 func runConsumerTest(t *testing.T, fn func(t *testing.T, consume consumeFunc)) {
-	t.Run("Consume", func(t *testing.T) {
+	t.Run("ConsumeV2", func(t *testing.T) {
 		fn(t, func(ctx context.Context, c Consumer, entries []loki.Entry) error {
 			batch := loki.NewBatch()
 			for _, e := range entries {
 				batch.AddEntry(e.Labels, 0, e.Entry)
 			}
-			return c.Consume(ctx, batch)
+			return c.ConsumeV2(ctx, batch)
 		})
 	})
 
-	t.Run("ConsumeEntry", func(t *testing.T) {
+	t.Run("ConsumeV1", func(t *testing.T) {
 		fn(t, func(ctx context.Context, c Consumer, entries []loki.Entry) error {
 			for _, e := range entries {
-				if err := c.ConsumeEntry(ctx, e); err != nil {
+				if err := c.ConsumeV1(ctx, e); err != nil {
 					return err
 				}
 			}

@@ -282,7 +282,7 @@ func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
 			})
 		}
 
-		err := consumer.Consume(ctx, batch)
+		err := consumer.ConsumeV2(ctx, batch)
 		if err == nil {
 			return nil
 		}
@@ -341,7 +341,7 @@ func (c *Component) consumeEntry(ctx context.Context, e loki.Entry) {
 			e.Labels = externalLabels.Merge(e.Labels)
 		}
 
-		err := consumer.ConsumeEntry(ctx, e)
+		err := consumer.ConsumeV1(ctx, e)
 		if err == nil {
 			return
 		}

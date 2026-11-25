@@ -10,7 +10,7 @@ import (
 // ErrWALWrite is returned by WALConsumer when an entry could not be written to the WAL.
 var ErrWALWrite = errors.New("wal write failed")
 
-// IsRetryableErr reports whether a failed ConsumeEntry is worth retrying.
+// IsRetryableErr reports whether a failed ConsumeV1 is worth retrying.
 func IsRetryableErr(err error) bool {
 	return errors.Is(err, loki.ErrConsumerStopped) || errors.Is(err, ErrWALWrite)
 }
@@ -18,16 +18,16 @@ func IsRetryableErr(err error) bool {
 // Consumer is an interface for consuming Loki log entries.
 type Consumer interface {
 	// Start prepares the consumer to accept entries. It must be called once before
-	// the first ConsumeEntry.
+	// the first ConsumeV1 or ConsumeV2.
 	Start()
 
-	// Consume hands a batch to the consumer. It returns
+	// ConsumeV1 hands an entry to the consumer on the V1 pipeline. It returns
 	// loki.ErrConsumerStopped once Stop has been called.
-	Consume(ctx context.Context, batch loki.Batch) error
+	ConsumeV1(ctx context.Context, entry loki.Entry) error
 
-	// ConsumeEntry hands an entry to the consumer. It returns
+	// ConsumeV2 hands a batch to the consumer on the V2 pipeline. It returns
 	// loki.ErrConsumerStopped once Stop has been called.
-	ConsumeEntry(ctx context.Context, entry loki.Entry) error
+	ConsumeV2(ctx context.Context, batch loki.Batch) error
 
 	Stop()
 }
