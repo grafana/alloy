@@ -30,6 +30,88 @@ import (
 	"github.com/grafana/alloy/syntax"
 )
 
+func TestComponent(t *testing.T) {
+	lokitest.TestV2(t, func(t *testing.T, env lokitest.Env) {
+		t.Run("stopped component returns ErrConsumerStopped", func(t *testing.T) {
+			var args Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(`
+				endpoint {
+					url = "http://localhost:1"
+				}
+			`), &args))
+
+			ctrl, stop := env.Run(t, "loki.write", args)
+			consumer := ctrl.Exports().(Exports).Receiver.(loki.Consumer)
+			stop()
+
+			batch := loki.NewBatch()
+			batch.AddEntry(model.LabelSet{"foo": "bar"}, time.Now().UnixMicro(), push.Entry{Timestamp: time.Now(), Line: "after stop"})
+
+			require.ErrorIs(t, consumer.Consume(t.Context(), batch), loki.ErrConsumerStopped)
+		})
+
+		t.Run("caller cancel while blocked returns context error", func(t *testing.T) {
+			ctrl, _ := blockedComponent(t, env, false)
+			consumer := ctrl.Exports().(Exports).Receiver.(loki.Consumer)
+
+			ctx, cancel := context.WithCancel(t.Context())
+
+			batch := loki.NewBatch()
+			batch.AddEntry(model.LabelSet{"foo": "bar"}, time.Now().UnixMicro(), push.Entry{Timestamp: time.Now(), Line: "blocked"})
+
+			result := make(chan error, 1)
+			go func() { result <- consumer.Consume(ctx, batch) }()
+
+			select {
+			case err := <-result:
+				t.Fatalf("Consume returned before ctx was cancelled: %v", err)
+			case <-time.After(100 * time.Millisecond):
+			}
+
+			cancel()
+
+			select {
+			case err := <-result:
+				require.ErrorIs(t, err, context.Canceled)
+			case <-time.After(10 * time.Second):
+				t.Fatal("Consume did not return after ctx was cancelled")
+			}
+		})
+
+		t.Run("failed New returns a receiver that reports ErrConsumerStopped", func(t *testing.T) {
+			// Duplicate endpoints make building the consumer fail.
+			var args Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(`
+				endpoint {
+					url = "http://localhost:1"
+				}
+				endpoint {
+					url = "http://localhost:1"
+				}
+			`), &args))
+
+			var exports Exports
+			_, err := New(component.Options{
+				Logger:        logging.NewSlogNop(),
+				OnStateChange: func(e component.Exports) { exports = e.(Exports) },
+				GetServiceData: func(name string) (any, error) {
+					if name == lokipipelinev2.ServiceName {
+						return lokipipelinev2.New(lokipipelinev2.Options{PipelineV2: true}).Data(), nil
+					}
+					return nil, fmt.Errorf("service not found %s", name)
+				},
+			}, args)
+			require.Error(t, err)
+
+			// The runtime keeps the exports of a failed component, so dependents can still call it.
+			batch := loki.NewBatch()
+			batch.AddEntry(model.LabelSet{"foo": "bar"}, time.Now().UnixMicro(), push.Entry{Timestamp: time.Now(), Line: "after failed new"})
+
+			require.ErrorIs(t, exports.Receiver.(loki.Consumer).Consume(t.Context(), batch), loki.ErrConsumerStopped)
+		})
+	})
+}
+
 func TestWriteToSingleEndpoint(t *testing.T) {
 	t.Run("wal disabled", func(t *testing.T) {
 		lokitest.Test(t, func(t *testing.T, env lokitest.Env) {
@@ -312,10 +394,15 @@ func TestUpdateWhileSendingIsBlocked(t *testing.T) {
 	for _, walEnabled := range []bool{false, true} {
 		t.Run(fmt.Sprintf("wal_enabled=%t", walEnabled), func(t *testing.T) {
 			lokitest.Test(t, func(t *testing.T, env lokitest.Env) {
+				received := make(chan lokiutil.RemoteWriteRequest, 100)
+				srv := lokiutil.NewRemoteWriteServer(received, http.StatusOK)
+				// Registered first so it closes after the component and sender have stopped.
+				t.Cleanup(srv.Close)
+
 				ctrl, _ := blockedComponent(t, env, walEnabled)
 
 				updated := make(chan error, 1)
-				go func() { updated <- ctrl.Update(blockedEndpointArgs(t, "http://localhost:1", walEnabled)) }()
+				go func() { updated <- ctrl.Update(blockedEndpointArgs(t, srv.URL, walEnabled)) }()
 
 				select {
 				case err := <-updated:
@@ -323,6 +410,15 @@ func TestUpdateWhileSendingIsBlocked(t *testing.T) {
 				case <-time.After(30 * time.Second):
 					t.Fatal("Update did not return while sending was blocked")
 				}
+
+				// The blocked send moves on to the new consumer.
+				waitForLine(t, received, "very important log")
+
+				// The sender keeps going, so keep the handlers from blocking on a full channel.
+				go func() {
+					for range received {
+					}
+				}()
 			})
 		})
 	}
