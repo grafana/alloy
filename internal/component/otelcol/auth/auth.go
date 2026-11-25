@@ -293,7 +293,9 @@ func (a *Auth) Update(args component.Arguments) error {
 		return err
 	}
 
-	// Schedule the components, start will be called directly.
+	// Start the components before we export the handler, so that other
+	// components only see started extensions. otelcol.extension does the same,
+	// and all extensions follow this pattern. See scheduler.ExtensionScheduler.
 	a.sched.Schedule(a.ctx, host, components...)
 
 	// Inform listeners that our handler changed.

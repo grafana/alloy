@@ -10,10 +10,18 @@ import (
 	"github.com/grafana/alloy/internal/component"
 )
 
-// ExtensionScheduler is a specialized scheduler for extensions.
+// ExtensionScheduler is the scheduler for all extensions: otelcol.auth and
+// otelcol.extension components use it.
 //
-// Extensions export handlers in Update, and other components can use them immediately.
-// This scheduler starts components in Schedule so exported handlers always point to started extensions.
+// Extensions export handlers in Update, and other components can use them as
+// soon as Update returns. So unlike Scheduler, ExtensionScheduler starts the
+// components in Schedule, before it returns. Callers must call Schedule before
+// they export the handler, so that exported handlers always point to started
+// extensions.
+//
+// This is safe because extensions are not on the data path: Shutdown of an
+// extension does not wait for data to flow downstream. See
+// https://github.com/grafana/alloy/issues/7762 for why Scheduler cannot do this.
 type ExtensionScheduler struct {
 	log *slog.Logger
 
@@ -24,7 +32,7 @@ type ExtensionScheduler struct {
 	schedComponents []otelcomponent.Component
 }
 
-// NewExtensionScheduler creates a scheduler for auth extensions.
+// NewExtensionScheduler creates a scheduler for extensions.
 func NewExtensionScheduler(l *slog.Logger) *ExtensionScheduler {
 	return &ExtensionScheduler{
 		log: l,

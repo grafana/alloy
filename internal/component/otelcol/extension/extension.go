@@ -175,6 +175,11 @@ func (e *Extension) Update(args component.Arguments) error {
 		components = append(components, ext)
 	}
 
+	// Start the components before we export the handler, so that other
+	// components only see started extensions. otelcol.auth does the same, and
+	// all extensions follow this pattern. See scheduler.ExtensionScheduler.
+	e.sched.Schedule(e.ctx, host, components...)
+
 	if rargs.ExportsHandler() {
 		// Registers the extension for the otel collector plugin
 		handler := &ExtensionHandler{
@@ -188,9 +193,6 @@ func (e *Extension) Update(args component.Arguments) error {
 		})
 	}
 
-	// Start the components now, because the exported handler already points to
-	// them.
-	e.sched.Schedule(e.ctx, host, components...)
 	return nil
 }
 
