@@ -38,27 +38,19 @@ However you acquire the credentials, the exporter requires the following permiss
 "cloudwatch:ListMetrics"
 ```
 
-[Transit Gateway][] attachment (`tgwa`) metrics require the following AWS Identity and Access Management (IAM) permissions:
+[`discovery`][discovery] jobs for some namespaces call extra AWS APIs to find resources.
+These jobs require the following AWS Identity and Access Management (IAM) permissions:
 
-```text
-"ec2:DescribeTags",
-"ec2:DescribeInstances",
-"ec2:DescribeRegions",
-"ec2:DescribeTransitGateway*"
-```
-
-To discover tagged [API Gateway][] REST APIs, the exporter requires the following IAM permission:
-
-```text
-"apigateway:GET"
-```
-
-To discover tagged [Database Migration Service][] (DMS) replication instances and tasks, the exporter requires the following IAM permissions:
-
-```text
-"dms:DescribeReplicationInstances",
-"dms:DescribeReplicationTasks"
-```
+| Namespace                                  | Required permissions                                                |
+| ------------------------------------------ | ------------------------------------------------------------------- |
+| `AWS/ApiGateway` ([API Gateway][])         | `apigateway:GET`                                                    |
+| `AWS/AutoScaling`                          | `autoscaling:DescribeAutoScalingGroups`                             |
+| `AWS/DDoSProtection`                       | `shield:ListProtections`                                            |
+| `AWS/DMS` ([Database Migration Service][]) | `dms:DescribeReplicationInstances`, `dms:DescribeReplicationTasks`  |
+| `AWS/EC2Spot`                              | `ec2:DescribeSpotFleetRequests`                                     |
+| `AWS/Prometheus`                           | `aps:ListWorkspaces`                                                |
+| `AWS/StorageGateway`                       | `storagegateway:ListGateways`, `storagegateway:ListTagsForResource` |
+| `AWS/TransitGateway` ([Transit Gateway][]) | `ec2:DescribeTransitGatewayAttachments`                             |
 
 To retrieve the AWS account alias, the exporter requires the following IAM permission:
 
@@ -83,13 +75,16 @@ The following AWS IAM policy grants every permission the exporter needs for its 
         "cloudwatch:GetMetricData",
         "cloudwatch:GetMetricStatistics",
         "cloudwatch:ListMetrics",
-        "ec2:DescribeTags",
-        "ec2:DescribeInstances",
-        "ec2:DescribeRegions",
-        "ec2:DescribeTransitGateway*",
         "apigateway:GET",
+        "aps:ListWorkspaces",
+        "autoscaling:DescribeAutoScalingGroups",
         "dms:DescribeReplicationInstances",
         "dms:DescribeReplicationTasks",
+        "ec2:DescribeTransitGatewayAttachments",
+        "ec2:DescribeSpotFleetRequests",
+        "shield:ListProtections",
+        "storagegateway:ListGateways",
+        "storagegateway:ListTagsForResource",
         "iam:ListAccountAliases"
       ],
       "Effect": "Allow",
@@ -151,7 +146,8 @@ You can use the following arguments with `prometheus.exporter.cloudwatch`:
 | `labels_snake_case`       | `bool`              | Output labels on metrics in snake case instead of camel case.               | `false` | no       |
 
 If you define the `["name", "type"]` under `"AWS/EC2"` in the `discovery_exported_tags` argument, it exports the name and type tags and its values as labels in all metrics.
-This affects all discovery jobs.
+This affects all discovery jobs of the specified type.
+In this example, the type is `AWS/EC2`.
 
 [STS]: https://docs.aws.amazon.com/STS/latest/APIReference/welcome.html
 
@@ -278,7 +274,7 @@ You can configure the `metric` block multiple times to define multiple target me
 Refer to the [View available metrics][] topic in the Amazon CloudWatch documentation for detailed metrics information.
 
 In [`custom_namespace`][custom_namespace] and [`discovery`][discovery] blocks, the `add_cloudwatch_timestamp`, `length`, `nil_to_zero`, and `period` arguments default to the parent block's value when the parent sets one.
-In [`static`][static] blocks, only `nil_to_zero` defaults to the parent block's value.
+In [`static`][static] blocks, only `nil_to_zero` defaults to the parent block's value, but it has no effect in `static` jobs.
 
 [period]: #period-and-length
 [View available metrics]: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/viewing_metrics_with_cloudwatch.html
@@ -291,7 +287,9 @@ When you set both, {{< param "PRODUCT_NAME" >}} calls the CloudWatch APIs as fol
 
 {{< figure src="/media/docs/alloy/cloudwatch-period-and-length-time-model-2.png" alt="An example of a CloudWatch period and length time model" >}}
 
-When metrics in the same `custom_namespace`, `discovery`, or `static` job use different `period` or `length` values, {{< param "PRODUCT_NAME" >}} takes the minimum of all periods and the maximum of all lengths.
+In `custom_namespace` and `discovery` jobs, {{< param "PRODUCT_NAME" >}} groups metrics by `period` and `delay` and sends separate requests for each group.
+Each request uses the longest `length` in its group.
+In `static` jobs, {{< param "PRODUCT_NAME" >}} sends a separate request for each metric, using that metric's `period` and `length`.
 
 When you don't set `length`, {{< param "PRODUCT_NAME" >}} sets it to the metric's `period`.
 If you don't set `period` either, both default to `5m`.
@@ -301,11 +299,11 @@ CloudWatch returns a single data point for each metric, and {{< param "PRODUCT_N
 
 {{< figure src="/media/docs/alloy/cloudwatch-single-period-time-model.png" alt="An example of a CloudWatch single period and time model" >}}
 
-When metrics in one job use different `period` values, the behavior differs.
-If you don't set `length`, each metric's `length` equals its `period`, so {{< param "PRODUCT_NAME" >}} takes the maximum of all periods as `length` and the minimum as `period`.
-It then requests metrics from `now - length` to `now`, aggregating each into samples of `period` seconds, and exports the most recent sample for each metric to Prometheus.
-
-{{< figure src="/media/docs/alloy/cloudwatch-multiple-period-time-model.png" alt="An example of a CloudWatch multiple period and time model" >}}
+When metrics in one `custom_namespace` or `discovery` job use different `period` values, {{< param "PRODUCT_NAME" >}} puts them in different groups and sends separate requests for each `period`.
+Each request covers `now - length` to `now`, where `length` is the longest `length` in the group, and CloudWatch aggregates each metric into samples of the group's `period`.
+To keep request windows consistent, `now` isn't the exact current time.
+{{< param "PRODUCT_NAME" >}} rounds the current time down to a multiple of the group's `period`.
+{{< param "PRODUCT_NAME" >}} exports the most recent sample for each metric to Prometheus.
 
 Each of these time windows assumes a `delay` of `0`.
 A non-zero `delay` shifts the whole window back, so {{< param "PRODUCT_NAME" >}} requests metrics from `now - delay - length` to `now - delay`.
@@ -421,17 +419,20 @@ The `static` block configures the component to scrape a specific set of CloudWat
 
 You can use the following arguments with the `static` block:
 
-| Name          | Type           | Description                                                                                  | Default | Required |
-| ------------- | -------------- | -------------------------------------------------------------------------------------------- | ------- | -------- |
-| `dimensions`  | `map(string)`  | CloudWatch dimensions as name/value pairs. Must uniquely define all metrics in this job.     |         | yes      |
-| `namespace`   | `string`       | CloudWatch metric namespace.                                                                 |         | yes      |
-| `regions`     | `list(string)` | List of AWS regions.                                                                         |         | yes      |
-| `custom_tags` | `map(string)`  | Key/value pairs to add as labels named `custom_tag_{key}`.                                   | `{}`    | no       |
-| `nil_to_zero` | `bool`         | Whether to convert `NaN` metric values to 0. The [`metric`][metric] block can override this. | `true`  | no       |
+| Name          | Type           | Description                                                                                                                  | Default | Required |
+| ------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `dimensions`  | `map(string)`  | CloudWatch dimensions as name/value pairs. Must uniquely define all metrics in this job.                                     |         | yes      |
+| `namespace`   | `string`       | CloudWatch metric namespace.                                                                                                 |         | yes      |
+| `regions`     | `list(string)` | List of AWS regions.                                                                                                         |         | yes      |
+| `custom_tags` | `map(string)`  | Key/value pairs to add as labels named `custom_tag_{key}`.                                                                   | `{}`    | no       |
+| `nil_to_zero` | `bool`         | Whether to convert `NaN` metric values to 0. The [`metric`][metric] block can override this. Has no effect in `static` jobs. | `true`  | no       |
 
 Setting `period`, `length`, or `delay` on a `static` block has no effect.
 Configure `period` and `length` on each `metric` block instead.
 The `metric` block has no `delay` argument, so a `static` job can't shift the query window.
+
+`nil_to_zero` has no effect in `static` jobs, on either the `static` block or its `metric` blocks.
+When CloudWatch returns no data points for a metric, a `static` job doesn't export that metric, so there's no `NaN` value to convert.
 
 The metrics need to be fully qualified with the following specifications:
 
