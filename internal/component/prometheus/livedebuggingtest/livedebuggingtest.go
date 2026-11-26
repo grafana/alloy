@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/prometheus/prometheus/model/exemplar"
+	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/storage"
@@ -54,10 +55,14 @@ func RunInterceptorTests(t *testing.T, componentID livedebugging.ComponentID, ne
 	}
 }
 
-// testCase is one append and the live debugging data it publishes.
+// testCase is one append and the live debugging data it publishes. Exactly
+// one of v1 and v2 is set.
+//
+// TODO: Remove the V1 cases when the V1 appenders are removed.
 type testCase struct {
 	name string
 	v1   func(storage.Appender) (storage.SeriesRef, error)
+	v2   func(storage.AppenderV2) (storage.SeriesRef, error)
 	want []string
 }
 
@@ -65,9 +70,16 @@ type testCase struct {
 // appender is created up front, so that only the append counts towards
 // allocations.
 func (tc testCase) appendFunc(ctx context.Context, i *prometheus.Interceptor) func() error {
-	app := i.Appender(ctx)
+	if tc.v1 != nil {
+		app := i.Appender(ctx)
+		return func() error {
+			_, err := tc.v1(app)
+			return err
+		}
+	}
+	app := i.AppenderV2(ctx)
 	return func() error {
-		_, err := tc.v1(app)
+		_, err := tc.v2(app)
 		return err
 	}
 }
@@ -76,12 +88,16 @@ func cases() []testCase {
 	lbls := labels.FromStrings("__name__", "test_metric")
 	meta := metadata.Metadata{Type: "gauge", Unit: "items", Help: "test metric"}
 	exemplar1 := exemplar.Exemplar{Labels: labels.FromStrings("trace_id", "abc"), Value: 12.5, Ts: 123}
+	h := &histogram.Histogram{Schema: 1}
+	fh := &histogram.FloatHistogram{Schema: 1}
 
 	const (
 		wantSample    = `sample: ts=123, labels={__name__="test_metric"}, value=12.500000`
 		wantMetadata  = `metadata: labels={__name__="test_metric"}, type="gauge", unit="items", help="test metric"`
 		wantExemplar1 = `exemplar: ts=123, labels={__name__="test_metric"}, exemplar_labels={trace_id="abc"}, value=12.500000`
 	)
+	wantHistogram := `histogram: ts=123, labels={__name__="test_metric"}, value=` + h.String()
+	wantFloatHistogram := `float_histogram: ts=123, labels={__name__="test_metric"}, value=` + fh.String()
 
 	return []testCase{
 		{
@@ -90,6 +106,20 @@ func cases() []testCase {
 				return app.Append(0, lbls, 123, 12.5)
 			},
 			want: []string{wantSample},
+		},
+		{
+			name: "V1 histogram",
+			v1: func(app storage.Appender) (storage.SeriesRef, error) {
+				return app.AppendHistogram(0, lbls, 123, h, nil)
+			},
+			want: []string{wantHistogram},
+		},
+		{
+			name: "V1 float histogram",
+			v1: func(app storage.Appender) (storage.SeriesRef, error) {
+				return app.AppendHistogram(0, lbls, 123, nil, fh)
+			},
+			want: []string{wantFloatHistogram},
 		},
 		{
 			name: "V1 histogram without a value",
@@ -111,6 +141,27 @@ func cases() []testCase {
 				return app.UpdateMetadata(0, lbls, meta)
 			},
 			want: []string{wantMetadata},
+		},
+		{
+			name: "V2 sample",
+			v2: func(app storage.AppenderV2) (storage.SeriesRef, error) {
+				return app.Append(0, lbls, 0, 123, 12.5, nil, nil, storage.AppendV2Options{})
+			},
+			want: []string{wantSample},
+		},
+		{
+			name: "V2 histogram",
+			v2: func(app storage.AppenderV2) (storage.SeriesRef, error) {
+				return app.Append(0, lbls, 0, 123, 0, h, nil, storage.AppendV2Options{})
+			},
+			want: []string{wantHistogram},
+		},
+		{
+			name: "V2 float histogram",
+			v2: func(app storage.AppenderV2) (storage.SeriesRef, error) {
+				return app.Append(0, lbls, 0, 123, 0, nil, fh, storage.AppendV2Options{})
+			},
+			want: []string{wantFloatHistogram},
 		},
 	}
 }
