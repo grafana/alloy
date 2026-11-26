@@ -76,7 +76,7 @@ type Extension struct {
 	opts    component.Options
 	factory otelextension.Factory
 
-	sched     *scheduler.Scheduler
+	sched     *scheduler.ExtensionScheduler
 	collector *lazycollector.Collector
 }
 
@@ -103,7 +103,7 @@ func New(opts component.Options, f otelextension.Factory, args Arguments) (*Exte
 		opts:    opts,
 		factory: f,
 
-		sched:     scheduler.New(opts.Logger),
+		sched:     scheduler.NewExtensionScheduler(opts.Logger),
 		collector: collector,
 	}
 	if err := r.Update(args); err != nil {
@@ -115,8 +115,12 @@ func New(opts component.Options, f otelextension.Factory, args Arguments) (*Exte
 // Run starts the Extension component.
 func (e *Extension) Run(ctx context.Context) error {
 	e.opts.Logger.Info("starting extension", "component", e.opts.ID)
-	defer e.cancel()
-	return e.sched.Run(ctx)
+	defer func() {
+		e.cancel()
+		e.sched.Stop()
+	}()
+	<-ctx.Done()
+	return nil
 }
 
 // Update implements component.Component. It will convert the Arguments into
@@ -171,6 +175,11 @@ func (e *Extension) Update(args component.Arguments) error {
 		components = append(components, ext)
 	}
 
+	// Start the components before we export the handler, so that other
+	// components only see started extensions. otelcol.auth does the same, and
+	// all extensions follow this pattern. See scheduler.ExtensionScheduler.
+	e.sched.Schedule(e.ctx, host, components...)
+
 	if rargs.ExportsHandler() {
 		// Registers the extension for the otel collector plugin
 		handler := &ExtensionHandler{
@@ -184,8 +193,6 @@ func (e *Extension) Update(args component.Arguments) error {
 		})
 	}
 
-	// Schedule the components to run once our component is running.
-	e.sched.Schedule(e.ctx, func() {}, host, components...)
 	return nil
 }
 
