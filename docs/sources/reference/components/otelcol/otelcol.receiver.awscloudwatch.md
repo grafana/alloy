@@ -100,10 +100,17 @@ The following arguments are supported:
 
 | Name                     | Type       | Description                                                    | Default | Required |
 | ------------------------ | ---------- | -------------------------------------------------------------- | ------- | -------- |
+| `delay`                  | `duration` | How far back from now each poll window ends.                   | `"0s"`  | no       |
 | `initial_lookback`       | `duration` | How far back to poll on the first collection.                  |         | no       |
 | `max_events_per_request` | `int`      | Maximum number of events to process per request to CloudWatch. | `1000`  | no       |
 | `poll_interval`          | `duration` | How frequently to poll for new log entries.                    | `"1m"`  | no       |
 | `start_from`             | `string`   | Timestamp in RFC3339 format where to start reading logs.       | `""`    | no       |
+
+CloudWatch Logs can make an event searchable some time after its timestamp.
+Without `delay`, events that become searchable after their time range was polled are skipped.
+Set `delay` to at least the ingestion latency of your log groups, for example `"90s"`.
+Logs reach the pipeline that much later.
+`delay` must be either `"0s"` or at least `"1s"`.
 
 The `logs` block supports the following blocks:
 

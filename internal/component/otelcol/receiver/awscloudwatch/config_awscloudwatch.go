@@ -15,6 +15,7 @@ type LogsConfig struct {
 	Groups              GroupConfig   `alloy:"groups,block,optional"`
 	StartFrom           string        `alloy:"start_from,attr,optional"`
 	InitialLookback     time.Duration `alloy:"initial_lookback,attr,optional"`
+	Delay               time.Duration `alloy:"delay,attr,optional"`
 }
 
 func (args LogsConfig) Convert() awscloudwatchreceiver.LogsConfig {
@@ -24,6 +25,7 @@ func (args LogsConfig) Convert() awscloudwatchreceiver.LogsConfig {
 		Groups:              args.Groups.Convert(),
 		StartFrom:           args.StartFrom,
 		InitialLookback:     args.InitialLookback,
+		Delay:               args.Delay,
 	}
 }
 

@@ -12,6 +12,7 @@ otelcol.receiver.awscloudwatch "default" {
 			}
 		}
 		initial_lookback = "45m0s"
+		delay            = "1m30s"
 	}
 
 	output {

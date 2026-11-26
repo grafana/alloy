@@ -61,6 +61,7 @@ func toLogsConfig(cfg awscloudwatchreceiver.LogsConfig) awscloudwatch.LogsConfig
 	return awscloudwatch.LogsConfig{
 		PollInterval:        cfg.PollInterval,
 		InitialLookback:     cfg.InitialLookback,
+		Delay:               cfg.Delay,
 		MaxEventsPerRequest: cfg.MaxEventsPerRequest,
 		Groups:              toGroupConfig(cfg.Groups),
 	}

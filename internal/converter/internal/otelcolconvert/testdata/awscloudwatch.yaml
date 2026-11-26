@@ -5,6 +5,7 @@ receivers:
     logs:
       poll_interval: 5m
       initial_lookback: 45m
+      delay: 90s
       groups:
         named:
           /aws/eks/dev-0/cluster:
