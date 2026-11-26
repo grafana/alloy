@@ -165,3 +165,46 @@ func TestConfigSourceErrorDoesNotLeakConfig(t *testing.T) {
 	require.Error(t, err)
 	require.NotContains(t, err.Error(), secret)
 }
+
+func TestSupportBundleRuntimeFlags(t *testing.T) {
+	encoded := base64.StdEncoding.EncodeToString([]byte(`password = "fake-test-password"`))
+
+	tt := []struct {
+		name  string
+		flags []string
+		want  []string
+	}{
+		{
+			name: "no config flags",
+			want: []string{"config.base64=", "config.base64.from-env=false"},
+		},
+		{
+			name:  "base64 flag is redacted",
+			flags: []string{"--config.base64=" + encoded},
+			want:  []string{"config.base64=(secret)", "config.base64.from-env=false"},
+		},
+		{
+			name:  "base64 from env",
+			flags: []string{"--config.base64.from-env"},
+			want:  []string{"config.base64=", "config.base64.from-env=true"},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			r := newAlloyRun(nil)
+			cmd := &cobra.Command{}
+			mountRunFlags(r, cmd.Flags())
+			mountConfigSourceFlags(r, cmd.Flags())
+			require.NoError(t, cmd.Flags().Parse(tc.flags))
+
+			got := supportBundleRuntimeFlags(cmd.Flags())
+			for _, w := range tc.want {
+				require.Contains(t, got, w)
+			}
+			for _, f := range got {
+				require.NotContains(t, f, encoded)
+			}
+		})
+	}
+}

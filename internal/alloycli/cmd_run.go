@@ -432,6 +432,28 @@ func loadInlineSource(encoded string) (map[string][]byte, error) {
 	return map[string][]byte{inlineConfigName: decoded}, nil
 }
 
+// redactedRuntimeFlags are flags whose values are replaced with "(secret)"
+// in the support bundle when set. The value of --config.base64 is the whole
+// configuration before secrets are redacted, and the redacted configuration
+// is already included in the support bundle sources.
+var redactedRuntimeFlags = map[string]struct{}{
+	"config.base64": {},
+}
+
+// supportBundleRuntimeFlags returns all flags in fset as name=value pairs for
+// the support bundle.
+func supportBundleRuntimeFlags(fset *pflag.FlagSet) []string {
+	var res []string
+	fset.VisitAll(func(f *pflag.Flag) {
+		value := f.Value.String()
+		if _, ok := redactedRuntimeFlags[f.Name]; ok && value != "" {
+			value = "(secret)"
+		}
+		res = append(res, fmt.Sprintf("%s=%s", f.Name, value))
+	})
+	return res
+}
+
 func (fr *alloyRun) runCommand(cmd *cobra.Command, args []string) error {
 	src, err := fr.configSource(cmd, args)
 	if err != nil {
@@ -634,9 +656,7 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 
 	runtimeFlags := []string{}
 	if !fr.disableSupportBundle {
-		fset.VisitAll(func(f *pflag.Flag) {
-			runtimeFlags = append(runtimeFlags, fmt.Sprintf("%s=%s", f.Name, f.Value.String()))
-		})
+		runtimeFlags = supportBundleRuntimeFlags(fset)
 	}
 
 	httpService := httpservice.New(httpservice.Options{
