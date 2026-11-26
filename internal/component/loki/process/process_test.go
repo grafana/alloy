@@ -23,12 +23,14 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/lokitest"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/loki/process/stages"
 	lsf "github.com/grafana/alloy/internal/component/loki/source/file"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service/livedebugging"
+	"github.com/grafana/alloy/internal/service/lokipipelinev2"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/testlivedebugging"
 	"github.com/grafana/alloy/syntax"
@@ -938,6 +940,195 @@ func assertEntriesUnordered(t *testing.T, expected, actual []loki.Entry) {
 	}
 }
 
+func TestComponentV2(t *testing.T) {
+	lokitest.TestV2(t, func(t *testing.T, env lokitest.Env) {
+		t.Run("stop cancels call blocked downstream", func(t *testing.T) {
+			entered := make(chan struct{})
+			out := loki.NewLogsReceiverV2(lokitest.ConsumerFunc(func(ctx context.Context, _ loki.Batch) error {
+				close(entered)
+				<-ctx.Done()
+				return ctx.Err()
+			}), "test")
+
+			ctrl, stop := env.Run(t, "loki.process", Arguments{ForwardTo: []loki.LogsReceiver{out}})
+			recv := ctrl.Exports().(Exports).Receiver
+
+			errc := make(chan error, 1)
+			go func() {
+				errc <- env.Send(t.Context(), recv, loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"app": "test"}, 0, push.Entry{
+					Timestamp: time.Now(),
+					Line:      "line",
+				}))
+			}()
+			<-entered
+
+			stop()
+
+			require.ErrorIs(t, <-errc, loki.ErrConsumerStopped)
+		})
+
+		t.Run("stage change cancels call blocked downstream", func(t *testing.T) {
+			entered := make(chan struct{})
+			blocking := loki.NewLogsReceiverV2(lokitest.ConsumerFunc(func(ctx context.Context, _ loki.Batch) error {
+				close(entered)
+				<-ctx.Done()
+				return ctx.Err()
+			}), "test")
+
+			ctrl, _ := env.Run(t, "loki.process", Arguments{ForwardTo: []loki.LogsReceiver{blocking}})
+			recv := ctrl.Exports().(Exports).Receiver
+
+			errc := make(chan error, 1)
+			go func() {
+				errc <- env.Send(t.Context(), recv, loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"app": "test"}, 0, push.Entry{
+					Timestamp: time.Now(),
+					Line:      "line",
+				}))
+			}()
+			<-entered
+
+			out := env.NewReceiver(t)
+			var args Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(`
+			forward_to = []
+			stage.static_labels {
+				values = { lbl = "new" }
+			}
+			`), &args))
+			args.ForwardTo = []loki.LogsReceiver{out}
+
+			// Update stops the old pipeline, which must cancel the call blocked
+			// downstream instead of waiting for it.
+			require.NoError(t, ctrl.Update(args))
+			require.ErrorIs(t, <-errc, loki.ErrConsumerStopped)
+
+			require.NoError(t, env.Send(t.Context(), recv, loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"app": "test"}, 0, push.Entry{
+				Timestamp: time.Now(),
+				Line:      "line",
+			})))
+
+			got := out.Next(t, 1)
+			require.Equal(t, model.LabelSet{"app": "test", "lbl": "new"}, got[0].Labels)
+		})
+
+		t.Run("forward_to change does not cancel call blocked downstream", func(t *testing.T) {
+			var (
+				entered = make(chan struct{})
+				release = make(chan struct{})
+			)
+			blocking := loki.NewLogsReceiverV2(lokitest.ConsumerFunc(func(ctx context.Context, _ loki.Batch) error {
+				close(entered)
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-release:
+					return nil
+				}
+			}), "test")
+
+			var args Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(`
+			forward_to = []
+			stage.static_labels {
+				values = { lbl = "a" }
+			}
+			`), &args))
+			args.ForwardTo = []loki.LogsReceiver{blocking}
+
+			ctrl, _ := env.Run(t, "loki.process", args)
+			recv := ctrl.Exports().(Exports).Receiver
+
+			errc := make(chan error, 1)
+			go func() {
+				errc <- env.Send(t.Context(), recv, loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"app": "test"}, 0, push.Entry{
+					Timestamp: time.Now(),
+					Line:      "line",
+				}))
+			}()
+			<-entered
+
+			// Same stages, so the pipeline is kept and the blocked call is not cancelled.
+			out := env.NewReceiver(t)
+			args.ForwardTo = []loki.LogsReceiver{out}
+			require.NoError(t, ctrl.Update(args))
+
+			close(release)
+			require.NoError(t, <-errc)
+
+			require.NoError(t, env.Send(t.Context(), recv, loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"app": "test"}, 0, push.Entry{
+				Timestamp: time.Now(),
+				Line:      "line",
+			})))
+
+			got := out.Next(t, 1)
+			require.Equal(t, model.LabelSet{"app": "test", "lbl": "a"}, got[0].Labels)
+		})
+
+		t.Run("frequent updates do not deadlock", func(t *testing.T) {
+			var delivered atomic.Int64
+			out1 := loki.NewLogsReceiverV2(lokitest.ConsumerFunc(func(_ context.Context, _ loki.Batch) error {
+				delivered.Inc()
+				return nil
+			}), "out1")
+			out2 := loki.NewLogsReceiverV2(lokitest.ConsumerFunc(func(_ context.Context, _ loki.Batch) error {
+				delivered.Inc()
+				return nil
+			}), "out2")
+
+			var args1, args2 Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(`
+			forward_to = []
+			stage.static_labels {
+				values = { lbl = "a" }
+			}
+			`), &args1))
+			require.NoError(t, syntax.Unmarshal([]byte(`
+			forward_to = []
+			stage.static_labels {
+				values = { lbl = "b" }
+			}
+			`), &args2))
+			args1.ForwardTo = []loki.LogsReceiver{out1}
+			args2.ForwardTo = []loki.LogsReceiver{out2}
+
+			ctrl, _ := env.Run(t, "loki.process", args1)
+			recv := ctrl.Exports().(Exports).Receiver
+
+			var (
+				wg   sync.WaitGroup
+				done atomic.Bool
+			)
+
+			wg.Go(func() {
+				for !done.Load() {
+					// Calls in flight during an Update are cancelled, so errors are expected.
+					_ = env.Send(t.Context(), recv, loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"app": "test"}, 0, push.Entry{
+						Timestamp: time.Now(),
+						Line:      "line",
+					}))
+				}
+			})
+
+			wg.Go(func() {
+				for !done.Load() {
+					_ = ctrl.Update(args2)
+					_ = ctrl.Update(args1)
+				}
+			})
+
+			time.Sleep(500 * time.Millisecond)
+			done.Store(true)
+			wg.Wait()
+
+			require.NoError(t, env.Send(t.Context(), recv, loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"app": "test"}, 0, push.Entry{
+				Timestamp: time.Now(),
+				Line:      "line",
+			})))
+			require.Positive(t, delivered.Load())
+		})
+	})
+}
+
 func TestComponent_UpdateInvalidConfig(t *testing.T) {
 	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.process")
 	require.NoError(t, err)
@@ -1427,6 +1618,8 @@ func getServiceData(name string) (any, error) {
 	switch name {
 	case livedebugging.ServiceName:
 		return livedebugging.NewLiveDebugging(), nil
+	case lokipipelinev2.ServiceName:
+		return lokipipelinev2.New(lokipipelinev2.Options{}), nil
 	default:
 		return nil, fmt.Errorf("service not found %s", name)
 	}
@@ -1451,6 +1644,8 @@ func getServiceDataWithLiveDebugging(log *testlivedebugging.Log) func(string) (a
 		switch name {
 		case livedebugging.ServiceName:
 			return ld, nil
+		case lokipipelinev2.ServiceName:
+			return lokipipelinev2.New(lokipipelinev2.Options{}), nil
 		default:
 			return nil, fmt.Errorf("service not found %s", name)
 		}

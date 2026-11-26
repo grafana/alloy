@@ -21,6 +21,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/livedebugging"
+	"github.com/grafana/alloy/internal/service/lokipipelinev2"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/ast"
@@ -586,7 +587,7 @@ func (f fakeHost) NewController(id string) (service.Controller, error) {
 		MinStability:    featuregate.StabilityGenerallyAvailable,
 		Reg:             prometheus.NewRegistry(),
 		OnExportsChange: func(map[string]any) {},
-		Services:        []service.Service{livedebugging.New()},
+		Services:        []service.Service{livedebugging.New(), lokipipelinev2.New(lokipipelinev2.Options{})},
 	})
 	if err != nil {
 		return nil, err
