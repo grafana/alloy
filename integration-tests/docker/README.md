@@ -7,7 +7,7 @@ The purpose of these tests is to verify pipelines in different scenarios to catc
 The tests are using a mix of  [testcontainers-go][] and [docker compose][].
 
 There are two main paradigms for this:
-- Use a base [docker compose][] to define the external dependencies, while [testcontainers-go][] is used to run Alloy as a container in the docker compose network. This allows for alloy to run in a privileged mode, which is required for beyla, and for clean setup/teardown of alloy.
+- Use a base [docker compose][] to define the external dependencies, while [testcontainers-go][] is used to run Alloy as a container in the docker compose network. This allows for alloy to run in a privileged mode, and for clean setup/teardown of alloy.
 - Use the same base [docker compose][] to define the external dependencies, and define a test-specific compose file with one-shot services that get started, used, and cleaned up when the integration test runs.
 
 ## Running tests
