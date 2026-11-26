@@ -1,4 +1,6 @@
 ---
+aliases:
+  - ./monitor/ # /docs/alloy/latest/monitor/
 canonical: https://grafana.com/docs/alloy/latest/scenarios/
 description: Run self-contained Grafana Alloy scenarios for each telemetry signal and for the systems you monitor
 menuTitle: Scenarios
