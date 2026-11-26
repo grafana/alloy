@@ -88,6 +88,9 @@ func cases() []testCase {
 	lbls := labels.FromStrings("__name__", "test_metric")
 	meta := metadata.Metadata{Type: "gauge", Unit: "items", Help: "test metric"}
 	exemplar1 := exemplar.Exemplar{Labels: labels.FromStrings("trace_id", "abc"), Value: 12.5, Ts: 123}
+	exemplar2 := exemplar.Exemplar{Labels: labels.FromStrings("trace_id", "def"), Value: 13.5, Ts: 124}
+	// Built once, so that building it doesn't count towards allocations.
+	withExemplarsAndMetadata := storage.AppendV2Options{Metadata: meta, Exemplars: []exemplar.Exemplar{exemplar1, exemplar2}}
 	h := &histogram.Histogram{Schema: 1}
 	fh := &histogram.FloatHistogram{Schema: 1}
 
@@ -95,6 +98,7 @@ func cases() []testCase {
 		wantSample    = `sample: ts=123, labels={__name__="test_metric"}, value=12.500000`
 		wantMetadata  = `metadata: labels={__name__="test_metric"}, type="gauge", unit="items", help="test metric"`
 		wantExemplar1 = `exemplar: ts=123, labels={__name__="test_metric"}, exemplar_labels={trace_id="abc"}, value=12.500000`
+		wantExemplar2 = `exemplar: ts=124, labels={__name__="test_metric"}, exemplar_labels={trace_id="def"}, value=13.500000`
 	)
 	wantHistogram := `histogram: ts=123, labels={__name__="test_metric"}, value=` + h.String()
 	wantFloatHistogram := `float_histogram: ts=123, labels={__name__="test_metric"}, value=` + fh.String()
@@ -162,6 +166,14 @@ func cases() []testCase {
 				return app.Append(0, lbls, 0, 123, 0, nil, fh, storage.AppendV2Options{})
 			},
 			want: []string{wantFloatHistogram},
+		},
+		{
+			// V2 gets the exemplars and metadata of a sample in the same call.
+			name: "V2 sample with exemplars and metadata",
+			v2: func(app storage.AppenderV2) (storage.SeriesRef, error) {
+				return app.Append(0, lbls, 0, 123, 12.5, nil, nil, withExemplarsAndMetadata)
+			},
+			want: []string{wantSample, wantMetadata, wantExemplar1, wantExemplar2},
 		},
 	}
 }
