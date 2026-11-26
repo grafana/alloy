@@ -211,18 +211,18 @@ The `custom_namespace` block allows the component to scrape CloudWatch metrics f
 
 You can use the following arguments with the `custom_namespace` block:
 
-| Name                          | Type           | Description                                                                                  | Default                          | Required |
-| ----------------------------- | -------------- | -------------------------------------------------------------------------------------------- | -------------------------------- | -------- |
-| `namespace`                   | `string`       | CloudWatch metric namespace.                                                                 |                                  | yes      |
-| `regions`                     | `list(string)` | List of AWS regions.                                                                         |                                  | yes      |
-| `add_cloudwatch_timestamp`    | `bool`         | Whether to use the CloudWatch timestamp instead of the scrape time.                          | `false`                          | no       |
-| `custom_tags`                 | `map(string)`  | Key/value pairs to add as labels named `custom_tag_{key}`.                                   | `{}`                             | no       |
-| `delay`                       | `duration`     | Shift the query window back by this duration to account for CloudWatch ingestion latency.    | `0`                              | no       |
-| `dimension_name_requirements` | `list(string)` | Only query metrics with exactly these dimensions. If empty, query all combinations.          | `[]`                             | no       |
-| `length`                      | `duration`     | Default length for metrics in this job.                                                      | Derived from [`period`][period]. | no       |
-| `nil_to_zero`                 | `bool`         | Whether to convert `NaN` metric values to 0. The [`metric`][metric] block can override this. | `true`                           | no       |
-| `period`                      | `duration`     | Default period for metrics in this job.                                                      | `5m`                             | no       |
-| `recently_active_only`        | `bool`         | Whether to return only metrics active in the last 3 hours.                                   | `false`                          | no       |
+| Name                          | Type           | Description                                                                                                                                           | Default                          | Required |
+| ----------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- | -------- |
+| `namespace`                   | `string`       | CloudWatch metric namespace.                                                                                                                          |                                  | yes      |
+| `regions`                     | `list(string)` | List of AWS regions.                                                                                                                                  |                                  | yes      |
+| `add_cloudwatch_timestamp`    | `bool`         | Whether to use the CloudWatch timestamp instead of the scrape time.                                                                                   | `false`                          | no       |
+| `custom_tags`                 | `map(string)`  | Key/value pairs to add as labels named `custom_tag_{key}`.                                                                                            | `{}`                             | no       |
+| `delay`                       | `duration`     | Shift the query window back by this duration to account for CloudWatch ingestion latency.                                                             | `0`                              | no       |
+| `dimension_name_requirements` | `list(string)` | Only query metrics with exactly these dimensions. If empty, query all combinations.                                                                   | `[]`                             | no       |
+| `length`                      | `duration`     | Default length for metrics in this job.                                                                                                               | Derived from [`period`][period]. | no       |
+| `nil_to_zero`                 | `bool`         | Whether to convert `NaN` metric values to 0. The [`metric`][metric] block can override this. Has no effect when `add_cloudwatch_timestamp` is `true`. | `true`                           | no       |
+| `period`                      | `duration`     | Default period for metrics in this job.                                                                                                               | `5m`                             | no       |
+| `recently_active_only`        | `bool`         | Whether to return only metrics active in the last 3 hours.                                                                                            | `false`                          | no       |
 
 You must give each `custom_namespace` block a label, which becomes the `name` label in the exported metric.
 
@@ -261,14 +261,14 @@ The `metric` block defines an AWS metric to scrape.
 
 You can use the following arguments with the `metric` block:
 
-| Name                       | Type           | Description                                                                          | Default                          | Required |
-| -------------------------- | -------------- | ------------------------------------------------------------------------------------ | -------------------------------- | -------- |
-| `name`                     | `string`       | Metric name.                                                                         |                                  | yes      |
-| `statistics`               | `list(string)` | Statistics to scrape, for example, `"Minimum"` or `"Maximum"`.                       |                                  | yes      |
-| `add_cloudwatch_timestamp` | `bool`         | Whether to use the CloudWatch timestamp instead of the scrape time.                  | `false`                          | no       |
-| `length`                   | `duration`     | How far back in time to consider metrics. Refer to [`period` and `length`][period].  | Derived from [`period`][period]. | no       |
-| `nil_to_zero`              | `bool`         | Whether to convert `NaN` metric values to 0.                                         | `true`                           | no       |
-| `period`                   | `duration`     | Time bucket width for aggregating metrics. Refer to [`period` and `length`][period]. | `5m`                             | no       |
+| Name                       | Type           | Description                                                                                           | Default                          | Required |
+| -------------------------- | -------------- | ----------------------------------------------------------------------------------------------------- | -------------------------------- | -------- |
+| `name`                     | `string`       | Metric name.                                                                                          |                                  | yes      |
+| `statistics`               | `list(string)` | Statistics to scrape, for example, `"Average"`, `"Maximum"`, or a percentile such as `"p99"`.         |                                  | yes      |
+| `add_cloudwatch_timestamp` | `bool`         | Whether to use the CloudWatch timestamp instead of the scrape time.                                   | `false`                          | no       |
+| `length`                   | `duration`     | How far back in time to consider metrics. Refer to [`period` and `length`][period].                   | Derived from [`period`][period]. | no       |
+| `nil_to_zero`              | `bool`         | Whether to convert `NaN` metric values to 0. Has no effect when `add_cloudwatch_timestamp` is `true`. | `true`                           | no       |
+| `period`                   | `duration`     | Time bucket width for aggregating metrics. Refer to [`period` and `length`][period].                  | `5m`                             | no       |
 
 You can configure the `metric` block multiple times to define multiple target metrics.
 Refer to the [View available metrics][] topic in the Amazon CloudWatch documentation for detailed metrics information.
@@ -293,8 +293,10 @@ In `static` jobs, {{< param "PRODUCT_NAME" >}} sends a separate request for each
 
 When you don't set `length`, {{< param "PRODUCT_NAME" >}} sets it to the metric's `period`.
 If you don't set `period` either, both default to `5m`.
+`length` must be greater than or equal to `period`.
+Otherwise, the component reports a configuration error.
 
-When you don't set `length` and every metric in a job uses the same `period`, the request window and the aggregation bucket are the same size.
+When you don't set `length` for any metric in a request, the request window and the aggregation bucket are the same size.
 CloudWatch returns a single data point for each metric, and {{< param "PRODUCT_NAME" >}} exports it to Prometheus.
 
 {{< figure src="/media/docs/alloy/cloudwatch-single-period-time-model.png" alt="An example of a CloudWatch single period and time model" >}}
@@ -353,19 +355,19 @@ The `discovery` block allows the component to scrape CloudWatch metrics with onl
 
 You can use the following arguments with the `discovery` block:
 
-| Name                          | Type           | Description                                                                                  | Default                          | Required |
-| ----------------------------- | -------------- | -------------------------------------------------------------------------------------------- | -------------------------------- | -------- |
-| `regions`                     | `list(string)` | List of AWS regions.                                                                         |                                  | yes      |
-| `type`                        | `string`       | CloudWatch namespace name. Refer to [supported-services][] for the complete list.            |                                  | yes      |
-| `add_cloudwatch_timestamp`    | `bool`         | Whether to use the CloudWatch timestamp instead of the scrape time.                          | `false`                          | no       |
-| `custom_tags`                 | `map(string)`  | Key/value pairs to add as labels named `custom_tag_{key}`.                                   | `{}`                             | no       |
-| `delay`                       | `duration`     | Shift the query window back by this duration to account for CloudWatch ingestion latency.    | `0`                              | no       |
-| `dimension_name_requirements` | `list(string)` | Only query metrics with exactly these dimensions. If empty, query all combinations.          | `[]`                             | no       |
-| `length`                      | `duration`     | Default length for metrics in this job.                                                      | Derived from [`period`][period]. | no       |
-| `nil_to_zero`                 | `bool`         | Whether to convert `NaN` metric values to 0. The [`metric`][metric] block can override this. | `true`                           | no       |
-| `period`                      | `duration`     | Default period for metrics in this job.                                                      | `5m`                             | no       |
-| `recently_active_only`        | `bool`         | Whether to return only metrics active in the last 3 hours.                                   | `false`                          | no       |
-| `search_tags`                 | `map(string)`  | Key/value pairs to filter by tag. All must match. Values can be regular expressions.         | `{}`                             | no       |
+| Name                          | Type           | Description                                                                                                                                           | Default                          | Required |
+| ----------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- | -------- |
+| `regions`                     | `list(string)` | List of AWS regions.                                                                                                                                  |                                  | yes      |
+| `type`                        | `string`       | CloudWatch namespace name. Refer to [supported-services][] for the complete list.                                                                     |                                  | yes      |
+| `add_cloudwatch_timestamp`    | `bool`         | Whether to use the CloudWatch timestamp instead of the scrape time.                                                                                   | `false`                          | no       |
+| `custom_tags`                 | `map(string)`  | Key/value pairs to add as labels named `custom_tag_{key}`.                                                                                            | `{}`                             | no       |
+| `delay`                       | `duration`     | Shift the query window back by this duration to account for CloudWatch ingestion latency.                                                             | `0`                              | no       |
+| `dimension_name_requirements` | `list(string)` | Only query metrics with exactly these dimensions. If empty, query all combinations.                                                                   | `[]`                             | no       |
+| `length`                      | `duration`     | Default length for metrics in this job.                                                                                                               | Derived from [`period`][period]. | no       |
+| `nil_to_zero`                 | `bool`         | Whether to convert `NaN` metric values to 0. The [`metric`][metric] block can override this. Has no effect when `add_cloudwatch_timestamp` is `true`. | `true`                           | no       |
+| `period`                      | `duration`     | Default period for metrics in this job.                                                                                                               | `5m`                             | no       |
+| `recently_active_only`        | `bool`         | Whether to return only metrics active in the last 3 hours.                                                                                            | `false`                          | no       |
+| `search_tags`                 | `map(string)`  | Key/value pairs to filter by tag. All must match. Values can be regular expressions.                                                                  | `{}`                             | no       |
 
 <!-- vale Grafana.GooglePassive = NO -->
 <!-- vale Grafana.GoogleWill = NO -->
@@ -434,6 +436,10 @@ The `metric` block has no `delay` argument, so a `static` job can't shift the qu
 `nil_to_zero` has no effect in `static` jobs, on either the `static` block or its `metric` blocks.
 When CloudWatch returns no data points for a metric, a `static` job doesn't export that metric, so there's no `NaN` value to convert.
 
+`static` jobs support the `Average`, `Maximum`, `Minimum`, `SampleCount`, and `Sum` statistics, and percentiles such as `p99`.
+For `Average`, a `static` job exports the mean of all data points in the `length` window.
+For other statistics, it exports the most recent data point.
+
 The metrics need to be fully qualified with the following specifications:
 
 1. `namespace`: For example, `AWS/EC2`, `AWS/EBS`, `CoolApp` if it were a custom metric.
@@ -476,7 +482,7 @@ prometheus.exporter.cloudwatch "static_instances" {
 ```
 
 Specify all dimensions when you scrape single metrics, as in the preceding example.
-For example, `AWS/Logs` metrics require the `Resource`, `Service`, `Class`, and `Type` dimensions.
+For example, `AWS/Logs` service usage metrics such as `CallCount` require the `Resource`, `Service`, `Class`, and `Type` dimensions.
 The same applies to CloudWatch custom metrics: specify every dimension attached to the metric in CloudWatch.
 
 ## Exported fields
