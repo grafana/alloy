@@ -145,8 +145,6 @@ func (t *tailer) waitForRestart(ctx context.Context, bo *backoff.Backoff) bool {
 // tail reads container logs until the log stream ends or ctx is canceled.
 // Entries not yet forwarded when stop is canceled are dropped.
 func (t *tailer) tail(ctx, stop context.Context) {
-	t.running.Store(true)
-	defer t.running.Store(false)
 	t.logger.Info("starting tailing container")
 
 	info, err := t.client.ContainerInspect(ctx, t.containerID, client.ContainerInspectOptions{})
@@ -174,6 +172,9 @@ func (t *tailer) tail(ctx, stop context.Context) {
 		t.err.Store(err)
 		return
 	}
+
+	t.running.Store(true)
+	defer t.running.Store(false)
 
 	t.processLoop(ctx, stop, info.Container.Config.Tty, reader)
 	t.logger.Info("stopped tailing container")
