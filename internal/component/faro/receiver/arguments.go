@@ -4,6 +4,7 @@ import (
 	"encoding"
 	"fmt"
 	"math"
+	"text/template"
 	"time"
 
 	"github.com/alecthomas/units"
@@ -90,6 +91,16 @@ func (s *SourceMapsArguments) SetToDefault() {
 		Cache:               &CacheArguments{},
 	}
 	s.Cache.SetToDefault()
+}
+
+// Validate rejects location paths that are not valid templates.
+func (s *SourceMapsArguments) Validate() error {
+	for _, loc := range s.Locations {
+		if _, err := template.New(loc.Path).Parse(loc.Path); err != nil {
+			return fmt.Errorf("invalid sourcemap location path %q: %w", loc.Path, err)
+		}
+	}
+	return nil
 }
 
 // CacheArguments configures sourcemap caching behavior.

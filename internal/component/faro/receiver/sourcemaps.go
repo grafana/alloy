@@ -168,7 +168,7 @@ func newSourceMapsStore(log *slog.Logger, args SourceMapsArguments, metrics *sou
 	for _, loc := range args.Locations {
 		tpl, err := template.New(loc.Path).Parse(loc.Path)
 		if err != nil {
-			panic(err) // TODO(rfratto): why is this set to panic?
+			panic(err) // Validate already rejects bad templates, so this should never happen.
 		}
 
 		locs = append(locs, &sourcemapFileLocation{
