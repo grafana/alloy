@@ -100,7 +100,12 @@ func (cs *Scheduler) Schedule(ctx context.Context, updateConsumers func(), h ote
 	cs.pending = &scheduled{ctx: ctx, updateConsumers: updateConsumers, host: h, components: cc}
 	cs.pendingMut.Unlock()
 
-	cs.signal()
+	// Wake up Run. If a signal is already waiting, Run will take the latest
+	// pending components anyway.
+	select {
+	case cs.wake <- struct{}{}:
+	default:
+	}
 
 	if replaced != nil {
 		// Run never took the replaced components, so they were never started.
@@ -108,15 +113,6 @@ func (cs *Scheduler) Schedule(ctx context.Context, updateConsumers func(), h ote
 		// components may hold resources from their factory. Shut them down in
 		// the background, so that Schedule never waits for them.
 		go stopComponents(context.Background(), cs.log, replaced.components...)
-	}
-}
-
-// signal wakes up Run. If a signal is already waiting, Run will see the
-// latest pending components when it takes them.
-func (cs *Scheduler) signal() {
-	select {
-	case cs.wake <- struct{}{}:
-	default:
 	}
 }
 
@@ -153,27 +149,23 @@ func (cs *Scheduler) Run(ctx context.Context) error {
 		cs.onResume()
 	}()
 
-	// Run takes the signal before it takes the pending components. If an
-	// earlier Run failed to start every component, it put them back in
-	// pending and returned an error. The Alloy runtime then calls Run again,
-	// but nothing signals it. So always check pending first.
-	cs.signal()
-
 	first := true
 	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-cs.wake:
-		}
 		if ctx.Err() != nil {
-			// select picks at random when both cases are ready. Leave the
-			// pending components for the next Run.
+			// Leave any pending components for the next Run.
 			return nil
 		}
+
+		// Take the pending components. If there are none, wait until
+		// Schedule gives new ones. Check pending before waiting, because an
+		// earlier Run may have put components back after it failed to start
+		// them.
 		s := cs.takePending()
 		if s == nil {
-			// Run took the components after an earlier signal.
+			select {
+			case <-ctx.Done():
+			case <-cs.wake:
+			}
 			continue
 		}
 
