@@ -266,10 +266,11 @@ func (c *QuerySamples) collect(ctx context.Context) error {
 		return nil
 	}
 
-	database, ok := checkQueryStoreState(ctx, c.dbConnection, c.queryTimeout, c.logger)
+	target, ok := checkQueryStoreState(ctx, c.dbConnection, c.queryTimeout, c.logger)
 	if !ok {
 		return nil
 	}
+	database := target.database
 	if c.databaseExcluded(database) {
 		return nil
 	}

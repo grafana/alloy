@@ -414,15 +414,14 @@ func queryGrantedPermissions(ctx context.Context, conn *sql.Conn, queryTimeout t
 // It mirrors the "usable" definition used by the query_metrics preflight in
 // checkQueryStoreState (query_store.go), rather than the raw ON/OFF state.
 func isQueryStoreEnabled(ctx context.Context, conn *sql.Conn, queryTimeout time.Duration) (bool, error) {
-	_, actualState, _, _, err := queryStoreState(ctx, conn, queryTimeout)
+	opts, err := queryStoreState(ctx, conn, queryTimeout)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return false, nil
-		}
 		return false, err
 	}
-
-	return strings.EqualFold(strings.TrimSpace(actualState.String), "READ_WRITE"), nil
+	return opts.usable(), nil
 }
 
 // queryStoreHasRows checks whether sys.query_store_runtime_stats has any row

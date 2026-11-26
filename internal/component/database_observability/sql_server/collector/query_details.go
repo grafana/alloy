@@ -145,10 +145,11 @@ func (c *QueryDetails) collect(ctx context.Context) error {
 		return nil
 	}
 
-	database, ok := checkQueryStoreState(ctx, c.dbConnection, c.queryTimeout, c.logger)
+	target, ok := checkQueryStoreState(ctx, c.dbConnection, c.queryTimeout, c.logger)
 	if !ok {
 		return nil
 	}
+	database := target.database
 
 	hashes := c.tracker.GetQueryHashes(database)
 	if len(hashes) == 0 {
