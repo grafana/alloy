@@ -19,13 +19,12 @@ import (
 	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/lokitest"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/syntax"
 )
 
-// TODO(kalleep): PipelineConsumer needs the same semantics, Stop must release
-// an entry blocked inside a stage. Cover it here once it is implemented.
 func TestPipelineStopReleasesBlockedStage(t *testing.T) {
 	type testCase struct {
 		name string
@@ -69,8 +68,9 @@ func TestPipelineStopReleasesBlockedStage(t *testing.T) {
 			pl.Start(in, out)
 
 			entry := loki.Entry{
-				Labels: model.LabelSet{"app": "loki"},
-				Entry:  push.Entry{Line: testMatchLogLineApp1, Timestamp: time.Now()},
+				Labels:    model.LabelSet{"app": "loki"},
+				Line:      testMatchLogLineApp1,
+				Timestamp: time.Now(),
 			}
 
 			in <- entry
@@ -98,9 +98,116 @@ func TestPipelineStopReleasesBlockedStage(t *testing.T) {
 	}
 }
 
-// TestPipelineConsumerConcurrent runs every migrated stage in one pipeline from several
+func TestPipelineV2(t *testing.T) {
+	// newTestBatch returns a batch with one entry per app, each in its own stream.
+	newTestBatch := func(apps ...string) loki.Batch {
+		batch := loki.NewBatch()
+		for _, app := range apps {
+			batch.AddEntry(model.LabelSet{"app": model.LabelValue(app)}, time.Now().UnixMicro(), push.Entry{
+				Timestamp: time.Now(),
+				Line:      "line",
+			})
+		}
+		return batch
+	}
+
+	t.Run("consume after stop returns ErrPipelineStopped", func(t *testing.T) {
+		var called bool
+		p := newTestPipelineV2(t, "", lokitest.ConsumerFunc(func(_ context.Context, _ loki.Batch) error {
+			called = true
+			return nil
+		}))
+		p.Stop()
+
+		err := p.Consume(t.Context(), newTestBatch("a"))
+		require.ErrorIs(t, err, ErrPipelineStopped)
+		require.False(t, called)
+	})
+
+	t.Run("downstream error is returned as is", func(t *testing.T) {
+		p := newTestPipelineV2(t, "", lokitest.ConsumerFunc(func(_ context.Context, _ loki.Batch) error {
+			return loki.ErrConsumerStopped
+		}))
+		defer p.Stop()
+
+		err := p.Consume(t.Context(), newTestBatch("a"))
+		require.ErrorIs(t, err, loki.ErrConsumerStopped)
+	})
+	// The first stream passes on the burst, the second one blocks in rateLimiter.Wait.
+	const blockingLimit = `
+	stage.limit {
+		rate  = 0.001
+		burst = 1
+		drop  = false
+	}
+	`
+
+	t.Run("stop cancels call blocked in stage", func(t *testing.T) {
+		delivered := make(chan loki.Batch, 2)
+		p := newTestPipelineV2(t, blockingLimit, lokitest.ConsumerFunc(func(_ context.Context, batch loki.Batch) error {
+			delivered <- batch
+			return nil
+		}))
+
+		errc := make(chan error, 1)
+		go func() { errc <- p.Consume(t.Context(), newTestBatch("a", "b")) }()
+
+		// Stream a reached downstream, so the call is now in flight on stream b.
+		<-delivered
+
+		p.Stop()
+
+		require.ErrorIs(t, <-errc, ErrPipelineCancelled)
+		require.Empty(t, delivered)
+	})
+
+	t.Run("caller cancel returns context error", func(t *testing.T) {
+		delivered := make(chan loki.Batch, 2)
+		p := newTestPipelineV2(t, blockingLimit, lokitest.ConsumerFunc(func(_ context.Context, batch loki.Batch) error {
+			delivered <- batch
+			return nil
+		}))
+		defer p.Stop()
+
+		ctx, cancel := context.WithCancel(t.Context())
+		errc := make(chan error, 1)
+		go func() { errc <- p.Consume(ctx, newTestBatch("a", "b")) }()
+
+		<-delivered
+		cancel()
+
+		err := <-errc
+		require.ErrorIs(t, err, context.Canceled)
+		require.NotErrorIs(t, err, ErrPipelineCancelled)
+	})
+
+	t.Run("stop cancels call downstream", func(t *testing.T) {
+		entered := make(chan struct{})
+		p := newTestPipelineV2(t, "", lokitest.ConsumerFunc(func(ctx context.Context, _ loki.Batch) error {
+			close(entered)
+			<-ctx.Done()
+			return ctx.Err()
+		}))
+
+		errc := make(chan error, 1)
+		go func() { errc <- p.Consume(t.Context(), newTestBatch("a")) }()
+		<-entered
+
+		p.Stop()
+
+		require.ErrorIs(t, <-errc, ErrPipelineCancelled)
+	})
+}
+
+func newTestPipelineV2(t *testing.T, cfg string, next loki.Consumer) *PipelineV2 {
+	p, err := NewPipelineV2(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, loadConfig(cfg), next)
+	require.NoError(t, err)
+	return p
+}
+
+// TestPipelineV2Concurrent runs every stage in one pipeline from several
 // goroutines at once to check for data races under -race.
-func TestPipelineConsumerConcurrent(t *testing.T) {
+func TestPipelineV2Concurrent(t *testing.T) {
 	const (
 		consumers          = 4
 		batchesPerConsumer = 10
@@ -301,7 +408,7 @@ func TestPipelineConsumerConcurrent(t *testing.T) {
 		}
 	`)
 
-	pc, err := NewPipelineConsumer(
+	pc, err := NewPipelineV2(
 		slog.New(slog.DiscardHandler),
 		prometheus.NewRegistry(),
 		featuregate.StabilityGenerallyAvailable,
@@ -448,7 +555,7 @@ func runPipelineBenchmark(b *testing.B, cfgs []StageConfig, batches []loki.Batch
 			numWorkers = len(batches)
 		)
 		itersPerWorker, remainder := n/numWorkers, n%numWorkers
-		for w := 0; w < numWorkers; w++ {
+		for w := range numWorkers {
 			iters := itersPerWorker
 			if w < remainder {
 				iters++
@@ -492,7 +599,7 @@ func runPipelineBenchmark(b *testing.B, cfgs []StageConfig, batches []loki.Batch
 
 		distribute(b.N, batches, func(worker, iters int) {
 			entries := workerEntries[worker]
-			for i := 0; i < iters; i++ {
+			for range iters {
 				for _, e := range entries {
 					in <- e.Clone()
 				}
@@ -500,9 +607,9 @@ func runPipelineBenchmark(b *testing.B, cfgs []StageConfig, batches []loki.Batch
 		})
 	})
 
-	b.Run("PipelineConsumer", func(b *testing.B) {
+	b.Run("PipelineV2", func(b *testing.B) {
 		consumer := loki.NewNopConsumer()
-		pc, err := NewPipelineConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, consumer)
+		pc, err := NewPipelineV2(logging.NewSlogNop(), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, cfgs, consumer)
 		require.NoError(b, err)
 		defer pc.Stop()
 
@@ -511,7 +618,7 @@ func runPipelineBenchmark(b *testing.B, cfgs []StageConfig, batches []loki.Batch
 
 		distribute(b.N, batches, func(worker, iters int) {
 			batch := batches[worker]
-			for i := 0; i < iters; i++ {
+			for range iters {
 				_ = pc.Consume(context.Background(), batch.Clone())
 			}
 		})

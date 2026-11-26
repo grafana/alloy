@@ -2,6 +2,7 @@ package stages
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -146,19 +147,30 @@ func (p *Pipeline) Stop() {
 	p.inner.stop()
 }
 
-var _ loki.Consumer = (*PipelineConsumer)(nil)
+var _ loki.Consumer = (*PipelineV2)(nil)
 
-func NewPipelineConsumer(
+var (
+	// ErrPipelineStopped is returned by PipelineV2.Consume for calls made after
+	// Stop has been called. The batch has not been touched, so it can be retried
+	// as is.
+	ErrPipelineStopped = errors.New("pipeline stopped")
+
+	// ErrPipelineCancelled is returned by PipelineV2.Consume for calls that Stop
+	// cancelled. The batch may have been modified, so it must not be retried as is.
+	ErrPipelineCancelled = errors.New("pipeline cancelled")
+)
+
+func NewPipelineV2(
 	slogger *slog.Logger,
 	registerer prometheus.Registerer,
 	minStability featuregate.Stability,
 	cfgs []StageConfig,
 	consumer loki.Consumer,
-) (*PipelineConsumer, error) {
+) (*PipelineV2, error) {
 
 	var (
 		err error
-		pc  = &PipelineConsumer{consumer: consumer}
+		pc  = &PipelineV2{consumer: consumer}
 	)
 
 	pc.inner, err = newPipeline(slogger, registerer, minStability, cfgs, pc.collect)
@@ -166,18 +178,63 @@ func NewPipelineConsumer(
 		return nil, err
 	}
 
+	pc.stopCtx, pc.cancel = context.WithCancel(context.Background())
 	return pc, nil
 }
 
-type PipelineConsumer struct {
+// PipelineV2 is safe for concurrent use. Stop must be called at most once.
+type PipelineV2 struct {
 	inner    *pipeline
 	consumer loki.Consumer
+
+	stopCtx context.Context
+	cancel  context.CancelFunc
+
+	mut      sync.RWMutex
+	inflight sync.WaitGroup
 }
 
 // Consume implements loki.Consumer.
-func (p *PipelineConsumer) Consume(ctx context.Context, batch loki.Batch) error {
+func (p *PipelineV2) Consume(ctx context.Context, batch loki.Batch) error {
+	if !p.acquire() {
+		return ErrPipelineStopped
+	}
+	defer p.inflight.Done()
+
+	callCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	defer context.AfterFunc(p.stopCtx, cancel)()
+
+	err := p.process(callCtx, batch)
+	if err == nil {
+		return nil
+	}
+
+	if p.stopCtx.Err() != nil {
+		return ErrPipelineCancelled
+	}
+	return err
+}
+
+// acquire registers an in-flight call unless Stop has been called. Add happens
+// under the read lock so it can never race with Stop's Wait.
+func (p *PipelineV2) acquire() bool {
+	p.mut.RLock()
+	defer p.mut.RUnlock()
+	if p.stopCtx.Err() != nil {
+		return false
+	}
+	p.inflight.Add(1)
+	return true
+}
+
+func (p *PipelineV2) process(ctx context.Context, batch loki.Batch) error {
 	entries := make([]Entry, 0, batch.EntryLen())
 	for _, stream := range batch.Streams() {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+
 		entries = slices.Grow(entries[:0], len(stream.Entries))
 
 		for _, e := range stream.Entries {
@@ -195,22 +252,25 @@ func (p *PipelineConsumer) Consume(ctx context.Context, batch loki.Batch) error 
 	return nil
 }
 
-// Stop flushes any state the stages still hold, such as cri partial lines that
-// never received their full line. Callers must make sure no call to Consume is
-// in flight or can start after this point. A racing Consume can buffer an entry
-// after the flush has passed it, and nothing will forward it.
-func (p *PipelineConsumer) Stop() {
-	// TODO(kalleep): Release entries blocked inside a stage (e.g. stage.limit)
-	// on shutdown, like Pipeline.Stop does.
-	p.inner.stop()
-}
-
-func (p *PipelineConsumer) collect(ctx context.Context, entries []Entry) error {
+func (p *PipelineV2) collect(ctx context.Context, entries []Entry) error {
 	batch := loki.NewBatch()
 	for _, e := range entries {
 		batch.AddEntry(e.Labels, e.Created(), e.Entry.Entry)
 	}
 	return p.consumer.Consume(ctx, batch)
+}
+
+// Stop rejects new calls to Consume and cancels in-flight ones, including
+// their calls downstream, and waits for them to return. It then flushes any
+// state the stages still hold, such as cri partial lines that never received
+// their full line.
+func (p *PipelineV2) Stop() {
+	p.mut.Lock()
+	p.cancel()
+	p.mut.Unlock()
+
+	p.inflight.Wait()
+	p.inner.stop()
 }
 
 var _ entryProcessor = (*pipeline)(nil)
