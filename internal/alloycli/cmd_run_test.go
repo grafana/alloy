@@ -8,9 +8,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
-
-	"github.com/grafana/alloy/internal/alloycli/clifeature"
-	_ "github.com/grafana/alloy/internal/converter/install"
 )
 
 func TestConfigSource(t *testing.T) {
@@ -34,8 +31,6 @@ func TestConfigSource(t *testing.T) {
 		env         map[string]string
 		wantSources map[string]string
 		wantPath    string
-		// convert makes the source use the registered converter.
-		convert bool
 		// wantConfigErr is checked when the source is resolved, wantReadErr when
 		// it is read.
 		wantConfigErr string
@@ -64,10 +59,14 @@ func TestConfigSource(t *testing.T) {
 			wantSources: map[string]string{inlineConfigName: alloyConfig},
 		},
 		{
-			name:        "base64 flag with config format",
-			flags:       []string{"--config.format=prometheus", "--config.base64=" + encode([]byte(testPrometheusConfig))},
-			convert:     true,
-			wantSources: map[string]string{inlineConfigName: testConvertedConfig},
+			name:          "base64 flag with config format",
+			flags:         []string{"--config.format=prometheus", "--config.base64=" + encode([]byte(alloyConfig))},
+			wantConfigErr: "--config.format=prometheus can't be used with --config.base64",
+		},
+		{
+			name:          "base64 from env with config format",
+			flags:         []string{"--config.format=prometheus", "--config.base64.from-env"},
+			wantConfigErr: "--config.format=prometheus can't be used with --config.base64.from-env",
 		},
 		{
 			name:          "no source",
@@ -120,13 +119,7 @@ func TestConfigSource(t *testing.T) {
 				t.Setenv(k, v)
 			}
 
-			var converter *clifeature.Converter
-			if tc.convert {
-				converter = clifeature.All().Converter
-				require.NotNil(t, converter)
-			}
-
-			r := newAlloyRun(converter)
+			r := newAlloyRun(nil)
 			cmd := &cobra.Command{}
 			mountRunFlags(r, cmd.Flags())
 			mountConfigSourceFlags(r, cmd.Flags())

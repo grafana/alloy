@@ -113,8 +113,7 @@ Use `--config.base64` or `--config.base64.from-env` to pass the configuration di
 This is useful in environments where mounting a file is inconvenient, such as a container image without a shell.
 
 The value is the standard base64 encoding of a single {{< param "PRODUCT_NAME" >}} configuration file. Whitespace in the value is ignored, so you can use the output of the `base64` command as is.
-The configuration is shown as `config.alloy` in the UI and in the support bundle.
-The `module_path` keyword is an empty string because the configuration isn't read from the filesystem.
+Only the `alloy` format is supported, so you can't combine these flags with `--config.format`.
 
 For example, to run a configuration stored in a file:
 
@@ -122,15 +121,13 @@ For example, to run a configuration stored in a file:
 ALLOY_CONFIG_BASE64="$(base64 < config.alloy)" alloy run --config.base64.from-env
 ```
 
-Only one configuration source is accepted at a time, so there is no precedence to reason about.
 Combining the _`<PATH_NAME>`_ argument, `--config.base64` and `--config.base64.from-env` is an error.
 
-{{< admonition type="note" >}}
-Prefer `--config.base64.from-env` over `--config.base64`. Command-line arguments are visible to other processes on the same host, and your configuration can contain secrets.
-{{< /admonition >}}
+{{< admonition type="caution" >}}
+If you use `--config.base64`, make sure the configuration doesn't contain secrets. Command-line arguments can be visible to other processes on the same host.
 
-When you reload, {{< param "PRODUCT_NAME" >}} reads and decodes the configuration again from the same source.
-You can use `--config.format` to convert a base64-encoded configuration in another format.
+In general, don't store secrets in the configuration. Pass them through environment variables instead, and read them with [`sys.env`][sys.env].
+{{< /admonition >}}
 
 ## Permitted stability levels
 
@@ -212,6 +209,7 @@ Include `--config.extra-args` to pass additional command line flags from the ori
 Refer to [alloy convert][] for more details on how `extra-args` work.
 
 [base64]: #pass-the-configuration-as-base64
+[sys.env]: ../../stdlib/sys/#sysenv
 [alloy convert]: ../convert/
 [clustering]:  ../../../get-started/clustering/
 [configure-clustering]: ../../../configure/clustering/configure-alloy/
