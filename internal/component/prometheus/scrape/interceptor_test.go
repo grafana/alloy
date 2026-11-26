@@ -12,6 +12,6 @@ import (
 func TestInterceptorDebuggingRespectsActivity(t *testing.T) {
 	const componentID = "prometheus.scrape.test"
 	livedebuggingtest.RunInterceptorTests(t, componentID, func(publisher livedebugging.DebugDataPublisher) *prometheus.Interceptor {
-		return NewInterceptor(componentID, publisher, appenders.Noop{})
+		return NewInterceptor(componentID, publisher, true, appenders.Noop{})
 	})
 }

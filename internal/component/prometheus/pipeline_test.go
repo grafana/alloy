@@ -391,7 +391,7 @@ func newRemoteWritePipeline(t testing.TB, logger *slog.Logger, numberOfRemoteWri
 		rwAppendables = append(rwAppendables, rwAppendable)
 	}
 	pipelineAppendable := prometheus.NewFanout(rwAppendables, "", promclient.DefaultRegisterer, ls)
-	scrapeInterceptor := scrape.NewInterceptor("prometheus.scrape.test", noopDebugDataPublisher{}, pipelineAppendable)
+	scrapeInterceptor := scrape.NewInterceptor("prometheus.scrape.test", noopDebugDataPublisher{}, true, pipelineAppendable)
 
 	return scrapeInterceptor, ls, func() {
 		pipelineAppendable.Clear()
@@ -406,7 +406,7 @@ func newRelabelPipeline(t testing.TB, logger *slog.Logger, destination storage.A
 	rwAppendable := newRemoteWriteComponent(t, logger, ls, destAppendable)
 	relabelAppendable := newRelabelComponent(t, logger, []storage.AppendableV2{rwAppendable}, ls)
 	pipelineAppendable := prometheus.NewFanout([]storage.AppendableV2{relabelAppendable}, "", promclient.DefaultRegisterer, ls)
-	scrapeInterceptor := scrape.NewInterceptor("prometheus.scrape.test", noopDebugDataPublisher{}, pipelineAppendable)
+	scrapeInterceptor := scrape.NewInterceptor("prometheus.scrape.test", noopDebugDataPublisher{}, true, pipelineAppendable)
 
 	return scrapeInterceptor, ls, func() {
 		pipelineAppendable.Clear()

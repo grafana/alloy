@@ -15,9 +15,16 @@ import (
 
 // NewInterceptor creates a new Prometheus storage.Appendable interceptor proxies calls to the provided appendable publishing
 // live debugging data using the provided debugDataPublisher if live debugging is active.
-func NewInterceptor(componentID livedebugging.ComponentID, debugDataPublisher livedebugging.DebugDataPublisher, appendable storage.AppendableV2) *prometheus.Interceptor {
+//
+// If honorMetadata is false, the interceptor drops the metadata of every V2 append. The V2 scrape loop attaches
+// metadata to its report samples, such as `up`, even when honor_metadata is disabled, while the V1 scrape loop
+// didn't append any metadata.
+func NewInterceptor(componentID livedebugging.ComponentID, debugDataPublisher livedebugging.DebugDataPublisher, honorMetadata bool, appendable storage.AppendableV2) *prometheus.Interceptor {
 	return prometheus.NewInterceptor(appendable,
 		prometheus.WithAppendV2Hook(func(globalRef storage.SeriesRef, l labels.Labels, st, t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, opts storage.AppendV2Options, next storage.AppenderV2) (storage.SeriesRef, error) {
+			if !honorMetadata {
+				opts.Metadata = metadata.Metadata{}
+			}
 			newRef, nextErr := next.Append(globalRef, l, st, t, v, h, fh, opts)
 			prometheus.PublishAppendV2LiveDebugging(debugDataPublisher, componentID, l, t, v, h, fh, opts)
 			return newRef, nextErr
