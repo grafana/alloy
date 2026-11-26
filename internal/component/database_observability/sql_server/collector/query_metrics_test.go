@@ -24,9 +24,13 @@ const (
 )
 
 func mockSelectQueryStoreState(mock sqlmock.Sqlmock, state string) {
+	mockSelectQueryStoreStateWithReplicaRoles(mock, state, false)
+}
+
+func mockSelectQueryStoreStateWithReplicaRoles(mock sqlmock.Sqlmock, state string, replicaRolesSupported bool) {
 	mock.ExpectQuery(selectQueryStoreState).WillReturnRows(
-		sqlmock.NewRows([]string{"database_name", "actual_state_desc", "query_capture_mode_desc", "readonly_reason"}).
-			AddRow(testDatabase, state, "ALL", int64(0)),
+		sqlmock.NewRows([]string{"database_name", "actual_state_desc", "query_capture_mode_desc", "readonly_reason", "replica_roles_supported"}).
+			AddRow(testDatabase, state, "ALL", int64(0), replicaRolesSupported),
 	)
 }
 
@@ -148,6 +152,50 @@ func TestQueryMetrics_QueryStoreStateChecks(t *testing.T) {
 			require.NoError(t, mock.ExpectationsWereMet())
 		})
 	}
+}
+
+func TestQueryMetrics_ReplicaRoleSupportSelectsStatementOnEveryCollection(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	c, err := NewQueryMetrics(QueryMetricsArguments{
+		DB:              db,
+		Registry:        prometheus.NewRegistry(),
+		CollectInterval: time.Minute,
+		Limit:           50,
+		Lookback:        time.Hour,
+		Logger:          util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+
+	poll := func(supported bool, query string, executions int64) {
+		t.Helper()
+		mockSelectQueryStoreStateWithReplicaRoles(mock, "READ_WRITE", supported)
+		mock.ExpectQuery(query).
+			WithArgs(sql.Named("limit", 50), sql.Named("lookback_window", 3600), sql.Named("exclude_current_user", false), sql.Named("collector_marker", QueryMarker)).
+			WillReturnRows(mockQueryMetricsRows(executions, 0, 0))
+		require.NoError(t, c.collect(context.Background()))
+	}
+
+	// Without replica role support, every runtime_stats row is read.
+	poll(false, selectQueryMetrics, 10)
+	poll(false, selectQueryMetrics, 14)
+	require.Equal(t, 4.0, counterValue(t, c.executionsMetric))
+
+	// The connection moves to a server that records replica roles, e.g. after a
+	// failover during a rolling upgrade: the next collection reads only the
+	// primary's rows. Their lower total re-baselines the series rather than
+	// decreasing the counter.
+	poll(true, selectPrimaryQueryMetrics, 8)
+	require.Equal(t, 4.0, counterValue(t, c.executionsMetric))
+
+	poll(true, selectPrimaryQueryMetrics, 11)
+	require.Equal(t, 7.0, counterValue(t, c.executionsMetric))
+
+	require.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestQueryMetrics_StartRegistersAndStopUnregisters(t *testing.T) {

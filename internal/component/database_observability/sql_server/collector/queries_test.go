@@ -16,6 +16,7 @@ func TestQueryMarkers(t *testing.T) {
 		"server info":          SelectServerInfo,
 		"original login":       SelectOriginalLogin,
 		"metrics":              selectQueryMetrics,
+		"primary metrics":      selectPrimaryQueryMetrics,
 		"query store state":    selectQueryStoreState,
 		"permissions":          selectMyPermissionsQuery,
 		"server permissions":   selectMyServerPermissionsQuery,

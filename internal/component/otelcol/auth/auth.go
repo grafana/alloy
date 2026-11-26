@@ -160,7 +160,7 @@ type Auth struct {
 	factory otelextension.Factory
 
 	collector *lazycollector.Collector
-	sched     *scheduler.AuthExtensionScheduler
+	sched     *scheduler.ExtensionScheduler
 }
 
 var (
@@ -189,7 +189,7 @@ func New(opts component.Options, f otelextension.Factory, args Arguments) (*Auth
 		opts:    opts,
 		factory: f,
 
-		sched:     scheduler.NewAuthExtensionScheduler(opts.Logger),
+		sched:     scheduler.NewExtensionScheduler(opts.Logger),
 		collector: collector,
 	}
 	if err := r.Update(args); err != nil {
@@ -293,7 +293,9 @@ func (a *Auth) Update(args component.Arguments) error {
 		return err
 	}
 
-	// Schedule the components, start will be called directly.
+	// Start the components before we export the handler, so that other
+	// components only see started extensions. otelcol.extension does the same,
+	// and all extensions follow this pattern. See scheduler.ExtensionScheduler.
 	a.sched.Schedule(a.ctx, host, components...)
 
 	// Inform listeners that our handler changed.

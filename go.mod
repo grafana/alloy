@@ -14,7 +14,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.14.1
 	github.com/Azure/go-autorest/autorest v0.11.30
 	github.com/DATA-DOG/go-sqlmock v1.5.2
-	github.com/DataDog/go-sqllexer v0.2.4
+	github.com/DataDog/go-sqllexer v0.2.7
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/collector v0.62.0
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/extension/googleclientauthextension v0.59.0
 	github.com/IBM/sarama v1.50.3
@@ -68,7 +68,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/grafana/alloy-remote-config v0.0.12
 	github.com/grafana/alloy/syntax v0.1.3 // x-release-please-version
-	github.com/grafana/ckit v0.0.0-20260226120531-bbed30d6364e
+	github.com/grafana/ckit v0.0.0-20261125111442-36139162a68a
 	github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2
 	github.com/grafana/databricks-prometheus-exporter v0.0.0-20260428132210-9d662a9256ff
 	github.com/grafana/dskit v0.0.0-20260909113722-8b24b9af5808

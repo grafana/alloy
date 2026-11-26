@@ -32,8 +32,8 @@ func expectPermissions(mock sqlmock.Sqlmock, permissions ...string) {
 
 func expectQueryStoreState(mock sqlmock.Sqlmock, dbName, actualState string) {
 	mock.ExpectQuery(selectQueryStoreState).WithoutArgs().RowsWillBeClosed().WillReturnRows(
-		sqlmock.NewRows([]string{"", "actual_state_desc", "query_capture_mode_desc", "readonly_reason"}).
-			AddRow(dbName, actualState, "ALL", nil),
+		sqlmock.NewRows([]string{"", "actual_state_desc", "query_capture_mode_desc", "readonly_reason", "replica_roles_supported"}).
+			AddRow(dbName, actualState, "ALL", nil, false),
 	)
 }
 

@@ -162,14 +162,14 @@ func (c *QueryMetrics) Stop() {
 }
 
 func (c *QueryMetrics) collect(ctx context.Context) error {
-	database, ok := checkQueryStoreState(ctx, c.dbConnection, c.queryTimeout, c.logger)
+	target, ok := checkQueryStoreState(ctx, c.dbConnection, c.queryTimeout, c.logger)
 	if !ok {
 		// Query Store is unavailable on the connected database, skip this cycle.
 		// Existing counters and baselines are preserved if this is a transient error.
 		return nil
 	}
 
-	sources, err := c.fetchQueryStoreMetrics(ctx, database)
+	sources, err := c.fetchQueryStoreMetrics(ctx, target.database, queryMetricsStatement(target))
 	if err != nil {
 		return err
 	}
@@ -178,11 +178,21 @@ func (c *QueryMetrics) collect(ctx context.Context) error {
 	return nil
 }
 
-func (c *QueryMetrics) fetchQueryStoreMetrics(ctx context.Context, database string) ([]queryMetricSource, error) {
+// queryMetricsStatement returns the statement that reads the primary's
+// executions: the role-filtered one when Query Store records replica roles,
+// otherwise the unfiltered one.
+func queryMetricsStatement(target queryStoreTarget) string {
+	if target.replicaRolesSupported {
+		return selectPrimaryQueryMetrics
+	}
+	return selectQueryMetrics
+}
+
+func (c *QueryMetrics) fetchQueryStoreMetrics(ctx context.Context, database, query string) ([]queryMetricSource, error) {
 	var sources []queryMetricSource
 	err := withQueryTimeout(ctx, c.queryTimeout, func(queryCtx context.Context) error {
 		rows, err := c.dbConnection.QueryContext(
-			queryCtx, selectQueryMetrics,
+			queryCtx, query,
 			sql.Named("limit", c.limit),
 			sql.Named("lookback_window", int(c.lookback/time.Second)),
 			sql.Named("exclude_current_user", c.excludeCurrentUser),

@@ -823,6 +823,16 @@ func TestQueryDetails_TokenizeTableNames(t *testing.T) {
 			want: []string{"public.users", "sales.orders"},
 		},
 		{
+			name: "unquoted schema and quoted table",
+			sql:  `SELECT * FROM example_schema."orders-dash"`,
+			want: []string{`example_schema."orders-dash"`},
+		},
+		{
+			name: "quoted schema and unquoted table",
+			sql:  `SELECT * FROM "example_schema".orders_underscore`,
+			want: []string{"example_schema.orders_underscore"},
+		},
+		{
 			name: "insert statement",
 			sql:  "INSERT INTO users (name, email) VALUES ('John', 'john@example.com')",
 			want: []string{"users"},

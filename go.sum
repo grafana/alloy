@@ -412,8 +412,8 @@ github.com/DataDog/datadog-go/v5 v5.9.1 h1:jOxw/TaxGWok8RIxbpqn2p3RzSnQr/m3Q6Tga
 github.com/DataDog/datadog-go/v5 v5.9.1/go.mod h1:2SBt8zJu6r7sRQHZFMQ8oCukWTKj0ymwulmNgQzJ1JM=
 github.com/DataDog/go-acl v1.0.1 h1:uRbp98YmlVZYqNNyTBFNI3Y6bnziBLyCIR4nRu0bIpU=
 github.com/DataDog/go-acl v1.0.1/go.mod h1:YJx333qSb3GUqCLIbqKeGaZS2pUYh2IYGI7+FsX18CU=
-github.com/DataDog/go-sqllexer v0.2.4 h1:Ah9v8g5KX8vNV7q3t6YoA3fW4F/1OvZh/JbyfPcaySA=
-github.com/DataDog/go-sqllexer v0.2.4/go.mod h1:3xTFXBU69vUikYpESggScvC0RKYA7ZIdVrIkLwUOWdE=
+github.com/DataDog/go-sqllexer v0.2.7 h1:z7xfoJY/1JvEcocg5WlIvo2N/l4outXrFNIf4eMSVG4=
+github.com/DataDog/go-sqllexer v0.2.7/go.mod h1:3xTFXBU69vUikYpESggScvC0RKYA7ZIdVrIkLwUOWdE=
 github.com/DataDog/go-tuf v1.1.1-0.5.2 h1:YWvghV4ZvrQsPcUw8IOUMSDpqc3W5ruOIC+KJxPknv0=
 github.com/DataDog/go-tuf v1.1.1-0.5.2/go.mod h1:zBcq6f654iVqmkk8n2Cx81E1JnNTMOAx1UEO/wZR+P0=
 github.com/DataDog/gohai v0.0.0-20230524154621-4316413895ee h1:tXibLZk3G6HncIFJKaNItsdzcrk4YqILNDZlXPTNt4k=
@@ -1292,8 +1292,8 @@ github.com/grafana/cadvisor v0.0.0-20261027180521-39c571fbfcf6 h1:TIGnPCnE+g7Ucc
 github.com/grafana/cadvisor v0.0.0-20261027180521-39c571fbfcf6/go.mod h1:ShMYCWitWxCedSLVYLgHnmwA4j8P14bNHg+DpFIYdw0=
 github.com/grafana/cadvisor/lib v0.0.0-20261027180521-39c571fbfcf6 h1:foqL16ZBbniMd8W1qEIcG4bU9TFwGXRr8ZjfDX1YZw4=
 github.com/grafana/cadvisor/lib v0.0.0-20261027180521-39c571fbfcf6/go.mod h1:htHKT0OSYO6zaik+iLOo3Wj1mf/5l8uV5TJaqLz13oM=
-github.com/grafana/ckit v0.0.0-20260226120531-bbed30d6364e h1:XN6vpnyS0vur4R23ePYBgmU1GY9lPmf1jqWMFIdExS0=
-github.com/grafana/ckit v0.0.0-20260226120531-bbed30d6364e/go.mod h1:OUtfKg0lKXnJ6wNdgO6ubGmlDL7yFj2zZr5GYZQAxcw=
+github.com/grafana/ckit v0.0.0-20261125111442-36139162a68a h1:TP7FTGwTCYMYeDXdCotySJggbIhWEVd/d948ko2QyNg=
+github.com/grafana/ckit v0.0.0-20261125111442-36139162a68a/go.mod h1:OUtfKg0lKXnJ6wNdgO6ubGmlDL7yFj2zZr5GYZQAxcw=
 github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2 h1:qhugDMdQ4Vp68H0tp/0iN17DM2ehRo1rLEdOFe/gB8I=
 github.com/grafana/cloudflare-go v0.0.0-20230110200409-c627cf6792f2/go.mod h1:w/aiO1POVIeXUQyl0VQSZjl5OAGDTL5aX+4v0RA1tcw=
 github.com/grafana/clusterurl v0.3.0 h1:fUryzdeUfIsC5th1fNLpt8KnZhtnN8OTEM3F/BXAelI=
