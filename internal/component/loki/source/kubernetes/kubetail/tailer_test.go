@@ -13,21 +13,6 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 )
 
-// mockPositions is a no-op implementation of positions.Positions for testing.
-type mockPositions struct{}
-
-func (m *mockPositions) GetString(path, labels string) string { return "" }
-
-func (m *mockPositions) Get(path, labels string) (int64, error) { return 0, nil }
-
-func (m *mockPositions) PutString(path, labels, pos string) {}
-
-func (m *mockPositions) Put(path, labels string, pos int64) {}
-
-func (m *mockPositions) Remove(path, labels string) {}
-
-func (m *mockPositions) Stop() {}
-
 // mockEntryHandler is a simple implementation of loki.EntryHandler for testing.
 type mockEntryHandler struct {
 	ch chan loki.Entry
@@ -195,7 +180,7 @@ func Test_processLogStream(t *testing.T) {
 
 			target := NewTarget(lset, lset, tc.preserveMetaLabels)
 			opts := &Options{
-				Positions: &mockPositions{},
+				Positions: positions.NewNop(),
 			}
 			tailer := &tailer{
 				target: target,
@@ -323,7 +308,7 @@ func Test_processLogStream_retail(t *testing.T) {
 			tailer := &tailer{
 				target: target,
 				lset:   newLabelSet(target.Labels()),
-				opts:   &Options{Positions: &mockPositions{}},
+				opts:   &Options{Positions: positions.NewNop()},
 			}
 			calc := newRollingAverageCalculator(10000, 100, 2*time.Second, 1*time.Hour)
 

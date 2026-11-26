@@ -1,6 +1,9 @@
 package config
 
-import "log/slog"
+import (
+	"log/slog"
+	"maps"
+)
 
 // Runtime carries the values Alloy injects at launch (not user config): the
 // proxy/metrics port, the health-check socket path, and the OTLP receiver addr.
@@ -15,6 +18,39 @@ func Build(args Arguments, rt Runtime, _ *slog.Logger) map[string]any {
 	return args.Convert(rt)
 }
 
+// secretPaths are the keys of a Build result that hold secrets.
+var secretPaths = [][]string{
+	{"peer_metadata", "token"},
+}
+
+// Redacted returns a copy of a Build result that is safe to log: every secret is
+// replaced. It copies only the maps on the way to a secret, so cfg isn't modified.
+func Redacted(cfg map[string]any) map[string]any {
+	for _, path := range secretPaths {
+		cfg = redact(cfg, path)
+	}
+	return cfg
+}
+
+func redact(m map[string]any, path []string) map[string]any {
+	v, ok := m[path[0]]
+	if !ok {
+		return m
+	}
+	if len(path) > 1 {
+		child, ok := v.(map[string]any)
+		if !ok {
+			return m
+		}
+		v = redact(child, path[1:])
+	} else {
+		v = "(secret)"
+	}
+	out := maps.Clone(m)
+	out[path[0]] = v
+	return out
+}
+
 // set assigns m to cfg[key] only when m has at least one entry.
 func set(cfg map[string]any, key string, m map[string]any) {
 	if len(m) > 0 {
@@ -27,19 +63,16 @@ func (a Arguments) Convert(rt Runtime) map[string]any {
 	cfg := make(map[string]any)
 
 	// Generated section translations.
+	set(cfg, "exceptions", a.Exceptions.Convert())
 	set(cfg, "discovery", a.Discovery.Convert())
 	set(cfg, "ebpf", a.EBPF.Convert())
 	set(cfg, "injector", a.Injector.Convert())
 	set(cfg, "javaagent", a.Javaagent.Convert())
 	set(cfg, "jvm_runtime_metrics", a.JVMRuntimeMetrics.Convert())
 	set(cfg, "dotnet_runtime_metrics", a.DotnetRuntimeMetrics.Convert())
-	cloudMetadata := a.CloudMetadata
-	// Preserve the legacy ECS interval through Beyla's shared cloud inventory setting.
-	if cloudMetadata.RefreshInterval == 0 {
-		cloudMetadata.RefreshInterval = a.NameResolver.ECS.RefreshInterval
-	}
-	set(cfg, "cloud_metadata", cloudMetadata.Convert())
+	set(cfg, "cloud_metadata", a.cloudMetadata().Convert())
 	set(cfg, "name_resolver", a.NameResolver.Convert())
+	set(cfg, "peer_metadata", a.PeerMetadata.Convert())
 	set(cfg, "nodejs", a.Nodejs.Convert())
 	set(cfg, "routes", a.Routes.Convert())
 	set(cfg, "stats", a.Stats.Convert())
@@ -74,6 +107,10 @@ func (a Arguments) Convert(rt Runtime) map[string]any {
 		cfg["otel_metrics_export"] = export
 	}
 
+	if a.Output != nil && len(a.Output.Logs) > 0 && rt.OTLPAddr != "" {
+		cfg["otel_logs_export"] = map[string]any{"endpoint": "unix://" + rt.OTLPAddr, "protocol": "http/protobuf"}
+	}
+
 	// internal_metrics always carries the proxy port, so it is emitted unconditionally.
 	cfg["internal_metrics"] = a.InternalMetrics.Convert(rt)
 
@@ -93,6 +130,17 @@ func (a Arguments) Convert(rt Runtime) map[string]any {
 	}
 
 	return cfg
+}
+
+// cloudMetadata returns the cloud_metadata block with the deprecated
+// name_resolver.ecs.refresh_interval mapped onto refresh_interval, where Beyla
+// v3.41.0 reads the ECS inventory refresh interval. Validate rejects setting both.
+func (a Arguments) cloudMetadata() CloudMetadata {
+	cm := a.CloudMetadata
+	if cm.RefreshInterval == 0 {
+		cm.RefreshInterval = a.NameResolver.ECS.RefreshInterval
+	}
+	return cm
 }
 
 // Convert builds the prometheus_export configuration. rt.Port is the proxy port
@@ -294,6 +342,9 @@ func (a Attributes) Convert() map[string]any {
 	}
 	if v := a.RenameUnresolvedHostsOutgoing; v != "" {
 		attributes["rename_unresolved_hosts_outgoing"] = v
+	}
+	if a.SanitizeSQLQueryText {
+		attributes["sanitize_sql_query_text"] = true
 	}
 
 	return attributes

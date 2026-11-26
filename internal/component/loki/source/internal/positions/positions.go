@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -20,7 +19,7 @@ const (
 	cursorKeyPrefix = "cursor-"
 )
 
-// CursorKey returns a key that can be saved as a cursor that is never deleted.
+// CursorKey returns a key for a position that is a cursor and not a file path.
 func CursorKey(key string) string {
 	return cursorKeyPrefix + key
 }
@@ -38,6 +37,9 @@ type Positions interface {
 	Put(path, labels string, pos int64)
 	// Remove deletes the stored position.
 	Remove(path, labels string)
+	// RemoveIf deletes every stored position for which drop returns true,
+	// except positions that changed while it ran.
+	RemoveIf(drop func(Entry) bool)
 	// Stop stops syncing and persists positions one last time.
 	Stop()
 }
@@ -143,7 +145,6 @@ func (p *File) run() {
 			return
 		case <-ticker.C:
 			p.save()
-			p.cleanup()
 		}
 	}
 }
@@ -158,30 +159,21 @@ func (p *File) save() {
 	}
 }
 
-func (p *File) cleanup() {
+// RemoveIf deletes every entry for which drop returns true, except entries
+// whose position changed while it ran.
+func (p *File) RemoveIf(drop func(Entry) bool) {
+	p.mtx.Lock()
+	snapshot := maps.Clone(p.positions)
+	p.mtx.Unlock()
+
+	maps.DeleteFunc(snapshot, func(e Entry, _ string) bool { return !drop(e) })
+
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
-	toRemove := []Entry{}
-	for k := range p.positions {
-		// If the position file is prefixed with cursor, it's a
-		// cursor and not a file on disk.
-		if strings.HasPrefix(k.Path, cursorKeyPrefix) {
-			continue
-		}
-
-		if _, err := os.Stat(k.Path); err != nil {
-			if os.IsNotExist(err) {
-				// File no longer exists.
-				toRemove = append(toRemove, k)
-			} else {
-				// Can't determine if file exists or not, some other error.
-				p.logger.Warn("could not determine if log file still exists while cleaning positions file", "error", err)
-			}
-		}
-	}
-	for _, tr := range toRemove {
-		p.remove(tr.Path, tr.Labels)
-	}
+	maps.DeleteFunc(p.positions, func(e Entry, cur string) bool {
+		pos, ok := snapshot[e]
+		return ok && pos == cur
+	})
 }
 
 // positionFile is the on-disk format of the positions file.

@@ -21,6 +21,7 @@ import (
 	"google.golang.org/grpc"
 	"k8s.io/utils/ptr"
 
+	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/loadbalancing"
@@ -115,7 +116,7 @@ func Test(t *testing.T) {
 	// Update the config to disable traces export
 	cfg = fmt.Sprintf(cfgTemplate, "metric", tracesServer)
 	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-	ctrl.Update(args)
+	updateAndWait(t, ctrl, args)
 
 	// Send traces in the background to our exporter.
 	go func() {
@@ -150,7 +151,7 @@ func Test(t *testing.T) {
 	// Re-run the test with reenabled traces export
 	cfg = fmt.Sprintf(cfgTemplate, "traceID", tracesServer)
 	require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-	ctrl.Update(args)
+	updateAndWait(t, ctrl, args)
 
 	// Send traces in the background to our exporter.
 	go func() {
@@ -179,6 +180,22 @@ func Test(t *testing.T) {
 	case tr := <-traceCh:
 		require.Equal(t, 1, tr.SpanCount())
 	}
+}
+
+// updateAndWait updates the component and waits until it has switched to the
+// new exporter instances. Update returns before the switch is done.
+func updateAndWait(t *testing.T, ctrl *componenttest.Controller, args loadbalancing.Arguments) {
+	t.Helper()
+
+	c, err := ctrl.GetComponent()
+	require.NoError(t, err)
+	hc := c.(component.HealthComponent)
+
+	before := time.Now()
+	require.NoError(t, ctrl.Update(args))
+	require.Eventually(t, func() bool {
+		return hc.CurrentHealth().UpdateTime.After(before)
+	}, 5*time.Second, 10*time.Millisecond, "component did not switch to the new exporters")
 }
 
 // makeTracesServer returns a host:port which will accept traces over insecure

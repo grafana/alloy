@@ -37,13 +37,45 @@ const SelectOriginalLogin = `SELECT ` + QueryMarker + ` ORIGINAL_LOGIN()`
 // Note: the final SELECT sums the full retained history per ranked hash
 // (no lookback filter on the aggregation), while the lookback window only
 // constrains the top-N ranking/eligibility in the eligible/ranked CTEs.
+// A hash is ranked only when one of the runtime_stats rows the statement reads
+// ran within the window: sys.query_store_query.last_execution_time also moves
+// when any other replica executes the query, so on its own it can't tell
+// whether the replica whose rows are read ran it recently.
 // In internal state, on a Query Store bucket rollover (when interval ends),
 // the cumulative totals keep growing → deltas stay non-negative → the
 // Prometheus counters remain monotonic. The only time totals decrease
 // is when Query Store is cleared, or when retention/cleanup drops an old
 // interval: in that case the state re-baselines rather than emitting a spike.
+//
+// selectQueryMetrics reads every runtime_stats row. It's used on servers whose
+// Query Store has no replica_group_id column (SQL Server 2019 and earlier).
 const selectQueryMetrics = `
-WITH filtered_queries AS (
+WITH runtime_stats AS (
+	SELECT rs.*
+	FROM sys.query_store_runtime_stats rs
+),
+` + queryMetricsBody
+
+// selectPrimaryQueryMetrics reads only the runtime_stats rows the primary
+// replica recorded. With Query Store for secondary replicas, secondaries send
+// their execution statistics to the primary's Query Store, tagged with their
+// role's replica_group_id; counting those rows would attribute replica
+// workload to the primary. When sys.query_store_replicas is empty (the feature
+// isn't active), every row belongs to the primary.
+const selectPrimaryQueryMetrics = `
+WITH runtime_stats AS (
+	SELECT rs.*
+	FROM sys.query_store_runtime_stats rs
+	WHERE NOT EXISTS (SELECT 1 FROM sys.query_store_replicas)
+		OR rs.replica_group_id IN (
+			SELECT replica_group_id FROM sys.query_store_replicas WHERE role_type = 1
+		)
+),
+` + queryMetricsBody
+
+// queryMetricsBody is the shared part of the query metrics statements; it reads
+// runtime statistics from the runtime_stats CTE each statement defines.
+const queryMetricsBody = `filtered_queries AS (
 	SELECT ` + QueryMarker + ` q.*
 	FROM sys.query_store_query q
 	JOIN sys.query_store_query_text qt ON qt.query_text_id = q.query_text_id
@@ -61,12 +93,13 @@ ranked AS (
 	FROM filtered_queries q
 	JOIN eligible e ON e.query_hash = q.query_hash
 	JOIN sys.query_store_plan p ON p.query_id = q.query_id
-	JOIN sys.query_store_runtime_stats rs ON rs.plan_id = p.plan_id
+	JOIN runtime_stats rs ON rs.plan_id = p.plan_id
 	JOIN sys.query_store_runtime_stats_interval i
 		ON i.runtime_stats_interval_id = rs.runtime_stats_interval_id
 	WHERE q.is_internal_query = 0
 		AND i.end_time >= DATEADD(SECOND, -CONVERT(int, @lookback_window), SYSUTCDATETIME())
 	GROUP BY q.query_hash
+	HAVING MAX(rs.last_execution_time) >= DATEADD(SECOND, -CONVERT(int, @lookback_window), SYSUTCDATETIME())
 	ORDER BY SUM(CONVERT(float, rs.avg_duration) * CONVERT(float, rs.count_executions)) DESC,
 		q.query_hash ASC
 )
@@ -81,7 +114,7 @@ SELECT
 FROM filtered_queries q
 JOIN ranked r ON r.query_hash = q.query_hash
 JOIN sys.query_store_plan p ON p.query_id = q.query_id
-JOIN sys.query_store_runtime_stats rs ON rs.plan_id = p.plan_id
+JOIN runtime_stats rs ON rs.plan_id = p.plan_id
 WHERE q.is_internal_query = 0
 GROUP BY q.query_hash
 ORDER BY q.query_hash ASC`
@@ -226,13 +259,26 @@ LEFT JOIN current_waits AS w
 WHERE (@exclude_current_user = 0 OR r.statement_text IS NULL OR CHARINDEX(@collector_marker, r.statement_text) = 0)
 ORDER BY r.session_id, r.request_id, w.exec_context_id`
 
-// selectQueryStoreState reads the connected database's Query Store state
+// selectQueryStoreState reads the connected database's Query Store state, and
+// whether Query Store tags runtime statistics with the replica role that
+// recorded them: the replica_group_id column and sys.query_store_replicas exist
+// starting with SQL Server 2022 and in Azure SQL. The support flag is read on
+// every collection because a listener can move the connection pool to a server
+// running a different version, for example during a rolling upgrade.
 const selectQueryStoreState = `
 	SELECT ` + QueryMarker + `
 		DB_NAME(),
 		actual_state_desc,
 		query_capture_mode_desc,
-		readonly_reason
+		readonly_reason,
+		CASE WHEN OBJECT_ID(N'sys.query_store_replicas') IS NOT NULL
+			AND EXISTS (
+				SELECT 1
+				FROM sys.all_columns
+				WHERE object_id = OBJECT_ID(N'sys.query_store_runtime_stats')
+					AND name = N'replica_group_id'
+			)
+		THEN 1 ELSE 0 END
 	FROM sys.database_query_store_options`
 
 const selectMyPermissionsQuery = `SELECT ` + QueryMarker + ` permission_name FROM sys.fn_my_permissions(NULL, 'DATABASE')`

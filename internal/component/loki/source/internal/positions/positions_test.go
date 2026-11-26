@@ -220,6 +220,56 @@ positions:
 	}])
 }
 
+func TestRemoveIf(t *testing.T) {
+	a := Entry{Path: "/a.log", Labels: `{job="a"}`}
+	b := Entry{Path: "/b.log", Labels: `{job="b"}`}
+
+	tests := []struct {
+		name     string
+		drop     func(f *File, e Entry) bool
+		expected map[Entry]string
+	}{
+		{
+			name:     "removes matching entries",
+			drop:     func(_ *File, e Entry) bool { return e == a },
+			expected: map[Entry]string{b: "2"},
+		},
+		{
+			name:     "keeps everything when nothing matches",
+			drop:     func(_ *File, _ Entry) bool { return false },
+			expected: map[Entry]string{a: "1", b: "2"},
+		},
+		{
+			name: "keeps entry changed while drop runs",
+			drop: func(f *File, e Entry) bool {
+				if e == a {
+					f.Put(a.Path, a.Labels, 10)
+				}
+				return true
+			},
+			expected: map[Entry]string{a: "10"},
+		},
+		{
+			name: "does not restore entry removed while drop runs",
+			drop: func(f *File, e Entry) bool {
+				f.Remove(a.Path, a.Labels)
+				return e == a
+			},
+			expected: map[Entry]string{b: "2"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := &File{positions: map[Entry]string{a: "1", b: "2"}}
+
+			f.RemoveIf(func(e Entry) bool { return tt.drop(f, e) })
+
+			require.Equal(t, tt.expected, f.positions)
+		})
+	}
+}
+
 func tempFilename(t *testing.T) string {
 	t.Helper()
 

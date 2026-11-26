@@ -51,8 +51,9 @@ out the section below on modifying a PR's changelog entry after it's been merged
      release artifacts, and attach them to the release.
    - The first RC automatically creates the `backport/vX.Y` label, so PRs can be labeled for
      backporting during the RC validation phase.
-2. Once everything is attached, add any relevant changelog details to the RC draft release and
-   publish it from either the CLI or github.com. For example:
+2. Once everything is attached, including the SBOM (`alloy-<VERSION>-rc.0.spdx.json`), add any
+   relevant changelog details to the RC draft release and publish it from either the CLI or
+   github.com. For example:
    ```sh
    gh release edit <VERSION>-rc.0 --draft=false --repo grafana/alloy
    ```
@@ -103,7 +104,9 @@ cut a new RC and repeat step 3.
 2. This will trigger workflows to create a draft release on GitHub, build the release artifacts, and
    attach them to the release.
 3. Once everything is attached, publish the release either from the CLI or from the Releases page on
-   github.com.
+   github.com. Wait for the `Publish Alloy release artifacts` workflow run to finish first, and confirm
+   that the SBOM (`alloy-<VERSION>.spdx.json`) is attached. Uploads fail if the release is already
+   published.
 4. This will automatically create the corresponding `release/vX.Y` branch (and `backport/vX.Y` label
    if it wasn't already created during the RC phase).
 

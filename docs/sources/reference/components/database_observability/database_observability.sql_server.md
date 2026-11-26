@@ -281,9 +281,13 @@ The `query_metrics` collector reads [Query Store][query_store] for the database 
 Configure the `data_source_name` to select a user database that has Query Store enabled.
 When the connected database is a system database such as `master`, or Query Store is disabled or read-only, the collector skips collection and remains healthy.
 
+On a primary replica, the collector only counts executions that ran on the primary.
+When [Query Store for secondary replicas][query_store_secondary_replicas] is active, readable secondary replicas send their execution statistics to the primary's Query Store, and the collector excludes them.
+
 The login requires `VIEW DATABASE STATE` on the connected database. On SQL Server 2022 and later, `VIEW DATABASE PERFORMANCE STATE` is also sufficient.
 
 [query_store]: https://learn.microsoft.com/sql/relational-databases/performance/monitoring-performance-by-using-the-query-store
+[query_store_secondary_replicas]: https://learn.microsoft.com/sql/relational-databases/performance/query-store-for-secondary-replicas
 
 ### `query_samples`
 
