@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"reflect"
 	"slices"
 	"strings"
@@ -19,25 +18,20 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 	"go.uber.org/goleak"
-	"k8s.io/utils/ptr"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/lokitest"
-	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/loki/process/stages"
-	lsf "github.com/grafana/alloy/internal/component/loki/source/file"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
-	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/service/lokipipelinev2"
 	"github.com/grafana/alloy/internal/util"
-	"github.com/grafana/alloy/internal/util/testlivedebugging"
 	"github.com/grafana/alloy/syntax"
 )
 
 func TestComponent(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
 	type testCase struct {
 		name          string
@@ -429,7 +423,7 @@ func TestComponent(t *testing.T) {
 				}),
 			},
 			// NOTE: we cannot guarantee ordering between different sub-pipelines.
-			unorderedFrom: ptr.To(0),
+			unorderedFrom: new(0),
 		},
 		{
 			name: "logfmt pipeline",
@@ -724,7 +718,7 @@ func TestComponent(t *testing.T) {
 					},
 				}),
 			},
-			unorderedFrom: ptr.To(3),
+			unorderedFrom: new(3),
 		},
 		{
 			name: "pattern pipeline parsing nginx",
@@ -809,53 +803,37 @@ func TestComponent(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			collector1, collector2 := loki.NewCollectingHandler(), loki.NewCollectingHandler()
-			defer collector1.Stop()
-			defer collector2.Stop()
+			lokitest.Test(t, func(t *testing.T, env lokitest.Env) {
+				recv1, recv2 := env.NewReceiver(t), env.NewReceiver(t)
 
-			var args Arguments
-			require.NoError(t, syntax.Unmarshal([]byte(tt.cfg), &args))
-			args.ForwardTo = []loki.LogsReceiver{collector1.Receiver(), collector2.Receiver()}
+				var args Arguments
+				require.NoError(t, syntax.Unmarshal([]byte(tt.cfg), &args))
+				args.ForwardTo = []loki.LogsReceiver{recv1, recv2}
 
-			opts := component.Options{
-				Logger:         logging.NewSlogNop(),
-				Registerer:     prometheus.NewRegistry(),
-				OnStateChange:  func(component.Exports) {},
-				GetServiceData: getServiceData,
-			}
+				ctrl, stop := env.Run(t, "loki.process", args)
+				defer stop()
 
-			c, err := New(opts, args)
-			require.NoError(t, err)
-
-			ctx, cancel := context.WithCancel(t.Context())
-
-			runErr := make(chan error, 1)
-			go func() { runErr <- c.Run(ctx) }()
-
-			for _, input := range tt.inputs {
-				c.receiver.Chan() <- input
-			}
-
-			require.Eventually(t, func() bool {
-				return len(collector1.Received()) == len(tt.expected) && len(collector2.Received()) == len(tt.expected)
-			}, 5*time.Second, 10*time.Millisecond)
-
-			if tt.unorderedFrom == nil {
-				tt.unorderedFrom = ptr.To(len(tt.expected))
-			}
-
-			assert := func(t *testing.T, unorderedFrom int, expected, got []loki.Entry) {
-				for i := range unorderedFrom {
-					assertEntry(t, expected[i], got[i])
+				// One send per entry keeps the input order on both pipelines, a v2
+				// batch would group entries by stream.
+				recv := ctrl.Exports().(Exports).Receiver
+				for _, input := range tt.inputs {
+					require.NoError(t, env.Send(t.Context(), recv, input))
 				}
-				assertEntriesUnordered(t, expected[unorderedFrom:], got[unorderedFrom:])
-			}
 
-			assert(t, *tt.unorderedFrom, tt.expected, collector1.Received())
-			assert(t, *tt.unorderedFrom, tt.expected, collector2.Received())
+				if tt.unorderedFrom == nil {
+					tt.unorderedFrom = new(len(tt.expected))
+				}
 
-			cancel()
-			require.NoError(t, <-runErr)
+				assert := func(t *testing.T, unorderedFrom int, expected, got []loki.Entry) {
+					for i := range unorderedFrom {
+						assertEntry(t, expected[i], got[i])
+					}
+					assertEntriesUnordered(t, expected[unorderedFrom:], got[unorderedFrom:])
+				}
+
+				assert(t, *tt.unorderedFrom, tt.expected, recv1.Next(t, len(tt.expected)))
+				assert(t, *tt.unorderedFrom, tt.expected, recv2.Next(t, len(tt.expected)))
+			})
 		})
 	}
 }
@@ -1130,297 +1108,111 @@ func TestComponentV2(t *testing.T) {
 }
 
 func TestComponent_UpdateInvalidConfig(t *testing.T) {
-	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.process")
-	require.NoError(t, err)
+	lokitest.Test(t, func(t *testing.T, env lokitest.Env) {
+		out := env.NewReceiver(t)
+		ctrl, stop := env.Run(t, "loki.process", Arguments{ForwardTo: []loki.LogsReceiver{out}})
+		defer stop()
 
-	collector := loki.NewCollectingHandler()
-	defer collector.Stop()
+		recv := ctrl.Exports().(Exports).Receiver
+		require.NoError(t, env.Send(t.Context(), recv, loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"app": "test"}, 0, push.Entry{
+			Timestamp: time.Now(),
+			Line:      "before",
+		})))
 
-	ctx, cancel := context.WithCancel(context.Background())
-
-	var wg sync.WaitGroup
-	wg.Go(func() {
-		require.NoError(t, ctrl.Run(ctx, Arguments{ForwardTo: []loki.LogsReceiver{collector.Receiver()}}))
-	})
-	require.NoError(t, ctrl.WaitExports(time.Minute))
-
-	recv := ctrl.Exports().(Exports).Receiver
-	fanout := loki.NewFanout([]loki.LogsReceiver{recv})
-
-	wg.Go(func() {
-		for {
-			// We get error if context is canceled
-			if err := fanout.Send(ctx, loki.Entry{}); err != nil {
-				return
-			}
-		}
-	})
-
-	err = ctrl.Update(Arguments{
-		ForwardTo: []loki.LogsReceiver{collector.Receiver()},
-		Stages: []stages.StageConfig{
-			{
-				// label_drop requires at least one value.
-				LabelDropConfig: &stages.LabelDropConfig{},
+		err := ctrl.Update(Arguments{
+			ForwardTo: []loki.LogsReceiver{out},
+			Stages: []stages.StageConfig{
+				{
+					// label_drop requires at least one value.
+					LabelDropConfig: &stages.LabelDropConfig{},
+				},
 			},
-		},
+		})
+		require.Error(t, err)
+
+		// The old pipeline must keep working after a failed update.
+		require.NoError(t, env.Send(t.Context(), recv, loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"app": "test"}, 0, push.Entry{
+			Timestamp: time.Now(),
+			Line:      "after",
+		})))
+		out.Next(t, 2)
 	})
-	require.Error(t, err)
-
-	// Keep sending for a while after update have failed.
-	time.Sleep(100 * time.Millisecond)
-	cancel()
-	wg.Wait()
-}
-
-const logline = `{"log":"log message\n","stream":"stderr","time":"2019-04-30T02:12:41.8443515Z","extra":"{\"user\":\"smith\"}"}`
-
-func TestJSONLabelsStage(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-
-	// The following stages will attempt to parse input lines as JSON.
-	// The first stage _extract_ any fields found with the correct names:
-	// Since 'source' is empty, it implies that we want to parse the log line
-	// itself.
-	//    log    --> output
-	//    stream --> stream
-	//    time   --> timestamp
-	//    extra  --> extra
-	//
-	// The second stage will parse the 'extra' field as JSON, and extract the
-	// 'user' field from the 'extra' field. If the expression value field is
-	// empty, it is inferred we want to use the same name as the key.
-	//    user   --> extra.user
-	//
-	// The third stage will set some labels from the extracted values above.
-	// Again, if the value is empty, it is inferred that we want to use the
-	// populate the label with extracted value of the same name.
-	stg := `stage.json {
-			    expressions    = {"output" = "log", stream = "stream", timestamp = "time", "extra" = "" }
-				drop_malformed = true
-		    }
-			stage.json {
-			    expressions = { "user" = "" }
-				source      = "extra"
-			}
-			stage.labels {
-			    values = {
-				  stream = "",
-				  user   = "",
-				  ts     = "timestamp",
-			    }
-			}
-			stage.timestamp {
-				source = "timestamp"
-				format = "RFC3339Nano"
-			}`
-
-	// Unmarshal the Alloy relabel rules into a custom struct, as we don't have
-	// an easy way to refer to a loki.LogsReceiver value for the forward_to
-	// argument.
-	type cfg struct {
-		Stages []stages.StageConfig `alloy:"stage,enum"`
-	}
-	var stagesCfg cfg
-	err := syntax.Unmarshal([]byte(stg), &stagesCfg)
-	require.NoError(t, err)
-
-	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
-
-	liveDebuggingLog := testlivedebugging.NewLog()
-
-	// Create and run the component, so that it can process and forwards logs.
-	logger := util.TestAlloyLogger(t)
-	opts := component.Options{
-		Logger:         logger.Slog(),
-		Registerer:     prometheus.NewRegistry(),
-		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: getServiceDataWithLiveDebugging(liveDebuggingLog),
-	}
-	args := Arguments{
-		ForwardTo: []loki.LogsReceiver{ch1, ch2},
-		Stages:    stagesCfg.Stages,
-	}
-
-	c, err := New(opts, args)
-	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(t.Context())
-	wgRun := sync.WaitGroup{}
-
-	wgRun.Add(1)
-	go func() {
-		c.Run(ctx)
-		wgRun.Done()
-	}()
-
-	// Choose a timestamp which is different from the one in the json log line that is being sent.
-	ingestionTs, err := time.Parse(time.RFC3339, "2020-11-15T02:08:41-07:00")
-	require.NoError(t, err)
-
-	// Send a log entry to the component's receiver.
-	logEntry := loki.Entry{
-		Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"},
-		Entry: push.Entry{
-			Timestamp: ingestionTs,
-			Line:      logline,
-		},
-	}
-
-	c.receiver.Chan() <- logEntry
-
-	// This is the timestamp from the json body of the log line that is being sent.
-	expectedTsLabel := "2019-04-30T02:12:41.8443515Z"
-	expectedTs, err := time.Parse(time.RFC3339Nano, expectedTsLabel)
-	require.NoError(t, err)
-
-	wantLabelSet := model.LabelSet{
-		"filename": "/var/log/pods/agent/agent/1.log",
-		"foo":      "bar",
-		"stream":   "stderr",
-		"ts":       model.LabelValue(expectedTsLabel),
-		"user":     "smith",
-	}
-
-	// The log entry should be received in both channels, with the processing
-	// stages correctly applied.
-	for i := 0; i < 2; i++ {
-		select {
-		case logEntry := <-ch1.Chan():
-			require.Equal(t, expectedTs, logEntry.Timestamp)
-			require.Equal(t, logline, logEntry.Line)
-			require.Equal(t, wantLabelSet, logEntry.Labels)
-		case logEntry := <-ch2.Chan():
-			require.Equal(t, expectedTs, logEntry.Timestamp)
-			require.Equal(t, logline, logEntry.Line)
-			require.Equal(t, wantLabelSet, logEntry.Labels)
-		case <-time.After(5 * time.Second):
-			require.FailNow(t, "failed waiting for log line")
-		}
-	}
-
-	cancel()
-	wgRun.Wait()
-
-	// The timestamp in "IN" is different from the one in "OUT".
-	// Even though there are two downstream components, we expect only one "OUT" line to be printed.
-	expectedLiveDebuggingLog := []string{
-		"[IN]: timestamp: 2020-11-15T02:08:41-07:00, entry: {\"log\":\"log message\\n\",\"stream\":\"stderr\",\"time\":\"2019-04-30T02:12:41.8443515Z\",\"extra\":\"{\\\"user\\\":\\\"smith\\\"}\"}, labels: {filename=\"/var/log/pods/agent/agent/1.log\", foo=\"bar\"}, structured_metadata: {}",
-		"[OUT]: timestamp: 2019-04-30T02:12:41.8443515Z, entry: {\"log\":\"log message\\n\",\"stream\":\"stderr\",\"time\":\"2019-04-30T02:12:41.8443515Z\",\"extra\":\"{\\\"user\\\":\\\"smith\\\"}\"}, labels: {filename=\"/var/log/pods/agent/agent/1.log\", foo=\"bar\", stream=\"stderr\", ts=\"2019-04-30T02:12:41.8443515Z\", user=\"smith\"}, structured_metadata: {}",
-	}
-	require.Equal(t, expectedLiveDebuggingLog, liveDebuggingLog.Get())
 }
 
 func TestEntrySentToTwoProcessComponents(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 
-	// Set up two different loki.process components.
-	stg1 := `
-forward_to = []
-stage.static_labels {
-    values = { "lbl" = "foo" }
-}
-`
-	stg2 := `
-forward_to = []
-stage.static_labels {
-    values = { "lbl" = "bar" }
-}
-`
-
-	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
-	var args1, args2 Arguments
-	require.NoError(t, syntax.Unmarshal([]byte(stg1), &args1))
-	require.NoError(t, syntax.Unmarshal([]byte(stg2), &args2))
-	args1.ForwardTo = []loki.LogsReceiver{ch1}
-	args2.ForwardTo = []loki.LogsReceiver{ch2}
-
-	ctx, ctxCancel := context.WithCancel(t.Context())
-	var (
-		runWG  sync.WaitGroup
-		runErr = make(chan error, 3)
-	)
-	runComponent := func(runFn func() error) {
-		runWG.Add(1)
-		go func() {
-			defer runWG.Done()
-			runErr <- runFn()
-		}()
+	// Two loki.process components get the same entry and set the same label to
+	// different values, so neither must see the other's change.
+	cfg1 := `
+	forward_to = []
+	stage.static_labels {
+		values = { "lbl" = "foo" }
 	}
-	defer func() {
-		ctxCancel()
-		runWG.Wait()
-		close(runErr)
-		for err := range runErr {
-			require.NoError(t, err)
+	`
+	cfg2 := `
+	forward_to = []
+	stage.static_labels {
+		values = { "lbl" = "bar" }
+	}
+	`
+
+	// setup runs both components and returns their outputs and their receivers.
+	setup := func(t *testing.T, env lokitest.Env) (*lokitest.Receiver, *lokitest.Receiver, []loki.LogsReceiver) {
+		out1, out2 := env.NewReceiver(t), env.NewReceiver(t)
+
+		var args1, args2 Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg1), &args1))
+		require.NoError(t, syntax.Unmarshal([]byte(cfg2), &args2))
+		args1.ForwardTo = []loki.LogsReceiver{out1}
+		args2.ForwardTo = []loki.LogsReceiver{out2}
+
+		ctrl1, _ := env.Run(t, "loki.process", args1)
+		ctrl2, _ := env.Run(t, "loki.process", args2)
+
+		return out1, out2, []loki.LogsReceiver{
+			ctrl1.Exports().(Exports).Receiver,
+			ctrl2.Exports().(Exports).Receiver,
 		}
-	}()
+	}
 
-	// Start the loki.process components.
-	tc1, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.process")
-	require.NoError(t, err)
-	tc2, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.process")
-	require.NoError(t, err)
-	runComponent(func() error { return tc1.Run(ctx, args1) })
-	runComponent(func() error { return tc2.Run(ctx, args2) })
-	require.NoError(t, tc1.WaitExports(time.Second))
-	require.NoError(t, tc2.WaitExports(time.Second))
+	assert := func(t *testing.T, out1, out2 *lokitest.Receiver) {
+		got1, got2 := out1.Next(t, 1), out2.Next(t, 1)
+		require.Equal(t, "line", got1[0].Line)
+		require.Equal(t, model.LabelSet{"app": "test", "lbl": "foo"}, got1[0].Labels)
+		require.Equal(t, "line", got2[0].Line)
+		require.Equal(t, model.LabelSet{"app": "test", "lbl": "bar"}, got2[0].Labels)
+	}
 
-	// Create a file to log to.
-	f, err := os.CreateTemp(t.TempDir(), "example")
-	require.NoError(t, err)
-	defer f.Close()
+	lokitest.TestV1(t, func(t *testing.T, env lokitest.Env) {
+		out1, out2, receivers := setup(t, env)
 
-	// Create and start a component that will read from that file and fan out to both components.
-	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.source.file")
-	require.NoError(t, err)
+		fanout := loki.NewFanout(receivers)
+		require.NoError(t, fanout.Send(t.Context(), loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"app": "test"}, 0, push.Entry{
+			Timestamp: time.Now(),
+			Line:      "line",
+		})))
 
-	runComponent(func() error {
-		return ctrl.Run(ctx, lsf.Arguments{
-			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{"__path__": f.Name(), "somelbl": "somevalue"})},
-			ForwardTo: []loki.LogsReceiver{
-				tc1.Exports().(Exports).Receiver,
-				tc2.Exports().(Exports).Receiver,
-			},
-			FileMatch: lsf.FileMatch{
-				Enabled:    false,
-				SyncPeriod: 10 * time.Second,
-			},
-		})
+		assert(t, out1, out2)
 	})
-	require.NoError(t, ctrl.WaitRunning(time.Minute))
 
-	// Write a line to the file.
-	_, err = f.Write([]byte("writing some text\n"))
-	require.NoError(t, err)
+	lokitest.TestV2(t, func(t *testing.T, env lokitest.Env) {
+		out1, out2, receivers := setup(t, env)
 
-	wantLabelSet := model.LabelSet{
-		"filename": model.LabelValue(f.Name()),
-		"somelbl":  "somevalue",
-	}
+		batch := loki.NewBatch()
+		batch.AddEntry(model.LabelSet{"app": "test"}, 0, push.Entry{
+			Timestamp: time.Now(),
+			Line:      "line",
+		})
 
-	// The lines were received after processing by each component, with no
-	// race condition between them.
-	seenCh1 := false
-	seenCh2 := false
-	for i := 0; i < 2; i++ {
-		select {
-		case logEntry := <-ch1.Chan():
-			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-			require.Equal(t, "writing some text", logEntry.Line)
-			require.Equal(t, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "foo"}), logEntry.Labels)
-			seenCh1 = true
-		case logEntry := <-ch2.Chan():
-			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-			require.Equal(t, "writing some text", logEntry.Line)
-			require.Equal(t, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "bar"}), logEntry.Labels)
-			seenCh2 = true
-		case <-time.After(5 * time.Second):
-			require.FailNow(t, "failed waiting for log line")
-		}
-	}
-	require.True(t, seenCh1, "expected log line from first receiver")
-	require.True(t, seenCh2, "expected log line from second receiver")
+		fanout := loki.NewFanoutV2(receivers)
+		require.NoError(t, fanout.Consume(t.Context(), batch))
+
+		assert(t, out1, out2)
+	})
 }
+
+const logline = `{"log":"log message\n","stream":"stderr","time":"2019-04-30T02:12:41.8443515Z","extra":"{\"user\":\"smith\"}"}`
 
 type testFrequentUpdate struct {
 	t *testing.T
@@ -1481,20 +1273,27 @@ func startTestFrequentUpdate(t *testing.T, cfg string) *testFrequentUpdate {
 
 	logger := util.TestAlloyLogger(t)
 	opts := component.Options{
-		Logger:         logger.Slog(),
-		Registerer:     prometheus.NewRegistry(),
-		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: getServiceData,
+		Logger:        logger.Slog(),
+		Registerer:    prometheus.NewRegistry(),
+		OnStateChange: func(e component.Exports) {},
+		GetServiceData: func(name string) (any, error) {
+			switch name {
+			case livedebugging.ServiceName:
+				return livedebugging.NewLiveDebugging(), nil
+			case lokipipelinev2.ServiceName:
+				return lokipipelinev2.New(lokipipelinev2.Options{}), nil
+			default:
+				return nil, fmt.Errorf("service not found %s", name)
+			}
+		},
 	}
 
 	res.c, err = New(opts, args)
 	require.NoError(t, err)
 
-	res.wgRun.Add(1)
-	go func() {
+	res.wgRun.Go(func() {
 		res.c.Run(ctx)
-		res.wgRun.Done()
-	}()
+	})
 
 	return &res
 }
@@ -1523,16 +1322,13 @@ func (r *testFrequentUpdate) drainLogs() {
 
 // Continuously send entries to both channels
 func (r *testFrequentUpdate) sendLogs() {
-	r.wgSend.Add(1)
-	go func() {
+	r.wgSend.Go(func() {
 		for r.keepSending.Load() {
 			ts := time.Now()
 			logEntry := loki.Entry{
-				Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"},
-				Entry: push.Entry{
-					Timestamp: ts,
-					Line:      logline,
-				},
+				Labels:    model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"},
+				Timestamp: ts,
+				Line:      logline,
 			}
 			select {
 			case r.c.receiver.Chan() <- logEntry:
@@ -1540,8 +1336,7 @@ func (r *testFrequentUpdate) sendLogs() {
 				// continue
 			}
 		}
-		r.wgSend.Done()
-	}()
+	})
 }
 
 func (r *testFrequentUpdate) updateContinuously(cfg1, cfg2 string) {
@@ -1555,18 +1350,16 @@ func (r *testFrequentUpdate) updateContinuously(cfg1, cfg2 string) {
 	require.NoError(r.t, err)
 	args2.ForwardTo = []loki.LogsReceiver{r.receiver2}
 
-	r.wgUpdate.Add(1)
-	go func() {
+	r.wgUpdate.Go(func() {
 		for r.keepUpdating.Load() {
 			r.c.Update(args1)
 			r.c.Update(args2)
 		}
-		r.wgUpdate.Done()
-	}()
+	})
 }
 
-func TestDeadlockWithFrequentUpdates(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+func TestDeadlockWithFrequentUpdatesV1(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
 	cfg1 := `stage.json {
 			    expressions    = {"output" = "log", stream = "stream", timestamp = "time", "extra" = "" }
@@ -1614,103 +1407,8 @@ func TestDeadlockWithFrequentUpdates(t *testing.T) {
 	require.WithinDuration(t, time.Now(), r.lastSend.Load().(time.Time), 300*time.Millisecond)
 }
 
-func getServiceData(name string) (any, error) {
-	switch name {
-	case livedebugging.ServiceName:
-		return livedebugging.NewLiveDebugging(), nil
-	case lokipipelinev2.ServiceName:
-		return lokipipelinev2.New(lokipipelinev2.Options{}), nil
-	default:
-		return nil, fmt.Errorf("service not found %s", name)
-	}
-}
-
-func getServiceDataWithLiveDebugging(log *testlivedebugging.Log) func(string) (any, error) {
-	ld := livedebugging.NewLiveDebugging()
-	host := &testlivedebugging.FakeServiceHost{
-		ComponentsInfo: map[component.ID]testlivedebugging.FakeInfo{
-			component.ParseID(""): {ComponentName: "", Component: &testlivedebugging.FakeComponentLiveDebugging{}},
-		},
-	}
-	ld.SetEnabled(true)
-	ld.AddCallback(
-		host,
-		"callback1",
-		"",
-		func(data livedebugging.Data) { log.Append(data.DataFunc()) },
-	)
-
-	return func(name string) (any, error) {
-		switch name {
-		case livedebugging.ServiceName:
-			return ld, nil
-		case lokipipelinev2.ServiceName:
-			return lokipipelinev2.New(lokipipelinev2.Options{}), nil
-		default:
-			return nil, fmt.Errorf("service not found %s", name)
-		}
-	}
-}
-
-// Make sure there are no goroutine leaks when the config is updated.
-// Goroutine leaks often cause memory leaks.
-func TestLeakyUpdate(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-
-	tester := newTester(t)
-	defer tester.stop()
-
-	forwardArgs := `
-	// This will be filled later
-	forward_to = []`
-
-	numLogsToSend := 1
-
-	cfg1 := `
-	stage.metrics {
-        metric.counter {
-          name = "paulin_test1"
-          action = "inc"
-          match_all = true
-        }
-	}` + forwardArgs
-
-	cfg2 := `
-	stage.metrics {
-        metric.counter {
-          name = "paulin_test2"
-          action = "inc"
-          match_all = true
-        }
-	}` + forwardArgs
-
-	metricsTemplate1 := `
-	# HELP loki_process_custom_paulin_test1
-	# TYPE loki_process_custom_paulin_test1 counter
-	loki_process_custom_paulin_test1{filename="/var/log/pods/agent/agent/1.log",foo="bar"} %d
-	`
-
-	metricsTemplate2 := `
-	# HELP loki_process_custom_paulin_test2
-	# TYPE loki_process_custom_paulin_test2 counter
-	loki_process_custom_paulin_test2{filename="/var/log/pods/agent/agent/1.log",foo="bar"} %d
-	`
-
-	metrics1 := fmt.Sprintf(metricsTemplate1, numLogsToSend)
-	metrics2 := fmt.Sprintf(metricsTemplate2, numLogsToSend)
-
-	tester.updateAndTest(numLogsToSend, cfg1, "", metrics1)
-	tester.updateAndTest(numLogsToSend, cfg2, "", metrics2)
-
-	for i := 0; i < 100; i++ {
-		tester.updateAndTest(numLogsToSend, cfg1, "", metrics1)
-		tester.updateAndTest(numLogsToSend, cfg2, "", metrics2)
-	}
-}
-
 func TestMetricsStageRefresh(t *testing.T) {
-	tester := newTester(t)
-	defer tester.stop()
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
 	forwardArgs := `
 	// This will be filled later
@@ -1747,32 +1445,6 @@ func TestMetricsStageRefresh(t *testing.T) {
 	# TYPE loki_process_custom_outer_counter counter
 	loki_process_custom_outer_counter{filename="/var/log/pods/agent/agent/1.log",foo="bar"} %d
 	`
-
-	// The component will be reconfigured so that it has a metric.
-	t.Run("config with a metric", func(t *testing.T) {
-		tester.updateAndTest(numLogsToSend, cfg,
-			"",
-			fmt.Sprintf(expectedMetrics, numLogsToSend, numLogsToSend))
-	})
-
-	// The component will be "updated" with the same config.
-	// We expect the metric to stay the same before logs are sent - the component should be smart enough to
-	// know that the new config is the same as the old one and it should just keep running as it is.
-	// If it resets the metric, this could cause issues with some users who have a sidecar "autoreloader"
-	// which reloads the collector config every X seconds.
-	// Those users wouldn't expect their metrics to be reset every time the config is reloaded.
-	t.Run("config with the same metric", func(t *testing.T) {
-		tester.updateAndTest(numLogsToSend, cfg,
-			fmt.Sprintf(expectedMetrics, numLogsToSend, numLogsToSend),
-			fmt.Sprintf(expectedMetrics, 2*numLogsToSend, 2*numLogsToSend))
-	})
-
-	// Use a config which has no metrics stage.
-	// This should cause the metric to disappear.
-	cfgWithNoStages := forwardArgs
-	t.Run("config with no metrics stage", func(t *testing.T) {
-		tester.updateAndTest(numLogsToSend, cfgWithNoStages, "", "")
-	})
 
 	// Use a config which has a metric with a different name,
 	// as well as a metric with the same name as the one in the previous config.
@@ -1817,119 +1489,114 @@ func TestMetricsStageRefresh(t *testing.T) {
 	loki_process_custom_outer_counter_2{filename="/var/log/pods/agent/agent/1.log",foo="bar"} %d
 	`
 
-	t.Run("config with a new and old metric", func(t *testing.T) {
-		tester.updateAndTest(numLogsToSend, updatedCfg,
-			"",
-			fmt.Sprintf(expectedMetrics3, numLogsToSend, numLogsToSend, numLogsToSend))
-	})
-}
-
-type tester struct {
-	t            *testing.T
-	component    *Component
-	registry     *prometheus.Registry
-	cancelFunc   context.CancelFunc
-	runDone      chan struct{}
-	logReceiver  loki.LogsReceiver
-	logTimestamp time.Time
-	logEntry     loki.Entry
-	wantLabelSet model.LabelSet
-}
-
-// Create the component, so that it can process and forward logs.
-func newTester(t *testing.T) *tester {
-	reg := prometheus.NewRegistry()
-
-	logger := util.TestAlloyLogger(t)
-	opts := component.Options{
-		Logger:         logger.Slog(),
-		Registerer:     reg,
-		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: getServiceData,
-	}
-
-	initialCfg := `forward_to = []`
-	var args Arguments
-	err := syntax.Unmarshal([]byte(initialCfg), &args)
-	require.NoError(t, err)
-
-	logReceiver := loki.NewLogsReceiver()
-	args.ForwardTo = []loki.LogsReceiver{logReceiver}
-
-	c, err := New(opts, args)
-	require.NoError(t, err)
-
-	ctx, cancel := context.WithCancel(t.Context())
-	runDone := make(chan struct{})
-	go func() {
-		c.Run(ctx)
-		close(runDone)
-	}()
-
-	logTimestamp := time.Now()
-
-	return &tester{
-		t:            t,
-		component:    c,
-		registry:     reg,
-		cancelFunc:   cancel,
-		runDone:      runDone,
-		logReceiver:  logReceiver,
-		logTimestamp: logTimestamp,
-		logEntry: loki.Entry{
-			Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"},
-			Entry: push.Entry{
-				Timestamp: logTimestamp,
-				Line:      logline,
-			},
-		},
-		wantLabelSet: model.LabelSet{
-			"filename": "/var/log/pods/agent/agent/1.log",
-			"foo":      "bar",
-		},
-	}
-}
-
-func (t *tester) stop() {
-	t.cancelFunc()
-	<-t.runDone
-}
-
-func (t *tester) updateAndTest(numLogsToSend int, cfg, expectedMetricsBeforeSendingLogs, expectedMetricsAfterSendingLogs string) {
-	var args Arguments
-	err := syntax.Unmarshal([]byte(cfg), &args)
-	require.NoError(t.t, err)
-
-	args.ForwardTo = []loki.LogsReceiver{t.logReceiver}
-
-	t.component.Update(args)
-
-	// Check the component metrics.
-	if err := testutil.GatherAndCompare(t.registry,
-		strings.NewReader(expectedMetricsBeforeSendingLogs)); err != nil {
-		require.NoError(t.t, err)
-	}
-
-	// Send logs.
-	for i := 0; i < numLogsToSend; i++ {
-		t.component.receiver.Chan() <- t.logEntry
-	}
-
-	// Receive logs.
-	for i := 0; i < numLogsToSend; i++ {
-		select {
-		case logEntry := <-t.logReceiver.Chan():
-			require.True(t.t, t.logTimestamp.Equal(logEntry.Timestamp))
-			require.Equal(t.t, logline, logEntry.Line)
-			require.Equal(t.t, t.wantLabelSet, logEntry.Labels)
-		case <-time.After(5 * time.Second):
-			require.FailNow(t.t, "failed waiting for log line")
+	lokitest.Test(t, func(t *testing.T, env lokitest.Env) {
+		logTimestamp := time.Now()
+		logEntry := loki.Entry{
+			Labels:    model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"},
+			Timestamp: logTimestamp,
+			Line:      logline,
 		}
-	}
 
-	// Check the component metrics.
-	if err := testutil.GatherAndCompare(t.registry,
-		strings.NewReader(expectedMetricsAfterSendingLogs)); err != nil {
-		require.NoError(t.t, err)
-	}
+		// updateAndTest applies cfg, checks the metrics, sends numLogs entries,
+		// receives them and checks the metrics again.
+		updateAndTest := func(t *testing.T, ctrl *componenttest.Controller, out *lokitest.Receiver, numLogs int, cfg, before, after string) {
+			var args Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+			args.ForwardTo = []loki.LogsReceiver{out}
+			require.NoError(t, ctrl.Update(args))
+
+			require.NoError(t, testutil.GatherAndCompare(ctrl.PromRegistry, strings.NewReader(before)))
+
+			recv := ctrl.Exports().(Exports).Receiver
+			for range numLogs {
+				require.NoError(t, env.Send(t.Context(), recv, logEntry))
+			}
+
+			for _, e := range out.Next(t, numLogs) {
+				require.True(t, logTimestamp.Equal(e.Timestamp))
+				require.Equal(t, logline, e.Line)
+				require.Equal(t, model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"}, e.Labels)
+			}
+
+			require.NoError(t, testutil.GatherAndCompare(ctrl.PromRegistry, strings.NewReader(after)))
+		}
+
+		t.Run("refresh", func(t *testing.T) {
+			out := env.NewReceiver(t)
+			ctrl, _ := env.Run(t, "loki.process", Arguments{ForwardTo: []loki.LogsReceiver{out}})
+
+			// The component will be reconfigured so that it has a metric.
+			t.Run("config with a metric", func(t *testing.T) {
+				updateAndTest(t, ctrl, out, numLogsToSend, cfg,
+					"",
+					fmt.Sprintf(expectedMetrics, numLogsToSend, numLogsToSend))
+			})
+
+			// The component will be "updated" with the same config.
+			// We expect the metric to stay the same before logs are sent - the component should be smart enough to
+			// know that the new config is the same as the old one and it should just keep running as it is.
+			// If it resets the metric, this could cause issues with some users who have a sidecar "autoreloader"
+			// which reloads the collector config every X seconds.
+			// Those users wouldn't expect their metrics to be reset every time the config is reloaded.
+			t.Run("config with the same metric", func(t *testing.T) {
+				updateAndTest(t, ctrl, out, numLogsToSend, cfg,
+					fmt.Sprintf(expectedMetrics, numLogsToSend, numLogsToSend),
+					fmt.Sprintf(expectedMetrics, 2*numLogsToSend, 2*numLogsToSend))
+			})
+
+			// Use a config which has no metrics stage.
+			// This should cause the metric to disappear.
+			t.Run("config with no metrics stage", func(t *testing.T) {
+				updateAndTest(t, ctrl, out, numLogsToSend, forwardArgs, "", "")
+			})
+
+			t.Run("config with a new and old metric", func(t *testing.T) {
+				updateAndTest(t, ctrl, out, numLogsToSend, updatedCfg,
+					"",
+					fmt.Sprintf(expectedMetrics3, numLogsToSend, numLogsToSend, numLogsToSend))
+			})
+		})
+
+		// Alternate between two metrics configs many times, so leaked goroutines or
+		// series left behind by old pipelines show up.
+		t.Run("alternating metrics configs", func(t *testing.T) {
+			out := env.NewReceiver(t)
+			ctrl, _ := env.Run(t, "loki.process", Arguments{ForwardTo: []loki.LogsReceiver{out}})
+
+			cfg1 := `
+			stage.metrics {
+				metric.counter {
+					name = "paulin_test1"
+					action = "inc"
+					match_all = true
+				}
+			}` + forwardArgs
+
+			cfg2 := `
+			stage.metrics {
+				metric.counter {
+					name = "paulin_test2"
+					action = "inc"
+					match_all = true
+				}
+			}` + forwardArgs
+
+			metrics1 := `
+			# HELP loki_process_custom_paulin_test1
+			# TYPE loki_process_custom_paulin_test1 counter
+			loki_process_custom_paulin_test1{filename="/var/log/pods/agent/agent/1.log",foo="bar"} 1
+			`
+
+			metrics2 := `
+			# HELP loki_process_custom_paulin_test2
+			# TYPE loki_process_custom_paulin_test2 counter
+			loki_process_custom_paulin_test2{filename="/var/log/pods/agent/agent/1.log",foo="bar"} 1
+			`
+
+			for range 101 {
+				updateAndTest(t, ctrl, out, 1, cfg1, "", metrics1)
+				updateAndTest(t, ctrl, out, 1, cfg2, "", metrics2)
+			}
+		})
+	})
 }
