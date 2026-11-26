@@ -99,6 +99,13 @@ Clients using the [Grafana Faro Web SDK][faro-sdk] forward telemetry data to thi
 | `api_key`                  | `secret`       | Optional API key to validate client requests with.              | `""`          | no       |
 | `max_allowed_payload_size` | `string`       | Maximum size (in bytes) for client requests.                    | `"5MiB"`      | no       |
 | `include_metadata`         | `bool`         | Propagate incoming connection metadata to downstream consumers. | `false`       | no       |
+| `read_timeout`             | `duration`     | Timeout for reading a request, including its body.              | `"0s"`        | no       |
+| `request_timeout`          | `duration`     | Timeout for processing and forwarding a request.                | `"0s"`        | no       |
+
+The `read_timeout` argument limits how long the server waits to read an HTTP request.
+The `request_timeout` argument limits how long a request can take to process, including forwarding each log line, exception, measurement, event, and trace.
+The default value of `"0s"` disables each timeout. If `request_timeout` expires, the server returns `HTTP 504 Gateway Timeout` when the response can still be sent.
+If the client disconnects, forwarding stops when its request context is canceled.
 
 By default, telemetry data is only accepted from applications on the same local network as the browser.
 To accept telemetry data from a wider set of clients, modify the `listen_address` attribute to the IP address of the appropriate network interface to use.
