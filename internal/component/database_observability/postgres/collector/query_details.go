@@ -259,7 +259,7 @@ func (c *QueryDetails) emit(databaseName database, queryID, queryText string, ha
 	for _, table := range tables {
 		validated := false
 		resolvedTable := table
-		if hasDatabase {
+		if c.tableRegistry != nil {
 			resolvedTable, validated = c.tableRegistry.IsValid(databaseName, table)
 		}
 		parsedTables = append(parsedTables, database_observability.ParsedTable{Table: resolvedTable, Validated: validated})
