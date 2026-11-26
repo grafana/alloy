@@ -169,7 +169,8 @@ func (c *QueryMetrics) collect(ctx context.Context) error {
 		return nil
 	}
 
-	sources, err := c.fetchQueryStoreMetrics(ctx, target.database, queryMetricsStatement(target))
+	query, args := c.queryMetricsStatement(target)
+	sources, err := c.fetchQueryStoreMetrics(ctx, target, query, args)
 	if err != nil {
 		return err
 	}
@@ -178,26 +179,31 @@ func (c *QueryMetrics) collect(ctx context.Context) error {
 	return nil
 }
 
-// queryMetricsStatement returns the statement that reads the primary's
-// executions: the role-filtered one when Query Store records replica roles,
-// otherwise the unfiltered one.
-func queryMetricsStatement(target queryStoreTarget) string {
-	if target.replicaRolesSupported {
-		return selectPrimaryQueryMetrics
+// queryMetricsStatement returns the statement and arguments that read the
+// executions recorded by the connected server's replica role. On a primary
+// whose Query Store doesn't record replica roles, every row is read.
+func (c *QueryMetrics) queryMetricsStatement(target queryStoreTarget) (string, []any) {
+	args := []any{
+		sql.Named("limit", c.limit),
+		sql.Named("lookback_window", int(c.lookback/time.Second)),
+		sql.Named("exclude_current_user", c.excludeCurrentUser),
+		sql.Named("collector_marker", QueryMarker),
 	}
-	return selectQueryMetrics
+
+	// A secondary only reports READ_CAPTURE_SECONDARY when Query Store records
+	// replica roles, so the unfiltered statement is only needed on a primary.
+	if target.mode == queryStoreModePrimary && !target.replicaRolesSupported {
+		return selectQueryMetrics, args
+	}
+
+	return selectRoleQueryMetrics, append(args, sql.Named("role_type", target.roleType))
 }
 
-func (c *QueryMetrics) fetchQueryStoreMetrics(ctx context.Context, database, query string) ([]queryMetricSource, error) {
+func (c *QueryMetrics) fetchQueryStoreMetrics(ctx context.Context, target queryStoreTarget, query string, args []any) ([]queryMetricSource, error) {
+	origin := queryMetricsOrigin{mode: target.mode, roleType: target.roleType}
 	var sources []queryMetricSource
 	err := withQueryTimeout(ctx, c.queryTimeout, func(queryCtx context.Context) error {
-		rows, err := c.dbConnection.QueryContext(
-			queryCtx, query,
-			sql.Named("limit", c.limit),
-			sql.Named("lookback_window", int(c.lookback/time.Second)),
-			sql.Named("exclude_current_user", c.excludeCurrentUser),
-			sql.Named("collector_marker", QueryMarker),
-		)
+		rows, err := c.dbConnection.QueryContext(queryCtx, query, args...)
 		if err != nil {
 			return fmt.Errorf("failed to query Query Store metrics: %w", err)
 		}
@@ -217,11 +223,12 @@ func (c *QueryMetrics) fetchQueryStoreMetrics(ctx context.Context, database, que
 			}
 
 			sources = append(sources, queryMetricSource{
-				database:        database,
+				database:        target.database,
 				queryHash:       queryHash,
 				executions:      executions,
 				errors:          errorExecutions,
 				durationSeconds: durationMicroseconds / 1e6,
+				origin:          origin,
 			})
 		}
 		if err := rows.Err(); err != nil {

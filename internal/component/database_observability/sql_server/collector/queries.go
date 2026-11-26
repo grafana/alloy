@@ -56,19 +56,22 @@ WITH runtime_stats AS (
 ),
 ` + queryMetricsBody
 
-// selectPrimaryQueryMetrics reads only the runtime_stats rows the primary
-// replica recorded. With Query Store for secondary replicas, secondaries send
-// their execution statistics to the primary's Query Store, tagged with their
-// role's replica_group_id; counting those rows would attribute replica
-// workload to the primary. When sys.query_store_replicas is empty (the feature
-// isn't active), every row belongs to the primary.
-const selectPrimaryQueryMetrics = `
+// selectRoleQueryMetrics reads only the runtime_stats rows recorded by the
+// replica role @role_type. With Query Store for secondary replicas,
+// secondaries send their execution statistics to the primary's Query Store,
+// tagged with their role's replica_group_id, and the data is replicated back to
+// every replica; reading every row would attribute other replicas' workload to
+// the connected server. When sys.query_store_replicas is empty (the feature
+// isn't active), every row belongs to the primary, so the primary role reads
+// every row; a secondary role never falls back to reading every row, which
+// would attribute the primary's workload to the secondary.
+const selectRoleQueryMetrics = `
 WITH runtime_stats AS (
 	SELECT rs.*
 	FROM sys.query_store_runtime_stats rs
-	WHERE NOT EXISTS (SELECT 1 FROM sys.query_store_replicas)
+	WHERE (@role_type = 1 AND NOT EXISTS (SELECT 1 FROM sys.query_store_replicas))
 		OR rs.replica_group_id IN (
-			SELECT replica_group_id FROM sys.query_store_replicas WHERE role_type = 1
+			SELECT replica_group_id FROM sys.query_store_replicas WHERE role_type = @role_type
 		)
 ),
 ` + queryMetricsBody
@@ -280,6 +283,32 @@ const selectQueryStoreState = `
 			)
 		THEN 1 ELSE 0 END
 	FROM sys.database_query_store_options`
+
+// selectDatabaseReplicaProperties returns the engine edition, whether the
+// connected database is writable (READ_WRITE) or a read-only replica
+// (READ_ONLY), and its Azure SQL Database service tier (Edition), such as
+// Hyperscale.
+const selectDatabaseReplicaProperties = `
+	SELECT ` + QueryMarker + `
+		CONVERT(int, SERVERPROPERTY('EngineEdition')),
+		CONVERT(nvarchar(128), DATABASEPROPERTYEX(DB_NAME(), 'Updateability')),
+		CONVERT(nvarchar(128), DATABASEPROPERTYEX(DB_NAME(), 'Edition'))`
+
+// selectHyperscaleReplicaRole returns the Hyperscale replica role of the
+// connected replica and, for a high-availability replica, the role of the
+// replica it belongs to. Azure SQL Database Hyperscale only.
+const selectHyperscaleReplicaRole = `
+	SELECT ` + QueryMarker + ` l.replica_role, p.replica_role
+	FROM sys.dm_hs_database_replicas(DB_ID()) l
+	LEFT JOIN sys.dm_hs_database_replicas(DB_ID()) p ON p.replica_id = l.parent_replica_id
+	WHERE l.is_local = 1`
+
+// selectGeoSecondaryLinks counts the active geo-replication links on which the
+// connected database is the secondary. Azure SQL Database only.
+const selectGeoSecondaryLinks = `
+	SELECT ` + QueryMarker + ` COUNT(*)
+	FROM sys.dm_geo_replication_link_status
+	WHERE role_desc = N'SECONDARY'`
 
 const selectMyPermissionsQuery = `SELECT ` + QueryMarker + ` permission_name FROM sys.fn_my_permissions(NULL, 'DATABASE')`
 

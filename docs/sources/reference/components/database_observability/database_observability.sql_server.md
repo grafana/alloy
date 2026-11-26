@@ -259,6 +259,7 @@ This keeps log volume low and ensures a fresh entry at least every 30 minutes.
 
 The `health_check` collector periodically verifies that the login has the required grants (`VIEW DEFINITION`, plus `VIEW DATABASE STATE` or its SQL Server 2022+ equivalent `VIEW DATABASE PERFORMANCE STATE`, and on editions other than Azure SQL Database `VIEW SERVER STATE` or `VIEW SERVER PERFORMANCE STATE`) and that [Query Store][query_store] is enabled and populated, on every database the login can access on the instance. Each check emits a log entry with `op="health_status"` and a `check` field identifying it: `AlloyVersion`, `RequiredGrantsPresent`, `QueryStoreEnabled`, or `QueryStoreHasRows`.
 
+`QueryStoreEnabled` treats Query Store as enabled when its state is `READ_WRITE`, or `READ_CAPTURE_SECONDARY` on a readable secondary replica.
 `RequiredGrantsPresent` and `QueryStoreEnabled` pass only when at least one accessible user database exists and the check holds on every database the login can access (plus the server-level grant on non-Azure SQL Database editions); when they fail, the log entry's value describes the missing server grant, non-compliant databases, or `no accessible databases`. `QueryStoreHasRows` passes as soon as any accessible database has Query Store data, since it's expected for a low-traffic database to have none.
 
 ### `query_details`
@@ -284,6 +285,12 @@ When the connected database is a system database such as `master`, or Query Stor
 On a primary replica, the collector only counts executions that ran on the primary.
 When [Query Store for secondary replicas][query_store_secondary_replicas] is active, readable secondary replicas send their execution statistics to the primary's Query Store, and the collector excludes them.
 
+On an Azure SQL Database readable secondary, such as an active geo-replication secondary, Query Store reports the `READ_CAPTURE_SECONDARY` state.
+The collector reads the executions recorded for the secondary's replica role: geo-secondary on a geo-replication secondary, and secondary on a high-availability read replica.
+On an Azure SQL Database Hyperscale named replica, the collector can't identify the replica's role and skips collection.
+Query Store aggregates executions per role, not per server.
+If a database has more than one geo-secondary, each geo-secondary reports the combined executions of all of them.
+
 The login requires `VIEW DATABASE STATE` on the connected database. On SQL Server 2022 and later, `VIEW DATABASE PERFORMANCE STATE` is also sufficient.
 
 [query_store]: https://learn.microsoft.com/sql/relational-databases/performance/monitoring-performance-by-using-the-query-store
@@ -303,6 +310,7 @@ The login requires `VIEW DATABASE STATE` on the connected database. On SQL Serve
 The `query_samples` collector only collects requests whose query hash is tracked by the `query_metrics` collector.
 The collector checks [Query Store][query_store] state on the connected database before polling live requests.
 When the connected database is a system database such as `master`, or Query Store is disabled or read-only, the collector skips collection.
+On an Azure SQL Database readable secondary whose Query Store reports `READ_CAPTURE_SECONDARY`, the collector polls live requests on the secondary.
 
 When requests finish between polls, the collector filters out any request whose final elapsed time is shorter than `sample_min_duration`.
 Remaining completed requests are ranked by elapsed duration and then CPU time, and capped by `max_samples_per_query` and `max_samples_per_collect`.

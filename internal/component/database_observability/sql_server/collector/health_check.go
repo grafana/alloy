@@ -409,9 +409,10 @@ func queryGrantedPermissions(ctx context.Context, conn *sql.Conn, queryTimeout t
 	return granted, nil
 }
 
-// isQueryStoreEnabled checks whether Query Store is usable (READ_WRITE) on
-// the database currently active on conn (set via a prior USE statement).
-// It mirrors the "usable" definition used by the query_metrics preflight in
+// isQueryStoreEnabled checks whether Query Store is usable (READ_WRITE, or
+// READ_CAPTURE_SECONDARY on a readable secondary replica) on the database
+// currently active on conn (set via a prior USE statement). It mirrors the
+// "usable" definition used by the query_metrics preflight in
 // checkQueryStoreState (query_store.go), rather than the raw ON/OFF state.
 func isQueryStoreEnabled(ctx context.Context, conn *sql.Conn, queryTimeout time.Duration) (bool, error) {
 	opts, err := queryStoreState(ctx, conn, queryTimeout)

@@ -137,6 +137,45 @@ func TestQueryMetricsState_FlappingHashKeepsBaselineWithinTTL(t *testing.T) {
 	require.InDelta(t, 8.0, counterValue(t, duration), 1e-9)
 }
 
+func TestQueryMetricsState_HashAbsentDuringRoleChangeRebaselinesOnReturn(t *testing.T) {
+	t.Parallel()
+
+	executions, errCounter, duration := newTestCounterVecs()
+	state := newQueryMetricsState(executions, errCounter, duration, 10*time.Minute)
+
+	now := time.Now()
+	state.now = func() time.Time { return now }
+
+	geoSecondary := queryMetricsOrigin{mode: queryStoreModeSecondary, roleType: replicaRoleGeoSecondary}
+	primary := queryMetricsOrigin{mode: queryStoreModePrimary, roleType: replicaRolePrimary}
+
+	state.update([]queryMetricSource{{database: testDatabase, queryHash: testHash, executions: 100, errors: 1, durationSeconds: 50, origin: geoSecondary}})
+	now = now.Add(1 * time.Minute)
+	state.update([]queryMetricSource{{database: testDatabase, queryHash: testHash, executions: 105, errors: 2, durationSeconds: 52, origin: geoSecondary}})
+	require.Equal(t, 5.0, counterValue(t, executions))
+
+	// After a failover the hash is outside the primary's top-N for a couple of
+	// polls, so its baseline still holds the geo-secondary's totals.
+	now = now.Add(1 * time.Minute)
+	state.update(nil)
+	now = now.Add(1 * time.Minute)
+	state.update(nil)
+
+	// It re-enters the top-N with the primary role's higher totals: those
+	// aren't comparable with the stored baseline, so nothing is added.
+	now = now.Add(1 * time.Minute)
+	state.update([]queryMetricSource{{database: testDatabase, queryHash: testHash, executions: 10_000, errors: 40, durationSeconds: 9_000, origin: primary}})
+	require.Equal(t, 5.0, counterValue(t, executions))
+	require.Equal(t, 1.0, counterValue(t, errCounter))
+	require.InDelta(t, 2.0, counterValue(t, duration), 1e-9)
+
+	now = now.Add(1 * time.Minute)
+	state.update([]queryMetricSource{{database: testDatabase, queryHash: testHash, executions: 10_012, errors: 41, durationSeconds: 9_006, origin: primary}})
+	require.Equal(t, 17.0, counterValue(t, executions))
+	require.Equal(t, 2.0, counterValue(t, errCounter))
+	require.InDelta(t, 8.0, counterValue(t, duration), 1e-9)
+}
+
 func TestQueryMetricsState_GetQueryHashes(t *testing.T) {
 	t.Parallel()
 
