@@ -124,11 +124,17 @@ In addition to the meta labels, the following labels are exposed to tell `loki.s
 ### `PipelineSpec`
 
 `PipelineSpec` lists the stages that every log line collected for the `PodLogs` passes through, in order, before it's forwarded to the `forward_to` receivers.
-Each stage behaves like the `loki.process` stage of the same name.
+Each stage works like the matching `loki.process` stage, but supports only the fields listed here.
 
-| Field    | Type              | Description                                   |
-| -------- | ----------------- | --------------------------------------------- |
-| `stages` | [PipelineStage][] | Stages to run on each log line. At least one. |
+| Field    | Type              | Description                                                      |
+| -------- | ----------------- | ---------------------------------------------------------------- |
+| `stages` | [PipelineStage][] | Stages to run on each log line. Must contain at least one stage. |
+
+Stages run inside every {{< param "PRODUCT_NAME" >}} instance that tails the matched Pods, once per log line.
+Avoid complex regular expressions and avoid promoting high-cardinality values to labels.
+A dropped line still advances the saved position of its container, so it isn't collected again on restart.
+The `loki_process_dropped_lines_total` metric of the `loki.source.podlogs` component counts dropped lines.
+A `PodLogs` with an invalid pipeline collects nothing and reports the error in the component's debug information.
 
 [PipelineStage]: #pipelinestage
 
@@ -154,23 +160,15 @@ A `PipelineStage` sets exactly one of the following fields.
 
 #### `DropStage`
 
-| Field               | Type   | Description                                                                              |
-| ------------------- | ------ | ---------------------------------------------------------------------------------------- |
-| `dropCounterReason` | string | Value of the `reason` label on the dropped lines counter. Default is `drop_stage`.       |
-| `expression`        | string | RE2 regular expression. The line is dropped when it matches.                             |
-| `separator`         | string | String used to join multiple `source` values. Default is `;`.                            |
-| `source`            | string | Comma-separated list of extracted keys to match on. When empty, the log line is matched. |
-| `value`             | string | The line is dropped when the joined `source` values equal this string exactly.           |
+| Field               | Type   | Description                                                                                                                                             |
+| ------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dropCounterReason` | string | Value of the `reason` label on the dropped lines counter. Default is `drop_stage`.                                                                      |
+| `expression`        | string | RE2 regular expression. Matches the log line, or the joined `source` values when you set `source`. A match drops the line.                              |
+| `separator`         | string | String used to join multiple `source` values. Default is `;`.                                                                                           |
+| `source`            | string | Comma-separated list of extracted keys to match on. Without `expression` or `value`, the stage drops lines where every key exists in the extracted map. |
+| `value`             | string | Drops the line when the joined `source` values equal this string exactly.                                                                               |
 
-At least one of `source` or `expression` must be set. `value` requires `source` and can't be combined with `expression`.
-
-#### `RegexStage`
-
-| Field              | Type    | Description                                                               |
-| ------------------ | ------- | ------------------------------------------------------------------------- |
-| `expression`       | string  | RE2 regular expression with named capture groups. Required.               |
-| `labelsFromGroups` | boolean | Add every named capture group as a label.                                 |
-| `source`           | string  | Extracted key to run the expression on. When unset, the log line is used. |
+Set at least one of `source` or `expression`. `value` requires `source`, and you can't combine `value` with `expression`.
 
 #### `LabelsStage`
 
@@ -178,13 +176,23 @@ At least one of `source` or `expression` must be set. `value` requires `source` 
 | -------- | ----------------- | ------------------------------------------------------------------------------------- |
 | `values` | map[string]string | Label name to extracted key. An empty value uses the label name as the key. Required. |
 
+#### `RegexStage`
+
+| Field              | Type    | Description                                                                              |
+| ------------------ | ------- | ---------------------------------------------------------------------------------------- |
+| `expression`       | string  | RE2 regular expression with named capture groups. Required.                              |
+| `labelsFromGroups` | boolean | Add every named capture group as a label.                                                |
+| `source`           | string  | Extracted key to run the expression on. When unset, the expression runs on the log line. |
+
 #### `StaticLabelsStage`
 
 | Field    | Type              | Description                          |
 | -------- | ----------------- | ------------------------------------ |
 | `values` | map[string]string | Label name to label value. Required. |
 
-The following `PodLogs` drops `DEBUG` lines and adds the user ID found in the remaining lines as a `user` label:
+#### Pipeline example
+
+The following `PodLogs` drops `DEBUG` lines and adds the log level found in the remaining lines as a `level` label:
 
 ```yaml
 apiVersion: monitoring.grafana.com/v1alpha2
@@ -201,15 +209,9 @@ spec:
       - drop:
           expression: ".*DEBUG.*"
       - regex:
-          expression: "user=(?P<user>\\w+)"
+          expression: "level=(?P<level>\\w+)"
           labelsFromGroups: true
 ```
-
-Stages run inside every {{< param "PRODUCT_NAME" >}} instance that tails the matched Pods, once per log line.
-Keep regular expressions cheap and avoid promoting high-cardinality values to labels.
-A dropped line still advances the saved position of its container, so it isn't collected again on restart.
-Dropped lines are counted in the `loki_process_dropped_lines_total` metric of the `loki.source.podlogs` component.
-A `PodLogs` with an invalid pipeline collects nothing and reports the error in the component's debug information.
 
 ## Blocks
 
