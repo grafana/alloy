@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"runtime/pprof"
@@ -264,13 +265,12 @@ func ServeSupportBundle(rw http.ResponseWriter, b *Bundle, logsBuf []byte) error
 	}
 
 	for p, s := range b.sources {
-		zipStructure[filepath.Join("sources", filepath.Base(p))] = s
+		zipStructure[path.Join("sources", filepath.Base(p))] = s
 	}
 
 	for fn, b := range zipStructure {
 		if b != nil {
-			path := append([]string{"alloy-support-bundle"}, strings.Split(fn, "/")...)
-			if err := writeByteSlice(zw, b, path...); err != nil {
+			if err := writeByteSlice(zw, b, path.Join("alloy-support-bundle", fn)); err != nil {
 				return err
 			}
 		}
@@ -283,8 +283,10 @@ func ServeSupportBundle(rw http.ResponseWriter, b *Bundle, logsBuf []byte) error
 	return nil
 }
 
-func writeByteSlice(zw *zip.Writer, b []byte, fn ...string) error {
-	f, err := zw.Create(filepath.Join(fn...))
+// writeByteSlice writes b to the zip entry name. Zip entry names must use
+// forward slashes on every OS, so build name with path.Join, not filepath.Join.
+func writeByteSlice(zw *zip.Writer, b []byte, name string) error {
+	f, err := zw.Create(name)
 	if err != nil {
 		return err
 	}
