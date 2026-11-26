@@ -273,6 +273,7 @@ func newReloadTestEnvironment(t *testing.T) *reloadTestEnvironment {
 					_ otelcomponent.Config,
 					next otelconsumer.Traces,
 				) (otelprocessor.Traces, error) {
+
 					return env.newInstance(int(env.generation.Inc()), next), nil
 				}, otelcomponent.StabilityLevelUndefined),
 			)
