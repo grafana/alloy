@@ -277,6 +277,10 @@ func (c *Component) Run(ctx context.Context) error {
 	}
 
 	wg.Go(func() {
+		const prunePositionsPeriod = 10 * time.Second
+		pruneTicker := time.NewTicker(prunePositionsPeriod)
+		defer pruneTicker.Stop()
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -288,6 +292,10 @@ func (c *Component) Run(ctx context.Context) error {
 					continue
 				}
 				c.scheduleSources()
+				c.mut.Unlock()
+			case <-pruneTicker.C:
+				c.mut.Lock()
+				c.prunePositions()
 				c.mut.Unlock()
 			}
 		}
@@ -366,6 +374,19 @@ func (c *Component) scheduleSources() {
 			})
 		},
 	)
+}
+
+// prunePositions removes positions for files that are not tailed and no longer
+// exist. Positions are kept when existence can't be determined.
+// Caller must hold write lock on c.mut before calling this function.
+func (c *Component) prunePositions() {
+	c.posFile.RemoveIf(func(e positions.Entry) bool {
+		if c.scheduler.Contains(e) {
+			return false
+		}
+		_, err := os.Stat(e.Path)
+		return os.IsNotExist(err)
+	})
 }
 
 type debugInfo struct {

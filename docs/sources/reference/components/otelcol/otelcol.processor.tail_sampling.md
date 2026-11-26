@@ -22,6 +22,11 @@ Bug reports or feature requests will be redirected to the upstream repository, i
 [`tail_sampling`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/processor/tailsamplingprocessor
 {{< /admonition >}}
 
+{{< admonition type="warning" >}}
+`otelcol.processor.tail_sampling` reassembles spans into new batches, so the spans lose their original request context.
+Connect components that read request context, such as `otelcol.processor.k8sattributes`, before this component.
+{{< /admonition >}}
+
 You can specify multiple `otelcol.processor.tail_sampling` components by giving them different labels.
 
 ## Usage
