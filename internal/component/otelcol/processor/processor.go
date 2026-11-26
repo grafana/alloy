@@ -95,7 +95,7 @@ func New(opts component.Options, f otelprocessor.Factory, args Arguments) (*Proc
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	consumer := lazyconsumer.NewPaused(ctx, opts.ID)
+	consumer := lazyconsumer.NewPaused(ctx, opts.ID, opts.Logger)
 
 	// Create a lazy collector where metrics from the upstream component will be
 	// forwarded.
