@@ -153,8 +153,10 @@ func (cs *Scheduler) Run(ctx context.Context) error {
 		cs.onResume()
 	}()
 
-	// An earlier Run may have taken a signal and exited without taking the
-	// pending components, so always check them first.
+	// Run takes the signal before it takes the pending components. If an
+	// earlier Run failed to start every component, it put them back in
+	// pending and returned an error. The Alloy runtime then calls Run again,
+	// but nothing signals it. So always check pending first.
 	cs.signal()
 
 	first := true
