@@ -41,9 +41,13 @@ type Scheduler struct {
 	healthMut sync.RWMutex
 	health    component.Health
 
-	// next holds the latest components given to Schedule that Run hasn't
-	// switched to yet.
-	next chan scheduled
+	// pendingMut guards pending, the latest components given to Schedule
+	// that Run hasn't taken yet.
+	pendingMut sync.Mutex
+	pending    *scheduled
+	// wake tells Run that pending has changed. It has a buffer of 1, so
+	// Schedule doesn't wait for Run.
+	wake chan struct{}
 
 	// onPause is called when scheduler is making changes to running components.
 	onPause func()
@@ -73,7 +77,7 @@ func New(l *slog.Logger) *Scheduler {
 func NewWithPauseCallbacks(l *slog.Logger, onPause func(), onResume func()) *Scheduler {
 	return &Scheduler{
 		log:      l,
-		next:     make(chan scheduled, 1),
+		wake:     make(chan struct{}, 1),
 		onPause:  onPause,
 		onResume: onResume,
 	}
@@ -89,16 +93,50 @@ func NewWithPauseCallbacks(l *slog.Logger, onPause func(), onResume func()) *Sch
 // It is expected that this function will set the new set of consumers to the wrapping consumer that's assigned to the Alloy component.
 //
 // Schedule doesn't wait for Run to switch to the new components. If it is
-// called again before Run gets to them, only the latest set is started.
+// called again before Run takes them, only the latest set is started.
 func (cs *Scheduler) Schedule(ctx context.Context, updateConsumers func(), h otelcomponent.Host, cc ...otelcomponent.Component) {
-	s := scheduled{ctx: ctx, updateConsumers: updateConsumers, host: h, components: cc}
-	for {
-		select {
-		case cs.next <- s:
-			return
-		case <-cs.next:
-			// Drop the set that Run hasn't got to yet. It was never started.
-		}
+	cs.pendingMut.Lock()
+	replaced := cs.pending
+	cs.pending = &scheduled{ctx: ctx, updateConsumers: updateConsumers, host: h, components: cc}
+	cs.pendingMut.Unlock()
+
+	cs.signal()
+
+	if replaced != nil {
+		// Run never took the replaced components, so they were never started.
+		// OpenTelemetry requires Shutdown to be safe without Start, and the
+		// components may hold resources from their factory. Shut them down in
+		// the background, so that Schedule never waits for them.
+		go stopComponents(context.Background(), cs.log, replaced.components...)
+	}
+}
+
+// signal wakes up Run. If a signal is already waiting, Run will see the
+// latest pending components when it takes them.
+func (cs *Scheduler) signal() {
+	select {
+	case cs.wake <- struct{}{}:
+	default:
+	}
+}
+
+// takePending returns the pending components and clears them. It returns nil
+// if there are none.
+func (cs *Scheduler) takePending() *scheduled {
+	cs.pendingMut.Lock()
+	defer cs.pendingMut.Unlock()
+	s := cs.pending
+	cs.pending = nil
+	return s
+}
+
+// restorePending gives s back to the next Run, unless Schedule has given newer
+// components.
+func (cs *Scheduler) restorePending(s *scheduled) {
+	cs.pendingMut.Lock()
+	defer cs.pendingMut.Unlock()
+	if cs.pending == nil {
+		cs.pending = s
 	}
 }
 
@@ -115,18 +153,26 @@ func (cs *Scheduler) Run(ctx context.Context) error {
 		cs.onResume()
 	}()
 
-	for first := true; ; first = false {
-		var s scheduled
+	// An earlier Run may have taken a signal and exited without taking the
+	// pending components, so always check them first.
+	cs.signal()
+
+	first := true
+	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case s = <-cs.next:
+		case <-cs.wake:
 		}
 		if ctx.Err() != nil {
-			// select picks at random when both cases are ready. Don't start
-			// components that we would stop at once. Keep them for the next Run.
-			cs.requeue(s)
+			// select picks at random when both cases are ready. Leave the
+			// pending components for the next Run.
 			return nil
+		}
+		s := cs.takePending()
+		if s == nil {
+			// Run took the components after an earlier signal.
+			continue
 		}
 
 		// The new components must be setup in this order:
@@ -166,19 +212,12 @@ func (cs *Scheduler) Run(ctx context.Context) error {
 			if first && len(running) == 0 {
 				// Keep the components, so that the next Run tries to start them
 				// again.
-				cs.requeue(s)
+				cs.restorePending(s)
 				return fmt.Errorf("no components started successfully: %w", err)
 			}
 			cs.log.Error("failed to start some scheduled components", "err", err)
 		}
-	}
-}
-
-// requeue gives s to the next Run, unless Schedule has given newer components.
-func (cs *Scheduler) requeue(s scheduled) {
-	select {
-	case cs.next <- s:
-	default:
+		first = false
 	}
 }
 

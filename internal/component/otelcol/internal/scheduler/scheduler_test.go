@@ -181,18 +181,22 @@ func TestScheduler_Async(t *testing.T) {
 		require.True(t, updated.Load(), "consumers were not changed")
 	})
 
-	t.Run("Only the latest scheduled components are started", func(t *testing.T) {
+	t.Run("Only the latest scheduled components are started and replaced ones are shut down", func(t *testing.T) {
 		var (
 			l  = util.TestAlloyLogger(t)
 			cs = scheduler.New(l.Slog())
 			h  = scheduler.NewHost()
 		)
 
-		// Schedule twice before Run starts.
-		skipped, skippedStarted, _ := newTriggerComponent()
+		// Schedule twice before Run starts. The replaced component blocks in
+		// Shutdown, and the second Schedule must not wait for it.
+		release := make(chan struct{})
+		t.Cleanup(func() { close(release) })
+		skipped, skippedStarted, skippedStopped := newBlockingShutdownComponent(release)
 		latest, latestStarted, _ := newTriggerComponent()
 		cs.Schedule(t.Context(), func() {}, h, skipped)
-		cs.Schedule(t.Context(), func() {}, h, latest)
+		requireReturns(t, timeout, func() { cs.Schedule(t.Context(), func() {}, h, latest) })
+		require.NoError(t, skippedStopped.Wait(timeout), "replaced component was not shut down")
 
 		componenttest.RunInBackground(t, cs.Run)
 		require.NoError(t, latestStarted.Wait(timeout), "latest component did not start")
