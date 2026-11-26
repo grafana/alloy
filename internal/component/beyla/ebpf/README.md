@@ -37,10 +37,10 @@ While the subprocess runs, the component (`beyla_linux.go`):
 
 | file | role |
 |---|---|
-| `exec_linux.go` | Spawns Beyla: raises eBPF capabilities, extracts the embedded binary to a memfd, `exec`s it, and pipes its logs. Beyla inherits the config control socket as fd 3 and the config file as fd 4. |
+| `exec_linux.go` | Spawns Beyla: raises eBPF capabilities, decompresses the embedded binary into a memfd, `exec`s it, and pipes its logs. Beyla inherits the config control socket as fd 3 and the config file as fd 4. |
 | `control_linux.go` | Config control socket: asks the running Beyla to apply a config change without restarting, and reads whether it did. |
 | `watchdog_linux.go` | Periodic liveness probe; a dead/unhealthy subprocess triggers a restart. |
-| `beyla_embed_amd64.go`, `beyla_embed_arm64.go` | `//go:embed binaries/<arch>` the downloaded Beyla binary into the Alloy binary (an `embed.FS` per arch; read at runtime by `embeddedBeylaBinary`). |
+| `beyla_embed_amd64.go`, `beyla_embed_arm64.go` | `//go:embed binaries/<arch>` the downloaded Beyla binary into the Alloy binary (an `embed.FS` per arch; read and decompressed at runtime by `embeddedBeylaBinary`). |
 | `fd_linux.go` | Low-level fd helpers shared by config + subprocess: `createExecMemfd`, `fdAtOrAbove` (keeps the binary's fd clear of the inherited ones) and `WriteAll` (write-all with EINTR retry). |
 
 ### Telemetry
@@ -64,7 +64,7 @@ While the subprocess runs, the component (`beyla_linux.go`):
 | `sections_test.go` | End-to-end: every config section reaches the emitted Beyla YAML. |
 | `beyla_linux_test.go` | Deprecation-warning behavior. |
 
-Also present: `binaries/{amd64,arm64}/beyla` — the downloaded Beyla binaries (gitignored,
-embedded at build) — each with a committed `placeholder` so `//go:embed` matches before the
+Also present: `binaries/{amd64,arm64}/beyla.zst` — the downloaded Beyla binaries, zstd-compressed
+(gitignored, embedded at build) — each with a committed `placeholder` so `//go:embed` matches before the
 download, plus `.beyla-binary-version` (stamp). Managed by `make beyla`. Without the
 download only the placeholder is embedded, and `beyla.ebpf` errors at runtime if used.

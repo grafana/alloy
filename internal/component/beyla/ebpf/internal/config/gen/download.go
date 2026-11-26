@@ -17,11 +17,13 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/klauspost/compress/zstd"
 )
 
 const (
-	// maxBeylaBinarySize caps the extracted binary to bound a malicious/compression-bomb archive (real binary is ~120 MB).
-	maxBeylaBinarySize = 512 << 20 // 512 MB
+	// maxUncompressedBeylaBinarySize caps the extracted binary to bound a malicious/compression-bomb archive (real binary is ~190 MB).
+	maxUncompressedBeylaBinarySize = 512 << 20 // 512 MB
 	// maxTarballSize bounds the downloaded release tarball (real tarballs are ~50 MB).
 	maxTarballSize = 256 << 20 // 256 MB
 )
@@ -245,13 +247,34 @@ func downloadBinary(url, destPath, wantHex string) error {
 		return fmt.Errorf("checksum mismatch for %s: got %s, want %s", url, got, wantHex)
 	}
 
-	return extractBeyla(bytes.NewReader(data), destPath, url)
+	exe, err := extractBeyla(bytes.NewReader(data), url)
+	if err != nil {
+		return err
+	}
+
+	// Alloy embeds the binary, so compress it; exec_linux.go decompresses it before exec.
+	enc, err := zstd.NewWriter(nil, zstd.WithEncoderLevel(zstd.SpeedBestCompression))
+	if err != nil {
+		return fmt.Errorf("zstd: %w", err)
+	}
+	compressed := enc.EncodeAll(exe, nil)
+	if err := enc.Close(); err != nil {
+		return fmt.Errorf("zstd: %w", err)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+		return fmt.Errorf("mkdir: %w", err)
+	}
+	if err := os.WriteFile(destPath, compressed, 0644); err != nil {
+		return fmt.Errorf("write %s: %w", destPath, err)
+	}
+	return nil
 }
 
-func extractBeyla(r io.Reader, destPath, url string) error {
+func extractBeyla(r io.Reader, url string) ([]byte, error) {
 	gz, err := gzip.NewReader(r)
 	if err != nil {
-		return fmt.Errorf("gzip: %w", err)
+		return nil, fmt.Errorf("gzip: %w", err)
 	}
 	defer gz.Close()
 
@@ -262,29 +285,22 @@ func extractBeyla(r io.Reader, destPath, url string) error {
 			break
 		}
 		if err != nil {
-			return fmt.Errorf("tar: %w", err)
+			return nil, fmt.Errorf("tar: %w", err)
 		}
 		if hdr.Typeflag != tar.TypeReg || filepath.Base(hdr.Name) != "beyla" {
 			continue
 		}
-		if hdr.Size < 0 || hdr.Size > maxBeylaBinarySize {
-			return fmt.Errorf("beyla entry size %d out of range (max %d)", hdr.Size, maxBeylaBinarySize)
+		if hdr.Size < 0 || hdr.Size > maxUncompressedBeylaBinarySize {
+			return nil, fmt.Errorf("beyla entry size %d out of range (max %d)", hdr.Size, maxUncompressedBeylaBinarySize)
 		}
 
-		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
-			return fmt.Errorf("mkdir: %w", err)
+		// Bound the read to the header-declared (capped) size so a bad archive can't produce unbounded data.
+		exe := make([]byte, hdr.Size)
+		if _, err := io.ReadFull(tr, exe); err != nil {
+			return nil, fmt.Errorf("read beyla entry: %w", err)
 		}
-		f, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
-		if err != nil {
-			return fmt.Errorf("create %s: %w", destPath, err)
-		}
-		// Bound the copy to the header-declared (capped) size so a bad archive can't write unbounded data.
-		if _, err := io.CopyN(f, tr, hdr.Size); err != nil {
-			f.Close()
-			return fmt.Errorf("write %s: %w", destPath, err)
-		}
-		return f.Close()
+		return exe, nil
 	}
 
-	return fmt.Errorf("beyla binary not found in tarball: %s", url)
+	return nil, fmt.Errorf("beyla binary not found in tarball: %s", url)
 }

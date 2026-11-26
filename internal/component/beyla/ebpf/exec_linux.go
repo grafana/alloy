@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/klauspost/compress/zstd"
 	"go.uber.org/atomic"
 	"golang.org/x/sys/unix"
 
@@ -100,11 +101,33 @@ func raiseSubprocessCaps() (func(), error) {
 	}, nil
 }
 
+// maxUncompressedBeylaBinarySize bounds the decompressed Beyla binary (~190 MB today).
+const maxUncompressedBeylaBinarySize = 512 << 20
+
 // embeddedBeylaBinary returns the embedded Beyla binary for the current architecture.
-// Only a placeholder is present until `make download-beyla` writes the real binary, so
-// this returns an error when the binary hasn't been downloaded.
+// `make download-beyla` stores it zstd-compressed as beyla.zst. Only a
+// placeholder is present until then, so this returns an error when the binary hasn't
+// been downloaded.
 func embeddedBeylaBinary() ([]byte, error) {
-	return beylaBinaryFS.ReadFile("binaries/" + runtime.GOARCH + "/beyla")
+	compressed, err := beylaBinaryFS.ReadFile("binaries/" + runtime.GOARCH + "/beyla.zst")
+	if err != nil {
+		return nil, err
+	}
+	return decompressBeylaBinary(compressed)
+}
+
+func decompressBeylaBinary(compressed []byte) ([]byte, error) {
+	dec, err := zstd.NewReader(nil, zstd.WithDecoderConcurrency(1), zstd.WithDecoderMaxMemory(maxUncompressedBeylaBinarySize))
+	if err != nil {
+		return nil, err
+	}
+	defer dec.Close()
+
+	binary, err := dec.DecodeAll(compressed, nil)
+	if err != nil {
+		return nil, fmt.Errorf("decompress Beyla binary: %w", err)
+	}
+	return binary, nil
 }
 
 func findFreePort() (int, error) {
