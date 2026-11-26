@@ -12,6 +12,8 @@ import (
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/receiver"
 	"go.opentelemetry.io/collector/receiver/receiverhelper"
+
+	"github.com/grafana/alloy/internal/component/prometheus/appenders/adapter"
 )
 
 // appendable translates Prometheus scraping diffs into OpenTelemetry format.
@@ -61,9 +63,8 @@ func (o *appendable) Appender(ctx context.Context) storage.Appender {
 // AppenderV2 satisfies the AppendableV2 interface.
 //
 // TODO(v2 migration step 5): migrate the otelcol.receiver.prometheus
-// transaction to use AppenderV2 natively. It currently panics because
-// nothing calls it in production yet; all active append paths still go
-// through Appender (V1). See https://github.com/grafana/alloy/issues/6896
-func (o *appendable) AppenderV2(_ context.Context) storage.AppenderV2 {
-	panic("AppenderV2 not yet implemented for otelcol.receiver.prometheus")
+// transaction to use AppenderV2 natively. Until then, appends are converted
+// to calls on the V1 transaction. See https://github.com/grafana/alloy/issues/6896
+func (o *appendable) AppenderV2(ctx context.Context) storage.AppenderV2 {
+	return adapter.AppenderV1AsV2(o.Appender(ctx))
 }
