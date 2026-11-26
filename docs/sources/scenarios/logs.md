@@ -1,4 +1,9 @@
 ---
+aliases:
+  - ../monitor/monitor-logs-from-file/ # /docs/alloy/latest/monitor/monitor-logs-from-file/
+  - ../monitor/monitor-logs-over-tcp/ # /docs/alloy/latest/monitor/monitor-logs-over-tcp/
+  - ../monitor/monitor-structured-logs/ # /docs/alloy/latest/monitor/monitor-structured-logs/
+  - ../monitor/monitor-syslog-messages/ # /docs/alloy/latest/monitor/monitor-syslog-messages/
 canonical: https://grafana.com/docs/alloy/latest/scenarios/logs/
 description: Runnable scenarios that collect, parse, route, and redact logs with Grafana Alloy
 menuTitle: Logs

@@ -1,4 +1,9 @@
 ---
+aliases:
+  - ../monitor/monitor-docker-containers/ # /docs/alloy/latest/monitor/monitor-docker-containers/
+  - ../monitor/monitor-kubernetes-logs/ # /docs/alloy/latest/monitor/monitor-kubernetes-logs/
+  - ../monitor/monitor-linux/ # /docs/alloy/latest/monitor/monitor-linux/
+  - ../monitor/monitor-windows/ # /docs/alloy/latest/monitor/monitor-windows/
 canonical: https://grafana.com/docs/alloy/latest/scenarios/infrastructure-and-platforms/
 description: Runnable scenarios that monitor hosts, containers, network devices, cloud providers, and Kubernetes with Grafana Alloy
 menuTitle: Infrastructure and platforms
