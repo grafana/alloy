@@ -3,6 +3,7 @@ package lokitest
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -91,29 +92,32 @@ func (env Env) opts(o component.Options) component.Options {
 	return o
 }
 
-// Send sends entries to recv in env.
-func (env Env) Send(t *testing.T, recv loki.LogsReceiver, entries ...loki.Entry) {
-	t.Helper()
-
+// Send sends entries to recv in env and returns the error from recv. With Loki
+// pipeline v1 it gives up after 5 seconds if recv does not read the entries.
+func (env Env) Send(ctx context.Context, recv loki.LogsReceiver, entries ...loki.Entry) error {
 	if !env.pipelineV2 {
 		for _, e := range entries {
 			select {
 			case recv.Chan() <- e:
+			case <-ctx.Done():
+				return ctx.Err()
 			case <-time.After(5 * time.Second):
-				require.FailNow(t, "timed out sending entry")
+				return errors.New("lokitest: timed out sending entry")
 			}
 		}
-		return
+		return nil
 	}
 
 	c, ok := recv.(loki.Consumer)
-	require.True(t, ok, "receiver does not support Loki pipeline V2")
+	if !ok {
+		return errors.New("lokitest: receiver does not support Loki pipeline V2")
+	}
 
 	batch := loki.NewBatch()
 	for _, e := range entries {
 		batch.AddEntry(e.Labels, e.Created(), e.Entry)
 	}
-	require.NoError(t, c.Consume(t.Context(), batch))
+	return c.Consume(ctx, batch)
 }
 
 // NewReceiver returns a Receiver for a component running in env to forward to.
