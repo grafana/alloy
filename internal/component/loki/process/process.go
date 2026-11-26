@@ -186,7 +186,7 @@ func (c *Component) updateV1(newArgs Arguments) error {
 
 	// We want to create a new pipeline if the config changed or if this is the
 	// first load. This will allow a component with no stages to function properly.
-	if stagesChanged(c.stages, newArgs.Stages) {
+	if stagesChanged(c.stages, newArgs.Stages) || c.stages == nil {
 		pipeline, err := stages.NewPipeline(c.opts.Logger, newArgs.Stages, c.opts.Registerer, c.opts.MinStability)
 		if err != nil {
 			return err
@@ -208,7 +208,7 @@ func (c *Component) updateV1(newArgs Arguments) error {
 func (c *Component) updateV2(newArgs Arguments) error {
 	c.fanoutV2.UpdateChildren(newArgs.ForwardTo)
 
-	if stagesChanged(c.stages, newArgs.Stages) {
+	if stagesChanged(c.stages, newArgs.Stages) || c.pipelineV2 == nil {
 		pipeline, err := stages.NewPipelineV2(c.opts.Logger, c.opts.Registerer, c.opts.MinStability, newArgs.Stages, outConsumer{c: c})
 		if err != nil {
 			return err
@@ -285,10 +285,6 @@ func (c *Component) handleIn(ctx context.Context) {
 }
 
 func stagesChanged(prev, next []stages.StageConfig) bool {
-	if prev == nil {
-		return true
-	}
-
 	if len(prev) != len(next) {
 		return true
 	}
