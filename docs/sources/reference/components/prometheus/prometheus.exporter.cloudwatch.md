@@ -7,7 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
-review_date: 2026-10-01
+review_date: 2026-11-26
 title: prometheus.exporter.cloudwatch
 ---
 
