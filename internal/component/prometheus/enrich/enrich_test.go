@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -167,55 +166,87 @@ func TestEnricher(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fanout := prometheus.NewInterceptor(
-				nil,
-				prometheus.WithAppendHook(func(ref storage.SeriesRef, l labels.Labels, _ int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
+		for _, version := range testappender.AppenderVersions() {
+			t.Run(tt.name+"/"+version.Name, func(t *testing.T) {
+				var calls int
+				fanout := terminalInterceptor(func(l labels.Labels) {
+					calls++
 					for name, value := range tt.expectedLabels {
 						require.Equal(t, value, l.Get(name), "label %s", name)
 					}
+				})
 
-					return ref, nil
-				}))
+				dest := testappender.NewCollectingAppender()
+				var entry storage.AppendableV2
+				tt.args.ForwardTo = []storage.AppendableV2{fanout, testappender.ConstantAppendable{Inner: dest}}
+				_, err := New(component.Options{
+					ID:     "1",
+					Logger: util.TestAlloyLogger(t).Slog(),
+					OnStateChange: func(e component.Exports) {
+						newE := e.(Exports)
+						entry = newE.Receiver
+					},
+					Registerer:     prom.NewRegistry(),
+					GetServiceData: getServiceData,
+				}, tt.args)
+				require.NoError(t, err)
 
-			dest := testappender.NewCollectingAppender()
-			var entry storage.AppendableV2
-			tt.args.ForwardTo = []storage.AppendableV2{fanout, testappender.ConstantAppendable{Inner: dest}}
-			_, err := New(component.Options{
-				ID:     "1",
-				Logger: util.TestAlloyLogger(t).Slog(),
-				OnStateChange: func(e component.Exports) {
-					newE := e.(Exports)
-					entry = newE.Receiver
-				},
+				// The samples, and their ST zeros, carry the enriched labels.
+				lbls := labels.FromMap(tt.inputLabels)
+				app := version.Appender(t.Context(), entry)
+				_, err = app.Append(0, lbls, 10, 20, 1, nil, nil, storage.AppendV2Options{})
+				require.NoError(t, err)
+				_, err = app.Append(0, lbls, 10, 20, 0, &histogram.Histogram{Count: 1, Sum: 1}, nil, storage.AppendV2Options{})
+				require.NoError(t, err)
+				require.NoError(t, app.Commit())
+				require.Equal(t, 2, calls, "the samples didn't reach the next component")
+
+				want := labels.FromMap(tt.expectedLabels).String()
+				require.Contains(t, dest.CollectedSTZeroSamples(), want)
+				require.Contains(t, dest.CollectedSTZeroHistograms(), want)
+			})
+		}
+	}
+}
+
+func TestEnricherErrorsOnceExited(t *testing.T) {
+	for _, version := range testappender.AppenderVersions() {
+		t.Run(version.Name, func(t *testing.T) {
+			c, err := New(component.Options{
+				ID:             "1",
+				OnStateChange:  func(component.Exports) {},
 				Registerer:     prom.NewRegistry(),
 				GetServiceData: getServiceData,
-			}, tt.args)
-
+			}, Arguments{ForwardTo: []storage.AppendableV2{terminalInterceptor(func(labels.Labels) {})}})
 			require.NoError(t, err)
+			c.exited.Store(true)
 
-			lbls := labels.FromMap(tt.inputLabels)
-			app := entry.(storage.Appendable).Appender(t.Context())
-
-			_, err = app.Append(0, lbls, time.Now().UnixMilli(), 0)
-			require.NoError(t, err)
-
-			err = app.Commit()
-			require.NoError(t, err)
-
-			// ST zeros carry the enriched labels.
-			appV2 := entry.AppenderV2(t.Context())
-			_, err = appV2.Append(0, lbls, 10, 20, 1, nil, nil, storage.AppendV2Options{})
-			require.NoError(t, err)
-			_, err = appV2.Append(0, lbls, 10, 20, 0, &histogram.Histogram{Count: 1, Sum: 1}, nil, storage.AppendV2Options{})
-			require.NoError(t, err)
-			require.NoError(t, appV2.Commit())
-
-			want := labels.FromMap(tt.expectedLabels).String()
-			require.Contains(t, dest.CollectedSTZeroSamples(), want)
-			require.Contains(t, dest.CollectedSTZeroHistograms(), want)
+			app := version.Appender(t.Context(), c.receiver)
+			_, err = app.Append(0, labels.FromStrings("pod", "nginx-abc"), 0, 20, 1, nil, nil, storage.AppendV2Options{})
+			require.ErrorContains(t, err, "has exited")
 		})
 	}
+}
+
+// terminalInterceptor ends the pipeline, and calls onAppend with the labels of
+// every sample and histogram it gets through either appender version.
+//
+// TODO: Remove the V1 hooks when the V1 appenders are removed.
+func terminalInterceptor(onAppend func(labels.Labels)) *prometheus.Interceptor {
+	return prometheus.NewInterceptor(nil,
+		prometheus.WithAppendV2Hook(func(ref storage.SeriesRef, l labels.Labels, _, _ int64, _ float64, _ *histogram.Histogram, _ *histogram.FloatHistogram, _ storage.AppendV2Options, _ storage.AppenderV2) (storage.SeriesRef, error) {
+			onAppend(l)
+			return ref, nil
+		}),
+		prometheus.WithAppendHook(func(ref storage.SeriesRef, l labels.Labels, _ int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
+			onAppend(l)
+			return ref, nil
+		}),
+		prometheus.WithHistogramHook(func(ref storage.SeriesRef, l labels.Labels, _ int64, _ *histogram.Histogram, _ *histogram.FloatHistogram, _ storage.Appender) (storage.SeriesRef, error) {
+			onAppend(l)
+			return ref, nil
+		}),
+	)
 }
 
 func TestValidate(t *testing.T) {
@@ -265,10 +296,7 @@ func TestValidate(t *testing.T) {
 // TestEnrichConcurrentUpdate exercises Append/Update concurrently to surface
 // data races.
 func TestEnrichConcurrentUpdate(t *testing.T) {
-	fanout := prometheus.NewInterceptor(nil,
-		prometheus.WithAppendHook(func(ref storage.SeriesRef, _ labels.Labels, _ int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
-			return ref, nil
-		}))
+	fanout := terminalInterceptor(func(labels.Labels) {})
 
 	args := Arguments{
 		Targets: []discovery.Target{
@@ -292,14 +320,16 @@ func TestEnrichConcurrentUpdate(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	// append samples
-	wg.Go(func() {
-		for range iterations {
-			app := c.receiver.Appender(t.Context())
-			_, _ = app.Append(0, lbls, 0, 0)
-			_ = app.Commit()
-		}
-	})
+	// append samples through every appender version
+	for _, version := range testappender.AppenderVersions() {
+		wg.Go(func() {
+			for range iterations {
+				app := version.Appender(t.Context(), c.receiver)
+				_, _ = app.Append(0, lbls, 0, 0, 0, nil, nil, storage.AppendV2Options{})
+				_ = app.Commit()
+			}
+		})
+	}
 
 	// continuously rotate Targets and LabelsToCopy.
 	wg.Go(func() {

@@ -8,8 +8,10 @@ import (
 
 	prom "github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
+	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/prometheus/prometheus/model/value"
 	"github.com/prometheus/prometheus/storage"
@@ -22,6 +24,7 @@ import (
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/testappender"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -132,19 +135,23 @@ func TestUpdateSwitchesCacheMode(t *testing.T) {
 // cached entry when it sees a stale-NaN sample, regardless of cache
 // mode (the cache itself is exercised via the component's interface).
 func TestStaleNaNRemovesFromCache(t *testing.T) {
-	relabeller := generateRelabel(t)
-	lbls := labels.FromStrings("__address__", "localhost")
-	relabeled := relabeller.relabel(0, lbls)
+	for _, version := range testappender.AppenderVersions() {
+		t.Run(version.Name, func(t *testing.T) {
+			relabeller := generateRelabel(t)
+			lbls := labels.FromStrings("__address__", "localhost")
+			app := version.Appender(t.Context(), relabeller.receiver)
 
-	require.NotEqual(t, lbls, relabeled)
+			_, err := app.Append(0, lbls, 0, 10, 1, nil, nil, storage.AppendV2Options{})
+			require.NoError(t, err)
+			_, found := relabeller.getFromCache(lbls)
+			require.True(t, found)
 
-	_, found := relabeller.getFromCache(lbls)
-	require.True(t, found)
-
-	relabeller.relabel(math.Float64frombits(value.StaleNaN), lbls)
-
-	_, found = relabeller.getFromCache(lbls)
-	require.False(t, found)
+			_, err = app.Append(0, lbls, 0, 11, math.Float64frombits(value.StaleNaN), nil, nil, storage.AppendV2Options{})
+			require.NoError(t, err)
+			_, found = relabeller.getFromCache(lbls)
+			require.False(t, found)
+		})
+	}
 }
 
 // TestCacheSizeMetric verifies the cache_size gauge reports the live
@@ -203,15 +210,49 @@ func TestCacheSizeMetric(t *testing.T) {
 	}
 }
 
+// TestMetrics checks the processing and cache counters for a sample with
+// exemplars and metadata. The V1 appender relabels the sample, each exemplar,
+// the metadata and the ST zero sample in separate calls, so the V2 appender,
+// which gets them together, must count them the same way.
 func TestMetrics(t *testing.T) {
-	relabeller := generateRelabel(t)
 	lbls := labels.FromStrings("__address__", "localhost")
+	opts := storage.AppendV2Options{
+		Metadata: metadata.Metadata{Type: "gauge", Help: "help"},
+		Exemplars: []exemplar.Exemplar{
+			{Labels: labels.FromStrings("trace_id", "a"), Value: 1, Ts: 10},
+			{Labels: labels.FromStrings("trace_id", "b"), Value: 2, Ts: 11},
+		},
+	}
 
-	relabeller.relabel(0, lbls)
-	m := &dto.Metric{}
-	err := relabeller.metricsProcessed.Write(m)
-	require.NoError(t, err)
-	require.True(t, *(m.Counter.Value) == 1)
+	type counters struct{ processed, outgoing, cacheHits, cacheMisses float64 }
+	for _, tc := range []struct {
+		name   string
+		action string
+		st     int64
+		want   counters
+	}{
+		{name: "kept", action: "replace", want: counters{processed: 4, outgoing: 1, cacheHits: 3, cacheMisses: 1}},
+		{name: "dropped", action: "drop", want: counters{processed: 4, cacheHits: 3, cacheMisses: 1}},
+		{name: "kept with ST", action: "replace", st: 5, want: counters{processed: 5, outgoing: 1, cacheHits: 4, cacheMisses: 1}},
+		{name: "dropped with ST", action: "drop", st: 5, want: counters{processed: 5, cacheHits: 4, cacheMisses: 1}},
+	} {
+		for _, version := range testappender.AppenderVersions() {
+			t.Run(tc.name+"/"+version.Name, func(t *testing.T) {
+				c := newRelabelWithAction(t, tc.action)
+				app := version.Appender(t.Context(), c.receiver)
+				_, err := app.Append(0, lbls, tc.st, 10, 1, nil, nil, opts)
+				require.NoError(t, err)
+				require.NoError(t, app.Commit())
+
+				require.Equal(t, tc.want, counters{
+					processed:   testutilCounter(t, c.metricsProcessed),
+					outgoing:    testutilCounter(t, c.metricsOutgoing),
+					cacheHits:   testutilCounter(t, c.cacheHits),
+					cacheMisses: testutilCounter(t, c.cacheMisses),
+				})
+			})
+		}
+	}
 }
 
 func TestRelabelDebuggingRespectsActivity(t *testing.T) {
@@ -243,6 +284,103 @@ func TestRelabelDebuggingRespectsActivity(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestAppend checks what reaches the next component for each kind of sample.
+func TestAppend(t *testing.T) {
+	lbls := labels.FromStrings("__address__", "localhost")
+	relabeled := labels.FromStrings("__address__", "localhost", "new_label", "new_value")
+	h := &histogram.Histogram{Schema: 1}
+	fh := &histogram.FloatHistogram{Schema: 1}
+
+	for _, tc := range []struct {
+		name    string
+		action  string
+		exited  bool
+		v       float64
+		h       *histogram.Histogram
+		fh      *histogram.FloatHistogram
+		want    []appended
+		wantErr string
+	}{
+		{name: "sample", action: "replace", v: 1.5, want: []appended{{l: relabeled, t: 10, v: 1.5}}},
+		{name: "histogram", action: "replace", h: h, want: []appended{{l: relabeled, t: 10, h: h}}},
+		{name: "float histogram", action: "replace", fh: fh, want: []appended{{l: relabeled, t: 10, fh: fh}}},
+		{name: "dropped sample", action: "drop", v: 1.5},
+		{name: "after exit", action: "replace", exited: true, v: 1.5, wantErr: "has exited"},
+	} {
+		for _, version := range testappender.AppenderVersions() {
+			t.Run(tc.name+"/"+version.Name, func(t *testing.T) {
+				var got []appended
+				c := newRelabelWithAction(t, tc.action, recordingInterceptor(&got))
+				c.exited.Store(tc.exited)
+
+				_, err := version.Appender(t.Context(), c.receiver).Append(0, lbls, 0, 10, tc.v, tc.h, tc.fh, storage.AppendV2Options{})
+				if tc.wantErr != "" {
+					require.ErrorContains(t, err, tc.wantErr)
+				} else {
+					require.NoError(t, err)
+				}
+				require.Equal(t, tc.want, got)
+			})
+		}
+	}
+}
+
+// appended is a sample that reached a recordingInterceptor.
+type appended struct {
+	l  labels.Labels
+	t  int64
+	v  float64
+	h  *histogram.Histogram
+	fh *histogram.FloatHistogram
+}
+
+// recordingInterceptor ends the pipeline, and records every sample and
+// histogram it gets through either appender version in got.
+//
+// TODO: Remove the V1 hooks when the V1 appenders are removed.
+func recordingInterceptor(got *[]appended) *prometheus.Interceptor {
+	return prometheus.NewInterceptor(nil,
+		prometheus.WithAppendV2Hook(func(_ storage.SeriesRef, l labels.Labels, _, t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram, _ storage.AppendV2Options, _ storage.AppenderV2) (storage.SeriesRef, error) {
+			*got = append(*got, appended{l: l, t: t, v: v, h: h, fh: fh})
+			return 1, nil
+		}),
+		prometheus.WithAppendHook(func(_ storage.SeriesRef, l labels.Labels, t int64, v float64, _ storage.Appender) (storage.SeriesRef, error) {
+			*got = append(*got, appended{l: l, t: t, v: v})
+			return 1, nil
+		}),
+		prometheus.WithHistogramHook(func(_ storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram, _ storage.Appender) (storage.SeriesRef, error) {
+			*got = append(*got, appended{l: l, t: t, h: h, fh: fh})
+			return 1, nil
+		}),
+	)
+}
+
+// newRelabelWithAction returns a component with a single rule, which applies
+// action to every series with an __address__ label: "replace" adds
+// new_label="new_value", and "drop" drops the series.
+func newRelabelWithAction(t *testing.T, action string, forwardTo ...storage.AppendableV2) *Component {
+	c := generateRelabel(t)
+	require.NoError(t, c.Update(Arguments{
+		ForwardTo: forwardTo,
+		CacheSize: 100_000,
+		MetricRelabelConfigs: []*alloy_relabel.Config{{
+			SourceLabels: []string{"__address__"},
+			Regex:        alloy_relabel.Regexp(relabel.MustNewRegexp("(.+)")),
+			TargetLabel:  "new_label",
+			Replacement:  "new_value",
+			Action:       alloy_relabel.Action(action),
+		}},
+	}))
+	return c
+}
+
+func testutilCounter(t *testing.T, c prom.Counter) float64 {
+	t.Helper()
+	var m dto.Metric
+	require.NoError(t, c.Write(&m))
+	return m.GetCounter().GetValue()
 }
 
 type debugDataPublisherSpy struct {
