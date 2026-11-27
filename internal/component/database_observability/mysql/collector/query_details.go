@@ -62,15 +62,8 @@ type QueryDetails struct {
 	normalizer      *sqllexer.Normalizer
 	tableRegistry   *TableRegistry
 
-	// lastEmittedAt records the wall-clock time at which OP_QUERY_ASSOCIATION
-	// was last emitted for a (schema, digest), used to throttle logging
-	// to at most one emission per EmitInterval per query.
-	lastEmittedAt map[queryDetailsKey]time.Time
-	// unvalidated tracks queries whose parsed tables were emitted before schema
-	// collection populated the database in tableRegistry, so they can be
-	// re-emitted once when the database schema becomes available.
-	unvalidated map[queryDetailsKey]struct{}
-	now         func() time.Time
+	lastEmissionByQuery database_observability.EmissionStateByKey[queryDetailsKey]
+	now                 func() time.Time
 
 	logger  *slog.Logger
 	running *atomic.Bool
@@ -81,20 +74,19 @@ type QueryDetails struct {
 
 func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 	c := &QueryDetails{
-		dbConnection:    args.DB,
-		collectInterval: args.CollectInterval,
-		statementsLimit: args.StatementsLimit,
-		excludeSchemas:  args.ExcludeSchemas,
-		includeSchemas:  args.IncludeSchemas,
-		entryHandler:    args.EntryHandler,
-		sqlParser:       parser.NewTiDBSqlParser(),
-		normalizer:      sqllexer.NewNormalizer(sqllexer.WithCollectTables(true)),
-		tableRegistry:   args.TableRegistry,
-		lastEmittedAt:   map[queryDetailsKey]time.Time{},
-		unvalidated:     map[queryDetailsKey]struct{}{},
-		now:             time.Now,
-		logger:          args.Logger.With("collector", QueryDetailsCollector),
-		running:         &atomic.Bool{},
+		dbConnection:        args.DB,
+		collectInterval:     args.CollectInterval,
+		statementsLimit:     args.StatementsLimit,
+		excludeSchemas:      args.ExcludeSchemas,
+		includeSchemas:      args.IncludeSchemas,
+		entryHandler:        args.EntryHandler,
+		sqlParser:           parser.NewTiDBSqlParser(),
+		normalizer:          sqllexer.NewNormalizer(sqllexer.WithCollectTables(true)),
+		tableRegistry:       args.TableRegistry,
+		lastEmissionByQuery: database_observability.EmissionStateByKey[queryDetailsKey]{},
+		now:                 time.Now,
+		logger:              args.Logger.With("collector", QueryDetailsCollector),
+		running:             &atomic.Bool{},
 	}
 
 	return c, nil
@@ -166,18 +158,16 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 
 		key := queryDetailsKey{schema: schema, digest: digest}
 		hasSchema := c.tableRegistry != nil && c.tableRegistry.HasSchema(schema)
-		if last, ok := c.lastEmittedAt[key]; ok && now.Sub(last) < database_observability.EmitInterval {
-			if _, pending := c.unvalidated[key]; !pending || !hasSchema {
+		if last, ok := c.lastEmissionByQuery[key]; ok && now.Sub(last.LastEmittedAt) < database_observability.EmitInterval {
+			if !last.PendingValidation || !hasSchema {
 				continue
 			}
 		}
 
 		pendingValidation := c.emit(schema, digest, digestText, sampleText.String, hasSchema)
-		c.lastEmittedAt[key] = now
-		if pendingValidation {
-			c.unvalidated[key] = struct{}{}
-		} else {
-			delete(c.unvalidated, key)
+		c.lastEmissionByQuery[key] = database_observability.EmissionState{
+			LastEmittedAt:     now,
+			PendingValidation: pendingValidation,
 		}
 	}
 
@@ -185,7 +175,7 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 		return fmt.Errorf("failed to iterate over samples result set: %w", err)
 	}
 
-	c.pruneThrottle(now)
+	c.lastEmissionByQuery.PruneExpired(now)
 	return nil
 }
 
@@ -234,16 +224,6 @@ func (c *QueryDetails) emit(schema, digest, digestText, sampleText string, hasSc
 	)
 
 	return c.tableRegistry != nil && !hasSchema
-}
-
-// pruneThrottle drops entries whose last emission was at least EmitInterval ago
-func (c *QueryDetails) pruneThrottle(now time.Time) {
-	for key, last := range c.lastEmittedAt {
-		if now.Sub(last) >= database_observability.EmitInterval {
-			delete(c.lastEmittedAt, key)
-			delete(c.unvalidated, key)
-		}
-	}
 }
 
 func (c *QueryDetails) tryParseTableNames(sqlText, fallbackSqlText string) ([]string, error) {

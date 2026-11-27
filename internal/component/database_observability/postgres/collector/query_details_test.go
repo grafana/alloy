@@ -575,18 +575,18 @@ func TestQueryDetails_ThrottlesWithinEmitInterval(t *testing.T) {
 
 	// First cycle emits the association + parsed table (2 entries).
 	poll()
-	require.Equal(t, base, c.lastEmittedAt[key])
+	require.Equal(t, base, c.lastEmissionByQuery[key].LastEmittedAt)
 
 	// Second cycle within EmitInterval: the query still runs but nothing new is emitted.
 	c.now = func() time.Time { return base.Add(database_observability.EmitInterval / 2) }
 	poll()
-	require.Equal(t, base, c.lastEmittedAt[key])
+	require.Equal(t, base, c.lastEmissionByQuery[key].LastEmittedAt)
 
 	// Once EmitInterval has elapsed, the query is emitted again (2 more entries).
 	afterInterval := base.Add(database_observability.EmitInterval + time.Minute)
 	c.now = func() time.Time { return afterInterval }
 	poll()
-	require.Equal(t, afterInterval, c.lastEmittedAt[key])
+	require.Equal(t, afterInterval, c.lastEmissionByQuery[key].LastEmittedAt)
 
 	require.NoError(t, mock.ExpectationsWereMet())
 	logs.Stop()
@@ -632,8 +632,8 @@ func TestQueryDetails_RetriesWhenSchemaRegistryIsNotReady(t *testing.T) {
 	// and mark the query as pending validation.
 	poll()
 	require.Eventually(t, func() bool { return len(logs.Received()) == 2 }, 5*time.Second, 20*time.Millisecond)
-	require.Equal(t, base, c.lastEmittedAt[key])
-	require.Contains(t, c.unvalidated, key)
+	require.Equal(t, base, c.lastEmissionByQuery[key].LastEmittedAt)
+	require.True(t, c.lastEmissionByQuery[key].PendingValidation)
 
 	entries := logs.Received()
 	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, entries[0].Labels)
@@ -644,8 +644,8 @@ func TestQueryDetails_RetriesWhenSchemaRegistryIsNotReady(t *testing.T) {
 	// throttled so it does not re-emit on every cycle.
 	c.now = func() time.Time { return base.Add(time.Minute) }
 	poll()
-	require.Equal(t, base, c.lastEmittedAt[key])
-	require.Contains(t, c.unvalidated, key)
+	require.Equal(t, base, c.lastEmissionByQuery[key].LastEmittedAt)
+	require.True(t, c.lastEmissionByQuery[key].PendingValidation)
 
 	// Poll 3: within EmitInterval, schema collection populates the database;
 	// bypasses EmitInterval once to re-emit with validated="true".
@@ -656,8 +656,8 @@ func TestQueryDetails_RetriesWhenSchemaRegistryIsNotReady(t *testing.T) {
 	c.now = func() time.Time { return readyAt }
 	poll()
 	require.Eventually(t, func() bool { return len(logs.Received()) == 4 }, 5*time.Second, 20*time.Millisecond)
-	require.Equal(t, readyAt, c.lastEmittedAt[key])
-	require.NotContains(t, c.unvalidated, key)
+	require.Equal(t, readyAt, c.lastEmissionByQuery[key].LastEmittedAt)
+	require.False(t, c.lastEmissionByQuery[key].PendingValidation)
 
 	entries = logs.Received()
 	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, entries[2].Labels)
@@ -667,7 +667,7 @@ func TestQueryDetails_RetriesWhenSchemaRegistryIsNotReady(t *testing.T) {
 	// Poll 4: within EmitInterval and already validated; throttled normally.
 	c.now = func() time.Time { return base.Add(3 * time.Minute) }
 	poll()
-	require.Equal(t, readyAt, c.lastEmittedAt[key])
+	require.Equal(t, readyAt, c.lastEmissionByQuery[key].LastEmittedAt)
 
 	require.NoError(t, mock.ExpectationsWereMet())
 	logs.Stop()
@@ -750,19 +750,19 @@ func TestQueryDetails_Throttling(t *testing.T) {
 
 		// Poll 1: successful scan finds query, emits it, and records it for throttling
 		poll(0, true)
-		require.Equal(t, startTime, c.lastEmittedAt[key])
+		require.Equal(t, startTime, c.lastEmissionByQuery[key].LastEmittedAt)
 
 		// Poll 2: successful scan, query no longer present
 		poll(database_observability.EmitInterval/3, false)
-		require.Equal(t, startTime, c.lastEmittedAt[key])
+		require.Equal(t, startTime, c.lastEmissionByQuery[key].LastEmittedAt)
 
 		// Poll 3: query is back before EmitInterval expires: stays throttled
 		poll(2*database_observability.EmitInterval/3, true)
-		require.Equal(t, startTime, c.lastEmittedAt[key])
+		require.Equal(t, startTime, c.lastEmissionByQuery[key].LastEmittedAt)
 
 		// Poll 4: EmitInterval has expired, query is emitted again
 		poll(database_observability.EmitInterval+time.Second, true)
-		require.Equal(t, startTime.Add(database_observability.EmitInterval+time.Second), c.lastEmittedAt[key])
+		require.Equal(t, startTime.Add(database_observability.EmitInterval+time.Second), c.lastEmissionByQuery[key].LastEmittedAt)
 
 		// One query emission created two entries; assertion of 4 confirms emission after Poll 1 and Poll 4
 		logs.Stop()
@@ -800,13 +800,12 @@ func TestQueryDetails_Throttling(t *testing.T) {
 
 		// Poll 1: query is present, but schema metadata is unavailable.
 		poll(0, true)
-		require.Contains(t, c.lastEmittedAt, key)
-		require.Contains(t, c.unvalidated, key)
+		require.Contains(t, c.lastEmissionByQuery, key)
+		require.True(t, c.lastEmissionByQuery[key].PendingValidation)
 
 		// Poll 2: the query is absent and the throttle interval has expired.
 		poll(database_observability.EmitInterval+time.Second, false)
-		require.NotContains(t, c.lastEmittedAt, key)
-		require.NotContains(t, c.unvalidated, key)
+		require.NotContains(t, c.lastEmissionByQuery, key)
 	})
 
 	t.Run("scan query error preserves throttling", func(t *testing.T) {
@@ -834,13 +833,13 @@ func TestQueryDetails_Throttling(t *testing.T) {
 			),
 		)
 		require.NoError(t, c.fetchAndAssociate(t.Context()))
-		require.Contains(t, c.lastEmittedAt, key)
-		require.Equal(t, startTime, c.lastEmittedAt[key])
+		require.Contains(t, c.lastEmissionByQuery, key)
+		require.Equal(t, startTime, c.lastEmissionByQuery[key].LastEmittedAt)
 
 		// Poll 2: scan fails; nothing is emitted and previous emission time is unchanged
 		mock.ExpectQuery(query).WithoutArgs().WillReturnError(fmt.Errorf("query failed"))
 		require.Error(t, c.fetchAndAssociate(t.Context()))
-		require.Equal(t, startTime, c.lastEmittedAt[key])
+		require.Equal(t, startTime, c.lastEmissionByQuery[key].LastEmittedAt)
 
 		// Poll 3: successful scan finds the same query within EmitInterval, so it stays throttled
 		c.now = func() time.Time { return startTime.Add(time.Minute) }
@@ -883,13 +882,13 @@ func TestQueryDetails_Throttling(t *testing.T) {
 		// Poll 1: successful scan finds query, emits it, and records it for throttling
 		mock.ExpectQuery(query).WithoutArgs().RowsWillBeClosed().WillReturnRows(rows())
 		require.NoError(t, c.fetchAndAssociate(t.Context()))
-		require.Contains(t, c.lastEmittedAt, key)
-		require.Equal(t, initialEmissionAt, c.lastEmittedAt[key])
+		require.Contains(t, c.lastEmissionByQuery, key)
+		require.Equal(t, initialEmissionAt, c.lastEmissionByQuery[key].LastEmittedAt)
 
 		// Poll 2: row iteration fails; nothing is emitted and previous emission time is unchanged
 		mock.ExpectQuery(query).WithoutArgs().RowsWillBeClosed().WillReturnRows(rows().RowError(0, fmt.Errorf("iteration failed")))
 		require.Error(t, c.fetchAndAssociate(t.Context()))
-		require.Equal(t, initialEmissionAt, c.lastEmittedAt[key])
+		require.Equal(t, initialEmissionAt, c.lastEmissionByQuery[key].LastEmittedAt)
 
 		// Poll 3: successful scan finds the same query within EmitInterval, so it stays throttled
 		mock.ExpectQuery(query).WithoutArgs().RowsWillBeClosed().WillReturnRows(rows())

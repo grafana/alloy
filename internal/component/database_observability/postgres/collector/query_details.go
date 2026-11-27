@@ -76,15 +76,8 @@ type QueryDetails struct {
 	tableRegistry             *TableRegistry
 	enableErrorLogsProcessing bool
 	normalizer                *sqllexer.Normalizer
-	// lastEmittedAt records the wall-clock time at which OP_QUERY_ASSOCIATION
-	// was last emitted for a (database, queryid), used to throttle logging
-	// to at most one emission per EmitInterval per query.
-	lastEmittedAt map[queryDetailsKey]time.Time
-	// unvalidated tracks queries whose parsed tables were emitted before schema
-	// collection populated the database in tableRegistry, so they can be
-	// re-emitted once when schema collection becomes available.
-	unvalidated map[queryDetailsKey]struct{}
-	now         func() time.Time
+	lastEmissionByQuery       database_observability.EmissionStateByKey[queryDetailsKey]
+	now                       func() time.Time
 
 	logger  *slog.Logger
 	running *atomic.Bool
@@ -106,8 +99,7 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 		tableRegistry:             args.TableRegistry,
 		enableErrorLogsProcessing: args.EnableErrorLogsProcessing,
 		normalizer:                sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true), sqllexer.WithKeepIdentifierQuotation(true)),
-		lastEmittedAt:             map[queryDetailsKey]time.Time{},
-		unvalidated:               map[queryDetailsKey]struct{}{},
+		lastEmissionByQuery:       database_observability.EmissionStateByKey[queryDetailsKey]{},
 		now:                       time.Now,
 		logger:                    args.Logger.With("collector", QueryDetailsCollector),
 		running:                   &atomic.Bool{},
@@ -183,19 +175,16 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 
 		key := queryDetailsKey{database: databaseName, queryID: queryID}
 		hasDatabase := c.tableRegistry != nil && c.tableRegistry.SchemasForDatabase(databaseName) != nil
-		if last, ok := c.lastEmittedAt[key]; ok && now.Sub(last) < database_observability.EmitInterval {
-			if _, pending := c.unvalidated[key]; !pending ||
-				!hasDatabase {
+		if last, ok := c.lastEmissionByQuery[key]; ok && now.Sub(last.LastEmittedAt) < database_observability.EmitInterval {
+			if !last.PendingValidation || !hasDatabase {
 				continue
 			}
 		}
 
 		pendingValidation := c.emit(databaseName, queryID, queryText, hasDatabase)
-		c.lastEmittedAt[key] = now
-		if pendingValidation {
-			c.unvalidated[key] = struct{}{}
-		} else {
-			delete(c.unvalidated, key)
+		c.lastEmissionByQuery[key] = database_observability.EmissionState{
+			LastEmittedAt:     now,
+			PendingValidation: pendingValidation,
 		}
 	}
 
@@ -204,7 +193,7 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 		return err
 	}
 
-	c.pruneThrottle(now)
+	c.lastEmissionByQuery.PruneExpired(now)
 	return nil
 }
 
@@ -276,16 +265,6 @@ func (c *QueryDetails) emit(databaseName database, queryID, queryText string, ha
 	)
 
 	return c.tableRegistry != nil && !hasDatabase
-}
-
-// pruneThrottle drops entries whose last emission was at least EmitInterval ago.
-func (c *QueryDetails) pruneThrottle(now time.Time) {
-	for key, last := range c.lastEmittedAt {
-		if now.Sub(last) >= database_observability.EmitInterval {
-			delete(c.lastEmittedAt, key)
-			delete(c.unvalidated, key)
-		}
-	}
 }
 
 func tokenizeTableNames(normalizer *sqllexer.Normalizer, sqlText string) ([]string, error) {

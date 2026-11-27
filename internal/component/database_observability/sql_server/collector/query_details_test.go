@@ -404,18 +404,18 @@ func TestQueryDetails_ThrottlesWithinEmitInterval(t *testing.T) {
 
 	// First cycle emits the association + parsed table (2 entries).
 	poll()
-	require.Equal(t, base, c.lastEmittedAt[key])
+	require.Equal(t, base, c.lastEmissionByQuery[key].LastEmittedAt)
 
 	// Second cycle within EmitInterval: the query still runs but nothing new is emitted.
 	c.now = func() time.Time { return base.Add(database_observability.EmitInterval / 2) }
 	poll()
-	require.Equal(t, base, c.lastEmittedAt[key])
+	require.Equal(t, base, c.lastEmissionByQuery[key].LastEmittedAt)
 
 	// Once EmitInterval has elapsed, the query is emitted again (2 more entries).
 	afterInterval := base.Add(database_observability.EmitInterval + time.Minute)
 	c.now = func() time.Time { return afterInterval }
 	poll()
-	require.Equal(t, afterInterval, c.lastEmittedAt[key])
+	require.Equal(t, afterInterval, c.lastEmissionByQuery[key].LastEmittedAt)
 
 	require.NoError(t, mock.ExpectationsWereMet())
 	lokiClient.Stop()
@@ -459,8 +459,8 @@ func TestQueryDetails_RetriesWhenSchemaRegistryIsNotReady(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return len(lokiClient.Received()) == 2
 	}, 5*time.Second, 20*time.Millisecond)
-	require.Equal(t, base, c.lastEmittedAt[key])
-	require.Contains(t, c.unvalidated, key)
+	require.Equal(t, base, c.lastEmissionByQuery[key].LastEmittedAt)
+	require.True(t, c.lastEmissionByQuery[key].PendingValidation)
 
 	entries := lokiClient.Received()
 	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, entries[0].Labels)
@@ -471,8 +471,8 @@ func TestQueryDetails_RetriesWhenSchemaRegistryIsNotReady(t *testing.T) {
 	// throttled so it does not re-emit on every cycle.
 	c.now = func() time.Time { return base.Add(time.Minute) }
 	poll()
-	require.Equal(t, base, c.lastEmittedAt[key])
-	require.Contains(t, c.unvalidated, key)
+	require.Equal(t, base, c.lastEmissionByQuery[key].LastEmittedAt)
+	require.True(t, c.lastEmissionByQuery[key].PendingValidation)
 
 	// Poll 3: within EmitInterval, schema collection populates the database;
 	// bypasses EmitInterval once to re-emit with validated="true".
@@ -485,8 +485,8 @@ func TestQueryDetails_RetriesWhenSchemaRegistryIsNotReady(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return len(lokiClient.Received()) == 4
 	}, 5*time.Second, 20*time.Millisecond)
-	require.Equal(t, readyAt, c.lastEmittedAt[key])
-	require.NotContains(t, c.unvalidated, key)
+	require.Equal(t, readyAt, c.lastEmissionByQuery[key].LastEmittedAt)
+	require.False(t, c.lastEmissionByQuery[key].PendingValidation)
 
 	entries = lokiClient.Received()
 	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, entries[2].Labels)
@@ -496,7 +496,7 @@ func TestQueryDetails_RetriesWhenSchemaRegistryIsNotReady(t *testing.T) {
 	// Poll 4: within EmitInterval and already validated; throttled normally.
 	c.now = func() time.Time { return base.Add(3 * time.Minute) }
 	poll()
-	require.Equal(t, readyAt, c.lastEmittedAt[key])
+	require.Equal(t, readyAt, c.lastEmissionByQuery[key].LastEmittedAt)
 
 	require.NoError(t, mock.ExpectationsWereMet())
 	lokiClient.Stop()
