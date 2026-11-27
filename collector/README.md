@@ -11,7 +11,7 @@ The Alloy Collector Distro is built using the [OpenTelemetry Collector Builder (
 ```
 collector/
 ├── builder-config.yaml        # OCB configuration file (source)
-├── components_alloy.go        # Imports the native Alloy components and the config converter (source)
+├── alloy-components.yaml      # Lists the native Alloy components (source)
 ├── generate.go                # Entry point for code generation (source)
 ├── version.go                 # Exposes the current version of the collector distro (source)
 ├── generator/                 # Custom templating and generation code (source)
@@ -48,16 +48,48 @@ The `builder-config.yaml` file defines:
 - The Open Telemetry components to include in the distribution (receivers/processors/exporters etc)
 - Shared replace directives, which are the source of truth for the root `go.mod` replace block and generated collector module
 
+The native Alloy components are selected separately in `alloy-components.yaml` (refer to [Selecting native Alloy components](#selecting-native-alloy-components)), because OCB doesn't know about them.
+
 ### 2. Go Module Tidying (`go mod tidy`)
 
 Ensures the generated `go.mod` is properly formatted and all dependencies are resolved.
 
 ### 3. Custom Generator (`go run ./generator/generator.go`)
 
-The custom generator performs two tasks:
+The custom generator performs these tasks:
 
-1. **Generates `main_alloy.go`** - Creates a wrapper that integrates the OTel collector command into Alloy's CLI as a subcommand (`alloy otel`)
+1. **Generates `main_alloy.go`** - Creates a wrapper that integrates the OTel collector command into Alloy's CLI as a subcommand (`alloy otel`). It imports `internal/component/all`, and the config converter unless `alloy-components.yaml` disables it
 2. **Modifies `main.go`** - Replaces `otelcol.NewCommand(params)` with `newAlloyCommand(params)` to use the Alloy-integrated command
+3. **Generates `internal/component/all/all.go`** - Imports the native Alloy components listed in `alloy-components.yaml`
+
+## Selecting native Alloy components
+
+`alloy-components.yaml` lists the native Alloy components compiled into the binary:
+
+```yaml
+components:
+  - local.file_match
+  - loki.source.file
+  - loki.process
+  - loki.write
+# Include `alloy convert` and `alloy run --config.format`.
+converters: false
+```
+
+- `components` is required, and an empty list includes no native components.
+  Each entry is a component name. The component `a.b.c` is defined in the package `internal/component/a/b/c`, so the generator imports that package.
+- `converters` defaults to `true`. It controls whether `alloy convert` and `alloy run --config.format=<non-alloy>` are included.
+
+CI checks the list and the packages in three ways:
+
+- The `componentpath` linter in `alloylint` fails if a component isn't defined in the package that matches its name.
+- The `findcomponents` linter in `alloylint` fails if `all.go` doesn't import every component package, so the official build includes every component.
+- The `Check generate-otel-collector-distro` workflow fails if `all.go` isn't generated from the current `alloy-components.yaml`.
+
+When you add a component, define it in the package that matches its name, add its name to `alloy-components.yaml`, and run `make generate-otel-collector-distro`.
+Don't edit `all.go` by hand.
+
+OTel Collector components used by the OTel Engine are selected as usual with the OCB `receivers`, `processors`, `exporters`, `connectors`, and `extensions` sections.
 
 ## Building Locally
 
