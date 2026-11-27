@@ -46,6 +46,11 @@ type QueryDetailsArguments struct {
 	Logger *slog.Logger
 }
 
+type queryDetailsKey struct {
+	schema string
+	digest string
+}
+
 type QueryDetails struct {
 	dbConnection    *sql.DB
 	collectInterval time.Duration
@@ -56,6 +61,16 @@ type QueryDetails struct {
 	sqlParser       parser.Parser
 	normalizer      *sqllexer.Normalizer
 	tableRegistry   *TableRegistry
+
+	// lastEmittedAt records the wall-clock time at which OP_QUERY_ASSOCIATION
+	// was last emitted for a (schema, digest), used to throttle logging
+	// to at most one emission per EmitInterval per query.
+	lastEmittedAt map[queryDetailsKey]time.Time
+	// unvalidated tracks queries whose parsed tables were emitted before schema
+	// collection populated the database in tableRegistry, so they can be
+	// re-emitted once when the database schema becomes available.
+	unvalidated map[queryDetailsKey]struct{}
+	now         func() time.Time
 
 	logger  *slog.Logger
 	running *atomic.Bool
@@ -75,6 +90,9 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 		sqlParser:       parser.NewTiDBSqlParser(),
 		normalizer:      sqllexer.NewNormalizer(sqllexer.WithCollectTables(true)),
 		tableRegistry:   args.TableRegistry,
+		lastEmittedAt:   map[queryDetailsKey]time.Time{},
+		unvalidated:     map[queryDetailsKey]struct{}{},
+		now:             time.Now,
 		logger:          args.Logger.With("collector", QueryDetailsCollector),
 		running:         &atomic.Bool{},
 	}
@@ -137,6 +155,7 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 	}
 	defer rs.Close()
 
+	now := c.now()
 	for rs.Next() {
 		var digest, digestText, schema string
 		var sampleText sql.NullString
@@ -145,51 +164,86 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 			continue
 		}
 
-		tables, parserErr := c.tryParseTableNames(sampleText.String, digestText)
-
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-			logging.LevelInfo,
-			database_observability.OP_QUERY_ASSOCIATION,
-			fmt.Sprintf(`schema=%q parseable="%t" digest=%q digest_text=%q`, schema, parserErr == nil, digest, digestText),
-		)
-
-		if parserErr != nil {
-			var lexerErr error
-			if tables, lexerErr = c.tryTokenizeTableNames(sampleText.String, digestText); lexerErr != nil {
-				c.logger.Warn("failed to extract tables from sql text", "schema", schema, "digest", digest, "parser_err", parserErr, "lexer_err", lexerErr)
+		key := queryDetailsKey{schema: schema, digest: digest}
+		hasSchema := c.tableRegistry != nil && c.tableRegistry.HasSchema(schema)
+		if last, ok := c.lastEmittedAt[key]; ok && now.Sub(last) < database_observability.EmitInterval {
+			if _, pending := c.unvalidated[key]; !pending || !hasSchema {
 				continue
 			}
 		}
 
-		if len(tables) == 0 {
-			continue
+		pendingValidation := c.emit(schema, digest, digestText, sampleText.String, hasSchema)
+		c.lastEmittedAt[key] = now
+		if pendingValidation {
+			c.unvalidated[key] = struct{}{}
+		} else {
+			delete(c.unvalidated, key)
 		}
-		parsedTables := make([]database_observability.ParsedTable, 0, len(tables))
-		for _, table := range tables {
-			validated := false
-			resolvedTable := table
-			if c.tableRegistry != nil {
-				resolvedTable, validated = c.tableRegistry.IsValid(schema, table)
-			}
-			parsedTables = append(parsedTables, database_observability.ParsedTable{Table: resolvedTable, Validated: validated})
-		}
-		tablesJSON, err := json.Marshal(parsedTables)
-		if err != nil {
-			c.logger.Error("failed to encode parsed tables", "err", err)
-			continue
-		}
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-			logging.LevelInfo,
-			database_observability.OP_QUERY_PARSED_TABLE_NAMES_V2,
-			fmt.Sprintf(`schema=%q digest=%q tables=%q`, schema, digest, tablesJSON),
-		)
 	}
 
 	if err := rs.Err(); err != nil {
 		return fmt.Errorf("failed to iterate over samples result set: %w", err)
 	}
 
+	c.pruneThrottle(now)
 	return nil
+}
+
+// emit logs the query association and any table names parsed from the query.
+// It returns true when parsed tables were emitted without schema data, so the
+// query can be re-emitted once schema collection populates tableRegistry.
+func (c *QueryDetails) emit(schema, digest, digestText, sampleText string, hasSchema bool) bool {
+	tables, parserErr := c.tryParseTableNames(sampleText, digestText)
+	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+		logging.LevelInfo,
+		database_observability.OP_QUERY_ASSOCIATION,
+		fmt.Sprintf(`schema=%q parseable="%t" digest=%q digest_text=%q`, schema, parserErr == nil, digest, digestText),
+	)
+
+	if parserErr != nil {
+		var lexerErr error
+		tables, lexerErr = c.tryTokenizeTableNames(sampleText, digestText)
+		if lexerErr != nil {
+			c.logger.Warn("failed to extract tables from sql text", "schema", schema, "digest", digest, "parser_err", parserErr, "lexer_err", lexerErr)
+			return false
+		}
+	}
+
+	if len(tables) == 0 {
+		return false
+	}
+
+	parsedTables := make([]database_observability.ParsedTable, 0, len(tables))
+	for _, table := range tables {
+		validated := false
+		resolvedTable := table
+		if c.tableRegistry != nil {
+			resolvedTable, validated = c.tableRegistry.IsValid(schema, table)
+		}
+		parsedTables = append(parsedTables, database_observability.ParsedTable{Table: resolvedTable, Validated: validated})
+	}
+	tablesJSON, err := json.Marshal(parsedTables)
+	if err != nil {
+		c.logger.Error("failed to encode parsed tables", "err", err)
+		return false
+	}
+	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+		logging.LevelInfo,
+		database_observability.OP_QUERY_PARSED_TABLE_NAMES_V2,
+		fmt.Sprintf(`schema=%q digest=%q tables=%q`, schema, digest, tablesJSON),
+	)
+
+	return c.tableRegistry != nil && !hasSchema
+}
+
+// pruneThrottle drops entries whose last emission was at least EmitInterval ago
+func (c *QueryDetails) pruneThrottle(now time.Time) {
+	for key, last := range c.lastEmittedAt {
+		if now.Sub(last) >= database_observability.EmitInterval {
+			delete(c.lastEmittedAt, key)
+			delete(c.unvalidated, key)
+		}
+	}
 }
 
 func (c *QueryDetails) tryParseTableNames(sqlText, fallbackSqlText string) ([]string, error) {

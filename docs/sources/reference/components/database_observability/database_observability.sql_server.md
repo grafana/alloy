@@ -268,6 +268,7 @@ The `health_check` collector periodically verifies that the login has the requir
 | `collect_interval` | `duration` | How frequently to collect query text from Query Store. | `"1m"`  | no       |
 
 The `query_details` collector reads [Query Store][query_store] query text for the database selected in the `data_source_name`, not every database on the instance.
+The collector throttles repeated emissions for the same database and query hash.
 
 ### `query_metrics`
 
