@@ -38,6 +38,7 @@ import (
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -216,7 +217,10 @@ func (c *crdManager) Run(ctx context.Context) error {
 		ParseST:                           c.args.Scrape.StartTimestampZeroIngestion,
 		EnableStartTimestampZeroIngestion: c.args.Scrape.StartTimestampZeroIngestion,
 	}
-	c.scrapeManager, err = scrape.NewManager(scrapeOpts, c.logger, nil, alloyAppendable, nil, unregisterer)
+	// TODO: Support live debugging. Until then, the publisher never reports live debugging as active, and the
+	// interceptor is only used to drop the metadata when honor_metadata is disabled.
+	interceptor := compscrape.NewInterceptor(livedebugging.ComponentID(c.opts.ID), livedebugging.NewLiveDebugging(), c.args.Scrape.HonorMetadata, alloyAppendable)
+	c.scrapeManager, err = scrape.NewManager(scrapeOpts, c.logger, nil, nil, interceptor, unregisterer)
 	if err != nil {
 		return fmt.Errorf("creating scrape manager: %w", err)
 	}

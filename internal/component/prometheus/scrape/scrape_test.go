@@ -13,6 +13,7 @@ import (
 	prometheus_client "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/schema"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/stretchr/testify/require"
@@ -902,6 +903,53 @@ func TestScrapingStartTimestampZeroIngestion(t *testing.T) {
 		// The zero sample sits at the created timestamp, strictly before the real sample.
 		require.Less(collectT, zero.Timestamp, real.Timestamp, "zero sample must precede the real sample")
 	}, 10*time.Second, 100*time.Millisecond, "Should have injected a start-timestamp zero sample")
+}
+
+// TestScrapingHonorMetadata checks that metadata is forwarded, for both scraped
+// series and report series such as `up`, only when honor_metadata is enabled.
+func TestScrapingHonorMetadata(t *testing.T) {
+	// hasMetadataFor reports whether metadata was collected for a series of the
+	// metric name. Metadata is collected by series labels.
+	hasMetadataFor := func(collected map[string]metadata.Metadata, name string) bool {
+		for lbls := range collected {
+			if strings.HasPrefix(lbls, `{__name__="`+name+`"`) {
+				return true
+			}
+		}
+		return false
+	}
+
+	for _, honorMetadata := range []bool{false, true} {
+		t.Run(fmt.Sprintf("honor_metadata=%t", honorMetadata), func(t *testing.T) {
+			reg := prometheus_client.NewRegistry()
+			reg.MustRegister(setupTestCounter())
+			appender := testappender.NewCollectingAppender()
+			args := defaultFastScrapeArgs(startMetricsServer(t, reg), testappender.ConstantAppendable{Inner: appender})
+			args.HonorMetadata = honorMetadata
+			require.NoError(t, args.Validate())
+
+			c, err := New(newComponentOpts(t), args)
+			require.NoError(t, err)
+			go c.Run(t.Context())
+
+			require.EventuallyWithT(t, func(collectT *assert.CollectT) {
+				samples := appender.CollectedSamples()
+				require.True(collectT, hasSampleForMetric(samples, "test_counter_total"))
+				require.True(collectT, hasSampleForMetric(samples, "up"))
+			}, 10*time.Second, 50*time.Millisecond)
+
+			if honorMetadata {
+				require.EventuallyWithT(t, func(collectT *assert.CollectT) {
+					collected := appender.CollectedMetadata()
+					require.True(collectT, hasMetadataFor(collected, "test_counter_total"))
+					require.True(collectT, hasMetadataFor(collected, "up"))
+				}, 10*time.Second, 50*time.Millisecond)
+				return
+			}
+			// Check over several scrapes, since metadata is appended after its sample.
+			require.Never(t, func() bool { return len(appender.CollectedMetadata()) > 0 }, 500*time.Millisecond, 50*time.Millisecond)
+		})
+	}
 }
 
 // --- Helpers for TestRuntimeUpdate ---

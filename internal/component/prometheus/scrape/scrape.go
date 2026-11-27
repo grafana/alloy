@@ -378,14 +378,14 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		unregisterer:        unregisterer,
 	}
 
-	interceptor := NewInterceptor(livedebugging.ComponentID(o.ID), c.debugDataPublisher, alloyAppendable)
+	interceptor := NewInterceptor(livedebugging.ComponentID(o.ID), c.debugDataPublisher, args.HonorMetadata, alloyAppendable)
 
 	scraper, err := scrape.NewManager(
 		scrapeOptions,
 		c.opts.Logger,
 		func(s string) (*promlogging.JSONFileLogger, error) { return promlogging.NewJSONFileLogger(s) },
-		interceptor,
 		nil,
+		interceptor,
 		unregisterer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create scrape manager: %w", err)
