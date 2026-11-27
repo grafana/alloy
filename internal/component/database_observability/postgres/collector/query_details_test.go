@@ -540,6 +540,367 @@ func TestQueryDetails(t *testing.T) {
 	}
 }
 
+func TestQueryDetails_ThrottlesWithinEmitInterval(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	logs := loki.NewCollectingHandler()
+	defer logs.Stop()
+
+	c, err := NewQueryDetails(QueryDetailsArguments{
+		DB:              db,
+		CollectInterval: time.Minute,
+		StatementsLimit: 100,
+		EntryHandler:    logs,
+		Logger:          util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+
+	base := time.Now()
+	c.now = func() time.Time { return base }
+	key := queryDetailsKey{database: database("some_database"), queryID: "abc123"}
+	query := fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "", 100)
+	poll := func() {
+		t.Helper()
+		mock.ExpectQuery(query).WithoutArgs().RowsWillBeClosed().WillReturnRows(
+			sqlmock.NewRows([]string{"queryid", "query", "datname"}).AddRow(
+				"abc123", "SELECT * FROM some_table", "some_database",
+			),
+		)
+		require.NoError(t, c.fetchAndAssociate(t.Context()))
+	}
+
+	// First cycle emits the association + parsed table (2 entries).
+	poll()
+	require.Equal(t, base, c.lastEmittedAt[key])
+
+	// Second cycle within EmitInterval: the query still runs but nothing new is emitted.
+	c.now = func() time.Time { return base.Add(database_observability.EmitInterval / 2) }
+	poll()
+	require.Equal(t, base, c.lastEmittedAt[key])
+
+	// Once EmitInterval has elapsed, the query is emitted again (2 more entries).
+	afterInterval := base.Add(database_observability.EmitInterval + time.Minute)
+	c.now = func() time.Time { return afterInterval }
+	poll()
+	require.Equal(t, afterInterval, c.lastEmittedAt[key])
+
+	require.NoError(t, mock.ExpectationsWereMet())
+	logs.Stop()
+	require.Len(t, logs.Received(), 4)
+}
+
+func TestQueryDetails_RetriesWhenSchemaRegistryIsNotReady(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	logs := loki.NewCollectingHandler()
+	defer logs.Stop()
+
+	tableRegistry := NewTableRegistry()
+	c, err := NewQueryDetails(QueryDetailsArguments{
+		DB:              db,
+		CollectInterval: time.Minute,
+		StatementsLimit: 100,
+		EntryHandler:    logs,
+		TableRegistry:   tableRegistry,
+		Logger:          util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+
+	base := time.Now()
+	c.now = func() time.Time { return base }
+	key := queryDetailsKey{database: database("some_database"), queryID: "abc123"}
+	query := fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "", 100)
+	poll := func() {
+		t.Helper()
+		mock.ExpectQuery(query).WithoutArgs().RowsWillBeClosed().WillReturnRows(
+			sqlmock.NewRows([]string{"queryid", "query", "datname"}).AddRow(
+				"abc123", "SELECT * FROM some_table", "some_database",
+			),
+		)
+		require.NoError(t, c.fetchAndAssociate(t.Context()))
+	}
+
+	// Poll 1: database is not yet in tableRegistry; emit immediately with validated="false"
+	// and mark the query as pending validation.
+	poll()
+	require.Eventually(t, func() bool { return len(logs.Received()) == 2 }, 5*time.Second, 20*time.Millisecond)
+	require.Equal(t, base, c.lastEmittedAt[key])
+	require.Contains(t, c.unvalidated, key)
+
+	entries := logs.Received()
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, entries[0].Labels)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAMES_V2}, entries[1].Labels)
+	require.Equal(t, `level="info" queryid="abc123" datname="some_database" tables="[{\"table\":\"some_table\",\"validated\":false}]"`, entries[1].Line)
+
+	// Poll 2: within EmitInterval and database still absent (e.g. excluded or failing);
+	// throttled so it does not re-emit on every cycle.
+	c.now = func() time.Time { return base.Add(time.Minute) }
+	poll()
+	require.Equal(t, base, c.lastEmittedAt[key])
+	require.Contains(t, c.unvalidated, key)
+
+	// Poll 3: within EmitInterval, schema collection populates the database;
+	// bypasses EmitInterval once to re-emit with validated="true".
+	tableRegistry.SetTablesForDatabase(database("some_database"), []*tableInfo{
+		{database: "some_database", schema: "public", tableName: "some_table"},
+	})
+	readyAt := base.Add(2 * time.Minute)
+	c.now = func() time.Time { return readyAt }
+	poll()
+	require.Eventually(t, func() bool { return len(logs.Received()) == 4 }, 5*time.Second, 20*time.Millisecond)
+	require.Equal(t, readyAt, c.lastEmittedAt[key])
+	require.NotContains(t, c.unvalidated, key)
+
+	entries = logs.Received()
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, entries[2].Labels)
+	require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAMES_V2}, entries[3].Labels)
+	require.Equal(t, `level="info" queryid="abc123" datname="some_database" tables="[{\"table\":\"some_table\",\"validated\":true}]"`, entries[3].Line)
+
+	// Poll 4: within EmitInterval and already validated; throttled normally.
+	c.now = func() time.Time { return base.Add(3 * time.Minute) }
+	poll()
+	require.Equal(t, readyAt, c.lastEmittedAt[key])
+
+	require.NoError(t, mock.ExpectationsWereMet())
+	logs.Stop()
+	require.Len(t, logs.Received(), 4)
+}
+
+func TestQueryDetails_Throttling(t *testing.T) {
+	t.Run("same queryid is throttled independently per database", func(t *testing.T) {
+		defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		logs := loki.NewCollectingHandler()
+		defer logs.Stop()
+
+		c, err := NewQueryDetails(QueryDetailsArguments{
+			DB: db, StatementsLimit: 100, EntryHandler: logs, Logger: util.TestAlloyLogger(t).Slog(),
+		})
+		require.NoError(t, err)
+		startTime := time.Now()
+		query := fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "", 100)
+		poll := func(elapsed time.Duration, databases ...string) {
+			t.Helper()
+			c.now = func() time.Time { return startTime.Add(elapsed) }
+			rows := sqlmock.NewRows([]string{"queryid", "query", "datname"})
+			for _, databaseName := range databases {
+				rows.AddRow("abc123", "SELECT * FROM some_table", databaseName)
+			}
+			mock.ExpectQuery(query).WithoutArgs().RowsWillBeClosed().WillReturnRows(rows)
+			require.NoError(t, c.fetchAndAssociate(t.Context()))
+		}
+
+		poll(0, "some_database")
+		poll(time.Minute, "some_database", "another_database") // assertion below shows "some_database" query is throttled
+
+		logs.Stop()
+		entries := logs.Received()
+		require.Len(t, entries, 4)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, entries[0].Labels)
+		require.Contains(t, entries[0].Line, `datname="some_database"`)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAMES_V2}, entries[1].Labels)
+		require.Contains(t, entries[1].Line, `datname="some_database"`)
+
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_ASSOCIATION}, entries[2].Labels)
+		require.Contains(t, entries[2].Line, `datname="another_database"`)
+		require.Equal(t, model.LabelSet{"op": database_observability.OP_QUERY_PARSED_TABLE_NAMES_V2}, entries[3].Labels)
+		require.Contains(t, entries[3].Line, `datname="another_database"`)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("query is throttled for EmitInterval time period", func(t *testing.T) {
+		defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		logs := loki.NewCollectingHandler()
+		defer logs.Stop()
+		tableRegistry := NewTableRegistry()
+		c, err := NewQueryDetails(QueryDetailsArguments{
+			DB: db, StatementsLimit: 100, EntryHandler: logs, TableRegistry: tableRegistry, Logger: util.TestAlloyLogger(t).Slog(),
+		})
+		require.NoError(t, err)
+		startTime := time.Now()
+		key := queryDetailsKey{database: database("some_database"), queryID: "abc123"}
+		query := fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "", 100)
+		poll := func(elapsed time.Duration, includeQuery bool) {
+			t.Helper()
+			c.now = func() time.Time { return startTime.Add(elapsed) }
+			rows := sqlmock.NewRows([]string{"queryid", "query", "datname"})
+			if includeQuery {
+				rows.AddRow("abc123", "SELECT * FROM some_table", "some_database")
+			}
+			mock.ExpectQuery(query).WithoutArgs().RowsWillBeClosed().WillReturnRows(rows)
+			require.NoError(t, c.fetchAndAssociate(t.Context()))
+		}
+
+		// Poll 1: successful scan finds query, emits it, and records it for throttling
+		poll(0, true)
+		require.Equal(t, startTime, c.lastEmittedAt[key])
+
+		// Poll 2: successful scan, query no longer present
+		poll(database_observability.EmitInterval/3, false)
+		require.Equal(t, startTime, c.lastEmittedAt[key])
+
+		// Poll 3: query is back before EmitInterval expires: stays throttled
+		poll(2*database_observability.EmitInterval/3, true)
+		require.Equal(t, startTime, c.lastEmittedAt[key])
+
+		// Poll 4: EmitInterval has expired, query is emitted again
+		poll(database_observability.EmitInterval+time.Second, true)
+		require.Equal(t, startTime.Add(database_observability.EmitInterval+time.Second), c.lastEmittedAt[key])
+
+		// One query emission created two entries; assertion of 4 confirms emission after Poll 1 and Poll 4
+		logs.Stop()
+		require.Len(t, logs.Received(), 4)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("pruneThrottle removes queries absent after EmitInterval throttle state", func(t *testing.T) {
+		defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		logs := loki.NewCollectingHandler()
+		defer logs.Stop()
+		tableRegistry := NewTableRegistry()
+		c, err := NewQueryDetails(QueryDetailsArguments{
+			DB: db, StatementsLimit: 100, EntryHandler: logs, TableRegistry: tableRegistry, Logger: util.TestAlloyLogger(t).Slog(),
+		})
+		require.NoError(t, err)
+		startTime := time.Now()
+		key := queryDetailsKey{database: database("some_database"), queryID: "abc123"}
+		query := fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "", 100)
+		poll := func(elapsed time.Duration, includeQuery bool) {
+			t.Helper()
+			c.now = func() time.Time { return startTime.Add(elapsed) }
+			rows := sqlmock.NewRows([]string{"queryid", "query", "datname"})
+			if includeQuery {
+				rows.AddRow("abc123", "SELECT * FROM some_table", "some_database")
+			}
+			mock.ExpectQuery(query).WithoutArgs().RowsWillBeClosed().WillReturnRows(rows)
+			require.NoError(t, c.fetchAndAssociate(t.Context()))
+		}
+
+		// Poll 1: query is present, but schema metadata is unavailable.
+		poll(0, true)
+		require.Contains(t, c.lastEmittedAt, key)
+		require.Contains(t, c.unvalidated, key)
+
+		// Poll 2: the query is absent and the throttle interval has expired.
+		poll(database_observability.EmitInterval+time.Second, false)
+		require.NotContains(t, c.lastEmittedAt, key)
+		require.NotContains(t, c.unvalidated, key)
+	})
+
+	t.Run("scan query error preserves throttling", func(t *testing.T) {
+		defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		logs := loki.NewCollectingHandler()
+		defer logs.Stop()
+		c, err := NewQueryDetails(QueryDetailsArguments{
+			DB: db, StatementsLimit: 100, EntryHandler: logs, Logger: util.TestAlloyLogger(t).Slog(),
+		})
+		require.NoError(t, err)
+		key := queryDetailsKey{database: database("some_database"), queryID: "abc123"}
+		startTime := time.Now()
+		query := fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "", 100)
+		c.now = func() time.Time { return startTime }
+
+		// Poll 1: successful scan finds query, emits it, and records it for throttling
+		mock.ExpectQuery(query).WithoutArgs().RowsWillBeClosed().WillReturnRows(
+			sqlmock.NewRows([]string{"queryid", "query", "datname"}).AddRow(
+				"abc123", "SELECT * FROM some_table", "some_database",
+			),
+		)
+		require.NoError(t, c.fetchAndAssociate(t.Context()))
+		require.Contains(t, c.lastEmittedAt, key)
+		require.Equal(t, startTime, c.lastEmittedAt[key])
+
+		// Poll 2: scan fails; nothing is emitted and previous emission time is unchanged
+		mock.ExpectQuery(query).WithoutArgs().WillReturnError(fmt.Errorf("query failed"))
+		require.Error(t, c.fetchAndAssociate(t.Context()))
+		require.Equal(t, startTime, c.lastEmittedAt[key])
+
+		// Poll 3: successful scan finds the same query within EmitInterval, so it stays throttled
+		c.now = func() time.Time { return startTime.Add(time.Minute) }
+		mock.ExpectQuery(query).WithoutArgs().RowsWillBeClosed().WillReturnRows(
+			sqlmock.NewRows([]string{"queryid", "query", "datname"}).AddRow(
+				"abc123", "SELECT * FROM some_table", "some_database",
+			),
+		)
+		require.NoError(t, c.fetchAndAssociate(t.Context()))
+
+		// One query emission created two entries; assertion of 2 confirms no re-emission occurred during poll 2 and poll 3
+		logs.Stop()
+		require.Len(t, logs.Received(), 2)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("iteration error preserves throttling", func(t *testing.T) {
+		defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		logs := loki.NewCollectingHandler()
+		defer logs.Stop()
+		c, err := NewQueryDetails(QueryDetailsArguments{
+			DB: db, StatementsLimit: 100, EntryHandler: logs, Logger: util.TestAlloyLogger(t).Slog(),
+		})
+		require.NoError(t, err)
+		key := queryDetailsKey{database: database("some_database"), queryID: "abc123"}
+		initialEmissionAt := time.Now()
+		c.now = func() time.Time { return initialEmissionAt }
+		query := fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "", 100)
+		rows := func() *sqlmock.Rows {
+			return sqlmock.NewRows([]string{"queryid", "query", "datname"}).AddRow(
+				"abc123", "SELECT * FROM some_table", "some_database",
+			)
+		}
+
+		// Poll 1: successful scan finds query, emits it, and records it for throttling
+		mock.ExpectQuery(query).WithoutArgs().RowsWillBeClosed().WillReturnRows(rows())
+		require.NoError(t, c.fetchAndAssociate(t.Context()))
+		require.Contains(t, c.lastEmittedAt, key)
+		require.Equal(t, initialEmissionAt, c.lastEmittedAt[key])
+
+		// Poll 2: row iteration fails; nothing is emitted and previous emission time is unchanged
+		mock.ExpectQuery(query).WithoutArgs().RowsWillBeClosed().WillReturnRows(rows().RowError(0, fmt.Errorf("iteration failed")))
+		require.Error(t, c.fetchAndAssociate(t.Context()))
+		require.Equal(t, initialEmissionAt, c.lastEmittedAt[key])
+
+		// Poll 3: successful scan finds the same query within EmitInterval, so it stays throttled
+		mock.ExpectQuery(query).WithoutArgs().RowsWillBeClosed().WillReturnRows(rows())
+		require.NoError(t, c.fetchAndAssociate(t.Context()))
+		logs.Stop()
+		// One query emission created two entries; assertion of 2 confirms no re-emission occurred during poll 2 and poll 3
+		require.Len(t, logs.Received(), 2)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+}
+
 func TestQueryDetails_EscapesQuotedTableName(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
 

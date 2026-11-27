@@ -59,6 +59,11 @@ type QueryDetailsArguments struct {
 	Logger *slog.Logger
 }
 
+type queryDetailsKey struct {
+	database database
+	queryID  string
+}
+
 type QueryDetails struct {
 	dbConnection              *sql.DB
 	collectInterval           time.Duration
@@ -71,6 +76,15 @@ type QueryDetails struct {
 	tableRegistry             *TableRegistry
 	enableErrorLogsProcessing bool
 	normalizer                *sqllexer.Normalizer
+	// lastEmittedAt records the wall-clock time at which OP_QUERY_ASSOCIATION
+	// was last emitted for a (database, queryid), used to throttle logging
+	// to at most one emission per EmitInterval per query.
+	lastEmittedAt map[queryDetailsKey]time.Time
+	// unvalidated tracks queries whose parsed tables were emitted before schema
+	// collection populated the database in tableRegistry, so they can be
+	// re-emitted once when schema collection becomes available.
+	unvalidated map[queryDetailsKey]struct{}
+	now         func() time.Time
 
 	logger  *slog.Logger
 	running *atomic.Bool
@@ -92,6 +106,9 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 		tableRegistry:             args.TableRegistry,
 		enableErrorLogsProcessing: args.EnableErrorLogsProcessing,
 		normalizer:                sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true), sqllexer.WithKeepIdentifierQuotation(true)),
+		lastEmittedAt:             map[queryDetailsKey]time.Time{},
+		unvalidated:               map[queryDetailsKey]struct{}{},
+		now:                       time.Now,
 		logger:                    args.Logger.With("collector", QueryDetailsCollector),
 		running:                   &atomic.Bool{},
 	}, nil
@@ -154,6 +171,7 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 	}
 	defer rs.Close()
 
+	now := c.now()
 	for rs.Next() {
 		var queryID, queryText string
 		var databaseName database
@@ -163,67 +181,21 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 			continue
 		}
 
-		var fp string
-		if c.enableErrorLogsProcessing {
-			// Fingerprint the raw text BEFORE comment stripping; pg_query
-			// canonicalizes literals at the AST level so the value is stable
-			// across comment-only differences and matches the fingerprint
-			// computed elsewhere from pg_stat_activity / server logs.
-			var fpErr error
-			fp, fpErr = fingerprint.Fingerprint(queryText)
-			if fpErr != nil {
-				c.logger.Warn("could not compute query fingerprint; emitting query_association without fingerprint", "queryid", queryID, "err", fpErr)
-			} else if fp == "" {
-				c.logger.Warn("empty query fingerprint; emitting query_association without fingerprint", "queryid", queryID)
+		key := queryDetailsKey{database: databaseName, queryID: queryID}
+		hasDatabase := c.tableRegistry != nil && c.tableRegistry.SchemasForDatabase(databaseName) != nil
+		if last, ok := c.lastEmittedAt[key]; ok && now.Sub(last) < database_observability.EmitInterval {
+			if _, pending := c.unvalidated[key]; !pending || !hasDatabase {
+				continue
 			}
 		}
 
-		queryText, err = removeComments(c.normalizer, queryText)
-		if err != nil {
-			c.logger.Error("failed to remove comments", "err", err)
-			continue
-		}
-
-		var body string
-		if fp != "" {
-			body = fmt.Sprintf(`queryid=%q query_fingerprint=%q querytext=%q datname=%q`, queryID, fp, queryText, databaseName)
+		pendingValidation := c.emit(databaseName, queryID, queryText, hasDatabase)
+		c.lastEmittedAt[key] = now
+		if pendingValidation {
+			c.unvalidated[key] = struct{}{}
 		} else {
-			body = fmt.Sprintf(`queryid=%q querytext=%q datname=%q`, queryID, queryText, databaseName)
+			delete(c.unvalidated, key)
 		}
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-			logging.LevelInfo,
-			database_observability.OP_QUERY_ASSOCIATION,
-			body,
-		)
-
-		tables, err := tokenizeTableNames(c.normalizer, queryText)
-		if err != nil {
-			c.logger.Error("failed to tokenize table names", "err", err)
-			continue
-		}
-
-		if len(tables) == 0 {
-			continue
-		}
-		parsedTables := make([]database_observability.ParsedTable, 0, len(tables))
-		for _, table := range tables {
-			validated := false
-			resolvedTable := table
-			if c.tableRegistry != nil {
-				resolvedTable, validated = c.tableRegistry.IsValid(databaseName, table)
-			}
-			parsedTables = append(parsedTables, database_observability.ParsedTable{Table: resolvedTable, Validated: validated})
-		}
-		tablesJSON, err := json.Marshal(parsedTables)
-		if err != nil {
-			c.logger.Error("failed to encode parsed tables", "err", err)
-			continue
-		}
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-			logging.LevelInfo,
-			database_observability.OP_QUERY_PARSED_TABLE_NAMES_V2,
-			fmt.Sprintf(`queryid=%q datname=%q tables=%q`, queryID, databaseName, tablesJSON),
-		)
 	}
 
 	if err := rs.Err(); err != nil {
@@ -231,7 +203,88 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 		return err
 	}
 
+	c.pruneThrottle(now)
 	return nil
+}
+
+// emit logs the query association and any table names parsed from the query.
+// It returns true when parsed tables were emitted without schema data, so the
+// query can be re-emitted once schema collection populates tableRegistry.
+func (c *QueryDetails) emit(databaseName database, queryID, queryText string, hasDatabase bool) bool {
+	var fp string
+	if c.enableErrorLogsProcessing {
+		// Fingerprint the raw text BEFORE comment stripping; pg_query
+		// canonicalizes literals at the AST level so the value is stable
+		// across comment-only differences and matches the fingerprint
+		// computed elsewhere from pg_stat_activity / server logs.
+		var fpErr error
+		fp, fpErr = fingerprint.Fingerprint(queryText)
+		if fpErr != nil {
+			c.logger.Warn("could not compute query fingerprint; emitting query_association without fingerprint", "queryid", queryID, "err", fpErr)
+		} else if fp == "" {
+			c.logger.Warn("empty query fingerprint; emitting query_association without fingerprint", "queryid", queryID)
+		}
+	}
+
+	queryText, err := removeComments(c.normalizer, queryText)
+	if err != nil {
+		c.logger.Error("failed to remove comments", "err", err)
+		return false
+	}
+
+	var body string
+	if fp != "" {
+		body = fmt.Sprintf(`queryid=%q query_fingerprint=%q querytext=%q datname=%q`, queryID, fp, queryText, databaseName)
+	} else {
+		body = fmt.Sprintf(`queryid=%q querytext=%q datname=%q`, queryID, queryText, databaseName)
+	}
+	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+		logging.LevelInfo,
+		database_observability.OP_QUERY_ASSOCIATION,
+		body,
+	)
+
+	tables, err := tokenizeTableNames(c.normalizer, queryText)
+	if err != nil {
+		c.logger.Error("failed to tokenize table names", "err", err)
+		return false
+	}
+
+	if len(tables) == 0 {
+		return false
+	}
+
+	parsedTables := make([]database_observability.ParsedTable, 0, len(tables))
+	for _, table := range tables {
+		validated := false
+		resolvedTable := table
+		if c.tableRegistry != nil {
+			resolvedTable, validated = c.tableRegistry.IsValid(databaseName, table)
+		}
+		parsedTables = append(parsedTables, database_observability.ParsedTable{Table: resolvedTable, Validated: validated})
+	}
+	tablesJSON, err := json.Marshal(parsedTables)
+	if err != nil {
+		c.logger.Error("failed to encode parsed tables", "err", err)
+		return false
+	}
+	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+		logging.LevelInfo,
+		database_observability.OP_QUERY_PARSED_TABLE_NAMES_V2,
+		fmt.Sprintf(`queryid=%q datname=%q tables=%q`, queryID, databaseName, tablesJSON),
+	)
+
+	return c.tableRegistry != nil && !hasDatabase
+}
+
+// pruneThrottle drops entries whose last emission was at least EmitInterval ago.
+func (c *QueryDetails) pruneThrottle(now time.Time) {
+	for key, last := range c.lastEmittedAt {
+		if now.Sub(last) >= database_observability.EmitInterval {
+			delete(c.lastEmittedAt, key)
+			delete(c.unvalidated, key)
+		}
+	}
 }
 
 func tokenizeTableNames(normalizer *sqllexer.Normalizer, sqlText string) ([]string, error) {

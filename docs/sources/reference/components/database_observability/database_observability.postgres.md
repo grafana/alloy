@@ -252,6 +252,8 @@ If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the blo
 | `collect_interval` | `duration` | How frequently to collect information from database. | `"1m"`  | no       |
 | `statements_limit` | `integer`  | Max number of recent queries to collect details for. | `100`   | no       |
 
+The `query_details` collector throttles repeated emissions for the same database and query ID.
+
 ### `query_samples`
 
 | Name                      | Type       | Description                                                   | Default | Required |
