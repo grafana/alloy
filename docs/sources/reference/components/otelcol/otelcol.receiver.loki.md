@@ -40,11 +40,13 @@ You can use the following blocks with `otelcol.receiver.loki`:
 
 {{< docs/alloy-config >}}
 
-| Block              | Description                                        | Required |
-|--------------------|----------------------------------------------------|----------|
-| [`output`][output] | Configures where to send converted telemetry data. | yes      |
+| Block                                  | Description                                                                                      | Required |
+|----------------------------------------|--------------------------------------------------------------------------------------------------|----------|
+| [`output`][output]                     | Configures where to send converted telemetry data.                                               | yes      |
+| [`retry_on_failure`][retry_on_failure] | Configures the retry behavior when the receiver encounters an error downstream in the pipeline. Only applies with the Loki pipeline v2. | no       |
 
 [output]: #output
+[retry_on_failure]: #retry_on_failure
 
 {{< /docs/alloy-config >}}
 
@@ -53,6 +55,38 @@ You can use the following blocks with `otelcol.receiver.loki`:
 {{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `retry_on_failure`
+
+{{< admonition type="note" >}}
+The `retry_on_failure` block only takes effect when you enable the Loki pipeline v2.
+With the Loki pipeline v1, which is the default, `otelcol.receiver.loki` logs a warning at startup and ignores the block.
+{{< /admonition >}}
+
+The `retry_on_failure` block configures the retry behavior when the receiver encounters an error downstream in the pipeline.
+The receiver uses an exponential backoff algorithm with jitter to delay the retry after subsequent failures.
+
+You can use the following arguments with `retry_on_failure`:
+
+| Name               | Type       | Description                                                                                                         | Default | Required |
+|--------------------|------------|---------------------------------------------------------------------------------------------------------------------|---------|----------|
+| `enabled`          | `bool`     | If set to `true` and a non-permanent error occurs, the receiver blocks and sends the current batch of logs again.   | `false` | no       |
+| `initial_interval` | `duration` | The time to wait after the first failure before retrying.                                                           | `"1s"`  | no       |
+| `max_elapsed_time` | `duration` | The maximum time to keep retrying a batch before the receiver drops it.                                             | `"5m"`  | no       |
+| `max_interval`     | `duration` | The maximum time to wait between retries after applying backoff.                                                    | `"30s"` | no       |
+
+If you set `max_elapsed_time` to `0`, the receiver retries forever and never drops a batch.
+
+When `enabled` is `false`, the receiver returns the error to the Loki component that sent the logs, and that component handles it as an unexpected error.
+
+When `enabled` is `true`, the receiver blocks the call from the Loki component that sent the logs and sends the batch again with exponential backoff.
+The receiver keeps retrying until one of the following happens:
+
+- **Accepted:** Downstream accepts the batch.
+- **Permanent error:** A permanent error occurs. The receiver never retries permanent errors.
+- **Timeout:** The `max_elapsed_time` passes. The receiver drops the batch and logs an error.
+- **Canceled:** The sending Loki component cancels its request.
+- **Stopped:** The `otelcol.receiver.loki` component stops.
 
 ## Exported fields
 

@@ -2,244 +2,417 @@ package loki
 
 import (
 	"context"
-	"log/slog"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/consumer/consumererror"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
+	"go.uber.org/atomic"
 
-	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/common/loki/lokitest"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
-	"github.com/grafana/alloy/internal/runtime/componenttest"
-	"github.com/grafana/alloy/internal/service/livedebugging"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/loki/pkg/push"
 )
 
 func TestComponent(t *testing.T) {
-	t.Run("LogReceiver", func(t *testing.T) {
-		l := util.TestLogger(t)
-		ctrl, err := componenttest.NewControllerFromID(l, "otelcol.receiver.loki")
-		require.NoError(t, err)
-
-		cfg := `
-		output {
-			// no-op: will be overridden by test code.
-		}
-	`
-		var args Arguments
-		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
-
-		// Override our settings so logs get forwarded to logCh.
-		logCh := make(chan plog.Logs)
-		args.Output = makeLogsOutput(logCh)
-
-		go func() {
-			require.NoError(t, ctrl.Run(t.Context(), args))
-		}()
-
-		require.NoError(t, ctrl.WaitRunning(time.Second))
-		require.NoError(t, ctrl.WaitExports(time.Second))
-
-		exports := ctrl.Exports().(Exports)
-
-		now := time.Now()
-
-		// Use the exported receiver to send log entries in the background.
-		go func() {
-			entry := loki.Entry{
-				Labels: map[model.LabelName]model.LabelValue{
-					"filename": "/var/log/app/errors.log",
-					"env":      "dev",
-				},
-				Entry: push.Entry{
-					Timestamp: now,
-					Line:      "It's super effective!",
-				},
+	lokitest.TestV1(t, func(t *testing.T, env lokitest.Env) {
+		t.Run("retry_on_failure is ignored", func(t *testing.T) {
+			testV1RetryIgnored(t, env)
+		})
+		t.Run("LogReceiver", func(t *testing.T) {
+			cfg := `
+			output {
+				// no-op: will be overridden by test code.
 			}
-			exports.Receiver.Chan() <- entry
-		}()
+		`
+			var args Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
 
-		// Wait for our client to get the log.
-		select {
-		case <-time.After(time.Second):
-			require.FailNow(t, "failed waiting for log entry")
-		case otelLogs := <-logCh:
-			requireLogRecords(t, otelLogs, []logRecord{
-				{
-					body:      "It's super effective!",
-					timestamp: now,
-					attributes: map[string]any{
-						"env":                   "dev",
-						"filename":              "/var/log/app/errors.log",
-						"log.file.name":         "errors.log",
-						"log.file.path":         "/var/log/app/errors.log",
-						"loki.attribute.labels": "env,filename",
+			// Override our settings so logs get forwarded to logCh.
+			logCh := make(chan plog.Logs)
+			args.Output = makeLogsOutput(logCh)
+
+			ctrl, _ := env.Run(t, "otelcol.receiver.loki", args)
+			require.NoError(t, ctrl.WaitExports(time.Second))
+
+			exports := ctrl.Exports().(Exports)
+
+			now := time.Now()
+
+			// Use the exported receiver to send log entries in the background.
+			go func() {
+				entry := loki.Entry{
+					Labels: map[model.LabelName]model.LabelValue{
+						"filename": "/var/log/app/errors.log",
+						"env":      "dev",
 					},
+					Entry: push.Entry{
+						Timestamp: now,
+						Line:      "It's super effective!",
+					},
+				}
+				exports.Receiver.Chan() <- entry
+			}()
+
+			// Wait for our client to get the log.
+			select {
+			case <-time.After(time.Second):
+				require.FailNow(t, "failed waiting for log entry")
+			case otelLogs := <-logCh:
+				requireLogRecords(t, otelLogs, []logRecord{
+					{
+						body:      "It's super effective!",
+						timestamp: now,
+						attributes: map[string]any{
+							"env":                   "dev",
+							"filename":              "/var/log/app/errors.log",
+							"log.file.name":         "errors.log",
+							"log.file.path":         "/var/log/app/errors.log",
+							"loki.attribute.labels": "env,filename",
+						},
+					},
+				})
+			}
+		})
+	})
+
+	lokitest.TestV2(t, func(t *testing.T, env lokitest.Env) {
+		t.Run("Consumer", func(t *testing.T) {
+			testConsumer(t, env)
+		})
+		t.Run("Consumer stopped", func(t *testing.T) {
+			testConsumerStopped(t, env)
+		})
+		t.Run("Consumer empty batch", func(t *testing.T) {
+			testConsumerEmptyBatch(t, env)
+		})
+		t.Run("Update and stop while downstream is blocked", func(t *testing.T) {
+			testBlockedDownstream(t, env)
+		})
+		t.Run("Retry transient downstream error", func(t *testing.T) {
+			testRetryTransient(t, env)
+		})
+		t.Run("Do not retry when retry is disabled", func(t *testing.T) {
+			testRetryDisabled(t, env)
+		})
+		t.Run("Do not retry permanent downstream error", func(t *testing.T) {
+			testRetryPermanent(t, env)
+		})
+		t.Run("Stop while waiting to retry", func(t *testing.T) {
+			testRetryStop(t, env)
+		})
+		t.Run("Give up after max elapsed time", func(t *testing.T) {
+			testRetryMaxElapsedTime(t, env)
+		})
+	})
+}
+
+// runV2 runs the component in env and returns its exported consumer.
+func runV2(t *testing.T, env lokitest.Env, recv chan plog.Logs) (loki.Consumer, func()) {
+	t.Helper()
+
+	ctrl, stop := env.Run(t, "otelcol.receiver.loki", Arguments{Output: makeLogsOutput(recv)})
+	require.NoError(t, ctrl.WaitExports(time.Second))
+
+	c, ok := ctrl.Exports().(Exports).Receiver.(loki.Consumer)
+	require.True(t, ok, "pipeline v2 receiver must implement loki.Consumer")
+	return c, stop
+}
+
+func testConsumer(t *testing.T, env lokitest.Env) {
+	var (
+		now  = time.Now()
+		recv = make(chan plog.Logs)
+	)
+
+	c, _ := runV2(t, env, recv)
+
+	batch := loki.NewBatch()
+	batch.Add(loki.NewStream(
+		model.LabelSet{"stream": "1", "env": "dev", "filename": "/path1/file1"},
+		push.Entry{Line: "1", Timestamp: now},
+		push.Entry{Line: "2", Timestamp: now.Add(time.Second)},
+		push.Entry{Line: "3", Timestamp: now.Add(2 * time.Second)},
+	))
+	batch.Add(loki.NewStream(
+		model.LabelSet{"stream": "2", "env": "prod", "filename": "/path2/file2"},
+		push.Entry{Line: "1", Timestamp: now},
+		push.Entry{Line: "2", Timestamp: now.Add(time.Second)},
+	))
+
+	go func() {
+		require.NoError(t, c.Consume(t.Context(), batch))
+	}()
+
+	select {
+	case logs := <-recv:
+		requireLogRecords(t, logs, []logRecord{
+			{
+				body:      "1",
+				timestamp: now,
+				attributes: map[string]any{
+					"stream":                "1",
+					"env":                   "dev",
+					"filename":              "/path1/file1",
+					"log.file.name":         "file1",
+					"log.file.path":         "/path1/file1",
+					"loki.attribute.labels": "env,filename,stream",
 				},
-			})
+			},
+			{
+				body:      "2",
+				timestamp: now.Add(time.Second),
+				attributes: map[string]any{
+					"stream":                "1",
+					"env":                   "dev",
+					"filename":              "/path1/file1",
+					"log.file.name":         "file1",
+					"log.file.path":         "/path1/file1",
+					"loki.attribute.labels": "env,filename,stream",
+				},
+			},
+			{
+				body:      "3",
+				timestamp: now.Add(2 * time.Second),
+				attributes: map[string]any{
+					"stream":                "1",
+					"env":                   "dev",
+					"filename":              "/path1/file1",
+					"log.file.name":         "file1",
+					"log.file.path":         "/path1/file1",
+					"loki.attribute.labels": "env,filename,stream",
+				},
+			},
+			{
+				body:      "1",
+				timestamp: now,
+				attributes: map[string]any{
+					"stream":                "2",
+					"env":                   "prod",
+					"filename":              "/path2/file2",
+					"log.file.name":         "file2",
+					"log.file.path":         "/path2/file2",
+					"loki.attribute.labels": "env,filename,stream",
+				},
+			},
+			{
+				body:      "2",
+				timestamp: now.Add(time.Second),
+				attributes: map[string]any{
+					"stream":                "2",
+					"env":                   "prod",
+					"filename":              "/path2/file2",
+					"log.file.name":         "file2",
+					"log.file.path":         "/path2/file2",
+					"loki.attribute.labels": "env,filename,stream",
+				},
+			},
+		})
+
+	case <-time.After(2 * time.Second):
+		require.FailNow(t, "logs did not arrive in time")
+	}
+}
+
+func testConsumerStopped(t *testing.T, env lokitest.Env) {
+	c, stop := runV2(t, env, make(chan plog.Logs, 1))
+	stop()
+
+	batch := loki.NewBatch()
+	batch.Add(loki.NewStream(
+		model.LabelSet{"stream": "1"},
+		push.Entry{Line: "1", Timestamp: time.Now()},
+	))
+
+	require.ErrorIs(t, c.Consume(t.Context(), batch), loki.ErrConsumerStopped)
+}
+
+func testConsumerEmptyBatch(t *testing.T, env lokitest.Env) {
+	recv := make(chan plog.Logs, 1)
+	c, _ := runV2(t, env, recv)
+	require.NoError(t, c.Consume(t.Context(), loki.NewBatch()))
+
+	select {
+	case <-recv:
+		require.FailNow(t, "empty batch should not forward logs")
+	default:
+	}
+}
+
+func testBlockedDownstream(t *testing.T, env lokitest.Env) {
+	entered := make(chan struct{}, 1)
+	blocking := &fakeconsumer.Consumer{
+		ConsumeLogsFunc: func(ctx context.Context, _ plog.Logs) error {
+			entered <- struct{}{}
+			<-ctx.Done()
+			return ctx.Err()
+		},
+	}
+	args := Arguments{Output: &otelcol.ConsumerArguments{Logs: []otelcol.Consumer{blocking}}}
+
+	ctrl, stop := env.Run(t, "otelcol.receiver.loki", args)
+	require.NoError(t, ctrl.WaitExports(time.Second))
+	c := ctrl.Exports().(Exports).Receiver.(loki.Consumer)
+
+	consumeCtx, cancelConsume := context.WithCancel(t.Context())
+	defer cancelConsume()
+
+	batch := loki.NewBatch()
+	batch.Add(loki.NewStream(model.LabelSet{"stream": "1"}, push.Entry{Line: "1", Timestamp: time.Now()}))
+	consumed := make(chan error, 1)
+	go func() { consumed <- c.Consume(consumeCtx, batch) }()
+	<-entered
+
+	require.NoError(t, requireReturns(t, "Update", func() error { return ctrl.Update(args) }))
+	// stop fails the test itself if Run doesn't exit in time.
+	stop()
+
+	cancelConsume()
+	require.ErrorIs(t, <-consumed, context.Canceled)
+}
+
+// testV1RetryIgnored checks that retry_on_failure has no effect on the v1 channel path.
+func testV1RetryIgnored(t *testing.T, env lokitest.Env) {
+	var calls atomic.Int32
+	fc := &fakeconsumer.Consumer{ConsumeLogsFunc: func(context.Context, plog.Logs) error {
+		calls.Add(1)
+		return errors.New("sending queue is full")
+	}}
+	args := Arguments{Output: &otelcol.ConsumerArguments{Logs: []otelcol.Consumer{fc}}, ConsumerRetry: testRetry}
+	ctrl, _ := env.Run(t, "otelcol.receiver.loki", args)
+	require.NoError(t, ctrl.WaitExports(time.Second))
+
+	ctrl.Exports().(Exports).Receiver.Chan() <- loki.Entry{
+		Labels: model.LabelSet{"stream": "1"},
+		Entry:  push.Entry{Line: "1", Timestamp: time.Now()},
+	}
+	require.Eventually(t, func() bool { return calls.Load() >= 1 }, 5*time.Second, time.Millisecond)
+	// Retries back off for at most 5ms here, so extra calls would show up quickly.
+	time.Sleep(100 * time.Millisecond)
+	require.EqualValues(t, 1, calls.Load())
+}
+
+func consumeWithDownstream(t *testing.T, env lokitest.Env, retry otelcol.ConsumerRetryArguments, fn func(context.Context, plog.Logs) error) error {
+	t.Helper()
+
+	args := Arguments{
+		Output:        &otelcol.ConsumerArguments{Logs: []otelcol.Consumer{&fakeconsumer.Consumer{ConsumeLogsFunc: fn}}},
+		ConsumerRetry: retry,
+	}
+	ctrl, _ := env.Run(t, "otelcol.receiver.loki", args)
+	require.NoError(t, ctrl.WaitExports(time.Second))
+	c := ctrl.Exports().(Exports).Receiver.(loki.Consumer)
+
+	batch := loki.NewBatch()
+	batch.Add(loki.NewStream(model.LabelSet{"stream": "1"}, push.Entry{Line: "1", Timestamp: time.Now()}))
+	return requireReturns(t, "Consume", func() error { return c.Consume(t.Context(), batch) })
+}
+
+var testRetry = otelcol.ConsumerRetryArguments{
+	Enabled:         true,
+	InitialInterval: time.Millisecond,
+	MaxInterval:     5 * time.Millisecond,
+	MaxElapsedTime:  time.Minute,
+}
+
+func testRetryTransient(t *testing.T, env lokitest.Env) {
+	var calls atomic.Int32
+	err := consumeWithDownstream(t, env, testRetry, func(context.Context, plog.Logs) error {
+		if calls.Add(1) < 3 {
+			return errors.New("sending queue is full")
 		}
+		return nil
 	})
+	require.NoError(t, err)
+	require.EqualValues(t, 3, calls.Load())
+}
 
-	t.Run("Consumer", func(t *testing.T) {
-		var (
-			now  = time.Now()
-			recv = make(chan plog.Logs)
-		)
+func testRetryDisabled(t *testing.T, env lokitest.Env) {
+	var calls atomic.Int32
+	retry := testRetry
+	retry.Enabled = false
+	err := consumeWithDownstream(t, env, retry, func(context.Context, plog.Logs) error {
+		calls.Add(1)
+		return errors.New("sending queue is full")
+	})
+	require.ErrorContains(t, err, "sending queue is full")
+	require.EqualValues(t, 1, calls.Load())
+}
 
-		c, err := New(component.Options{
-			Logger:        slog.New(slog.DiscardHandler),
-			OnStateChange: func(e component.Exports) {},
-			GetServiceData: func(string) (any, error) {
-				return livedebugging.NewLiveDebugging(), nil
-			},
-		}, Arguments{
-			Output: makeLogsOutput(recv),
-		})
-		require.NoError(t, err)
+func testRetryPermanent(t *testing.T, env lokitest.Env) {
+	var calls atomic.Int32
+	err := consumeWithDownstream(t, env, testRetry, func(context.Context, plog.Logs) error {
+		calls.Add(1)
+		return consumererror.NewPermanent(errors.New("bad data"))
+	})
+	require.Error(t, err)
+	require.True(t, consumererror.IsPermanent(err))
+	require.EqualValues(t, 1, calls.Load())
+}
 
-		batch := loki.NewBatch()
-		batch.Add(loki.NewStream(
-			model.LabelSet{"stream": "1", "env": "dev", "filename": "/path1/file1"},
-			push.Entry{Line: "1", Timestamp: now},
-			push.Entry{Line: "2", Timestamp: now.Add(time.Second)},
-			push.Entry{Line: "3", Timestamp: now.Add(2 * time.Second)},
-		))
-		batch.Add(loki.NewStream(
-			model.LabelSet{"stream": "2", "env": "prod", "filename": "/path2/file2"},
-			push.Entry{Line: "1", Timestamp: now},
-			push.Entry{Line: "2", Timestamp: now.Add(time.Second)},
-		))
+func testRetryMaxElapsedTime(t *testing.T, env lokitest.Env) {
+	retry := testRetry
+	retry.MaxElapsedTime = 20 * time.Millisecond
+	err := consumeWithDownstream(t, env, retry, func(context.Context, plog.Logs) error {
+		return errors.New("sending queue is full")
+	})
+	require.ErrorContains(t, err, "sending queue is full")
+}
 
-		go func() {
-			require.NoError(t, c.Consume(t.Context(), batch))
-		}()
-
+func testRetryStop(t *testing.T, env lokitest.Env) {
+	called := make(chan struct{}, 1)
+	retry := testRetry
+	retry.InitialInterval = time.Hour
+	retry.MaxInterval = time.Hour
+	retry.MaxElapsedTime = 0
+	fc := &fakeconsumer.Consumer{ConsumeLogsFunc: func(context.Context, plog.Logs) error {
 		select {
-		case logs := <-recv:
-			requireLogRecords(t, logs, []logRecord{
-				{
-					body:      "1",
-					timestamp: now,
-					attributes: map[string]any{
-						"stream":                "1",
-						"env":                   "dev",
-						"filename":              "/path1/file1",
-						"log.file.name":         "file1",
-						"log.file.path":         "/path1/file1",
-						"loki.attribute.labels": "env,filename,stream",
-					},
-				},
-				{
-					body:      "2",
-					timestamp: now.Add(time.Second),
-					attributes: map[string]any{
-						"stream":                "1",
-						"env":                   "dev",
-						"filename":              "/path1/file1",
-						"log.file.name":         "file1",
-						"log.file.path":         "/path1/file1",
-						"loki.attribute.labels": "env,filename,stream",
-					},
-				},
-				{
-					body:      "3",
-					timestamp: now.Add(2 * time.Second),
-					attributes: map[string]any{
-						"stream":                "1",
-						"env":                   "dev",
-						"filename":              "/path1/file1",
-						"log.file.name":         "file1",
-						"log.file.path":         "/path1/file1",
-						"loki.attribute.labels": "env,filename,stream",
-					},
-				},
-				{
-					body:      "1",
-					timestamp: now,
-					attributes: map[string]any{
-						"stream":                "2",
-						"env":                   "prod",
-						"filename":              "/path2/file2",
-						"log.file.name":         "file2",
-						"log.file.path":         "/path2/file2",
-						"loki.attribute.labels": "env,filename,stream",
-					},
-				},
-				{
-					body:      "2",
-					timestamp: now.Add(time.Second),
-					attributes: map[string]any{
-						"stream":                "2",
-						"env":                   "prod",
-						"filename":              "/path2/file2",
-						"log.file.name":         "file2",
-						"log.file.path":         "/path2/file2",
-						"loki.attribute.labels": "env,filename,stream",
-					},
-				},
-			})
-
-		case <-time.After(2 * time.Second):
-			require.FailNow(t, "logs did not arrive in time")
-		}
-	})
-
-	t.Run("Consumer stopped", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(t.Context())
-
-		c, err := New(component.Options{
-			Logger:        slog.New(slog.DiscardHandler),
-			OnStateChange: func(e component.Exports) {},
-			GetServiceData: func(string) (any, error) {
-				return livedebugging.NewLiveDebugging(), nil
-			},
-		}, Arguments{
-			Output: makeLogsOutput(make(chan plog.Logs, 1)),
-		})
-		require.NoError(t, err)
-
-		runErr := make(chan error, 1)
-		go func() { runErr <- c.Run(ctx) }()
-
-		cancel()
-		require.NoError(t, <-runErr)
-
-		batch := loki.NewBatch()
-		batch.Add(loki.NewStream(
-			model.LabelSet{"stream": "1"},
-			push.Entry{Line: "1", Timestamp: time.Now()},
-		))
-
-		require.ErrorIs(t, c.Consume(t.Context(), batch), loki.ErrConsumerStopped)
-	})
-
-	t.Run("Consumer empty batch", func(t *testing.T) {
-		recv := make(chan plog.Logs, 1)
-		c, err := New(component.Options{
-			Logger:        slog.New(slog.DiscardHandler),
-			OnStateChange: func(e component.Exports) {},
-			GetServiceData: func(string) (any, error) {
-				return livedebugging.NewLiveDebugging(), nil
-			},
-		}, Arguments{
-			Output: makeLogsOutput(recv),
-		})
-		require.NoError(t, err)
-		require.NoError(t, c.Consume(t.Context(), loki.NewBatch()))
-
-		select {
-		case <-recv:
-			require.FailNow(t, "empty batch should not forward logs")
+		case called <- struct{}{}:
 		default:
 		}
-	})
+		return errors.New("sending queue is full")
+	}}
+	args := Arguments{Output: &otelcol.ConsumerArguments{Logs: []otelcol.Consumer{fc}}, ConsumerRetry: retry}
+	ctrl, stop := env.Run(t, "otelcol.receiver.loki", args)
+	require.NoError(t, ctrl.WaitExports(time.Second))
+	c := ctrl.Exports().(Exports).Receiver.(loki.Consumer)
+
+	batch := loki.NewBatch()
+	batch.Add(loki.NewStream(model.LabelSet{"stream": "1"}, push.Entry{Line: "1", Timestamp: time.Now()}))
+	consumed := make(chan error, 1)
+	go func() { consumed <- c.Consume(t.Context(), batch) }()
+	<-called
+
+	stop()
+	select {
+	case err := <-consumed:
+		require.ErrorIs(t, err, loki.ErrConsumerStopped)
+	case <-time.After(5 * time.Second):
+		require.FailNow(t, "Consume did not return after the component stopped")
+	}
+}
+
+// requireReturns fails the test if fn does not return within 5 seconds.
+func requireReturns(t *testing.T, name string, fn func() error) error {
+	t.Helper()
+
+	done := make(chan error, 1)
+	go func() { done <- fn() }()
+
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(5 * time.Second):
+		require.FailNowf(t, "blocked", "%s did not return while downstream was blocked", name)
+		return nil
+	}
 }
 
 type logRecord struct {
