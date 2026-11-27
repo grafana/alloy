@@ -17,6 +17,7 @@ import (
 	collectorv1 "github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1"
 	"github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1/collectorv1connect"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/component/common/config"
@@ -46,6 +47,7 @@ type Service struct {
 	systemAttrs map[string]string
 	attrs       map[string]string
 	cm          *configManager
+	registered  atomic.Bool
 
 	// runCtx is the context from Run method, used for service lifecycle operations
 	runCtx context.Context
@@ -150,11 +152,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	}()
 
 	s.fetchLoadConfig(true) // Allow cache fallback on startup
-	err = s.registerCollector()
-	if err != nil && !errors.Is(err, errNoopClient) {
-		s.opts.Logger.Error("failed to register collector during service startup", "err", err)
-		return err
-	}
+	s.registerCollector()
 
 	// Run the service's own controller.
 	go func() {
@@ -164,6 +162,9 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	for {
 		select {
 		case <-s.cm.getTickerC():
+			if !s.registered.Load() {
+				s.registerCollector()
+			}
 			s.fetchLoadConfig(false) // Don't reload cache during periodic polling
 		case <-s.cm.getUpdateTickerChan():
 			s.cm.getTicker().Reset(s.cm.getPollFrequency())
@@ -195,11 +196,7 @@ func (s *Service) Update(newConfig any) error {
 		return err
 	}
 
-	err = s.registerCollector()
-	if err != nil {
-		s.opts.Logger.Error("failed to register collector during configuration update", "err", err)
-		return err
-	}
+	s.registerCollector()
 
 	// If we've already called Run, then immediately trigger an API call with
 	// the updated Arguments, and/or fall back to the updated cache location.
@@ -317,7 +314,9 @@ func (s *Service) getConfig() (*collectorv1.GetConfigResponse, error) {
 	return response.Msg, nil
 }
 
-func (s *Service) registerCollector() error {
+// registerCollector only logs a failure, so an unreachable server cannot stop Alloy
+// from starting with its cached configuration. Run retries it on each poll.
+func (s *Service) registerCollector() {
 	s.mut.RLock()
 	defer s.mut.RUnlock()
 
@@ -331,9 +330,10 @@ func (s *Service) registerCollector() error {
 
 	if err != nil && !errors.Is(err, errNoopClient) {
 		s.opts.Logger.Error("failed to register collector with remote server", "id", s.args.ID, "name", s.args.Name, "err", err)
-		return err
+		s.registered.Store(false)
+		return
 	}
-	return nil
+	s.registered.Store(true)
 }
 
 func (s *Service) unregisterCollector(ctx context.Context) error {

@@ -2,6 +2,7 @@ package remotecfg
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -31,46 +32,100 @@ import (
 )
 
 func TestOnDiskCache(t *testing.T) {
+	unavailable := connect.NewError(connect.CodeUnavailable, errors.New("connection refused"))
+
+	testCases := []struct {
+		name                  string
+		getConfigFunc         func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error)
+		registerCollectorFunc func(context.Context, *connect.Request[collectorv1.RegisterCollectorRequest]) (*connect.Response[collectorv1.RegisterCollectorResponse], error)
+	}{
+		{
+			name:          "unparseable response",
+			getConfigFunc: buildGetConfigHandler("unparseable config", "", false),
+		},
+		{
+			name: "server unreachable",
+			getConfigFunc: func(context.Context, *connect.Request[collectorv1.GetConfigRequest]) (*connect.Response[collectorv1.GetConfigResponse], error) {
+				return nil, unavailable
+			},
+			registerCollectorFunc: func(context.Context, *connect.Request[collectorv1.RegisterCollectorRequest]) (*connect.Response[collectorv1.RegisterCollectorResponse], error) {
+				return nil, unavailable
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+
+			client := &mockCollectorClient{}
+			client.registerCollectorFunc = tc.registerCollectorFunc
+			url := "https://example.com/"
+
+			// The contents of the on-disk cache.
+			cacheContents := `loki.process "default" { forward_to = [] }`
+
+			// Create a new service.
+			env := newTestEnvironment(t, client)
+			require.NoError(t, env.ApplyConfig(fmt.Sprintf(`
+				url = "%s"
+			`, url)))
+
+			client.getConfigFunc = tc.getConfigFunc
+
+			// Write the cache contents, and run the service.
+			err := os.WriteFile(env.svc.cm.getCachedConfigPath(), []byte(cacheContents), 0644)
+			require.NoError(t, err)
+
+			// Run the service.
+			wg := sync.WaitGroup{}
+			wg.Go(func() {
+				require.NoError(t, env.Run(ctx))
+			})
+			defer func() { cancel(); wg.Wait() }()
+
+			require.EventuallyWithT(t, func(c *assert.CollectT) {
+				assert.Equal(c, getHash([]byte(cacheContents)), env.svc.cm.getLastLoadedCfgHash())
+			}, time.Second, 10*time.Millisecond)
+		})
+	}
+}
+
+func TestRegisterCollectorRetry(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 
 	client := &mockCollectorClient{}
+	client.getConfigFunc = buildGetConfigHandler(`loki.process "default" { forward_to = [] }`, "", false)
 
-	var registerCalled atomic.Bool
-	client.registerCollectorFunc = buildRegisterCollectorFunc(&registerCalled)
-	url := "https://example.com/"
+	var serverUp, registerCalled atomic.Bool
+	client.registerCollectorFunc = func(ctx context.Context, req *connect.Request[collectorv1.RegisterCollectorRequest]) (*connect.Response[collectorv1.RegisterCollectorResponse], error) {
+		if !serverUp.Load() {
+			return nil, connect.NewError(connect.CodeUnavailable, errors.New("connection refused"))
+		}
+		return buildRegisterCollectorFunc(&registerCalled)(ctx, req)
+	}
 
-	// The contents of the on-disk cache.
-	cacheContents := `loki.process "default" { forward_to = [] }`
-
-	// Create a new service.
 	env := newTestEnvironment(t, client)
-	require.NoError(t, env.ApplyConfig(fmt.Sprintf(`
-		url = "%s"
-	`, url)))
+	require.NoError(t, env.ApplyConfig(`
+		url            = "https://example.com/"
+		poll_frequency = "10s"
+	`))
 
-	// Mock client to return an unparseable response.
-	client.getConfigFunc = buildGetConfigHandler("unparseable config", "", false)
-
-	// Write the cache contents, and run the service.
-	err := os.WriteFile(env.svc.cm.getCachedConfigPath(), []byte(cacheContents), 0644)
-	require.NoError(t, err)
-
-	// Run the service.
 	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		require.NoError(t, env.Run(ctx))
-	}()
+	})
 	defer func() { cancel(); wg.Wait() }()
 
-	// As the API response was unparseable, verify that the service has loaded
-	// the on-disk cache contents.
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		b, err := env.svc.cm.getCachedConfig()
-		assert.NoError(c, err)
-		assert.Equal(c, cacheContents, string(b))
-	}, time.Second, 10*time.Millisecond)
+	require.Eventually(t, func() bool { return client.registerCallCount.Load() >= 3 }, time.Second, 10*time.Millisecond)
+
+	serverUp.Store(true)
+	require.Eventually(t, registerCalled.Load, 2*time.Second, 10*time.Millisecond)
+
+	calls := client.registerCallCount.Load()
+	fetches := client.getConfigCallCount.Load()
+	require.Eventually(t, func() bool { return client.getConfigCallCount.Load() >= fetches+3 }, 2*time.Second, 10*time.Millisecond)
+	assert.Equal(t, calls, client.registerCallCount.Load())
 }
 
 func TestGoodBadGood(t *testing.T) {
