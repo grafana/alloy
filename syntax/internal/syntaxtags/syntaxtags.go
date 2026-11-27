@@ -21,6 +21,13 @@ const (
 	FlagOptional // FlagOptional marks a field optional for decoding/encoding
 	FlagLabel    // FlagLabel will store block labels in the field
 	FlagSquash   // FlagSquash will expose inner fields from a struct as outer fields.
+
+	// FlagMapstructure may only be combined with FlagSquash. It exposes the
+	// inner fields of a struct as outer fields, deriving their names and kinds
+	// from `mapstructure` tags instead of `alloy` tags. Every struct type
+	// reachable from the squashed type is also interpreted using mapstructure
+	// tags. See [GetMapstructure] for the rules.
+	FlagMapstructure
 )
 
 // String returns the flags as a string.
@@ -44,6 +51,9 @@ func (f Flags) String() string {
 	}
 	if f&FlagSquash != 0 {
 		attrs = append(attrs, "squash")
+	}
+	if f&FlagMapstructure != 0 {
+		attrs = append(attrs, "mapstructure")
 	}
 
 	return fmt.Sprintf("Flags(%s)", strings.Join(attrs, ","))
@@ -152,6 +162,10 @@ func Get(ty reflect.Type) []Field {
 		panic(fmt.Sprintf("syntaxtags: Get requires struct kind, got %s", k))
 	}
 
+	if isMapstructureType(ty) {
+		return GetMapstructure(ty)
+	}
+
 	var (
 		fields []Field
 
@@ -237,7 +251,12 @@ func Get(ty reflect.Type) []Field {
 				// The index of the squashed field is prepended to the index of the inner
 				// struct.
 				// Use slices.Concat to avoid append aliasing when field.Index has spare capacity.
-				innerFields := Get(deferenceType(field.Type))
+				var innerFields []Field
+				if tf.Flags&FlagMapstructure != 0 {
+					innerFields = GetMapstructure(innerType)
+				} else {
+					innerFields = Get(innerType)
+				}
 				for _, innerField := range innerFields {
 					fields = append(fields, Field{
 						Name:  innerField.Name,
@@ -281,6 +300,8 @@ func parseFlags(input string) (f Flags, ok bool) {
 		f |= FlagLabel
 	case "squash":
 		f |= FlagSquash
+	case "squash,mapstructure":
+		f |= FlagSquash | FlagMapstructure
 	default:
 		return
 	}

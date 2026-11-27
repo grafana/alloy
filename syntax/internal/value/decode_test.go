@@ -759,3 +759,16 @@ func TestRetainCapsulePointer(t *testing.T) {
 type capsule struct{}
 
 func (*capsule) AlloyCapsule() {}
+
+func TestDecode_NamedStringAndBoolTypes(t *testing.T) {
+	type action string
+	type flag bool
+
+	var a action
+	require.NoError(t, value.Decode(value.String("upsert"), &a))
+	require.Equal(t, action("upsert"), a)
+
+	var f flag
+	require.NoError(t, value.Decode(value.Bool(true), &f))
+	require.Equal(t, flag(true), f)
+}

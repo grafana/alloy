@@ -167,6 +167,10 @@ func MarshalValue(v any) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// BlockMap is a map which a block or body can be decoded into without a
+// schema, including nested blocks. See [vm.BlockMap].
+type BlockMap = vm.BlockMap
+
 // Encoder writes Alloy configuration to an output stream. Call NewEncoder to
 // create instances of Encoder.
 type Encoder struct {
