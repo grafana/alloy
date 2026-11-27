@@ -306,7 +306,9 @@ func (f *Runtime) Run(ctx context.Context) {
 // LoadSource uses default loader configuration.
 func (f *Runtime) LoadSource(source *Source, args map[string]any, configPath string) error {
 	modulePath, err := util.ExtractDirPath(configPath)
-	if err != nil {
+	// An empty configPath means the config isn't read from the filesystem, for
+	// example when it's passed with --config.base64.from-env.
+	if err != nil && configPath != "" {
 		f.log.Warn("failed to extract directory path from configPath", "configPath", configPath, "err", err)
 	}
 	return f.applyLoaderConfig(controller.ApplyOptions{
