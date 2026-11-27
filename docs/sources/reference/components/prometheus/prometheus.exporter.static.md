@@ -5,6 +5,7 @@ labels:
   stage: experimental
   products:
     - oss
+review_date: 2026-11-27
 title: prometheus.exporter.static
 ---
 
@@ -12,7 +13,7 @@ title: prometheus.exporter.static
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`prometheus.exporter.static` loads metrics from text specified in [`Prometheus exposition format`](https://prometheus.io/docs/instrumenting/exposition_formats/) and exposes them for scraping.
+The `prometheus.exporter.static` component loads metrics from text in the [Prometheus text exposition format][formats] and exposes them for scraping.
 
 You can specify multiple `prometheus.exporter.static` components by giving them different labels.
 
@@ -20,6 +21,7 @@ You can specify multiple `prometheus.exporter.static` components by giving them 
 
 ```alloy
 prometheus.exporter.static "<LABEL>" {
+  text = "<METRICS_TEXT>"
 }
 ```
 
@@ -29,7 +31,17 @@ You can use the following argument with `prometheus.exporter.static`:
 
 | Name   | Type     | Description                           | Default | Required |
 | ------ | -------- | ------------------------------------- | ------- | -------- |
-| `text` | `string` | Text in Prometheus exposition format. | `""`    | no       |
+| `text` | `string` | Text in Prometheus exposition format. |         | yes      |
+
+The `text` argument must use the Prometheus text exposition format.
+Metric and label names must match the legacy Prometheus formats, `[a-zA-Z_:][a-zA-Z0-9_:]*` for metric names and `[a-zA-Z_][a-zA-Z0-9_]*` for label names.
+If the component can't parse `text`, it fails with an invalid configuration error.
+
+The component sets the `instance` label on its exported targets to the component ID, for example, `prometheus.exporter.static.demo`.
+
+## Blocks
+
+The `prometheus.exporter.static` component doesn't support any blocks. You can configure this component with arguments.
 
 ## Exported fields
 

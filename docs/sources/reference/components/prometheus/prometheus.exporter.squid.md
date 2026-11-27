@@ -7,18 +7,23 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-11-27
 title: prometheus.exporter.squid
 ---
 
 # `prometheus.exporter.squid`
 
-The `prometheus.exporter.squid` component embeds the [`squid_exporter`](https://github.com/boynux/squid-exporter) for collecting metrics from a squid instance.
+The `prometheus.exporter.squid` component embeds the [`squid_exporter`][squid-exporter] to collect metrics from a Squid instance.
+
+You can specify multiple `prometheus.exporter.squid` components by giving them different labels.
+
+[squid-exporter]: https://github.com/boynux/squid-exporter
 
 ## Usage
 
 ```alloy
 prometheus.exporter.squid "<LABEL>" {
-    address = "<SQUID_ADDRESS>"
+  address = "<SQUID_ADDRESS>"
 }
 ```
 
@@ -26,11 +31,21 @@ prometheus.exporter.squid "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.squid`:
 
-| Name       | Type     | Description                                           | Default | Required |
-| ---------- | -------- | ----------------------------------------------------- | ------- | -------- |
-| `address`  | `string` | The squid address to collect metrics from.            |         | yes      |
-| `password` | `secret` | The password for the user used when querying metrics. |         | no       |
-| `username` | `string` | The username for the user used when querying metrics. |         | no       |
+| Name       | Type     | Description                                | Default | Required |
+| ---------- | -------- | ------------------------------------------ | ------- | -------- |
+| `address`  | `string` | The host and port of the Squid instance.   |         | yes      |
+| `password` | `secret` | The password for `username`.               |         | no       |
+| `username` | `string` | The username to use when querying metrics. |         | no       |
+
+The `address` argument must be a host and port number, such as `localhost:3128`, without a scheme.
+Enclose an IPv6 address in brackets, such as `[::1]:3128`.
+If `address` includes a scheme or doesn't include a port, the component fails with an invalid configuration error.
+
+The component reads metrics over HTTP from the Squid cache manager at the `/squid-internal-mgr/` path on `address`.
+Set `username` and `password` together to send HTTP basic authentication credentials.
+If you set only one of them, the component doesn't send credentials.
+
+The component sets the `instance` label on its exported targets to the value of `address`.
 
 ## Blocks
 
@@ -82,9 +97,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
 
