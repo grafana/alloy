@@ -579,6 +579,11 @@ func TestWatcher_Replay(t *testing.T) {
 type slowWriteTo struct {
 	entriesReceived         atomic.Uint64
 	sleepAfterAppendEntries time.Duration
+
+	// pauseAfter makes AppendEntries block once that many entries are received, until resume is closed. This pins how
+	// much of the WAL the Watcher has consumed when the test starts draining.
+	pauseAfter uint64
+	resume     chan struct{}
 }
 
 func (s *slowWriteTo) SeriesReset(segmentNum int) {
@@ -587,9 +592,21 @@ func (s *slowWriteTo) SeriesReset(segmentNum int) {
 func (s *slowWriteTo) StoreSeries(series []record.RefSeries, segmentNum int) {
 }
 
-func (s *slowWriteTo) AppendEntries(_ context.Context, entries RefEntries, segmentNum int) error {
-	s.entriesReceived.Add(uint64(len(entries.Entries)))
-	time.Sleep(s.sleepAfterAppendEntries)
+func (s *slowWriteTo) AppendEntries(ctx context.Context, entries RefEntries, segmentNum int) error {
+	n := uint64(len(entries.Entries))
+	received := s.entriesReceived.Add(n)
+	select {
+	case <-time.After(s.sleepAfterAppendEntries):
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	if received-n < s.pauseAfter && received >= s.pauseAfter {
+		select {
+		case <-s.resume:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
 	return nil
 }
 
@@ -599,186 +616,93 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 	}
 	logger := autil.TestAlloyLogger(t).Slog()
 
-	// newTestingResources is a helper for bootstrapping all required testing resources
-	newTestingResources := func(t *testing.T, cfg WatchConfig) (*slowWriteTo, WAL, *Watcher, *Writer) {
+	// drain writes 10 lines to a segment and waits for the Watcher to consume 5 of them. Then it cuts a new segment,
+	// writes 10 more lines and drains the Watcher, which has 15 entries left to consume, each taking one second.
+	// It returns how many entries the Watcher consumed in total, and how long Drain and Stop took.
+	drain := func(t *testing.T, drainTimeout time.Duration) (uint64, time.Duration) {
 		reg := prometheus.NewRegistry()
 		dir := t.TempDir()
-		metrics := NewWatcherMetrics(reg)
 
-		// the slow write to will take one second on each AppendEntries operation
 		writeTo := &slowWriteTo{
 			sleepAfterAppendEntries: time.Second,
+			pauseAfter:              5,
+			resume:                  make(chan struct{}),
 		}
 
-		watcher := NewWatcher(dir, "test", metrics, writeTo, logger, cfg, mockSavepoint{
+		wl, err := New(logger, reg, dir)
+		require.NoError(t, err)
+		defer wl.Close()
+		writer := NewWriter(logger, NewWriterMetrics(reg), wl, Config{})
+		defer writer.Stop()
+
+		cfg := DefaultWatchConfig
+		cfg.DrainTimeout = drainTimeout
+		watcher := NewWatcher(dir, "test", NewWatcherMetrics(reg), writeTo, logger, cfg, mockSavepoint{
 			LastStoredSegmentFunc: func() int {
 				// Ignore savepoint to read from last segment, which is none
 				return -1
 			},
 		})
-
-		// start watcher, and burn through WAL as we write to it
+		// Start the Watcher after the WAL has its first segment. Otherwise, the Watcher finds no segment and retries
+		// after 5 seconds.
 		watcher.Start()
 
-		wl, err := New(logger, reg, dir)
+		var lineCounter int
+		writeNLines := func(n int) {
+			for range n {
+				err := writer.WriteEntry(loki.Entry{
+					Labels: labels,
+					Entry: push.Entry{
+						Timestamp: time.Now(),
+						Line:      fmt.Sprintf("test line %d", lineCounter),
+					},
+				})
+				lineCounter++
+				require.NoError(t, err)
+			}
+		}
+
+		writeNLines(10)
+		require.Eventually(t, func() bool {
+			return writeTo.entriesReceived.Load() >= 5
+		}, time.Second*11, time.Millisecond*100, "expected the write to catch up to half of the first segment")
+
+		_, err = writer.wal.NextSegment()
 		require.NoError(t, err)
-		writer := NewWriter(logger, NewWriterMetrics(reg), wl, Config{})
-		return writeTo, wl, watcher, writer
+		writeNLines(10)
+		require.NoError(t, writer.wal.Sync())
+		require.Equal(t, uint64(5), writeTo.entriesReceived.Load(), "expected the Watcher to be paused after 5 entries")
+
+		// Upon calling Drain, the Watcher should finish burning through segment 0, and also consume segment 1
+		start := time.Now()
+		close(writeTo.resume)
+		watcher.Drain()
+		watcher.Stop()
+		return writeTo.entriesReceived.Load(), time.Since(start)
 	}
 
 	t.Run("watcher drains WAL just in time", func(t *testing.T) {
-		cfg := DefaultWatchConfig
-		// considering the slow write to has a 1 second delay when Appending an entry, and before the draining begins,
-		// the watcher would have consumed only 5 entries, this timeout will give the Watcher just enough time to fully
-		// drain the WAL.
-		cfg.DrainTimeout = time.Second * 16
-		writeTo, wl, watcher, writer := newTestingResources(t, cfg)
-		defer wl.Close()
-		defer writer.Stop()
+		// The Watcher needs 15s to consume the 15 remaining entries, so this timeout leaves it just enough time.
+		received, took := drain(t, time.Second*18)
 
-		// helper to add context to each written line
-		var lineCounter atomic.Int64
-		writeNLines := func(t *testing.T, n int) {
-			for range n {
-				// First, write to segment 0. This will be the last "marked" segment
-				err := writer.WriteEntry(loki.Entry{
-					Labels: labels,
-					Entry: push.Entry{
-						Timestamp: time.Now(),
-						Line:      fmt.Sprintf("test line %d", lineCounter.Load()),
-					},
-				})
-				lineCounter.Add(1)
-				require.NoError(t, err)
-			}
-		}
-
-		// The test will write the WAL while the Watcher is running. First, 10 lines will be written to a segment, and the test
-		// will wait for the Watcher to have read 5 lines. After, a new segment will be cut, 10 other lines written, and the
-		// Watcher stopped with drain. The test will expect all 20 lines in total to have been received.
-
-		writeNLines(t, 10)
-
-		require.Eventually(t, func() bool {
-			return writeTo.entriesReceived.Load() >= 5
-		}, time.Second*11, time.Millisecond*500, "expected the write to catch up to half of the first segment")
-
-		_, err := writer.wal.NextSegment()
-		require.NoError(t, err)
-		writeNLines(t, 10)
-		require.NoError(t, writer.wal.Sync())
-
-		// Upon calling Stop drain, the Watcher should finish burning through segment 0, and also consume segment 1
-		now := time.Now()
-		watcher.Drain()
-		watcher.Stop()
-
-		// expecting 15s (missing 15 entries * 1 sec delay in AppendEntries) +/- 2.0s (taking into account the drain timeout
-		// has one extra second.
-		require.InDelta(t, time.Second*15, time.Since(now), float64(time.Millisecond*2000), "expected the drain procedure to take around 15s")
-		require.Equal(t, int(writeTo.entriesReceived.Load()), 20, "expected the watcher to fully drain the WAL")
+		require.Equal(t, uint64(20), received, "expected the watcher to fully drain the WAL")
+		require.GreaterOrEqual(t, took, time.Second*15, "expected the drain procedure to wait for the remaining entries")
 	})
 
 	t.Run("watcher should exit promptly after draining completely", func(t *testing.T) {
-		cfg := DefaultWatchConfig
-		// the drain timeout will be too long, for the amount of data remaining in the WAL (~15 entries more)
-		cfg.DrainTimeout = time.Second * 30
-		writeTo, wl, watcher, writer := newTestingResources(t, cfg)
-		defer wl.Close()
-		defer writer.Stop()
+		// The drain timeout is much longer than the 15s needed to consume the remaining entries.
+		received, took := drain(t, time.Second*30)
 
-		// helper to add context to each written line
-		var lineCounter atomic.Int64
-		writeNLines := func(t *testing.T, n int) {
-			for range n {
-				// First, write to segment 0. This will be the last "marked" segment
-				err := writer.WriteEntry(loki.Entry{
-					Labels: labels,
-					Entry: push.Entry{
-						Timestamp: time.Now(),
-						Line:      fmt.Sprintf("test line %d", lineCounter.Load()),
-					},
-				})
-				lineCounter.Add(1)
-				require.NoError(t, err)
-			}
-		}
-
-		// The test will write the WAL while the Watcher is running. First, 10 lines will be written to a segment, and the test
-		// will wait for the Watcher to have read 5 lines. After, a new segment will be cut, 10 other lines written, and the
-		// Watcher stopped with drain. The test will expect all 20 lines in total to have been received.
-
-		writeNLines(t, 10)
-
-		require.Eventually(t, func() bool {
-			return writeTo.entriesReceived.Load() >= 5
-		}, time.Second*11, time.Millisecond*500, "expected the write to catch up to half of the first segment")
-
-		_, err := writer.wal.NextSegment()
-		require.NoError(t, err)
-		writeNLines(t, 10)
-		require.NoError(t, writer.wal.Sync())
-
-		// Upon calling Stop drain, the Watcher should finish burning through segment 0, and also consume segment 1
-		now := time.Now()
-		watcher.Drain()
-		watcher.Stop()
-
-		// expecting 15s (missing 15 entries * 1 sec delay in AppendEntries) +/- 2.0s (taking into account the drain timeout
-		// has one extra second.
-		require.InDelta(t, time.Second*15, time.Since(now), float64(time.Millisecond*2000), "expected the drain procedure to take around 15s")
-		require.Equal(t, int(writeTo.entriesReceived.Load()), 20, "expected the watcher to fully drain the WAL")
+		require.Equal(t, uint64(20), received, "expected the watcher to fully drain the WAL")
+		require.Less(t, took, time.Second*20, "expected the drain procedure to exit well before the timeout")
 	})
 
 	t.Run("watcher drain timeout too short, should exit promptly", func(t *testing.T) {
-		cfg := DefaultWatchConfig
-		// having a 10 seconds timeout should give the watcher enough time to only consume ~10 entries, and be missing ~5
-		// from the last segment
-		cfg.DrainTimeout = time.Second * 10
-		writeTo, wl, watcher, writer := newTestingResources(t, cfg)
-		defer wl.Close()
-		defer writer.Stop()
+		// In 10 seconds the Watcher consumes ~10 of the 15 remaining entries.
+		received, took := drain(t, time.Second*10)
 
-		// helper to add context to each written line
-		var lineCounter atomic.Int64
-		writeNLines := func(t *testing.T, n int) {
-			for range n {
-				// First, write to segment 0. This will be the last "marked" segment
-				err := writer.WriteEntry(loki.Entry{
-					Labels: labels,
-					Entry: push.Entry{
-						Timestamp: time.Now(),
-						Line:      fmt.Sprintf("test line %d", lineCounter.Load()),
-					},
-				})
-				lineCounter.Add(1)
-				require.NoError(t, err)
-			}
-		}
-
-		// The test will write the WAL while the Watcher is running. First, 10 lines will be written to a segment, and the test
-		// will wait for the Watcher to have read 5 lines. After, a new segment will be cut, 10 other lines written, and the
-		// Watcher stopped with drain. The test will expect all 20 lines in total to have been received.
-
-		writeNLines(t, 10)
-
-		require.Eventually(t, func() bool {
-			return writeTo.entriesReceived.Load() >= 5
-		}, time.Second*11, time.Millisecond*500, "expected the write to catch up to half of the first segment")
-
-		_, err := writer.wal.NextSegment()
-		require.NoError(t, err)
-		writeNLines(t, 10)
-		require.NoError(t, writer.wal.Sync())
-
-		// Upon calling Stop drain, the Watcher should finish burning through segment 0, and also consume segment 1
-		now := time.Now()
-		watcher.Drain()
-		watcher.Stop()
-
-		require.InDelta(t, time.Second*10, time.Since(now), float64(time.Millisecond*2000), "expected the drain procedure to take around 15s")
-		require.Less(t, int(writeTo.entriesReceived.Load()), 20, "expected watcher to have not consumed WAL fully")
-		require.InDelta(t, 15, int(writeTo.entriesReceived.Load()), 1.0, "expected Watcher to consume at most +/- 1 entry from the WAL")
+		require.InDelta(t, time.Second*10, took, float64(time.Second*2), "expected the drain procedure to take around 10s")
+		require.InDelta(t, 15, int(received), 1.0, "expected Watcher to consume at most +/- 1 entry from the WAL")
 	})
 }
 
