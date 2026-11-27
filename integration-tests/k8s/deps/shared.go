@@ -48,10 +48,12 @@ func startPortForward(namespace, name, localPort, port string) (func(), error) {
 	cmd := exec.CommandContext(
 		context.Background(),
 		"kubectl",
-		"port-forward",
-		"--namespace", namespace,
-		"service/"+name,
-		localPort+":"+port,
+		harness.PinContext("kubectl", []string{
+			"port-forward",
+			"--namespace", namespace,
+			"service/" + name,
+			localPort + ":" + port,
+		})...,
 	)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
