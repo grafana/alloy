@@ -7,6 +7,14 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+// queryMetricsOrigin identifies the set of cumulative totals a query's metrics
+// were read from. Totals from different origins aren't comparable, for example
+// after a failover changes the connected database's replica role.
+type queryMetricsOrigin struct {
+	mode     queryStoreMode
+	roleType int
+}
+
 // queryMetricSource is one query_hash row returned by the Query Store query.
 // The executions/errors/duration values are the cumulative totals retained by
 // Query Store for the query, not per-poll deltas.
@@ -16,6 +24,7 @@ type queryMetricSource struct {
 	executions      int64
 	errors          int64
 	durationSeconds float64
+	origin          queryMetricsOrigin
 }
 
 type queryMetricsKey struct {
@@ -27,13 +36,15 @@ type queryMetricsEntry struct {
 	rawExecutions      int64
 	rawErrors          int64
 	rawDurationSeconds float64
+	origin             queryMetricsOrigin
 	lastSeen           time.Time
 }
 
 // queryMetricsState turns the cumulative totals reported by Query Store into
 // monotonic Prometheus counters. Each poll's absolute totals are folded into
 // non-negative deltas; when any total decreases (Query Store cleared, retention
-// or plan cleanup) the series is re-baselined instead of emitting a spurious
+// or plan cleanup) or the totals are read from a different origin (the replica
+// role changed) the series is re-baselined instead of emitting a spurious
 // spike. Series that have not been observed within the TTL window are deleted so
 // registry cardinality stays bounded when a query leaves the top-N.
 type queryMetricsState struct {
@@ -70,10 +81,13 @@ func (s *queryMetricsState) update(sources []queryMetricSource) {
 		key := queryMetricsKey{database: source.database, queryHash: source.queryHash}
 
 		previous, exists := s.entries[key]
-		if !exists {
-			// First sighting: create all three series at zero so downstream
-			// ratios resolve to 0 rather than no-data, and store the baseline
-			// without emitting the historical totals as a startup spike.
+		if !exists || previous.origin != source.origin {
+			// First sighting, or the totals now come from a different origin,
+			// for example after a failover changed the replica role, so they
+			// aren't comparable with the stored baseline: create all three
+			// series at zero so downstream ratios resolve to 0 rather than
+			// no-data, keep the values already published on existing series,
+			// and store the baseline without emitting the totals as a spike.
 			s.executions.WithLabelValues(source.database, source.queryHash).Add(0)
 			s.errors.WithLabelValues(source.database, source.queryHash).Add(0)
 			s.duration.WithLabelValues(source.database, source.queryHash).Add(0)
@@ -81,6 +95,7 @@ func (s *queryMetricsState) update(sources []queryMetricSource) {
 				rawExecutions:      source.executions,
 				rawErrors:          source.errors,
 				rawDurationSeconds: source.durationSeconds,
+				origin:             source.origin,
 				lastSeen:           now,
 			}
 			continue
@@ -109,6 +124,7 @@ func (s *queryMetricsState) update(sources []queryMetricSource) {
 			rawExecutions:      source.executions,
 			rawErrors:          source.errors,
 			rawDurationSeconds: source.durationSeconds,
+			origin:             source.origin,
 			lastSeen:           now,
 		}
 	}

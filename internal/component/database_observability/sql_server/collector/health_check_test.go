@@ -63,34 +63,36 @@ func TestHealthCheck(t *testing.T) {
 		return c
 	}
 
-	t.Run("all checks pass", func(t *testing.T) {
-		t.Parallel()
+	for _, state := range []string{"READ_WRITE", "READ_CAPTURE_SECONDARY"} {
+		t.Run("all checks pass with Query Store "+state, func(t *testing.T) {
+			t.Parallel()
 
-		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-		require.NoError(t, err)
-		defer db.Close()
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+			require.NoError(t, err)
+			defer db.Close()
 
-		c := newCollector(t, db)
+			c := newCollector(t, db)
 
-		expectListDatabases(mock, "some_db")
-		expectServerPermissions(mock, "VIEW SERVER STATE")
-		expectUseDatabase(mock, "some_db")
-		expectPermissions(mock, "VIEW DEFINITION", "VIEW DATABASE STATE")
-		expectQueryStoreState(mock, "some_db", "READ_WRITE")
-		expectQueryStoreHasRows(mock, true)
+			expectListDatabases(mock, "some_db")
+			expectServerPermissions(mock, "VIEW SERVER STATE")
+			expectUseDatabase(mock, "some_db")
+			expectPermissions(mock, "VIEW DEFINITION", "VIEW DATABASE STATE")
+			expectQueryStoreState(mock, "some_db", state)
+			expectQueryStoreHasRows(mock, true)
 
-		results, err := c.runPerDatabaseChecks(t.Context())
-		require.NoError(t, err)
-		require.NoError(t, mock.ExpectationsWereMet())
+			results, err := c.runPerDatabaseChecks(t.Context())
+			require.NoError(t, err)
+			require.NoError(t, mock.ExpectationsWereMet())
 
-		byName := resultsByName(results)
-		require.NoError(t, byName["RequiredGrantsPresent"].err)
-		require.True(t, byName["RequiredGrantsPresent"].result)
-		require.NoError(t, byName["QueryStoreEnabled"].err)
-		require.True(t, byName["QueryStoreEnabled"].result)
-		require.NoError(t, byName["QueryStoreHasRows"].err)
-		require.True(t, byName["QueryStoreHasRows"].result)
-	})
+			byName := resultsByName(results)
+			require.NoError(t, byName["RequiredGrantsPresent"].err)
+			require.True(t, byName["RequiredGrantsPresent"].result)
+			require.NoError(t, byName["QueryStoreEnabled"].err)
+			require.True(t, byName["QueryStoreEnabled"].result)
+			require.NoError(t, byName["QueryStoreHasRows"].err)
+			require.True(t, byName["QueryStoreHasRows"].result)
+		})
+	}
 
 	t.Run("missing grant on one database", func(t *testing.T) {
 		t.Parallel()
