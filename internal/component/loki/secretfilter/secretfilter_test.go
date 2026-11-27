@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -71,6 +73,75 @@ func TestGitleaksConfig_InvalidPath(t *testing.T) {
 	_, err := New(opts, args)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "read gitleaks config")
+}
+
+// TestGitleaksConfig_ExtendPathMultipleInstances checks that every component
+// built from a config using [extend] path gets the extended rules, including
+// when several components load the same config at the same time.
+func TestGitleaksConfig_ExtendPathMultipleInstances(t *testing.T) {
+	basePath, err := filepath.Abs(filepath.Join("extend", "gitleaks.toml"))
+	require.NoError(t, err)
+
+	childPath := filepath.Join(t.TempDir(), "gitleaks.toml")
+	child := fmt.Sprintf(`
+[extend]
+path = '%s'
+
+[[rules]]
+id = "child-rule"
+regex = '''childsecret_[a-z0-9]{20}'''
+keywords = ["childsecret_"]
+`, basePath)
+	require.NoError(t, os.WriteFile(childPath, []byte(child), 0o600))
+
+	args := DefaultArguments
+	args.ForwardTo = []loki.LogsReceiver{loki.NewLogsReceiver()}
+	args.GitleaksConfig = childPath
+	opts := newTestOptions(t, nil)
+
+	const instances = 4
+	components := make([]*Component, instances)
+	errs := make([]error, instances)
+	var wg sync.WaitGroup
+	for i := range instances {
+		wg.Go(func() {
+			components[i], errs[i] = New(opts, args)
+		})
+	}
+	wg.Wait()
+
+	cases := []TestCase{
+		{
+			Name:         "child_rule",
+			InputLog:     `{"message": "token=childsecret_k3j5h7g9f1d3s5a7q9w1"}`,
+			ShouldRedact: true,
+		},
+		{
+			Name:         "default_rule_from_base_extend",
+			InputLog:     testhelper.TestLogs["gcp_api_key"].Log,
+			ShouldRedact: true,
+		},
+		{
+			Name:         "base_allowlist_uuid",
+			InputLog:     `{"message": "audit tokenID=550e8400-e29b-41d4-a716-446655440000"}`,
+			ShouldRedact: false,
+		},
+	}
+	for i, c := range components {
+		require.NoError(t, errs[i])
+		for _, tc := range cases {
+			t.Run(fmt.Sprintf("instance_%d/%s", i, tc.Name), func(t *testing.T) {
+				entry := loki.Entry{Labels: model.LabelSet{}, Entry: push.Entry{Timestamp: time.Now(), Line: tc.InputLog}}
+				got, err := c.processEntry(t.Context(), entry)
+				require.NoError(t, err)
+				if tc.ShouldRedact {
+					require.NotEqual(t, tc.InputLog, got.Line, "Expected log to be redacted but it was not")
+				} else {
+					require.Equal(t, tc.InputLog, got.Line, "Expected log to remain unchanged but it was modified")
+				}
+			})
+		}
+	}
 }
 
 // TestRate_ValidateInvalid checks that rate outside [0, 1] fails validation.
