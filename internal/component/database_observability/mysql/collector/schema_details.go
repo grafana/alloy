@@ -651,7 +651,7 @@ func (tr *TableRegistry) SetTables(tables []*tableInfo) {
 func (tr *TableRegistry) HasSchema(schema string) bool {
 	tr.mu.RLock()
 	defer tr.mu.RUnlock()
-	_, ok := tr.exact[schema]
+	_, ok := tr.exact[tr.resolveSchemaLocked(schema)]
 	return ok
 }
 

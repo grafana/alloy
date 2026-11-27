@@ -1222,6 +1222,68 @@ func TestQueryDetails_Throttling(t *testing.T) {
 		require.NotContains(t, c.unvalidated, key)
 	})
 
+	t.Run("query with mixed validated/unvalidated schemas emits when unvalidated schema becomes available", func(t *testing.T) {
+		defer goleak.VerifyNone(t)
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
+
+		tableRegistry := NewTableRegistry()
+		tableRegistry.SetTables([]*tableInfo{{schema: "shop", tableName: "customers"}})
+		c, err := NewQueryDetails(QueryDetailsArguments{
+			DB:              db,
+			CollectInterval: time.Minute,
+			StatementsLimit: 250,
+			EntryHandler:    lokiClient,
+			TableRegistry:   tableRegistry,
+			Logger:          util.TestAlloyLogger(t).Slog(),
+		})
+		require.NoError(t, err)
+
+		base := time.Now()
+		c.now = func() time.Time { return base }
+		key := queryDetailsKey{schema: "shop", digest: "abc123"}
+		query := fmt.Sprintf(selectQueryTablesSamples, exclusionClause, 250)
+		sample := "SELECT * FROM shop.customers JOIN reporting.orders ON shop.customers.id = reporting.orders.customer_id"
+		poll := func() {
+			t.Helper()
+			mock.ExpectQuery(query).WillReturnRows(
+				sqlmock.NewRows([]string{"digest", "digest_text", "schema_name", "query_sample_text"}).
+					AddRow("abc123", sample, "shop", sample))
+			require.NoError(t, c.tablesFromEventsStatements(t.Context()))
+		}
+
+		// Poll 1: active schema "shop" is present, but the query also references another schema, "reporting" which is not present in tableRegistry
+		poll()
+		require.Eventually(t, func() bool { return len(lokiClient.Received()) == 2 }, 5*time.Second, 20*time.Millisecond)
+		require.Contains(t, c.unvalidated[key], "reporting")
+		require.Equal(t, `level="info" schema="shop" digest="abc123" tables="[{\"table\":\"reporting.orders\",\"validated\":false},{\"table\":\"shop.customers\",\"validated\":true}]"`, lokiClient.Received()[1].Line)
+
+		// Poll 2:  throttled while "reporting" is still missing
+		c.now = func() time.Time { return base.Add(time.Minute) }
+		poll()
+		require.Equal(t, base, c.lastEmittedAt[key])
+		require.Len(t, lokiClient.Received(), 2)
+
+		// Poll 3: "reporting" metadata arrives, "reporting" is now emitted as validated true
+		tableRegistry.SetTables([]*tableInfo{
+			{schema: "shop", tableName: "customers"},
+			{schema: "reporting", tableName: "orders"},
+		})
+		readyAt := base.Add(2 * time.Minute)
+		c.now = func() time.Time { return readyAt }
+		poll()
+		require.Eventually(t, func() bool { return len(lokiClient.Received()) == 4 }, 5*time.Second, 20*time.Millisecond)
+		require.Equal(t, readyAt, c.lastEmittedAt[key])
+		require.NotContains(t, c.unvalidated, key)
+		require.Equal(t, `level="info" schema="shop" digest="abc123" tables="[{\"table\":\"reporting.orders\",\"validated\":true},{\"table\":\"shop.customers\",\"validated\":true}]"`, lokiClient.Received()[3].Line)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
 	t.Run("scan query error preserves throttling", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)

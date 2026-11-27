@@ -66,10 +66,9 @@ type QueryDetails struct {
 	// was last emitted for a (schema, digest), used to throttle logging
 	// to at most one emission per EmitInterval per query.
 	lastEmittedAt map[queryDetailsKey]time.Time
-	// unvalidated tracks queries whose parsed tables were emitted before schema
-	// collection populated the database in tableRegistry, so they can be
-	// re-emitted once when the database schema becomes available.
-	unvalidated map[queryDetailsKey]struct{}
+	// unvalidated tracks schemas that were unavailable when a query's parsed
+	// tables were emitted, so the query can be retried once those schemas appear.
+	unvalidated map[queryDetailsKey]map[string]struct{}
 	now         func() time.Time
 
 	logger  *slog.Logger
@@ -91,7 +90,7 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 		normalizer:      sqllexer.NewNormalizer(sqllexer.WithCollectTables(true)),
 		tableRegistry:   args.TableRegistry,
 		lastEmittedAt:   map[queryDetailsKey]time.Time{},
-		unvalidated:     map[queryDetailsKey]struct{}{},
+		unvalidated: map[queryDetailsKey]map[string]struct{}{},
 		now:             time.Now,
 		logger:          args.Logger.With("collector", QueryDetailsCollector),
 		running:         &atomic.Bool{},
@@ -165,17 +164,16 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 		}
 
 		key := queryDetailsKey{schema: schema, digest: digest}
-		hasSchema := c.tableRegistry != nil && c.tableRegistry.HasSchema(schema)
 		if last, ok := c.lastEmittedAt[key]; ok && now.Sub(last) < database_observability.EmitInterval {
-			if _, pending := c.unvalidated[key]; !pending || !hasSchema {
+			if missingSchemas, pending := c.unvalidated[key]; !pending || !c.tableRegistryContains(missingSchemas) {
 				continue
 			}
 		}
 
-		pendingValidation := c.emit(schema, digest, digestText, sampleText.String, hasSchema)
+		missingSchemas := c.emit(schema, digest, digestText, sampleText.String)
 		c.lastEmittedAt[key] = now
-		if pendingValidation {
-			c.unvalidated[key] = struct{}{}
+		if len(missingSchemas) > 0 {
+			c.unvalidated[key] = missingSchemas
 		} else {
 			delete(c.unvalidated, key)
 		}
@@ -190,9 +188,9 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 }
 
 // emit logs the query association and any table names parsed from the query.
-// It returns true when parsed tables were emitted without schema data, so the
-// query can be re-emitted once schema collection populates tableRegistry.
-func (c *QueryDetails) emit(schema, digest, digestText, sampleText string, hasSchema bool) bool {
+// It returns schemas that were unavailable during validation, so the query can
+// be re-emitted once schema collection populates tableRegistry.
+func (c *QueryDetails) emit(schema, digest, digestText, sampleText string) map[string]struct{} {
 	tables, parserErr := c.tryParseTableNames(sampleText, digestText)
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 		logging.LevelInfo,
@@ -205,19 +203,27 @@ func (c *QueryDetails) emit(schema, digest, digestText, sampleText string, hasSc
 		tables, lexerErr = c.tryTokenizeTableNames(sampleText, digestText)
 		if lexerErr != nil {
 			c.logger.Warn("failed to extract tables from sql text", "schema", schema, "digest", digest, "parser_err", parserErr, "lexer_err", lexerErr)
-			return false
+			return nil
 		}
 	}
 
 	if len(tables) == 0 {
-		return false
+		return nil
 	}
 
+	missingSchemas := make(map[string]struct{})
 	parsedTables := make([]database_observability.ParsedTable, 0, len(tables))
 	for _, table := range tables {
 		validated := false
 		resolvedTable := table
 		if c.tableRegistry != nil {
+			referencedSchema := schema
+			if qualifiedSchema, _, qualified := splitSchemaQualified(table); qualified {
+				referencedSchema = qualifiedSchema
+			}
+			if !c.tableRegistry.HasSchema(referencedSchema) {
+				missingSchemas[referencedSchema] = struct{}{}
+			}
 			resolvedTable, validated = c.tableRegistry.IsValid(schema, table)
 		}
 		parsedTables = append(parsedTables, database_observability.ParsedTable{Table: resolvedTable, Validated: validated})
@@ -225,7 +231,7 @@ func (c *QueryDetails) emit(schema, digest, digestText, sampleText string, hasSc
 	tablesJSON, err := json.Marshal(parsedTables)
 	if err != nil {
 		c.logger.Error("failed to encode parsed tables", "err", err)
-		return false
+		return nil
 	}
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 		logging.LevelInfo,
@@ -233,7 +239,19 @@ func (c *QueryDetails) emit(schema, digest, digestText, sampleText string, hasSc
 		fmt.Sprintf(`schema=%q digest=%q tables=%q`, schema, digest, tablesJSON),
 	)
 
-	return c.tableRegistry != nil && !hasSchema
+	return missingSchemas
+}
+
+func (c *QueryDetails) tableRegistryContains(schemas map[string]struct{}) bool {
+	if c.tableRegistry == nil {
+		return false
+	}
+	for schema := range schemas {
+		if !c.tableRegistry.HasSchema(schema) {
+			return false
+		}
+	}
+	return true
 }
 
 // pruneThrottle drops entries whose last emission was at least EmitInterval ago
