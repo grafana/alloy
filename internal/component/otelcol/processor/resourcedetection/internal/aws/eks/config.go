@@ -31,7 +31,12 @@ func (args *Config) SetToDefault() {
 }
 
 func (args Config) Convert() map[string]any {
+	// Upstream decodes this map into a zero-value eks config. An empty
+	// auth_type then panics in a pod: CreateRestConfig does not match ""
+	// and writes through a nil rest.Config. Alloy has no auth_type block,
+	// so send the upstream default, serviceAccount.
 	return map[string]any{
+		"auth_type":           "serviceAccount",
 		"resource_attributes": args.ResourceAttributes.Convert(),
 		"node_from_env_var":   args.NodeFromEnvVar,
 	}

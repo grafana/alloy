@@ -630,6 +630,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"timeout":   5 * time.Second,
 				"override":  true,
 				"eks": map[string]any{
+					"auth_type":         "serviceAccount",
 					"tags":              []string{},
 					"node_from_env_var": "K8S_NODE_NAME",
 					"resource_attributes": map[string]any{
@@ -687,6 +688,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"timeout":   5 * time.Second,
 				"override":  true,
 				"eks": map[string]any{
+					"auth_type":         "serviceAccount",
 					"tags":              []string{},
 					"node_from_env_var": "MY_CUSTOM_VAR",
 					"resource_attributes": map[string]any{
