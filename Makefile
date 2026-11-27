@@ -126,8 +126,8 @@ BEYLA_SCHEMA_DIR     := $(BEYLA_CONFIG_DIR)/gen
 BEYLA_ARTIFACTS_DIR  := $(BEYLA_SCHEMA_DIR)/beyla
 BEYLA_VERSION_FILE   := $(BEYLA_ARTIFACTS_DIR)/beyla_version.yaml
 BEYLA_VERSION        := $(shell awk '$$1=="version:"{print $$2}' $(BEYLA_VERSION_FILE) 2>/dev/null)
-BEYLA_BINARY_AMD64   := $(BEYLA_BINARY_DIR)/binaries/amd64/beyla
-BEYLA_BINARY_ARM64   := $(BEYLA_BINARY_DIR)/binaries/arm64/beyla
+BEYLA_BINARY_AMD64   := $(BEYLA_BINARY_DIR)/binaries/amd64/beyla.zst
+BEYLA_BINARY_ARM64   := $(BEYLA_BINARY_DIR)/binaries/arm64/beyla.zst
 BEYLA_BINARY_STAMP   := $(BEYLA_BINARY_DIR)/.beyla-binary-version
 BEYLA_SCHEMA         := $(BEYLA_ARTIFACTS_DIR)/schema.json
 

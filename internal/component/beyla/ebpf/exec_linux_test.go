@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/klauspost/compress/zstd"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/unix"
 
@@ -55,6 +56,39 @@ func TestAbstractSocketAddr(t *testing.T) {
 
 func TestBeylaSubprocessCapsIncludesDACOverride(t *testing.T) {
 	require.Contains(t, beylaSubprocessCaps, uintptr(unix.CAP_DAC_OVERRIDE))
+}
+
+func TestDecompressBeylaBinary(t *testing.T) {
+	enc, err := zstd.NewWriter(nil)
+	require.NoError(t, err)
+	// Stand-in for the Beyla binary.
+	// It contains arbitrary bytes that start with the magic number of ELF, "\x7fELF".
+	// ELF is Executable and Linkable Format, the file format of Linux executables such as Beyla.
+	// The test only checks that compressed bytes round-trip unchanged.
+	exe := bytes.Repeat([]byte("\x7fELF not really a binary "), 1000)
+
+	tests := []struct {
+		name    string
+		input   []byte
+		want    []byte
+		wantErr bool
+	}{
+		{name: "zstd-compressed binary", input: enc.EncodeAll(exe, nil), want: exe},
+		{name: "uncompressed binary", input: exe, wantErr: true},
+		{name: "truncated archive", input: enc.EncodeAll(exe, nil)[:20], wantErr: true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := decompressBeylaBinary(tc.input)
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.want, got)
+		})
+	}
 }
 
 func TestBeylaSpecPassesTheFilesWhereBeylaLooks(t *testing.T) {

@@ -17,7 +17,8 @@ mirror of Beyla's YAML — e.g. `metrics` splits into `prometheus_export`+`netwo
 ## `gen/`
 
 ```
- download.go               downloads + verifies the Beyla binary (`make download-beyla`);
+ download.go               downloads + verifies the Beyla binary (`make download-beyla`),
+                           then zstd-compresses it for embedding;
                            `--update-checksums` regenerates beyla/beyla_version.yaml.
  beyla/beyla_version.yaml  pinned Beyla version + each release tarball's sha256.
                            `make download-beyla` verifies downloads against it, so a
