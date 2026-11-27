@@ -1,5 +1,48 @@
 # Changelog
 
+## [1.23.0](https://github.com/grafana/alloy/compare/v1.22.0...v1.23.0) (2026-11-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* **clustering:** `--cluster.wait-for-size` now only applies at startup. After an instance sees the cluster reach the minimum size, it continues to process traffic in cluster-enabled components, even if the cluster shrinks below the minimum size later. Before, the instance stopped processing traffic until the cluster grew back to the minimum size or `--cluster.wait-timeout` passed. You don't need to change your configuration. ([#7690](https://github.com/grafana/alloy/issues/7690))
+
+### Features 🌟
+
+* Add goroutine stack traces to support bundles ([#7629](https://github.com/grafana/alloy/issues/7629)) ([ba34f77](https://github.com/grafana/alloy/commit/ba34f77a38acf34dbc449ba7abe8feecf29e5568))
+* Attach Socket SBOM to GitHub releases ([#7743](https://github.com/grafana/alloy/issues/7743)) ([18f98f3](https://github.com/grafana/alloy/commit/18f98f3d5f4a5e2a14dc59b5568ed0e2d30cdfd5))
+* **beyla.ebpf:** Bump Beyla to v3.43.0 ([#7738](https://github.com/grafana/alloy/issues/7738)) ([89e4b66](https://github.com/grafana/alloy/commit/89e4b66b8acbbe2ee7e5ce60508394152394aabc))
+* **beyla.ebpf:** Compress the Beyla executable ([#7802](https://github.com/grafana/alloy/issues/7802)) ([14af3c5](https://github.com/grafana/alloy/commit/14af3c55fe0a2a8f1978c8711b8f4d21fa6fbaf6))
+* **cli:** Add --config.base64.from-env flag to run command ([#7789](https://github.com/grafana/alloy/issues/7789)) ([2104bf2](https://github.com/grafana/alloy/commit/2104bf20def0979d66c0fbc82e0245fb60ccc2c0))
+* **database_observability.mysql:** Log the warnings of the explain plan at debug level ([#7753](https://github.com/grafana/alloy/issues/7753)) ([094faa0](https://github.com/grafana/alloy/commit/094faa09c0514d103815576feaa44889b8125c46))
+* **database_observability.postgres:** Enable default instance and database metrics collectors ([#7682](https://github.com/grafana/alloy/issues/7682)) ([d61cd8c](https://github.com/grafana/alloy/commit/d61cd8ccce07d1528dd5525d33dea72820bffcf2))
+* **database_observability.postgres:** Log a verbose, unpruned plan at debug level ([#7752](https://github.com/grafana/alloy/issues/7752)) ([450872d](https://github.com/grafana/alloy/commit/450872de8c7193e8b3f39bcc01d5dc04506223b9))
+* Implement Beyla config refresh without reload ([#7660](https://github.com/grafana/alloy/issues/7660)) ([eea86d4](https://github.com/grafana/alloy/commit/eea86d4ae695a342de33d5915ea846a1266c4c7d))
+* **prometheus.operator.probes:** Support Probe query parameters ([#7651](https://github.com/grafana/alloy/issues/7651)) ([3a253b5](https://github.com/grafana/alloy/commit/3a253b50fbbe7bd17eba1a444a499159636e3fb7))
+
+
+### Bug Fixes 🐛
+
+* **clustering:** Keep admitting traffic when the cluster shrinks below the minimum size ([#7690](https://github.com/grafana/alloy/issues/7690)) ([1cf3b1f](https://github.com/grafana/alloy/commit/1cf3b1f78afe1770b81c90294689c0426073707a))
+* **clustering:** Update ckit to add cluster_name to cluster_node_info ([#7786](https://github.com/grafana/alloy/issues/7786)) ([c275c5d](https://github.com/grafana/alloy/commit/c275c5dfc8fad38f7d12ce630cb82aeba1136548))
+* **converter:** Use Promtail defaults for unset multiline, metrics and pack stage fields ([#7649](https://github.com/grafana/alloy/issues/7649)) ([ead11a5](https://github.com/grafana/alloy/commit/ead11a58526daefe89f4f6408c68561c2bcf0ccd))
+* **database_observability.mysql:** Always emit `query_association` regardless of table extraction ([#7763](https://github.com/grafana/alloy/issues/7763)) ([8f4b222](https://github.com/grafana/alloy/commit/8f4b222679f445ce0810e99ba6e8f19f174d1765))
+* **database_observability.mysql:** Stop query_samples from missing statements around each poll ([#7751](https://github.com/grafana/alloy/issues/7751)) ([64f2c2e](https://github.com/grafana/alloy/commit/64f2c2e324cc86b485f40136cac41d4670f55c46))
+* **database_observability.postgres:** Redact only SQL expressions in debug plans ([#7742](https://github.com/grafana/alloy/issues/7742)) ([038d56c](https://github.com/grafana/alloy/commit/038d56c449a6ad6f06267c9e94ac5ae267cf605a))
+* **database_observability.sql_server:** Exclude secondary replica executions from primary query metrics ([#7797](https://github.com/grafana/alloy/issues/7797)) ([0e92359](https://github.com/grafana/alloy/commit/0e923591ee0e31e93262aa5dd6176a567c4aadcd))
+* **database_observability:** Avoid duplicate collection while a new cluster is forming ([#7722](https://github.com/grafana/alloy/issues/7722)) ([2ef3de2](https://github.com/grafana/alloy/commit/2ef3de2c40545763e7006d905a3b2c887b77d9e2))
+* **loki.process:** Move structured_metadata to syntax.Validator ([#7517](https://github.com/grafana/alloy/issues/7517)) ([28530d4](https://github.com/grafana/alloy/commit/28530d4056295531fd8c3b4b98ef0a6cbd1fee38))
+* **loki.process:** Mv stage.pattern to Valdiator ([#7692](https://github.com/grafana/alloy/issues/7692)) ([23f83f9](https://github.com/grafana/alloy/commit/23f83f93c0aad1cc03dfdaec02794f48c3a8a480))
+* **loki.process:** Use upstream logql package for selector ([#7676](https://github.com/grafana/alloy/issues/7676)) ([dd17a5e](https://github.com/grafana/alloy/commit/dd17a5e811a6385711db9580501eacc707033adc))
+* **loki.source.file:** Drain deleted file on removal ([#7661](https://github.com/grafana/alloy/issues/7661)) ([9595eec](https://github.com/grafana/alloy/commit/9595eec39eda9b6e0aea899a9f35dc2429f14003))
+* **loki.source.file:** Release pending buffer after long lines ([#7693](https://github.com/grafana/alloy/issues/7693)) ([c3e1ae8](https://github.com/grafana/alloy/commit/c3e1ae85298ba073c112115a692f8f458a5bcb56))
+* **loki.source.file:** Stop tailing files that exceed ignore_older_than ([#7721](https://github.com/grafana/alloy/issues/7721)) ([12f899e](https://github.com/grafana/alloy/commit/12f899ee4ba2075e8e5ca623611e9ab6d2bf1bc3))
+* **otelcol:** Prevent config reloads from hanging when they add a component downstream of an updated component ([#7787](https://github.com/grafana/alloy/issues/7787)) ([2438294](https://github.com/grafana/alloy/commit/2438294098a4d2580f9c929397b0bfa581db03a2))
+* **prometheus.operator:** Handle tombstones in CRD delete handlers ([#7714](https://github.com/grafana/alloy/issues/7714)) ([c68ceab](https://github.com/grafana/alloy/commit/c68ceab34638e8d435475c7cee3ffc0a73b2d299))
+* **pyroscope.ebpf:** Keep probes referenced while Run executes ([#7688](https://github.com/grafana/alloy/issues/7688)) ([6d7f1c5](https://github.com/grafana/alloy/commit/6d7f1c536e4abddfd9be88d202c332685bc2b2f3))
+* **security:** Update x/crypto to v0.59.0 and otel/sdk/log to v1.47.0 ([#7776](https://github.com/grafana/alloy/issues/7776)) ([94b0cb8](https://github.com/grafana/alloy/commit/94b0cb8bcc54227e7e3b66e9b73e3c70b7e5ee2f))
+* **support bundle:** Return error on non-2xx responses when collecting endpoints ([#7758](https://github.com/grafana/alloy/issues/7758)) ([7ef2ccf](https://github.com/grafana/alloy/commit/7ef2ccf2adbf6b7f383d8c660ed313091f8b1f44))
+
 ## [1.22.0](https://github.com/grafana/alloy/compare/v1.21.0...v1.22.0) (2026-11-12)
 
 
