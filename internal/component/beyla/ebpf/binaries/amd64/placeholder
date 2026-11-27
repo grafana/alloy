@@ -1,2 +1,2 @@
 Placeholder so the go:embed pattern matches before `make download-beyla`
-writes the real (gitignored) `beyla` binary into this directory.
+writes the real (gitignored, zstd-compressed) `beyla.zst` binary into this directory.

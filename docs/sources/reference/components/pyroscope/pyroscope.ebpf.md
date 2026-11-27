@@ -56,6 +56,12 @@ Mount `/sys/kernel/tracing` (on older kernel versions you might need `/sys/kerne
 * Native code (C/C++, Rust, Zig, Go, etc. without debug symbols on host)
 * Broad set of high-level languages (HotSpot JVM, Python, Ruby, PHP, Node.js, V8, Perl).
 
+{{< admonition type="note" >}}
+The experimental `debug_info` block is no longer supported.
+Remove the entire block from your configuration, including `upload`, `on_target_symbolization`, `cache_size`, `strip_text_section`, `queue_size`, and `worker_num`.
+The component continues to symbolize profiles locally and no longer uploads debug information.
+{{< /admonition >}}
+
 ## Usage
 
 ```alloy
@@ -120,6 +126,12 @@ Omitted fields take their default values.
 
 Several arguments carry the label "Deprecated (no-op)". These arguments once configured cache sizes and behaviors, but they no longer have any effect. Remove these arguments from your configuration.
 
+The `load_probe` argument no longer has any effect, and no other argument replaces it.
+Remove it from your configuration.
+To collect profiles from specific kernel or user-space probes, use `probe_links` as shown in [Collect profiles from probes][probes].
+You don't need to set `load_probe` to use `probe_links`.
+
+[probes]: #collect-profiles-from-probes
 ## Blocks
 
 `pyroscope.ebpf` doesn't support any blocks.

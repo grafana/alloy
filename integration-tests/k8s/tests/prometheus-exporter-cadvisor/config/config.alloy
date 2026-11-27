@@ -31,3 +31,29 @@ prometheus.remote_write "mimir" {
     }
   }
 }
+
+// A second exporter checks the housekeeping arguments. The base interval is
+// larger than the max, which is valid only when dynamic housekeeping is off.
+prometheus.exporter.cadvisor "housekeeping" {
+  storage_duration           = "1m"
+  enabled_metrics            = ["cpu"]
+  housekeeping_interval      = "10s"
+  max_housekeeping_interval  = "5s"
+  allow_dynamic_housekeeping = false
+}
+
+prometheus.scrape "cadvisor_housekeeping" {
+  targets         = prometheus.exporter.cadvisor.housekeeping.targets
+  forward_to      = [prometheus.relabel.cadvisor_housekeeping.receiver]
+  scrape_interval = "1s"
+  scrape_timeout  = "500ms"
+}
+
+prometheus.relabel "cadvisor_housekeeping" {
+  forward_to = [prometheus.remote_write.mimir.receiver]
+  rule {
+    action       = "replace"
+    target_label = "alloy_test_name"
+    replacement  = "cadvisor-housekeeping"
+  }
+}

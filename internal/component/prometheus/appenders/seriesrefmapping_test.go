@@ -857,21 +857,21 @@ func newMockMappingStore() *mockMappingStore {
 	}
 }
 
-func (m *mockMappingStore) GetMapping(uniqueRef storage.SeriesRef, lbls labels.Labels) []storage.SeriesRef {
+func (m *mockMappingStore) ResolveMapping(uniqueRef storage.SeriesRef, lbls labels.Labels) (storage.SeriesRef, []storage.SeriesRef) {
 	if uniqueRef == 0 {
 		mappedRef, ok := m.mappingByHash[lbls.Hash()]
 		if !ok {
-			return nil
+			return 0, nil
 		}
 		uniqueRef = mappedRef
 	}
 
 	refs, ok := m.mappingByRef[uniqueRef]
 	if !ok {
-		return nil
+		return 0, nil
 	}
 
-	return copyRefs(refs)
+	return uniqueRef, copyRefs(refs)
 }
 
 func (m *mockMappingStore) CreateMapping(refResults []storage.SeriesRef, lbls labels.Labels) storage.SeriesRef {
@@ -987,4 +987,130 @@ func (m *mockAppender) SetOptions(opts *storage.AppendOptions) {
 	if m.setOptionsFn != nil {
 		m.setOptionsFn(opts)
 	}
+}
+
+func TestSeriesRefMapping_AppendWithZeroRefReturnsMappedRef(t *testing.T) {
+	store := newMockMappingStore()
+	lbls := labels.FromStrings("job", "test")
+	store.mappingByRef[77] = []storage.SeriesRef{101, 202}
+	store.mappingByHash[lbls.Hash()] = 77
+
+	writeLatency := prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_series_ref_mapping_write_latency_zero_ref", Help: "test"})
+	samplesForwarded := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_series_ref_mapping_samples_forwarded_zero_ref", Help: "test"})
+	child1 := &mockAppender{}
+	child2 := &mockAppender{}
+	app := NewSeriesRefMapping([]storage.Appender{child1, child2}, store, writeLatency, samplesForwarded)
+
+	// A caller that doesn't know the ref yet gets the mapping's unique ref
+	// back, and that ref is the one tracked for cleanup.
+	ref, err := app.Append(0, lbls, 123, 42)
+	require.NoError(t, err)
+	require.Equal(t, storage.SeriesRef(77), ref)
+	require.Equal(t, []storage.SeriesRef{101}, child1.appendRefs)
+	require.Equal(t, []storage.SeriesRef{202}, child2.appendRefs)
+	require.Equal(t, []storage.SeriesRef{77}, store.cell.Refs)
+	require.Empty(t, store.createCalls)
+}
+
+func TestSeriesRefMappingV2_CreatesAndReusesMapping(t *testing.T) {
+	store := newMockMappingStore()
+	child1 := &mockAppenderV2{nextRef: 100}
+	child2 := &mockAppenderV2{nextRef: 200}
+	samplesForwarded := newTestCounter()
+	app := NewSeriesRefMappingV2([]storage.AppenderV2{child1, child2}, store, newTestHistogram(), samplesForwarded)
+
+	lbls := labels.FromStrings("job", "test")
+	ref, err := app.Append(0, lbls, 0, 1, 1, nil, nil, storage.AppendV2Options{})
+	require.NoError(t, err)
+	require.Equal(t, storage.SeriesRef(1000), ref)
+	require.Len(t, store.createCalls, 1)
+	require.Equal(t, []storage.SeriesRef{101, 201}, store.createCalls[0].refs)
+
+	ref, err = app.Append(ref, lbls, 0, 2, 2, nil, nil, storage.AppendV2Options{})
+	require.NoError(t, err)
+	require.Equal(t, storage.SeriesRef(1000), ref)
+	require.Len(t, store.createCalls, 1)
+
+	require.Equal(t, []storage.SeriesRef{0, 101}, child1.appendRefs)
+	require.Equal(t, []storage.SeriesRef{0, 201}, child2.appendRefs)
+	require.Equal(t, float64(4), testutil.ToFloat64(samplesForwarded))
+
+	require.NoError(t, app.Commit())
+	require.Len(t, store.trackCalls, 1)
+	require.Equal(t, []storage.SeriesRef{1000, 1000}, store.trackCalls[0].refs)
+	require.Equal(t, 1, child1.commitCalls)
+	require.Equal(t, 1, child2.commitCalls)
+}
+
+func TestSeriesRefMappingV2_PartialErrorsDoNotFailAppend(t *testing.T) {
+	err1 := errors.New("exemplar 1 failed")
+	err2 := errors.New("exemplar 2 failed")
+	store := newMockMappingStore()
+	child1 := &mockAppenderV2{nextRef: 100, err: &storage.AppendPartialError{ExemplarErrors: []error{err1}}}
+	child2 := &mockAppenderV2{nextRef: 200, err: &storage.AppendPartialError{ExemplarErrors: []error{err2}}}
+	app := NewSeriesRefMappingV2([]storage.AppenderV2{child1, child2}, store, newTestHistogram(), newTestCounter())
+
+	ref, err := app.Append(0, labels.FromStrings("job", "test"), 0, 1, 1, nil, nil, storage.AppendV2Options{})
+
+	// The mapping is still created, and the exemplar errors of all children
+	// are merged into a single partial error.
+	require.Equal(t, storage.SeriesRef(1000), ref)
+	require.Len(t, store.createCalls, 1)
+	var partialErr *storage.AppendPartialError
+	require.ErrorAs(t, err, &partialErr)
+	require.Equal(t, []error{err1, err2}, partialErr.ExemplarErrors)
+}
+
+func TestSeriesRefMappingV2_HardErrorFailsAppend(t *testing.T) {
+	hardErr := errors.New("append failed")
+	store := newMockMappingStore()
+	child1 := &mockAppenderV2{nextRef: 100}
+	child2 := &mockAppenderV2{nextRef: 200, err: hardErr}
+	app := NewSeriesRefMappingV2([]storage.AppenderV2{child1, child2}, store, newTestHistogram(), newTestCounter())
+
+	ref, err := app.Append(0, labels.FromStrings("job", "test"), 0, 1, 1, nil, nil, storage.AppendV2Options{})
+	require.ErrorIs(t, err, hardErr)
+	require.Equal(t, storage.SeriesRef(0), ref)
+	require.Empty(t, store.createCalls)
+}
+
+func newTestHistogram() prometheus.Histogram {
+	return prometheus.NewHistogram(prometheus.HistogramOpts{Name: "test_write_latency", Help: "test"})
+}
+
+func newTestCounter() prometheus.Counter {
+	return prometheus.NewCounter(prometheus.CounterOpts{Name: "test_samples_forwarded", Help: "test"})
+}
+
+// mockAppenderV2 records the refs it receives. When it gets ref 0 it
+// allocates a new ref from nextRef, otherwise it returns the ref it was
+// given. Every Append returns err.
+type mockAppenderV2 struct {
+	nextRef storage.SeriesRef
+	err     error
+
+	appendRefs    []storage.SeriesRef
+	commitCalls   int
+	rollbackCalls int
+}
+
+var _ storage.AppenderV2 = (*mockAppenderV2)(nil)
+
+func (m *mockAppenderV2) Append(ref storage.SeriesRef, _ labels.Labels, _, _ int64, _ float64, _ *histogram.Histogram, _ *histogram.FloatHistogram, _ storage.AppendV2Options) (storage.SeriesRef, error) {
+	m.appendRefs = append(m.appendRefs, ref)
+	if ref == 0 {
+		m.nextRef++
+		ref = m.nextRef
+	}
+	return ref, m.err
+}
+
+func (m *mockAppenderV2) Commit() error {
+	m.commitCalls++
+	return nil
+}
+
+func (m *mockAppenderV2) Rollback() error {
+	m.rollbackCalls++
+	return nil
 }

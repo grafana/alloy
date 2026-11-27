@@ -4,9 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"path/filepath"
+	"reflect"
 	"sync"
 	"time"
+
+	"github.com/grafana/dskit/backoff"
+	"github.com/prometheus/common/model"
+	"golang.org/x/time/rate"
 
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/component"
@@ -15,8 +21,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/loki/util"
-	"github.com/grafana/dskit/backoff"
-	"github.com/prometheus/common/model"
+	"github.com/grafana/alloy/internal/service/lokipipelinev2"
 )
 
 func init() {
@@ -40,14 +45,24 @@ type Exports struct {
 
 var (
 	_ component.Component = (*Component)(nil)
+	_ loki.Consumer       = (*Component)(nil)
 )
 
 // Component implements the loki.write component.
 type Component struct {
-	opts     component.Options
-	receiver loki.LogsReceiver
+	opts       component.Options
+	pipelineV2 bool
+	receiver   loki.LogsReceiver
+
+	// stopCtx is canceled when the component stops, which also cancels in-flight Consume calls.
+	stopCtx context.Context
+	stop    context.CancelFunc
+
+	// retryWarning limits how often a failed write is logged while Consume retries it.
+	retryWarning *rate.Limiter
 
 	mut            sync.RWMutex
+	args           Arguments
 	externalLabels model.LabelSet
 
 	// wal is opened when it is first enabled and reused across updates.
@@ -60,17 +75,28 @@ type Component struct {
 
 // New creates a new loki.write component.
 func New(o component.Options, args Arguments) (*Component, error) {
-	c := &Component{
-		opts: o,
+	svc, err := o.GetServiceData(lokipipelinev2.ServiceName)
+	if err != nil {
+		return nil, err
 	}
 
-	// Create and immediately export the receiver which remains the same for
-	// the component's lifetime.
-	c.receiver = loki.NewLogsReceiver(loki.WithComponentID(o.ID))
+	c := &Component{
+		opts:         o,
+		pipelineV2:   svc.(lokipipelinev2.Data).PipelineV2Enabled(),
+		retryWarning: rate.NewLimiter(rate.Every(10*time.Second), 1),
+	}
+
+	c.stopCtx, c.stop = context.WithCancel(context.Background())
+
+	if c.pipelineV2 {
+		c.receiver = loki.NewLogsReceiverV2(c, o.ID)
+	} else {
+		c.receiver = loki.NewLogsReceiver(loki.WithComponentID(o.ID))
+	}
 	o.OnStateChange(Exports{Receiver: c.receiver})
 
-	// Call to Update() to start readers and set receivers once at the start.
 	if err := c.Update(args); err != nil {
+		c.stop()
 		return nil, err
 	}
 
@@ -80,6 +106,8 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
+		c.stop()
+
 		c.mut.Lock()
 		defer c.mut.Unlock()
 
@@ -94,6 +122,11 @@ func (c *Component) Run(ctx context.Context) error {
 			c.wal.Close()
 		}
 	}()
+
+	if c.pipelineV2 {
+		<-ctx.Done()
+		return nil
+	}
 
 	for {
 		select {
@@ -116,7 +149,31 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	cfgs := newArgs.convertEndpointConfigs()
+	if c.consumer == nil || consumerArgsChanged(c.args, newArgs) {
+		if err := c.updateConsumer(newArgs); err != nil {
+			return err
+		}
+	}
+
+	if !maps.Equal(c.args.ExternalLabels, newArgs.ExternalLabels) {
+		c.externalLabels = util.MapToModelLabelSet(newArgs.ExternalLabels)
+	}
+
+	c.args = newArgs
+	return nil
+}
+
+// consumerArgsChanged reports whether the consumer must be rebuilt to apply new.
+func consumerArgsChanged(old, new Arguments) bool {
+	return !reflect.DeepEqual(old.Endpoints, new.Endpoints) ||
+		old.MaxStreams != new.MaxStreams ||
+		old.WAL != new.WAL
+}
+
+// updateConsumer builds a consumer for args and replaces the current one with it.
+// The current consumer is kept if the new one can't be built.
+func (c *Component) updateConsumer(args Arguments) error {
+	cfgs := args.convertEndpointConfigs()
 
 	uid := alloyseed.Get().UID
 	for i := range cfgs {
@@ -133,8 +190,8 @@ func (c *Component) Update(args component.Arguments) error {
 		err      error
 	)
 
-	if newArgs.WAL.Enabled {
-		consumer, err = c.newWALConsumer(newArgs, cfgs)
+	if args.WAL.Enabled {
+		consumer, err = c.newWALConsumer(args, cfgs)
 	} else {
 		consumer, err = client.NewFanoutConsumer(c.opts.Logger, c.opts.Registerer, cfgs...)
 	}
@@ -148,14 +205,13 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 
 	// The WAL is only needed while a WAL consumer is reading from it.
-	if !newArgs.WAL.Enabled && c.wal != nil {
+	if !args.WAL.Enabled && c.wal != nil {
 		c.wal.Close()
 		c.wal = nil
 	}
 
 	c.consumer = consumer
 	c.consumer.Start()
-	c.externalLabels = util.MapToModelLabelSet(newArgs.ExternalLabels)
 
 	return nil
 }
@@ -200,6 +256,79 @@ func (c *Component) newWALConsumer(args Arguments, cfgs []client.Config) (client
 	return consumer, nil
 }
 
+func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
+	// Cancel writes and retries when either the caller cancels ctx or the component stops.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	defer context.AfterFunc(c.stopCtx, cancel)()
+
+	var (
+		bo           *backoff.Backoff
+		labelsMerged bool
+	)
+
+	for {
+		if c.stopCtx.Err() != nil {
+			return fmt.Errorf("%s: %w", c.opts.ID, loki.ErrConsumerStopped)
+		}
+
+		c.mut.RLock()
+		var (
+			consumer       = c.consumer
+			externalLabels = c.externalLabels
+		)
+		c.mut.RUnlock()
+
+		if len(externalLabels) > 0 && !labelsMerged {
+			labelsMerged = true
+			batch.FilterMapStreams(func(stream loki.Stream) (loki.Stream, bool) {
+				stream.Labels = externalLabels.Merge(stream.Labels)
+				return stream, true
+			})
+		}
+
+		err := consumer.ConsumeV2(ctx, batch)
+		if err == nil {
+			return nil
+		}
+
+		if c.stopCtx.Err() != nil {
+			return fmt.Errorf("%s: %w", c.opts.ID, loki.ErrConsumerStopped)
+		}
+
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return ctxErr
+		}
+
+		if !client.IsRetryableErr(err) {
+			return fmt.Errorf("%s: %w", c.opts.ID, err)
+		}
+
+		// A stopped consumer has already been swapped out by the time Update
+		// releases the lock, so there is no need to wait.
+		// This makes delivery at-least-once: a fanout consumer enqueues to its
+		// endpoints in order, so it can be stopped after some of them already
+		// accepted the batch, and the retry hands it to those endpoints again.
+		if errors.Is(err, loki.ErrConsumerStopped) {
+			continue
+		}
+
+		// Retrying without a limit blocks the pipeline instead of dropping the batch,
+		// a full WAL disk can recover on its own once old segments are cleaned up.
+		if bo == nil {
+			bo = backoff.New(ctx, backoff.Config{
+				MinBackoff: 50 * time.Millisecond,
+				MaxBackoff: 30 * time.Second,
+			})
+		}
+
+		if c.retryWarning.Allow() {
+			c.opts.Logger.Warn("failed to write batch, retrying", "attempt", bo.NumRetries()+1, "err", err)
+		}
+		bo.Wait()
+	}
+}
+
 func (c *Component) consumeEntry(ctx context.Context, e loki.Entry) {
 	var (
 		bo           *backoff.Backoff
@@ -219,7 +348,7 @@ func (c *Component) consumeEntry(ctx context.Context, e loki.Entry) {
 			e.Labels = externalLabels.Merge(e.Labels)
 		}
 
-		err := consumer.ConsumeEntry(ctx, e)
+		err := consumer.ConsumeV1(ctx, e)
 		if err == nil {
 			return
 		}
@@ -252,7 +381,9 @@ func (c *Component) consumeEntry(ctx context.Context, e loki.Entry) {
 			})
 		}
 
-		c.opts.Logger.Debug("failed to write entry, retrying", "attempt", bo.NumRetries()+1, "err", err)
+		if c.retryWarning.Allow() {
+			c.opts.Logger.Warn("failed to write entry, retrying", "attempt", bo.NumRetries()+1, "err", err)
+		}
 		bo.Wait()
 	}
 }

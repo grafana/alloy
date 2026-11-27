@@ -66,20 +66,27 @@ func TestFanoutV2_NilConsumer(t *testing.T) {
 }
 
 func TestFanoutV2_ConsumerStopped(t *testing.T) {
+	var firstCalled, secondCalled bool
+
 	fanout := NewFanoutV2([]LogsReceiver{
 		NewLogsReceiverV2(consumerFunc{
 			consume: func(_ context.Context, batch Batch) error {
+				firstCalled = true
 				return ErrConsumerStopped
 			},
 		}, "first"),
 		NewLogsReceiverV2(consumerFunc{
 			consume: func(_ context.Context, batch Batch) error {
-				return ErrConsumerStopped
+				secondCalled = true
+				return nil
 			},
 		}, "second"),
 	})
 
-	require.NoError(t, fanout.Consume(context.Background(), NewBatch()))
+	err := fanout.Consume(context.Background(), NewBatch())
+	require.ErrorIs(t, err, ErrConsumerStopped)
+	require.True(t, firstCalled)
+	require.True(t, secondCalled)
 }
 
 func TestFanoutV2_ReceiverWithoutConsumer(t *testing.T) {

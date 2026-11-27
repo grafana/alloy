@@ -27,16 +27,27 @@ import (
 // Scheduler should only be used to manage the different signals of the same
 // OpenTelemetry Collector component; this means that otlpreceiver and
 // jaegerreceiver should not share the same Scheduler.
+//
+// Schedule only hands the components to Run, which owns the running
+// components and switches to the new ones. Schedule is called from the Update
+// of an Alloy component, and Update must not wait on the data path: during a
+// config reload, a component that this one sends data to may be paused until
+// every Update of the reload has returned. Stopping the old components or
+// swapping the consumers can wait for data that is blocked on it. See
+// https://github.com/grafana/alloy/issues/7762.
 type Scheduler struct {
 	log *slog.Logger
 
 	healthMut sync.RWMutex
 	health    component.Health
 
-	schedMut        sync.Mutex
-	schedComponents []otelcomponent.Component // Most recently created components
-	host            otelcomponent.Host
-	running         bool
+	// pendingMut guards pending, the latest components given to Schedule
+	// that Run hasn't taken yet.
+	pendingMut sync.Mutex
+	pending    *scheduled
+	// wake tells Run that pending has changed. It has a buffer of 1, so
+	// Schedule doesn't wait for Run.
+	wake chan struct{}
 
 	// onPause is called when scheduler is making changes to running components.
 	onPause func()
@@ -44,25 +55,29 @@ type Scheduler struct {
 	onResume func()
 }
 
+// scheduled is a set of components given to Schedule.
+type scheduled struct {
+	ctx             context.Context
+	updateConsumers func()
+	host            otelcomponent.Host
+	components      []otelcomponent.Component
+}
+
 // New creates a new unstarted Scheduler. Call Run to start it, and call
 // Schedule to schedule components to run.
 func New(l *slog.Logger) *Scheduler {
-	return &Scheduler{
-		log:      l,
-		onPause:  func() {},
-		onResume: func() {},
-	}
+	return NewWithPauseCallbacks(l, func() {}, func() {})
 }
 
 // NewWithPauseCallbacks is like New, but allows to specify onPause() and onResume() callbacks.
 // The callbacks are a useful way of pausing and resuming the ingestion of data by the components:
 // * onPause() is called before the scheduler stops the components.
 // * onResume() is called after the scheduler starts the components.
-// The callbacks are used by the Schedule() and Run() functions.
-// The scheduler is assumed to start paused; Schedule() won't call onPause() if Run() was never ran.
+// The callbacks are used by the Run() function.
 func NewWithPauseCallbacks(l *slog.Logger, onPause func(), onResume func()) *Scheduler {
 	return &Scheduler{
 		log:      l,
+		wake:     make(chan struct{}, 1),
 		onPause:  onPause,
 		onResume: onResume,
 	}
@@ -76,82 +91,128 @@ func NewWithPauseCallbacks(l *slog.Logger, onPause func(), onResume func()) *Sch
 //
 // updateConsumers is called after the components are paused and before starting the new components.
 // It is expected that this function will set the new set of consumers to the wrapping consumer that's assigned to the Alloy component.
+//
+// Schedule doesn't wait for Run to switch to the new components. If it is
+// called again before Run takes them, only the latest set is started.
 func (cs *Scheduler) Schedule(ctx context.Context, updateConsumers func(), h otelcomponent.Host, cc ...otelcomponent.Component) {
-	cs.schedMut.Lock()
-	defer cs.schedMut.Unlock()
+	cs.pendingMut.Lock()
+	replaced := cs.pending
+	cs.pending = &scheduled{ctx: ctx, updateConsumers: updateConsumers, host: h, components: cc}
+	cs.pendingMut.Unlock()
 
-	// If the scheduler isn't running yet, just update the state.
-	// That way the Run function is ready to go.
-	if !cs.running {
-		cs.schedComponents = cc
-		cs.host = h
-		updateConsumers()
-		return
+	// Wake up Run. If a signal is already waiting, Run will take the latest
+	// pending components anyway.
+	select {
+	case cs.wake <- struct{}{}:
+	default:
 	}
 
-	// The new components must be setup in this order:
-	//
-	// 1. Pause consumers
-	// 2. Stop the old components
-	// 3. Change the consumers
-	// 4. Start the new components
-	// 5. Start the consumer
-	//
-	// There could be race conditions if the order above is not followed.
-
-	// 1. Pause consumers
-	// This prevents them from accepting new data while we're shutting them down.
-	cs.onPause()
-
-	// 2. Stop the old components
-	stopComponents(ctx, cs.log, cs.schedComponents...)
-
-	// 3. Change the consumers
-	// This can only be done after stopping the previous components and before starting the new ones.
-	updateConsumers()
-
-	// 4. Start the new components
-	cs.log.Debug("scheduling otelcol components", "count", len(cc))
-	var err error
-	cs.schedComponents, err = startComponents(ctx, cs.log, cs, h, cc...)
-	if err != nil {
-		cs.log.Error("failed to start some scheduled components", "err", err)
+	if replaced != nil {
+		// Run never took the replaced components, so they were never started.
+		// OpenTelemetry requires Shutdown to be safe without Start, and the
+		// components may hold resources from their factory. Shut them down in
+		// the background, so that Schedule never waits for them.
+		go stopComponents(context.Background(), cs.log, replaced.components...)
 	}
-	cs.host = h
-	//TODO: What if the trace component failed but the metrics one didn't? Should we resume all consumers?
+}
 
-	// 5. Start the consumer
-	// The new components will now start accepting telemetry data.
-	cs.onResume()
+// takePending returns the pending components and clears them. It returns nil
+// if there are none.
+func (cs *Scheduler) takePending() *scheduled {
+	cs.pendingMut.Lock()
+	defer cs.pendingMut.Unlock()
+	s := cs.pending
+	cs.pending = nil
+	return s
+}
+
+// restorePending gives s back to the next Run, unless Schedule has given newer
+// components.
+func (cs *Scheduler) restorePending(s *scheduled) {
+	cs.pendingMut.Lock()
+	defer cs.pendingMut.Unlock()
+	if cs.pending == nil {
+		cs.pending = s
+	}
 }
 
 // Run starts the Scheduler and stops the components when the context is cancelled.
+// While it runs, it switches to the components given to Schedule.
 func (cs *Scheduler) Run(ctx context.Context) error {
-	cs.schedMut.Lock()
-	cs.running = true
-
-	cs.onPause()
-	started, err := startComponents(ctx, cs.log, cs, cs.host, cs.schedComponents...)
-	cs.onResume()
-
-	cs.schedMut.Unlock()
-
-	if len(started) == 0 && err != nil {
-		return fmt.Errorf("no components started successfully: %w", err)
-	}
+	var running []otelcomponent.Component
 
 	// Make sure we terminate all of our running components on shutdown.
 	defer func() {
-		cs.schedMut.Lock()
-		defer cs.schedMut.Unlock()
-		stopComponents(context.Background(), cs.log, cs.schedComponents...)
+		stopComponents(context.Background(), cs.log, running...)
 		// this Resume call should not be needed but is added for robustness to ensure that
 		// it does not ever exit in "paused" state.
 		cs.onResume()
 	}()
 
-	<-ctx.Done()
-	return nil
+	first := true
+	for {
+		if ctx.Err() != nil {
+			// Leave any pending components for the next Run.
+			return nil
+		}
+
+		// Take the pending components. If there are none, wait until
+		// Schedule gives new ones. Check pending before waiting, because an
+		// earlier Run may have put components back after it failed to start
+		// them.
+		s := cs.takePending()
+		if s == nil {
+			select {
+			case <-ctx.Done():
+			case <-cs.wake:
+			}
+			continue
+		}
+
+		// The new components must be setup in this order:
+		//
+		// 1. Pause consumers
+		// 2. Stop the old components
+		// 3. Change the consumers
+		// 4. Start the new components
+		// 5. Start the consumer
+		//
+		// There could be race conditions if the order above is not followed.
+		// The stop can wait on the data path, so Run may take a while to see
+		// that ctx is canceled.
+
+		// 1. Pause consumers
+		// This prevents them from accepting new data while we're shutting them down.
+		cs.onPause()
+
+		// 2. Stop the old components
+		stopComponents(s.ctx, cs.log, running...)
+
+		// 3. Change the consumers
+		// This can only be done after stopping the previous components and before starting the new ones.
+		s.updateConsumers()
+
+		// 4. Start the new components
+		cs.log.Debug("scheduling otelcol components", "count", len(s.components))
+		var err error
+		running, err = startComponents(s.ctx, cs.log, cs, s.host, s.components...)
+		//TODO: What if the trace component failed but the metrics one didn't? Should we resume all consumers?
+
+		// 5. Start the consumer
+		// The new components will now start accepting telemetry data.
+		cs.onResume()
+
+		if err != nil {
+			if first && len(running) == 0 {
+				// Keep the components, so that the next Run tries to start them
+				// again.
+				cs.restorePending(s)
+				return fmt.Errorf("no components started successfully: %w", err)
+			}
+			cs.log.Error("failed to start some scheduled components", "err", err)
+		}
+		first = false
+	}
 }
 
 // CurrentHealth implements component.HealthComponent. The component is

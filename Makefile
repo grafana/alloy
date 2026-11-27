@@ -18,6 +18,8 @@
 ##   test                  Run tests
 ##   lint                  Lint code
 ##   govulncheck           Run govulncheck across all Go modules
+##   stabilitycheck        Check non-GA component tracking in stability.yaml
+##   stabilitycheck-update Format stability.yaml and scaffold missing entries
 ##   integration-test      Run integration tests
 ##   integration-test-k8s            Run Kubernetes integration tests (CI mode)
 ##   integration-test-k8s-local-dev  Run Kubernetes integration tests via interactive menu
@@ -102,7 +104,7 @@ BUILDER_USER         		?= $(shell whoami)
 BUILDER_HOST         		?= $(shell hostname)
 # OCB (OpenTelemetry Collector Builder) version. Keep in sync with the OTel
 # Collector core version in collector/builder-config.yaml.
-BUILDER_VERSION      		?= v0.162.0
+BUILDER_VERSION      		?= v0.164.0
 JSONNET              		?= go run github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
 JB                   		?= go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0
 GRIZZLY              		?= go run github.com/grafana/grizzly/cmd/grr@v0.7.1
@@ -124,8 +126,8 @@ BEYLA_SCHEMA_DIR     := $(BEYLA_CONFIG_DIR)/gen
 BEYLA_ARTIFACTS_DIR  := $(BEYLA_SCHEMA_DIR)/beyla
 BEYLA_VERSION_FILE   := $(BEYLA_ARTIFACTS_DIR)/beyla_version.yaml
 BEYLA_VERSION        := $(shell awk '$$1=="version:"{print $$2}' $(BEYLA_VERSION_FILE) 2>/dev/null)
-BEYLA_BINARY_AMD64   := $(BEYLA_BINARY_DIR)/binaries/amd64/beyla
-BEYLA_BINARY_ARM64   := $(BEYLA_BINARY_DIR)/binaries/arm64/beyla
+BEYLA_BINARY_AMD64   := $(BEYLA_BINARY_DIR)/binaries/amd64/beyla.zst
+BEYLA_BINARY_ARM64   := $(BEYLA_BINARY_DIR)/binaries/arm64/beyla.zst
 BEYLA_BINARY_STAMP   := $(BEYLA_BINARY_DIR)/.beyla-binary-version
 BEYLA_SCHEMA         := $(BEYLA_ARTIFACTS_DIR)/schema.json
 
@@ -235,6 +237,19 @@ test:
 govulncheck:
 	go run -C tools ./cmd govulncheck --tags=$(GOVULNCHECK_TAGS)
 
+.PHONY: stabilitycheck
+# Fail when a non-GA component is not tracked, or its entry is stale, in
+# stability.yaml. Enumerates the component registry at runtime (see
+# internal/cmd/stabilitycheck/).
+stabilitycheck:
+	go run ./internal/cmd/stabilitycheck
+
+.PHONY: stabilitycheck-update
+# Format stability.yaml: add TODO entries for untracked non-GA components and
+# sort both sections. Pass EXPIRES=YYYY-MM-DD to set the expiry for new entries.
+stabilitycheck-update:
+	go run ./internal/cmd/stabilitycheck --update $(if $(EXPIRES),--expires=$(EXPIRES))
+
 test-packages:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
@@ -245,7 +260,7 @@ endif
 
 .PHONY: integration-test-docker
 integration-test-docker:
-	cd integration-tests/docker && $(GO_ENV) go run . --test-timeout=15m
+	cd integration-tests/docker && $(GO_ENV) go run . --test-timeout=15m $(RUN_ARGS)
 
 .PHONY: integration-test-k8s
 integration-test-k8s:
@@ -357,7 +372,7 @@ alloy-image:
 	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t $(ALLOY_IMAGE) -f Dockerfile .
 
 alloy-image-distroless:
-	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t $(ALLOY_IMAGE_DISTROLESS) -f Dockerfile.chisel .
+	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) --build-arg SKIP_CODE_GENERATION=$(SKIP_CODE_GENERATION) -t $(ALLOY_IMAGE_DISTROLESS) -f Dockerfile.chisel .
 
 # Test fixture image used by the k8s integration tests as a Prometheus scrape
 # target. The runner builds this alongside alloy-image so the tests don't have
@@ -365,6 +380,12 @@ alloy-image-distroless:
 .PHONY: prom-gen-image
 prom-gen-image:
 	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t prom-gen:latest -f integration-tests/k8s/fixtures/prom-gen/Dockerfile .
+
+# Test fixture image used by the k8s integration tests to send OTLP metrics and
+# traces. The runner builds this alongside alloy-image, like prom-gen-image.
+.PHONY: otel-gen-image
+otel-gen-image:
+	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t otel-gen:latest -f integration-tests/k8s/fixtures/otel-gen/Dockerfile .
 
 .PHONY: images-windows alloy-image-windows
 images-windows: alloy-image-windows

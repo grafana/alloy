@@ -7,14 +7,24 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-10-16
 title: prometheus.exporter.process
 ---
 
 # `prometheus.exporter.process`
 
-The `prometheus.exporter.process` component embeds the [`process_exporter`](https://github.com/ncabatoff/process-exporter) for collecting process stats from `/proc`.
+The `prometheus.exporter.process` component embeds the [`process_exporter`][process-exporter] to collect process stats from `/proc`.
 
 {{< docs/shared lookup="reference/components/exporter-clustering-warning.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+{{< admonition type="note" >}}
+The `prometheus.exporter.process` component only works on Linux systems.
+On other operating systems, {{< param "PRODUCT_NAME" >}} writes a warning to the logs and the component doesn't collect process metrics.
+{{< /admonition >}}
+
+You can specify multiple `prometheus.exporter.process` components by giving them different labels.
+
+[process-exporter]: https://github.com/ncabatoff/process-exporter
 
 ## Usage
 
@@ -27,25 +37,28 @@ prometheus.exporter.process "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.process`:
 
-| Name                  | Type     | Description                                       | Default   | Required |
-| --------------------- | -------- | ------------------------------------------------- | --------- | -------- |
-| `gather_smaps`        | `bool`   | Gather metrics from the smaps file for a process. | `true`    | no       |
-| `procfs_path`         | `string` | The procfs mount point.                           | `"/proc"` | no       |
-| `recheck_on_scrape`   | `bool`   | Recheck process names on each scrape.             | `false`   | no       |
-| `remove_empty_groups` | `bool`   | Forget process groups with no processes.          | `false`   | no       |
-| `track_children`      | `bool`   | Whether to track a process' children.             | `true`    | no       |
-| `track_threads`       | `bool`   | Report metrics for a process' individual threads. | `true`    | no       |
+| Name                  | Type     | Description                                                                                         | Default   | Required |
+| --------------------- | -------- | --------------------------------------------------------------------------------------------------- | --------- | -------- |
+| `gather_smaps`        | `bool`   | Gather proportional memory metrics for a process from the smaps files.                              | `true`    | no       |
+| `procfs_path`         | `string` | The procfs mount point.                                                                             | `"/proc"` | no       |
+| `recheck_on_scrape`   | `bool`   | Recheck process names on each scrape.                                                               | `false`   | no       |
+| `remove_empty_groups` | `bool`   | Remove process groups that contain no processes.                                                    | `false`   | no       |
+| `track_children`      | `bool`   | Track children of a tracked process in the same group, unless a child belongs to a different group. | `true`    | no       |
+| `track_threads`       | `bool`   | Report metrics for each thread name in addition to each group name.                                 | `true`    | no       |
 
-If you set `remove_empty_groups` to the default, `false`, the process "groups" created by the `matcher` blocks continue to report metrics even after the processes in that group have stopped running.
-This ensures you can see when a process count drops to zero, but it can cause unbounded growth in reported metrics and memory usage if your `matcher` generates dynamic group names, for example, using specific PIDs.
-The reporting continues until {{< param "PRODUCT_NAME" >}} is restarted.
+If you set `remove_empty_groups` to the default, `false`, the process "groups" that the `matcher` blocks create continue to report metrics even after the processes in that group have stopped running.
+This ensures you can see when a process count drops to zero, but it can cause unbounded growth in reported metrics and memory usage if your `matcher` generates dynamic group names based on specific PIDs.
+The reporting continues until you restart {{< param "PRODUCT_NAME" >}}.
 
-When you set `remove_empty_groups` to `true`, process groups are forgotten and stop reporting metrics as soon as they contain no running processes.
-Grafana recommends that you set `remove_empty_groups` to `true` if your name argument utilizes unique identifiers like `.PID` or `.StartTime`.
+When you set `remove_empty_groups` to `true`, the component drops a process group and stops reporting metrics for it when the group contains no running processes.
+Grafana recommends that you set `remove_empty_groups` to `true` if your `name` argument uses unique identifiers like `.PID` or `.StartTime`.
 
-For example, when you set `remove_empty_groups` to `false` and the `name` argument for a `matcher` block utilizes the `.PID` of a process, the `matcher` creates a new process group for every new process instance.
-The old process groups continue to report metrics with values of 0, even though no running processes are associated with them, leading to high cardinality.
-Set `remove_empty_groups` to `true` to remove the old groups, and prevent the high cardinality.
+For example, if you set `remove_empty_groups` to `false` and the `name` argument for a `matcher` block uses the `.PID` of a process, the `matcher` creates a separate process group for every process instance.
+Groups whose processes have exited continue to report metrics with values of 0, which leads to high cardinality.
+Set `remove_empty_groups` to `true` so the component removes those groups and prevents the high cardinality.
+
+The component sets the `instance` label on its exported targets to the `HOSTNAME` environment variable.
+If `HOSTNAME` isn't set, the component uses the operating system hostname, or `unknown` if it can't determine one.
 
 ## Blocks
 
@@ -53,9 +66,9 @@ You can use the following block with `prometheus.exporter.process`:
 
 {{< docs/alloy-config >}}
 
-| Name        | Description                                                                    | Required |
-| ----------- | ------------------------------------------------------------------------------ | -------- |
-| [matcher][] | A collection of matching rules to use for deciding which processes to monitor. | no       |
+| Block                | Description                                 | Required |
+| -------------------- | ------------------------------------------- | -------- |
+| [`matcher`][matcher] | Configures a group of processes to monitor. | no       |
 
 [matcher]: #matcher
 
@@ -63,40 +76,47 @@ You can use the following block with `prometheus.exporter.process`:
 
 ### `matcher`
 
-Each `matcher` block configuration can match multiple processes, which are tracked as a single process "group."
+Each `matcher` block can match multiple processes, which the component tracks as a single process "group."
+
+You can use the following arguments with the `matcher` block:
 
 | Name      | Type           | Description                                                                                      | Default          | Required |
 | --------- | -------------- | ------------------------------------------------------------------------------------------------ | ---------------- | -------- |
-| `cmdline` | `list(string)` | A list of regular expressions applied to the `argv` of the process.                              |                  | no       |
+| `cmdline` | `list(string)` | A list of regular expressions, each matched against the corresponding element of `argv`.         |                  | no       |
 | `comm`    | `list(string)` | A list of strings that match the base executable name for a process, truncated to 15 characters. |                  | no       |
 | `exe`     | `list(string)` | A list of strings that match `argv[0]` for a process.                                            |                  | no       |
-| `name`    | `string`       | The name to use for identifying the process group name in the metric.                            | `"{{.ExeBase}}"` | no       |
+| `name`    | `string`       | The name to use for the process group in metrics.                                                | `"{{.ExeBase}}"` | no       |
 
-The `name` argument can use the following template variables. By default it uses the base path of the executable:
+Each `matcher` block must set at least one of `cmdline`, `comm`, or `exe`.
+If you set none of them, the component fails with an invalid configuration error.
 
-* `{{.Comm}}`: Basename of the original executable from /proc/\<pid\>/stat.
-* `{{.ExeBase}}`: Basename of the executable from argv[0].
-* `{{.ExeFull}}`: Fully qualified path of the executable.
-* `{{.Username}}`: Username of the effective user.
-* `{{.Matches}}`: Map containing all regular expression capture groups resulting from matching a process with the cmdline rule group.
-* `{{.PID}}`: PID of the process. Note that the PID is copied from the first executable found.
-* `{{.StartTime}}`: The start time of the process. This is useful when combined with PID as PIDS get reused over time.
-* `{{.Cgroups}}`: The cgroups, if supported, of the process (`/proc/self/cgroup`). This is particularly useful for identifying to which container a process belongs.
-
-{{< admonition type="note" >}}
-Using `PID` or `StartTime` is discouraged, as it's almost never what you want, and is likely to result in high cardinality metrics.
-{{< /admonition >}}
-
-The value that's used for matching `comm` list elements is derived from reading the second field of `/proc/<pid>/stat`, stripped of parens.
+The component derives the value for matching `comm` list elements from the second field of `/proc/<pid>/stat`, with the parentheses removed.
 
 For values in `exe`, if there are no slashes, only the basename of `argv[0]` needs to match.
 Otherwise, the name must be an exact match.
 For example, `"postgres"` may match any PostgreSQL binary, but `/usr/local/bin/postgres` only matches a PostgreSQL process with that exact path.
-If any of the strings match, the process is tracked.
+If any of the strings match, the component tracks the process.
 
-Each regular expression in `cmdline` must match the corresponding `argv` for the process to be tracked.
-The first element that is matched is `argv[1]`.
-Regular expression captures are added to the `.Matches` map for use in the name.
+The component matches each regular expression in `cmdline` against the corresponding element of `argv`, starting at `argv[1]`.
+The first regular expression matches `argv[1]`, the second matches `argv[2]`, and so on.
+Every regular expression must match its corresponding element before the component tracks the process.
+The component adds named regular expression captures, for example `(?P<version>[0-9]+)`, to the `.Matches` map for use in `name`.
+
+The `name` argument can use the following template variables. By default it uses the base path of the executable:
+
+- `{{.Comm}}`: Basename of the original executable from `/proc/<pid>/stat`.
+- `{{.ExeBase}}`: Basename of the executable from `argv[0]`.
+- `{{.ExeFull}}`: Fully qualified path of the executable.
+- `{{.Username}}`: Username of the effective user.
+- `{{.Matches}}`: A map of the named capture groups from the `cmdline` regular expressions.
+- `{{.PID}}`: PID of the process. The component copies the PID from the first executable found.
+- `{{.StartTime}}`: The start time of the process. This is useful with `PID`, because PIDs get reused over time.
+- `{{.Cgroups}}`: The cgroups of the process, from `/proc/self/cgroup`, if supported. This is particularly useful for identifying which container a process belongs to.
+
+{{< admonition type="note" >}}
+Avoid `PID` and `StartTime`.
+They're almost never what you want, and they're likely to result in high cardinality metrics.
+{{< /admonition >}}
 
 ## Exported fields
 
@@ -148,9 +168,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
 

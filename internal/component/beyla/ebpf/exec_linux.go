@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/klauspost/compress/zstd"
 	"go.uber.org/atomic"
 	"golang.org/x/sys/unix"
 
@@ -100,11 +101,33 @@ func raiseSubprocessCaps() (func(), error) {
 	}, nil
 }
 
+// maxUncompressedBeylaBinarySize bounds the decompressed Beyla binary (~190 MB today).
+const maxUncompressedBeylaBinarySize = 512 << 20
+
 // embeddedBeylaBinary returns the embedded Beyla binary for the current architecture.
-// Only a placeholder is present until `make download-beyla` writes the real binary, so
-// this returns an error when the binary hasn't been downloaded.
+// `make download-beyla` stores it zstd-compressed as beyla.zst. Only a
+// placeholder is present until then, so this returns an error when the binary hasn't
+// been downloaded.
 func embeddedBeylaBinary() ([]byte, error) {
-	return beylaBinaryFS.ReadFile("binaries/" + runtime.GOARCH + "/beyla")
+	compressed, err := beylaBinaryFS.ReadFile("binaries/" + runtime.GOARCH + "/beyla.zst")
+	if err != nil {
+		return nil, err
+	}
+	return decompressBeylaBinary(compressed)
+}
+
+func decompressBeylaBinary(compressed []byte) ([]byte, error) {
+	dec, err := zstd.NewReader(nil, zstd.WithDecoderConcurrency(1), zstd.WithDecoderMaxMemory(maxUncompressedBeylaBinarySize))
+	if err != nil {
+		return nil, err
+	}
+	defer dec.Close()
+
+	binary, err := dec.DecodeAll(compressed, nil)
+	if err != nil {
+		return nil, fmt.Errorf("decompress Beyla binary: %w", err)
+	}
+	return binary, nil
 }
 
 func findFreePort() (int, error) {
@@ -116,26 +139,20 @@ func findFreePort() (int, error) {
 	return listener.Addr().(*net.TCPAddr).Port, nil
 }
 
-func (c *Component) runSubprocess(ctx context.Context) error {
+func (c *Component) runSubprocess(ctx context.Context, controlSocket, configFile *os.File) error {
 	binary, err := embeddedBeylaBinary()
 	if err != nil {
+		controlSocket.Close()
+		configFile.Close()
 		err = fmt.Errorf("embedded Beyla binary unavailable (run `make download-beyla`): %w", err)
 		c.opts.Logger.Error("failed to load Beyla binary", "err", err)
 		c.health.SetUnhealthy(err)
 		return err
 	}
 
-	c.opts.Logger.Info("starting Beyla subprocess", "port", c.subprocess.Port(), "config", c.subprocess.ConfigPath())
+	c.opts.Logger.Info("starting Beyla subprocess", "port", c.subprocess.Port(), "config", configFilePath())
 
-	proc, err := subprocess.Start(ctx, subprocess.Spec{
-		Name:    "beyla",
-		Binary:  binary,
-		Args:    []string{"-config", c.subprocess.ConfigPath()},
-		Env:     profileEnv(c.subprocess.ProfilePort()),
-		PreExec: raiseSubprocessCaps,
-		Stdout:  &logWriter{logger: c.opts.Logger, level: "info"},
-		Stderr:  &logWriter{logger: c.opts.Logger, level: "error"},
-	})
+	proc, err := subprocess.Start(ctx, c.beylaSpec(binary, controlSocket, configFile))
 	if err != nil {
 		c.opts.Logger.Error("failed to start Beyla subprocess", "err", err)
 		c.health.SetUnhealthy(err)
@@ -156,6 +173,23 @@ func (c *Component) runSubprocess(ctx context.Context) error {
 
 	c.opts.Logger.Info("Beyla subprocess stopped")
 	return nil
+}
+
+func (c *Component) beylaSpec(binary []byte, controlSocket, configFile *os.File) subprocess.Spec {
+	extraFiles := make([]*os.File, 2)
+	extraFiles[configControlChildFD-subprocess.FirstExtraFD] = controlSocket
+	extraFiles[configFileChildFD-subprocess.FirstExtraFD] = configFile
+
+	return subprocess.Spec{
+		Name:       "beyla",
+		Binary:     binary,
+		Args:       []string{"-config", configFilePath()},
+		Env:        append(profileEnv(c.subprocess.ProfilePort()), configControlEnvVar()),
+		ExtraFiles: extraFiles,
+		PreExec:    raiseSubprocessCaps,
+		Stdout:     &logWriter{logger: c.opts.Logger, level: "info"},
+		Stderr:     &logWriter{logger: c.opts.Logger, level: "error"},
+	}
 }
 
 func profileEnv(profilePort int) []string {

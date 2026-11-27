@@ -11,27 +11,27 @@ func Test_CalculateWallTime(t *testing.T) {
 	t.Run("calculates the timestamp at which an event happened", func(t *testing.T) {
 		serverStartTime := 2.0
 		timer := secondsToPicoseconds(2)
-		lastUptime := 0.0
+		previousOverflows := 0
 
-		result := calculateWallTime(serverStartTime, timer, lastUptime)
+		result := calculateWallTime(serverStartTime, timer, previousOverflows)
 		require.Equalf(t, 4000.0, result, "got %f, want 4000", result)
 	})
 
 	t.Run("calculates the timestamp, taking into account the overflows", func(t *testing.T) {
 		serverStartTime := 3.0
 		timer := secondsToPicoseconds(2)
-		lastUptime := picosecondsToSeconds(math.MaxUint64) + 1
+		previousOverflows := 1
 
-		result := calculateWallTime(serverStartTime, timer, lastUptime)
+		result := calculateWallTime(serverStartTime, timer, previousOverflows)
 		require.Equalf(t, 18446749073.709553, result, "got %f, want 18446749073.709553", result)
 	})
 
 	t.Run("calculates another timestamp when timer approaches overflow", func(t *testing.T) {
 		serverStartTime := 3.0
 		timer := float64(math.MaxUint64 - 5)
-		lastUptime := picosecondsToSeconds(math.MaxUint64) + 1
+		previousOverflows := 1
 
-		result := calculateWallTime(serverStartTime, timer, lastUptime)
+		result := calculateWallTime(serverStartTime, timer, previousOverflows)
 		require.Equalf(t, 3.6893491147419106e+10, result, "got %f, want 3.6893491147419106e+10", result)
 	})
 }

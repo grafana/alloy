@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"runtime/pprof"
@@ -40,6 +41,7 @@ type Bundle struct {
 	remoteCfg            []byte
 	heapBuf              *bytes.Buffer
 	goroutineBuf         *bytes.Buffer
+	goroutineDumpBuf     *bytes.Buffer
 	blockBuf             *bytes.Buffer
 	mutexBuf             *bytes.Buffer
 	cpuBuf               *bytes.Buffer
@@ -111,11 +113,12 @@ func ExportSupportBundle(
 
 	// Export pprof data.
 	var (
-		cpuBuf       bytes.Buffer
-		heapBuf      bytes.Buffer
-		goroutineBuf bytes.Buffer
-		blockBuf     bytes.Buffer
-		mutexBuf     bytes.Buffer
+		cpuBuf           bytes.Buffer
+		heapBuf          bytes.Buffer
+		goroutineBuf     bytes.Buffer
+		goroutineDumpBuf bytes.Buffer
+		blockBuf         bytes.Buffer
+		mutexBuf         bytes.Buffer
 	)
 	err = pprof.StartCPUProfile(&cpuBuf)
 	if err != nil {
@@ -133,6 +136,9 @@ func ExportSupportBundle(
 	}
 	p = pprof.Lookup("goroutine")
 	if err := p.WriteTo(&goroutineBuf, 0); err != nil {
+		return nil, err
+	}
+	if err := p.WriteTo(&goroutineDumpBuf, 2); err != nil {
 		return nil, err
 	}
 	p = pprof.Lookup("block")
@@ -161,9 +167,10 @@ func ExportSupportBundle(
 		sources:              sources,
 		remoteCfg:            remoteCfg,
 		runtimeFlags:         []byte(strings.Join(runtimeFlags, "\n")),
-		environmentVariables: []byte(strings.Join(retrieveEnvironmentVariables(), "\n")),
+		environmentVariables: []byte(strings.Join(retrieveEnvironmentVariables(os.Getenv), "\n")),
 		heapBuf:              &heapBuf,
 		goroutineBuf:         &goroutineBuf,
+		goroutineDumpBuf:     &goroutineDumpBuf,
 		blockBuf:             &blockBuf,
 		mutexBuf:             &mutexBuf,
 		cpuBuf:               &cpuBuf,
@@ -178,15 +185,21 @@ func retrieveAPIEndpoint(httpClient http.Client, srvAddress, endpoint string) ([
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return nil, fmt.Errorf("unexpected status %q from %s", resp.Status, url)
+	}
+
 	res, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("reading response from %s: %w", url, err)
 	}
 
 	return res, nil
 }
 
-func retrieveEnvironmentVariables() []string {
+func retrieveEnvironmentVariables(getenv func(string) string) []string {
 	relevantVariables := []string{
 		"AUTOMEMLIMIT",
 		"GODEBUG",
@@ -204,9 +217,20 @@ func retrieveEnvironmentVariables() []string {
 		"PPROF_BLOCK_PROFILING_RATE",
 		"PPROF_MUTEX_PROFILING_PERCENT",
 	}
+	// Proxy URLs may contain credentials, so only report whether they are set.
+	redactedVariables := map[string]struct{}{
+		"HTTP_PROXY":  {},
+		"http_proxy":  {},
+		"HTTPS_PROXY": {},
+		"https_proxy": {},
+	}
 	values := []string{}
 	for _, v := range relevantVariables {
-		values = append(values, fmt.Sprintf("%s=%s", v, os.Getenv(v)))
+		value := getenv(v)
+		if _, ok := redactedVariables[v]; ok && value != "" {
+			value = "<redacted>"
+		}
+		values = append(values, fmt.Sprintf("%s=%s", v, value))
 	}
 
 	return values
@@ -231,6 +255,7 @@ func ServeSupportBundle(rw http.ResponseWriter, b *Bundle, logsBuf []byte) error
 		"pprof/cpu.pprof":                b.cpuBuf.Bytes(),
 		"pprof/heap.pprof":               b.heapBuf.Bytes(),
 		"pprof/goroutine.pprof":          b.goroutineBuf.Bytes(),
+		"pprof/goroutine.txt":            b.goroutineDumpBuf.Bytes(),
 		"pprof/mutex.pprof":              b.mutexBuf.Bytes(),
 		"pprof/block.pprof":              b.blockBuf.Bytes(),
 	}
@@ -240,13 +265,12 @@ func ServeSupportBundle(rw http.ResponseWriter, b *Bundle, logsBuf []byte) error
 	}
 
 	for p, s := range b.sources {
-		zipStructure[filepath.Join("sources", filepath.Base(p))] = s
+		zipStructure[path.Join("sources", filepath.Base(p))] = s
 	}
 
 	for fn, b := range zipStructure {
 		if b != nil {
-			path := append([]string{"alloy-support-bundle"}, strings.Split(fn, "/")...)
-			if err := writeByteSlice(zw, b, path...); err != nil {
+			if err := writeByteSlice(zw, b, path.Join("alloy-support-bundle", fn)); err != nil {
 				return err
 			}
 		}
@@ -259,8 +283,10 @@ func ServeSupportBundle(rw http.ResponseWriter, b *Bundle, logsBuf []byte) error
 	return nil
 }
 
-func writeByteSlice(zw *zip.Writer, b []byte, fn ...string) error {
-	f, err := zw.Create(filepath.Join(fn...))
+// writeByteSlice writes b to the zip entry name. Zip entry names must use
+// forward slashes on every OS, so build name with path.Join, not filepath.Join.
+func writeByteSlice(zw *zip.Writer, b []byte, name string) error {
+	f, err := zw.Create(name)
 	if err != nil {
 		return err
 	}

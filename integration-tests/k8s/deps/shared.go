@@ -60,26 +60,49 @@ func startPortForward(namespace, name, localPort, port string) (func(), error) {
 		return nil, err
 	}
 
-	waitCh := make(chan error, 1)
+	exited := make(chan error, 1)
 	go func() {
-		waitCh <- cmd.Wait()
+		exited <- cmd.Wait()
 	}()
 
-	select {
-	case err := <-waitCh:
-		return nil, fmt.Errorf("port-forward exited early: %w", err)
-	case <-time.After(500 * time.Millisecond):
+	if err := waitForPortForwardReady(localPort, exited); err != nil {
+		_ = cmd.Process.Kill()
+		return nil, err
 	}
 
 	return func() {
-		if cmd.Process != nil {
-			_ = cmd.Process.Kill()
-		}
+		_ = cmd.Process.Kill()
 		select {
-		case <-waitCh:
+		case <-exited:
 		case <-time.After(5 * time.Second):
+			fmt.Fprintf(os.Stderr, "warning: port-forward to service/%s didn't exit within 5s of being killed\n", name)
 		}
 	}, nil
+}
+
+// portForwardReadyTimeout is how long to wait for kubectl port-forward to
+// accept connections on the local port.
+const portForwardReadyTimeout = 30 * time.Second
+
+// waitForPortForwardReady waits until the local port accepts connections.
+// kubectl has no command to check this, and a fixed delay isn't enough on a
+// busy runner.
+func waitForPortForwardReady(localPort string, exited <-chan error) error {
+	addr := net.JoinHostPort("localhost", localPort)
+	timeout := time.After(portForwardReadyTimeout)
+	for {
+		if conn, err := net.Dial("tcp", addr); err == nil {
+			_ = conn.Close()
+			return nil
+		}
+		select {
+		case err := <-exited:
+			return fmt.Errorf("port-forward exited early: %w", err)
+		case <-timeout:
+			return fmt.Errorf("port-forward not ready on %s after %s", addr, portForwardReadyTimeout)
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
 }
 
 func pickFreeLocalPort() (string, error) {

@@ -122,10 +122,10 @@ func (t *TLSSetting) Validate() error {
 }
 
 type TPMConfig struct {
-	Enabled   bool   `alloy:"enabled,attr,optional"`
-	Path      string `alloy:"path,attr,optional"`
-	OwnerAuth string `alloy:"owner_auth,attr,optional"`
-	Auth      string `alloy:"auth,attr,optional"`
+	Enabled   bool              `alloy:"enabled,attr,optional"`
+	Path      string            `alloy:"path,attr,optional"`
+	OwnerAuth alloytypes.Secret `alloy:"owner_auth,attr,optional"`
+	Auth      alloytypes.Secret `alloy:"auth,attr,optional"`
 }
 
 func (t *TPMConfig) Convert() configtls.TPMConfig {
@@ -136,7 +136,7 @@ func (t *TPMConfig) Convert() configtls.TPMConfig {
 	return configtls.TPMConfig{
 		Enabled:   t.Enabled,
 		Path:      t.Path,
-		OwnerAuth: t.OwnerAuth,
-		Auth:      t.Auth,
+		OwnerAuth: string(t.OwnerAuth),
+		Auth:      string(t.Auth),
 	}
 }

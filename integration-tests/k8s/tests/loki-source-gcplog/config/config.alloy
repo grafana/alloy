@@ -1,0 +1,83 @@
+logging {
+  level = "debug"
+}
+
+livedebugging {
+  enabled = true
+}
+
+// Subscribes to the subscription the gcp-pubsub dep creates. The push
+// receiver is covered by the loki-source-gcplog pipeline test.
+loki.source.gcplog "pull" {
+  pull {
+    project_id   = "test-project"
+    subscription = "gcplog-subscription"
+  }
+
+  forward_to    = [loki.process.pull.receiver]
+  relabel_rules = loki.relabel.gcplog.rules
+}
+
+// Promote __gcp_* internals to labels. Severity and log name then move to
+// structured metadata.
+loki.relabel "gcplog" {
+  forward_to = []
+
+  rule {
+    source_labels = ["__gcp_resource_type"]
+    target_label  = "service_name"
+  }
+
+  rule {
+    source_labels = ["__gcp_resource_labels_cluster_name"]
+    target_label  = "cluster"
+  }
+
+  rule {
+    source_labels = ["__gcp_resource_labels_bucket_name"]
+    target_label  = "bucket"
+  }
+
+  rule {
+    source_labels = ["__gcp_severity"]
+    target_label  = "severity"
+  }
+
+  rule {
+    source_labels = ["__gcp_logname"]
+    target_label  = "log_name"
+  }
+}
+
+loki.process "pull" {
+  stage.static_labels {
+    values = {
+      alloy_test_name = "loki-source-gcplog",
+    }
+  }
+
+  stage.structured_metadata {
+    values = {
+      severity = "",
+      log_name = "",
+    }
+  }
+
+  forward_to = [loki.relabel.test.receiver]
+}
+
+// Drop the labels moved to structured metadata.
+loki.relabel "test" {
+  forward_to = [loki.write.loki.receiver]
+
+  rule {
+    action = "labeldrop"
+    regex  = "severity|log_name"
+  }
+}
+
+loki.write "loki" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

@@ -102,10 +102,12 @@ Use "refer to" instead of "see", "consult", "check out", and other phrases.
 
 Use sentence case for titles and headings.
 
-Use inline Markdown links: [Link text](https://example.com).
+Use reference style Markdown links: [Link text][link definition].
+[link definition]: https://example.com
 
 Link to other sections using descriptive phrases that include the section name:
-"For setup details, refer to the [Lists](#lists) section."
+"For setup details, refer to the [Lists][] section."
+[Lists]: #lists
 
 Bold text with two asterisks: **bold**
 
@@ -125,6 +127,7 @@ Write complete sentences for lists:
 - All languages and frameworks (incorrect)
 
 Use dashes for unordered lists.
+Asterisks can be used, but dashes are preferred.
 
 Bold keywords at list start and follow with a colon.
 

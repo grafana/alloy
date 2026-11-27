@@ -12,6 +12,7 @@ You can use environment variables to control the run-time behavior of {{< param 
 
 The following environment variables are supported:
 
+* `ALLOY_CONFIG_BASE64`
 * `GODEBUG`
 * `HTTP_PROXY`
 * `HTTPS_PROXY`
@@ -26,6 +27,11 @@ The following environment variables are supported:
 * `GOTRACEBACK`
 
 Refer to the [Go runtime][runtime] documentation for more information about Go runtime environment variables.
+
+## `ALLOY_CONFIG_BASE64`
+
+The base64-encoded {{< param "PRODUCT_NAME" >}} configuration to run when you start [`alloy run`][run] with `--config.base64.from-env`.
+The variable is ignored otherwise.
 
 ## `GODEBUG`
 
@@ -127,3 +133,4 @@ The following values are supported:
 [runtime]: https://pkg.go.dev/runtime
 [automemlimit]: https://github.com/KimMachineGun/automemlimit
 [gc_guide]: https://tip.golang.org/doc/gc-guide#GOGC
+[run]: ../run/

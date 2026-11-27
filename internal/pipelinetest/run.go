@@ -17,6 +17,9 @@ func RunTest(ctx context.Context, schema TestSchema, cfg TestConfig) error {
 	if err := validateHTTPInputs(schema.Inputs.HTTP); err != nil {
 		return err
 	}
+	if err := validateSocketInputs(schema.Inputs.TCP, schema.Inputs.UDP); err != nil {
+		return err
+	}
 
 	alloy, err := harness.NewAlloy(harness.Config{
 		SinkID:         "pipelinetest.sink.out",

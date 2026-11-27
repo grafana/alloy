@@ -7,20 +7,23 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-10-14
 title: prometheus.exporter.postgres
 ---
 
 # `prometheus.exporter.postgres`
 
-The `prometheus.exporter.postgres` component embeds the [`postgres_exporter`](https://github.com/prometheus-community/postgres_exporter) for collecting metrics from a PostgreSQL database.
+The `prometheus.exporter.postgres` component embeds the [`postgres_exporter`][postgres-exporter] to collect metrics from a PostgreSQL database.
 
 You can specify multiple `prometheus.exporter.postgres` components by giving them different labels.
+
+[postgres-exporter]: https://github.com/prometheus-community/postgres_exporter
 
 ## Usage
 
 ```alloy
 prometheus.exporter.postgres "<LABEL>" {
-    data_source_names = "<DATA_SOURCE_NAMES_LIST>"
+  data_source_names = ["<DATA_SOURCE_NAME>"]
 }
 ```
 
@@ -36,35 +39,44 @@ You can use the following arguments with `prometheus.exporter.postgres`:
 | `disable_settings_metrics`   | `bool`         | Disables collection of metrics from `pg_settings`.                            | `false` | no       |
 | `enabled_collectors`         | `list(string)` | List of collectors to enable. Refer to the information below for more detail. | `[]`    | no       |
 
-Refer to the [PostgreSQL documentation](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING) for more information about the format of the connection strings in `data_source_names`.
+Refer to the [PostgreSQL documentation][libpq-connstring] for more information about the format of the connection strings in `data_source_names`.
 
-Refer to the examples for the `custom_queries_config_path` file in the [`postgres_exporter` repository](https://github.com/prometheus-community/postgres_exporter/blob/master/queries.yaml).
+Refer to the examples for the `custom_queries_config_path` file in the [`postgres_exporter` repository][postgres-exporter-queries].
+
+[libpq-connstring]: https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
+[postgres-exporter-queries]: https://github.com/prometheus-community/postgres_exporter/blob/master/queries.yaml
 
 {{< admonition type="note" >}}
-There are a number of environment variables that aren't recommended for use, as they will affect _all_ `prometheus.exporter.postgres` components.
-Refer to the [`postgres_exporter` repository](https://github.com/prometheus-community/postgres_exporter#environment-variables) for a full list of environment variables.
+Avoid configuring the exporter with environment variables.
+They affect _all_ `prometheus.exporter.postgres` components, not just one.
+Refer to the [`postgres_exporter` repository][postgres-exporter-env] for a full list of environment variables.
+
+[postgres-exporter-env]: https://github.com/prometheus-community/postgres_exporter#environment-variables
 {{< /admonition >}}
 
-The `prometheus.exporter.postgres` component configures the embedded [`postgres_exporter`](https://github.com/prometheus-community/postgres_exporter) to run with a collection timeout of 10 seconds.
+The `prometheus.exporter.postgres` component configures the embedded [`postgres_exporter`][postgres-exporter] to run with a collection timeout of 10 seconds.
 
-By default, the same set of metrics is enabled as in the upstream [`postgres_exporter`](https://github.com/prometheus-community/postgres_exporter/).
-If `custom_queries_config_path` is set, additional metrics defined in the given configuration file will be exposed.
-If `disable_default_metrics` is set to `true`, only the metrics defined in the `custom_queries_config_path` file will be exposed.
+By default, the component enables the same set of metrics as the upstream [`postgres_exporter`][postgres-exporter].
+Set `custom_queries_config_path` to expose additional metrics from a configuration file.
 
-A subset of metrics collectors can be controlled by setting the `enabled_collectors` argument.
+Set `disable_default_metrics` to `true` to expose only the metrics from `custom_queries_config_path`.
+That makes `custom_queries_config_path` required, and you can't set `enabled_collectors`.
+
+Set `enabled_collectors` to control a subset of the metrics collectors.
 The following collectors are available for selection:
 
 {{< column-list >}}
 
 * `buffercache_summary`
-* `database_wraparound`
 * `database`
+* `database_wraparound`
 * `locks`
 * `long_running_transactions`
 * `postmaster`
 * `process_idle`
-* `replication_slot`
 * `replication`
+* `replication_slot`
+* `roles`
 * `stat_activity_autovacuum`
 * `stat_bgwriter`
 * `stat_checkpointer` - Only supported in PostgreSQL 17 and later
@@ -80,14 +92,14 @@ The following collectors are available for selection:
 
 {{< /column-list >}}
 
-By default, the following collectors are enabled:
+The component enables the following collectors by default:
 
 {{< column-list >}}
 
 * `database`
 * `locks`
-* `replication_slot`
 * `replication`
+* `replication_slot`
 * `roles`
 * `stat_bgwriter`
 * `stat_database`
@@ -99,20 +111,27 @@ By default, the following collectors are enabled:
 {{< /column-list >}}
 
 {{< admonition type="note" >}}
-Due to a limitation of the upstream exporter, when multiple `data_source_names` are used, the collectors that are controlled via the `enabled_collectors` argument is only applied to the first data source in the list.
+Due to a limitation of the upstream exporter, `enabled_collectors` applies only to the first data source when you configure multiple `data_source_names`.
 {{< /admonition >}}
+
+The component sets the `instance` label on its exported targets to a simplified form of the data source name, `postgresql://<HOST>:<PORT>/<DATABASE>`, with any credentials removed.
+The component omits the port when the data source name specifies a host without a port.
+When the data source name omits the host, the component uses `localhost:5432`.
+When you configure more than one data source name, the component sets the `instance` label to the component ID.
 
 ## Blocks
 
-You can use the following block with `prometheus.exporter.postgres`:
+You can use the following blocks with `prometheus.exporter.postgres`:
 
 {{< docs/alloy-config >}}
 
-| Name                             | Description                  | Required |
-| -------------------------------- | ---------------------------- | -------- |
-| [`autodiscovery`][autodiscovery] | Database discovery settings. | no       |
+| Block                                | Description                                   | Required |
+| ------------------------------------ | --------------------------------------------- | -------- |
+| [`autodiscovery`][autodiscovery]     | Configures discovery of additional databases. | no       |
+| [`stat_statements`][stat_statements] | Configures the `stat_statements` collector.   | no       |
 
 [autodiscovery]: #autodiscovery
+[stat_statements]: #stat_statements
 
 {{< /docs/alloy-config >}}
 
@@ -120,24 +139,25 @@ You can use the following block with `prometheus.exporter.postgres`:
 
 The `autodiscovery` block configures discovery of databases, outside of any specified in `data_source_names`.
 
-The following arguments are supported:
+You can use the following arguments with the `autodiscovery` block:
 
-| Name                 | Type           | Description                                                                    | Default | Required |
-|----------------------|----------------|--------------------------------------------------------------------------------|---------|----------|
-| `database_allowlist` | `list(string)` | List of databases to filter for, meaning only these databases will be scraped. |         | no       |
-| `database_denylist`  | `list(string)` | List of databases to filter out, meaning all other databases will be scraped.  |         | no       |
-| `enabled`            | `bool`         | Whether to automatically discover other databases.                             | `false` | no       |
+| Name                 | Type           | Description                                        | Default | Required |
+| -------------------- | -------------- | -------------------------------------------------- | ------- | -------- |
+| `database_allowlist` | `list(string)` | Scrape only these databases.                       |         | no       |
+| `database_denylist`  | `list(string)` | Scrape all databases except these.                 |         | no       |
+| `enabled`            | `bool`         | Whether to automatically discover other databases. | `false` | no       |
 
-If `enabled` is set to `true` and no allowlist or denylist is specified, the exporter scrapes from all databases.
+If you set `enabled` to `true` without an allowlist or a denylist, the exporter scrapes all databases.
 
-If `autodiscovery` is disabled, neither `database_allowlist` nor `database_denylist` has any effect.
+If you don't enable `autodiscovery`, neither `database_allowlist` nor `database_denylist` has any effect.
 
 ### `stat_statements`
 
 The `stat_statements` block configures the selection of both the query ID and the full SQL statement.
-This configuration takes effect only when the `stat_statements` collector is enabled.
+This configuration takes effect only when you enable the `stat_statements` collector.
 
-The following arguments are supported:
+You can use the following arguments with the `stat_statements` block:
+
 | Name                | Type           | Description                                         | Default | Required |
 | ------------------- | -------------- | --------------------------------------------------- | ------- | -------- |
 | `exclude_databases` | `list(string)` | Comma-separated list of database names to exclude.  | `[]`    | no       |
@@ -153,6 +173,7 @@ The following arguments are supported:
 ## Component health
 
 `prometheus.exporter.postgres` is only reported as unhealthy if given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
@@ -169,10 +190,10 @@ The following arguments are supported:
 The following example uses a `prometheus.exporter.postgres` component to collect metrics from a PostgreSQL server running locally with all default settings:
 
 ```alloy
-// Because no autodiscovery is defined, this will only scrape the 'database_name' database, as defined
+// Because no autodiscovery is defined, this will only scrape the <DATABASE_NAME> database, as defined
 // in the DSN below.
 prometheus.exporter.postgres "example" {
-  data_source_names = ["postgresql://username:password@localhost:5432/database_name?sslmode=disable"]
+  data_source_names = ["postgresql://<DB_USERNAME>:<DB_PASSWORD>@localhost:5432/<DATABASE_NAME>?sslmode=disable"]
 }
 
 prometheus.scrape "default" {
@@ -194,6 +215,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
+* _`<DB_USERNAME>`_: The username for the PostgreSQL server.
+* _`<DB_PASSWORD>`_: The password for the PostgreSQL server.
+* _`<DATABASE_NAME>`_: The name of the database to scrape.
 * _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
 * _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
 * _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
@@ -204,11 +228,11 @@ The following example uses a `prometheus.exporter.postgres` component to collect
 
 ```alloy
 prometheus.exporter.postgres "example" {
-  data_source_names = ["postgresql://username:password@localhost:5432/database_name?sslmode=disable"]
+  data_source_names = ["postgresql://<DB_USERNAME>:<DB_PASSWORD>@localhost:5432/<DATABASE_NAME>?sslmode=disable"]
 
-  // This block configures autodiscovery to check for databases outside of the 'database_name' db
-  // specified in the DSN above. The database_allowlist field means that only the 'frontend_app' and 'backend_app'
-  // databases will be scraped.
+  // This block configures autodiscovery to check for databases outside of the <DATABASE_NAME> db
+  // specified in the DSN above. The database_allowlist field limits autodiscovery to the
+  // 'frontend_app' and 'backend_app' databases. The component also scrapes <DATABASE_NAME>.
   autodiscovery {
     enabled            = true
     database_allowlist = ["frontend_app", "backend_app"]
@@ -237,6 +261,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
+* _`<DB_USERNAME>`_: The username for the PostgreSQL server.
+* _`<DB_PASSWORD>`_: The password for the PostgreSQL server.
+* _`<DATABASE_NAME>`_: The name of the database to scrape.
 * _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
 * _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
 * _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
@@ -247,7 +274,7 @@ This example uses a `prometheus.exporter.postgres` component to collect custom m
 
 ```alloy
 prometheus.exporter.postgres "example" {
-  data_source_names = ["postgresql://username:password@localhost:5432/database_name?sslmode=disable"]
+  data_source_names = ["postgresql://<DB_USERNAME>:<DB_PASSWORD>@localhost:5432/<DATABASE_NAME>?sslmode=disable"]
 
   // The database_denylist field will filter out those databases from the list of databases to scrape,
   // meaning that all databases *except* these will be scraped.
@@ -276,24 +303,32 @@ prometheus.remote_write "demo" {
 }
 ```
 
-### Escape special characters in postgres url
+Replace the following:
 
-If your PostgreSQL connection string includes special characters for e.g. password (`@`, `:`, `/`, etc.), you should wrap the password using `encoding.url_encode`.
+* _`<DB_USERNAME>`_: The username for the PostgreSQL server.
+* _`<DB_PASSWORD>`_: The password for the PostgreSQL server.
+* _`<DATABASE_NAME>`_: The name of the database to scrape.
+* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+
+### Escape special characters in a connection string
+
+If your password contains special characters such as `@`, `:`, or `/`, wrap it with `encoding.url_encode`.
 
 ```alloy
 prometheus.exporter.postgres "example" {
   data_source_names = [
-    "postgresql://username:" + encoding.url_encode("p@ss/w:ord!") + "@localhost:5432/dbname?sslmode=disable"
+    "postgresql://<DB_USERNAME>:" + encoding.url_encode("p@ss/w:ord!") + "@localhost:5432/<DATABASE_NAME>?sslmode=disable",
   ]
 }
 ```
-This ensures the DSN remains valid and correctly parsed.
+This keeps the connection string valid.
 
 Replace the following:
 
-* _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
-* _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-* _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+* _`<DB_USERNAME>`_: The username for the PostgreSQL server.
+* _`<DATABASE_NAME>`_: The name of the database to scrape.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

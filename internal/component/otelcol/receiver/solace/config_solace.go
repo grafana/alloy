@@ -46,8 +46,8 @@ func (args *SaslPlainTextConfig) Convert() configoptional.Optional[solacereceive
 
 // SaslXAuth2Config defines the configuration for the SASL XAUTH2 authentication.
 type SaslXAuth2Config struct {
-	Username string `alloy:"username,attr"`
-	Bearer   string `alloy:"bearer,attr"`
+	Username string            `alloy:"username,attr"`
+	Bearer   alloytypes.Secret `alloy:"bearer,attr"`
 }
 
 func (args *SaslXAuth2Config) Convert() configoptional.Optional[solacereceiver.SaslXAuth2Config] {
@@ -57,7 +57,7 @@ func (args *SaslXAuth2Config) Convert() configoptional.Optional[solacereceiver.S
 
 	return configoptional.Some(solacereceiver.SaslXAuth2Config{
 		Username: args.Username,
-		Bearer:   args.Bearer,
+		Bearer:   string(args.Bearer),
 	})
 }
 
