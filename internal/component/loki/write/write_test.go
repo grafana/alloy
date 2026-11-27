@@ -156,7 +156,7 @@ func testSingleEndpoint(t *testing.T, env lokitest.Env, alterConfig func(argumen
 		Line:      "very important log",
 	}
 
-	env.Send(t, ctrl.Exports().(Exports).Receiver, logEntry, logEntry)
+	require.NoError(t, env.Send(t.Context(), ctrl.Exports().(Exports).Receiver, logEntry, logEntry))
 
 	// Wait for our exporter to finish and pass data to our HTTP server.
 	// Make sure the log entries were received correctly.
@@ -228,8 +228,8 @@ func testMultipleEndpoint(t *testing.T, env lokitest.Env, alterArgs func(argumen
 		Timestamp: time.Now(),
 		Line:      "writing some text",
 	})
-	env.Send(t, ctrl1.Exports().(Exports).Receiver, entry)
-	env.Send(t, ctrl2.Exports().(Exports).Receiver, entry)
+	require.NoError(t, env.Send(t.Context(), ctrl1.Exports().(Exports).Receiver, entry))
+	require.NoError(t, env.Send(t.Context(), ctrl2.Exports().(Exports).Receiver, entry))
 
 	// Each endpoint receives the entry with its component's external labels merged in.
 	for range 2 {
@@ -554,18 +554,18 @@ func TestFailedUpdateKeepsPreviousConsumer(t *testing.T) {
 				ctrl, _ := env.Run(t, "loki.write", firstArgs)
 				recv := ctrl.Exports().(Exports).Receiver
 
-				env.Send(t, recv, loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "first"}))
+				require.NoError(t, env.Send(t.Context(), recv, loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "first"})))
 				waitForLine(t, firstReceived, "first")
 
 				require.Error(t, ctrl.Update(failingArgs))
 
 				// The failed update left the previous consumer in place.
-				env.Send(t, recv, loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "second"}))
+				require.NoError(t, env.Send(t.Context(), recv, loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "second"})))
 				waitForLine(t, firstReceived, "second")
 
 				require.NoError(t, ctrl.Update(secondArgs))
 
-				env.Send(t, recv, loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "third"}))
+				require.NoError(t, env.Send(t.Context(), recv, loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "third"})))
 				waitForLine(t, secondReceived, "third")
 			})
 		})
@@ -595,17 +595,17 @@ func TestUpdateTogglesWAL(t *testing.T) {
 		ctrl, _ := env.Run(t, "loki.write", walArgs)
 		recv := ctrl.Exports().(Exports).Receiver
 
-		env.Send(t, recv, loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "with wal"}))
+		require.NoError(t, env.Send(t.Context(), recv, loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "with wal"})))
 		waitForLine(t, received, "with wal")
 
 		require.NoError(t, ctrl.Update(noWalArgs))
 
-		env.Send(t, recv, loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "without wal"}))
+		require.NoError(t, env.Send(t.Context(), recv, loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "without wal"})))
 		waitForLine(t, received, "without wal")
 
 		require.NoError(t, ctrl.Update(walArgs))
 
-		env.Send(t, recv, loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "with wal again"}))
+		require.NoError(t, env.Send(t.Context(), recv, loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{Timestamp: time.Now(), Line: "with wal again"})))
 		waitForLine(t, received, "with wal again")
 	})
 }

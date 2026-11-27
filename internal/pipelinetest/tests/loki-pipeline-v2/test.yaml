@@ -10,7 +10,19 @@ config: |
       },
     ]
 
+    forward_to = [loki.process.p.receiver]
+  }
+
+  loki.process "p" {
     forward_to = [loki.write.no_wal.receiver, loki.write.wal.receiver, loki.echo.e.receiver]
+
+    stage.logfmt {
+      mapping = { level = "" }
+    }
+
+    stage.labels {
+      values = { level = "" }
+    }
   }
 
   loki.echo "e" {}
@@ -61,6 +73,7 @@ assert:
           mode: partial
           values:
             service_name: app
+            level: warn
             write: no_wal
         line: 'ts=2026-10-15T12:00:01Z level=warn msg="second line"'
     - type: contains
@@ -69,5 +82,6 @@ assert:
           mode: partial
           values:
             service_name: app
+            level: warn
             write: wal
         line: 'ts=2026-10-15T12:00:01Z level=warn msg="second line"'

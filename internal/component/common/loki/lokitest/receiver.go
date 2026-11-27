@@ -201,6 +201,16 @@ func (r *CollectingReceiver) Entries() []loki.Entry {
 	return slices.Clone(r.entries)
 }
 
+var _ loki.Consumer = ConsumerFunc(nil)
+
+// ConsumerFunc is a loki.Consumer that calls itself on Consume.
+type ConsumerFunc func(ctx context.Context, batch loki.Batch) error
+
+// Consume implements loki.Consumer.
+func (f ConsumerFunc) Consume(ctx context.Context, batch loki.Batch) error {
+	return f(ctx, batch)
+}
+
 var _ loki.Consumer = (*CollectingConsumer)(nil)
 
 func NewCollectingConsumer() *CollectingConsumer {
