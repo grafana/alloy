@@ -135,7 +135,9 @@ You can use the following blocks with `otelcol.processor.filter`:
 
 {{< badge text="Required" >}}
 
-{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/output-block-with-profiles.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+`otelcol.processor.filter` forwards profiles unchanged. You can configure filter conditions for metrics, logs, and traces.
 
 ### `debug_metrics`
 

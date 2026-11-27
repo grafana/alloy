@@ -178,7 +178,7 @@ You can use the following blocks with `otelcol.receiver.kafka`:
 
 {{< badge text="Required" >}}
 
-{{< docs/shared lookup="reference/components/output-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="reference/components/output-block-with-profiles.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `logs`
 
