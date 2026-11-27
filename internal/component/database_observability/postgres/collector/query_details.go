@@ -184,8 +184,7 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 		key := queryDetailsKey{database: databaseName, queryID: queryID}
 		hasDatabase := c.tableRegistry != nil && c.tableRegistry.SchemasForDatabase(databaseName) != nil
 		if last, ok := c.lastEmittedAt[key]; ok && now.Sub(last) < database_observability.EmitInterval {
-			if _, pending := c.unvalidated[key]; !pending ||
-				!hasDatabase {
+			if _, pending := c.unvalidated[key]; !pending || !hasDatabase {
 				continue
 			}
 		}
