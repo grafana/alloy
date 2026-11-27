@@ -7,6 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
+review_date: 2026-11-27
 title: prometheus.exporter.mysql
 ---
 
@@ -32,13 +33,16 @@ You can use the following arguments with `prometheus.exporter.mysql`:
 
 | Name                       | Type           | Description                                                                                                | Default | Required |
 | -------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `data_source_name`         | `secret`       | [Data Source Name][dsn] for the MySQL server to connect to.                                                |         | yes      |
+| `data_source_name`         | `secret`       | [Data Source Name][dsn] for the MySQL server to connect to.                                                |         | no       |
 | `disable_collectors`       | `list(string)` | A list of [collectors][] to disable from the default set.                                                  |         | no       |
 | `enable_collectors`        | `list(string)` | A list of [collectors][] to enable in addition to the default set.                                         |         | no       |
 | `enable_lock_wait_timeout` | `bool`         | Enables the `lock_wait_timeout` MySQL connection parameter.                                                | `true`  | no       |
 | `lock_wait_timeout`        | `int`          | Timeout, in seconds, to acquire a metadata lock. Has no effect when `enable_lock_wait_timeout` is `false`. | `2`     | no       |
 | `log_slow_filter`          | `bool`         | Adds a `log_slow_filter` session setting to avoid slow query logging of scrapes.                           | `false` | no       |
 | `set_collectors`           | `list(string)` | A list of [collectors][] to run. Fully overrides the default set.                                          |         | no       |
+
+If you don't set `data_source_name`, the component reads the data source name from the `MYSQLD_EXPORTER_DATA_SOURCE_NAME` environment variable.
+If you set neither, the component fails with an error.
 
 The component applies `set_collectors` first, then `disable_collectors`, then `enable_collectors`.
 If you list a collector in both `disable_collectors` and `enable_collectors`, the component enables it.
@@ -51,6 +55,7 @@ Refer to [`lock_wait_timeout`][lock-wait-timeout] in the MySQL documentation for
 {{< /admonition >}}
 
 The component sets the `instance` label on its exported targets to the network type, address, and database name from `data_source_name`, in the form `<NETWORK>(<ADDRESS>)/<DATABASE>`, for example, `tcp(db.example.com:3306)/shop`.
+When the component reads the data source name from the environment variable, it sets the `instance` label to `tcp(127.0.0.1:3306)/`, regardless of the server address.
 
 [collectors]: #supported-collectors
 [dsn]: https://github.com/go-sql-driver/mysql#dsn-data-source-name
