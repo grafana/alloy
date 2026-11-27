@@ -90,7 +90,7 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 		normalizer:      sqllexer.NewNormalizer(sqllexer.WithCollectTables(true)),
 		tableRegistry:   args.TableRegistry,
 		lastEmittedAt:   map[queryDetailsKey]time.Time{},
-		unvalidated: map[queryDetailsKey]map[string]struct{}{},
+		unvalidated:     map[queryDetailsKey]map[string]struct{}{},
 		now:             time.Now,
 		logger:          args.Logger.With("collector", QueryDetailsCollector),
 		running:         &atomic.Bool{},
