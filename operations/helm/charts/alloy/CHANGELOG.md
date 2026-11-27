@@ -1,5 +1,12 @@
 # Changelog
 
+Unreleased
+----------
+
+### Enhancements
+
+- Add support to provide extraLabels to alloy pdb (@jfengupgrade)
+
 ## [1.16.0](https://github.com/grafana/alloy/compare/helm-chart/1.15.0...helm-chart/1.16.0) (2026-11-12)
 
 
