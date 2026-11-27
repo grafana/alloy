@@ -22,9 +22,9 @@ alloy run [<FLAG> ...] [<PATH_NAME>]
 Replace the following:
 
 * _`<FLAG>`_: One or more flags that define the input and output of the command.
-* _`<PATH_NAME>`_: The {{< param "PRODUCT_NAME" >}} configuration file or directory path. Required unless you use `--config.base64` or `--config.base64.from-env`.
+* _`<PATH_NAME>`_: The {{< param "PRODUCT_NAME" >}} configuration file or directory path. Required unless you use `--config.base64.from-env`.
 
-You must provide exactly one configuration source: the _`<PATH_NAME>`_ argument, `--config.base64`, or `--config.base64.from-env`.
+You must provide exactly one configuration source: the _`<PATH_NAME>`_ argument or `--config.base64.from-env`.
 If you provide more than one, or none, the `run` command immediately exits and shows an error message.
 The `run` command also exits if the configuration can't be loaded or contains errors during the initial load.
 
@@ -62,8 +62,7 @@ The following flags are supported:
 * `--cluster.tls-server-name`: Server name used for peer communication over TLS.
 * `--cluster.wait-for-size`: Wait for the cluster to reach the specified number of instances before allowing components that use clustering to begin processing. After the cluster reaches this size, processing continues even if the cluster shrinks below it. Zero means disabled (default `0`).
 * `--cluster.wait-timeout`: Maximum duration to wait for minimum cluster size before proceeding with available nodes. Zero means wait forever, no timeout (default `0`).
-* `--config.base64`: Base64-encoded {{< param "PRODUCT_NAME" >}} configuration to run instead of the _`<PATH_NAME>`_ argument. Refer to [Pass the configuration as base64][base64] for details.
-* `--config.base64.from-env`: Read the base64-encoded {{< param "PRODUCT_NAME" >}} configuration from the `ALLOY_CONFIG_BASE64` environment variable instead of the _`<PATH_NAME>`_ argument (default `false`).
+* `--config.base64.from-env`: Read the base64-encoded {{< param "PRODUCT_NAME" >}} configuration from the `ALLOY_CONFIG_BASE64` environment variable instead of the _`<PATH_NAME>`_ argument (default `false`). Refer to [Pass the configuration as base64][base64] for details.
 * `--config.format`: Specifies the source file format. Supported formats: `alloy`, `otelcol`, `prometheus`, `promtail`, and `static` (default `"alloy"`).
 * `--config.bypass-conversion-errors`: Enable bypassing errors during conversion (default `false`).
 * `--config.extra-args`: Extra arguments from the original format used by the converter.
@@ -109,11 +108,11 @@ All components managed by the component controller are reevaluated after reloadi
 
 ## Pass the configuration as base64
 
-Use `--config.base64` or `--config.base64.from-env` to pass the configuration directly instead of through a file.
+Use `--config.base64.from-env` to pass the configuration in the `ALLOY_CONFIG_BASE64` environment variable instead of through a file.
 This is useful in environments where mounting a file is inconvenient, such as a container image without a shell.
 
 The value is the standard base64 encoding of a single {{< param "PRODUCT_NAME" >}} configuration file. Whitespace in the value is ignored, so you can use the output of the `base64` command as is.
-Only the `alloy` format is supported, so you can't combine these flags with `--config.format`.
+Only the `alloy` format is supported, so you can't combine this flag with `--config.format`.
 
 For example, to run a configuration stored in a file:
 
@@ -121,12 +120,10 @@ For example, to run a configuration stored in a file:
 ALLOY_CONFIG_BASE64="$(base64 < config.alloy)" alloy run --config.base64.from-env
 ```
 
-Combining the _`<PATH_NAME>`_ argument, `--config.base64` and `--config.base64.from-env` is an error.
+Combining the _`<PATH_NAME>`_ argument and `--config.base64.from-env` is an error.
 
-{{< admonition type="caution" >}}
-If you use `--config.base64`, make sure the configuration doesn't contain secrets. Command-line arguments can be visible to other processes on the same host.
-
-In general, don't store secrets in the configuration. Pass them through environment variables instead, and read them with [`sys.env`][sys.env].
+{{< admonition type="note" >}}
+Don't store secrets in the configuration. Pass them through separate environment variables instead, and read them with [`sys.env`][sys.env].
 {{< /admonition >}}
 
 ## Permitted stability levels

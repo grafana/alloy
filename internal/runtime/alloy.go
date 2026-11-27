@@ -307,7 +307,7 @@ func (f *Runtime) Run(ctx context.Context) {
 func (f *Runtime) LoadSource(source *Source, args map[string]any, configPath string) error {
 	modulePath, err := util.ExtractDirPath(configPath)
 	// An empty configPath means the config isn't read from the filesystem, for
-	// example when it's passed with --config.base64 or --config.base64.from-env.
+	// example when it's passed with --config.base64.from-env.
 	if err != nil && configPath != "" {
 		f.log.Warn("failed to extract directory path from configPath", "configPath", configPath, "err", err)
 	}

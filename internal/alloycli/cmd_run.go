@@ -85,10 +85,9 @@ func runCommand(converter *clifeature.Converter) *cobra.Command {
 is received.
 
 run must be provided exactly one source of the Alloy configuration: an
-argument pointing at the configuration directory or file path to use, or one
-of the --config.base64 and --config.base64.from-env flags. If the
-configuration wasn't specified, can't be loaded, or contains errors, run will
-exit immediately.
+argument pointing at the configuration directory or file path to use, or the
+--config.base64.from-env flag. If the configuration wasn't specified, can't be
+loaded, or contains errors, run will exit immediately.
 
 If path is a directory, all *.alloy files in that directory will be combined
 into a single unit. Subdirectories are not recursively searched for further merging.
@@ -123,8 +122,7 @@ depending on the nature of the reload error.
 }
 
 func mountConfigSourceFlags(r *alloyRun, fset *pflag.FlagSet) {
-	fset.StringVar(&r.configBase64, "config.base64", r.configBase64, "Base64-encoded Alloy configuration to run instead of a path argument. Mutually exclusive with the path argument and --config.base64.from-env. Command-line arguments can be visible to other processes, so don't include secrets in this configuration")
-	fset.BoolVar(&r.configBase64FromEnv, "config.base64.from-env", r.configBase64FromEnv, fmt.Sprintf("Read the base64-encoded Alloy configuration from the %s environment variable instead of a path argument. Mutually exclusive with the path argument and --config.base64", configBase64EnvVar))
+	fset.BoolVar(&r.configBase64FromEnv, "config.base64.from-env", r.configBase64FromEnv, fmt.Sprintf("Read the base64-encoded Alloy configuration from the %s environment variable instead of a path argument. Mutually exclusive with the path argument", configBase64EnvVar))
 }
 
 type ExtensionModeParams struct {
@@ -291,7 +289,6 @@ type alloyRun struct {
 	configFormat                 string
 	configBypassConversionErrors bool
 	configExtraArgs              string
-	configBase64                 string
 	configBase64FromEnv          bool
 	disableSupportBundle         bool
 	windowsPriority              string
@@ -336,8 +333,8 @@ const (
 	configBase64EnvVar = "ALLOY_CONFIG_BASE64"
 
 	// inlineConfigName is the name under which a configuration passed through
-	// --config.base64 or --config.base64.from-env is shown in the UI, the
-	// support bundle and diagnostics.
+	// --config.base64.from-env is shown in the UI, the support bundle and
+	// diagnostics.
 	inlineConfigName = "config.alloy"
 )
 
@@ -354,47 +351,17 @@ type configSource struct {
 	read func() (map[string][]byte, error)
 }
 
-// configSource validates that exactly one of the path argument,
-// --config.base64 and --config.base64.from-env is used, and returns the
-// matching source.
-func (fr *alloyRun) configSource(cmd *cobra.Command, args []string) (configSource, error) {
-	var used []string
-	if len(args) > 0 {
-		used = append(used, "the path argument")
-	}
-	if cmd.Flags().Changed("config.base64") {
-		used = append(used, "--config.base64")
-	}
-	if fr.configBase64FromEnv {
-		used = append(used, "--config.base64.from-env")
-	}
-
+// configSource validates that exactly one of the path argument and
+// --config.base64.from-env is used, and returns the matching source.
+func (fr *alloyRun) configSource(args []string) (configSource, error) {
 	switch {
-	case len(used) == 0:
-		return configSource{}, errors.New("no config source provided: set the path argument, --config.base64 or --config.base64.from-env")
-	case len(used) > 1:
-		return configSource{}, fmt.Errorf("only one config source can be used at a time, but got %s", strings.Join(used, " and "))
-	}
-
-	if len(args) == 0 && fr.configFormat != "alloy" {
-		return configSource{}, fmt.Errorf("--config.format=%s can't be used with %s, only the alloy format is supported", fr.configFormat, used[0])
-	}
-
-	switch {
-	case len(args) > 0:
-		if args[0] == "" {
-			return configSource{}, errors.New("path argument not provided")
-		}
-		path := args[0]
-		return configSource{
-			description: fmt.Sprintf("config path %q", path),
-			path:        path,
-			read: func() (map[string][]byte, error) {
-				return loadSourceFiles(path, fr.converter, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
-			},
-		}, nil
+	case len(args) > 0 && fr.configBase64FromEnv:
+		return configSource{}, errors.New("only one config source can be used at a time, but got the path argument and --config.base64.from-env")
 
 	case fr.configBase64FromEnv:
+		if fr.configFormat != "alloy" {
+			return configSource{}, fmt.Errorf("--config.format=%s can't be used with --config.base64.from-env, only the alloy format is supported", fr.configFormat)
+		}
 		return configSource{
 			description: fmt.Sprintf("base64 config from the %s environment variable", configBase64EnvVar),
 			read: func() (map[string][]byte, error) {
@@ -406,15 +373,19 @@ func (fr *alloyRun) configSource(cmd *cobra.Command, args []string) (configSourc
 			},
 		}, nil
 
+	case len(args) == 0:
+		return configSource{}, errors.New("no config source provided: set the path argument or --config.base64.from-env")
+
+	case args[0] == "":
+		return configSource{}, errors.New("path argument not provided")
+
 	default:
-		encoded := fr.configBase64
-		if encoded == "" {
-			return configSource{}, errors.New("--config.base64 must not be empty")
-		}
+		path := args[0]
 		return configSource{
-			description: "base64 config from --config.base64",
+			description: fmt.Sprintf("config path %q", path),
+			path:        path,
 			read: func() (map[string][]byte, error) {
-				return loadInlineSource(encoded)
+				return loadSourceFiles(path, fr.converter, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
 			},
 		}, nil
 	}
@@ -432,30 +403,8 @@ func loadInlineSource(encoded string) (map[string][]byte, error) {
 	return map[string][]byte{inlineConfigName: decoded}, nil
 }
 
-// redactedRuntimeFlags are flags whose values are replaced with "(secret)"
-// in the support bundle when set. The value of --config.base64 is the whole
-// configuration before secrets are redacted, and the redacted configuration
-// is already included in the support bundle sources.
-var redactedRuntimeFlags = map[string]struct{}{
-	"config.base64": {},
-}
-
-// supportBundleRuntimeFlags returns all flags in fset as name=value pairs for
-// the support bundle.
-func supportBundleRuntimeFlags(fset *pflag.FlagSet) []string {
-	var res []string
-	fset.VisitAll(func(f *pflag.Flag) {
-		value := f.Value.String()
-		if _, ok := redactedRuntimeFlags[f.Name]; ok && value != "" {
-			value = "(secret)"
-		}
-		res = append(res, fmt.Sprintf("%s=%s", f.Name, value))
-	})
-	return res
-}
-
 func (fr *alloyRun) runCommand(cmd *cobra.Command, args []string) error {
-	src, err := fr.configSource(cmd, args)
+	src, err := fr.configSource(args)
 	if err != nil {
 		return err
 	}
@@ -656,7 +605,9 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 
 	runtimeFlags := []string{}
 	if !fr.disableSupportBundle {
-		runtimeFlags = supportBundleRuntimeFlags(fset)
+		fset.VisitAll(func(f *pflag.Flag) {
+			runtimeFlags = append(runtimeFlags, fmt.Sprintf("%s=%s", f.Name, f.Value.String()))
+		})
 	}
 
 	httpService := httpservice.New(httpservice.Options{
