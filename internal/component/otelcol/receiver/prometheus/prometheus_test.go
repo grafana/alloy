@@ -82,7 +82,7 @@ func TestComprehensive(t *testing.T) {
 }
 
 func testComprehensive(t *testing.T, metadataStore testMetadataStore) {
-	ctx := componenttest.TestContext(t)
+	ctx := t.Context()
 	l := util.TestLogger(t)
 
 	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.receiver.prometheus")
@@ -414,7 +414,7 @@ func testComprehensive(t *testing.T, metadataStore testMetadataStore) {
 // are properly rejected with the expected error message. This essentially verifies that
 // labels.New() will ensure that labels are sorted
 func TestDuplicateLabelNamesError(t *testing.T) {
-	ctx := componenttest.TestContext(t)
+	ctx := t.Context()
 	l := util.TestLogger(t)
 
 	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.receiver.prometheus")
@@ -464,6 +464,48 @@ func TestDuplicateLabelNamesError(t *testing.T) {
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "invalid sample: non-unique label names:")
+}
+
+func TestUpdateKeepsExportedReceiver(t *testing.T) {
+	ctx := t.Context()
+	l := util.TestLogger(t)
+
+	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.receiver.prometheus")
+	require.NoError(t, err)
+
+	firstCh := make(chan pmetric.Metrics)
+	go func() {
+		err := ctrl.Run(ctx, prometheus.Arguments{Output: makeMetricsOutput(firstCh)})
+		require.NoError(t, err)
+	}()
+	require.NoError(t, ctrl.WaitRunning(time.Second))
+	require.NoError(t, ctrl.WaitExports(time.Second))
+	receiver := ctrl.Exports().(prometheus.Exports).Receiver
+
+	secondCh := make(chan pmetric.Metrics, 1)
+	require.NoError(t, ctrl.Update(prometheus.Arguments{Output: makeMetricsOutput(secondCh)}))
+	require.True(t, receiver == ctrl.Exports().(prometheus.Exports).Receiver, "Update must not export a new receiver")
+
+	// The receiver exported before the update forwards to the updated output.
+	appCtx := scrape.ContextWithMetricMetadataStore(t.Context(), alloyprometheus.NoopMetadataStore{})
+	appCtx = scrape.ContextWithTarget(appCtx, scrape.NewTarget(
+		labels.EmptyLabels(),
+		&config.DefaultScrapeConfig,
+		model.LabelSet{},
+		model.LabelSet{},
+	))
+	app := receiver.(storage.Appendable).Appender(appCtx)
+	_, err = app.Append(0, labels.FromStrings(model.MetricNameLabel, "test_metric", model.JobLabel, "testJob", model.InstanceLabel, "localhost:8080"), time.Now().UnixMilli(), 1)
+	require.NoError(t, err)
+	require.NoError(t, app.Commit())
+
+	select {
+	case <-secondCh:
+	case <-firstCh:
+		t.Fatal("metrics went to the output from before the update")
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for metrics")
+	}
 }
 
 // makeMetricsOutput returns a ConsumerArguments which will forward metrics to
