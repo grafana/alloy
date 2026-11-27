@@ -8,19 +8,16 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	cerrdefs "github.com/containerd/errdefs"
+	"github.com/grafana/dskit/backoff"
 	"github.com/moby/moby/api/pkg/stdcopy"
-	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -30,42 +27,26 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/loki/source/docker/dockertest"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 const restartInterval = 20 * time.Millisecond
 
+var testRestartBackoff = backoff.Config{MinBackoff: restartInterval, MaxBackoff: restartInterval}
+
 func TestTailer(t *testing.T) {
-	server := newDockerServer(t)
-	defer server.Close()
+	base := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-	var (
-		logger       = logging.NewSlogNop()
-		entryHandler = loki.NewCollectingHandler()
-	)
+	server := dockertest.NewServer(t)
+	server.AddContainer("flog")
+	server.Log("flog", base, "line 1")
+	server.Log("flog", base.Add(time.Second), "line 2")
+	server.Log("flog", base.Add(2*time.Second), "line 3")
 
-	client, err := client.New(client.WithHost(server.URL))
-	require.NoError(t, err)
-
-	ps, err := positions.New(logger, positions.Config{
-		Path: t.TempDir() + "/positions.yml",
-	})
-	require.NoError(t, err)
-
-	tailer, err := newTailer(
-		newMetrics(prometheus.NewRegistry()),
-		logger,
-		entryHandler.Receiver(),
-		ps,
-		"flog",
-		model.LabelSet{"job": "docker"},
-		[]*relabel.Config{},
-		client,
-		restartInterval,
-		func() bool { return false },
-	)
-	require.NoError(t, err)
+	entryHandler := loki.NewCollectingHandler()
+	tailer := newTestTailer(t, server.URL, entryHandler.Receiver())
 
 	ctx, cancel := context.WithCancel(t.Context())
 	wg := sync.WaitGroup{}
@@ -73,172 +54,74 @@ func TestTailer(t *testing.T) {
 		tailer.Run(ctx, ctx)
 	})
 
-	expectedLines := []string{
-		"5.3.69.55 - - [09/Dec/2021:09:15:02 +0000] \"HEAD /brand/users/clicks-and-mortar/front-end HTTP/2.0\" 503 27087",
-		"101.54.183.185 - - [09/Dec/2021:09:15:03 +0000] \"POST /next-generation HTTP/1.0\" 416 11468",
-		"69.27.137.160 - runolfsdottir2670 [09/Dec/2021:09:15:03 +0000] \"HEAD /content/visionary/engineer/cultivate HTTP/1.1\" 302 2975",
-		"28.104.242.74 - - [09/Dec/2021:09:15:03 +0000] \"PATCH /value-added/cultivate/systems HTTP/2.0\" 405 11843",
-		"150.187.51.54 - satterfield1852 [09/Dec/2021:09:15:03 +0000] \"GET /incentivize/deliver/innovative/cross-platform HTTP/1.1\" 301 13032",
-	}
-
 	assert.EventuallyWithT(t, func(c *assert.CollectT) {
-		assertExpectedLog(c, entryHandler, expectedLines)
-	}, 5*time.Second, 100*time.Millisecond, "Expected log lines were not found within the time limit.")
+		assert.Equal(c, []string{"line 1", "line 2", "line 3"}, entryLines(entryHandler.Received()))
+	}, 5*time.Second, 10*time.Millisecond)
 
-	entryHandler.Clear()
-	// restart target to simulate container restart
 	cancel()
-	wg.Wait()
-
-	ctx, cancel = context.WithCancel(t.Context())
-	defer cancel()
-	wg.Go(func() {
-		tailer.Run(ctx, ctx)
-	})
-	expectedLinesAfterRestart := []string{
-		"243.115.12.215 - - [09/Dec/2023:09:16:57 +0000] \"DELETE /morph/exploit/granular HTTP/1.0\" 500 26468",
-		"221.41.123.237 - - [09/Dec/2023:09:16:57 +0000] \"DELETE /user-centric/whiteboard HTTP/2.0\" 205 22487",
-		"89.111.144.144 - - [09/Dec/2023:09:16:57 +0000] \"DELETE /open-source/e-commerce HTTP/1.0\" 401 11092",
-		"62.180.191.187 - - [09/Dec/2023:09:16:57 +0000] \"DELETE /cultivate/integrate/technologies HTTP/2.0\" 302 12979",
-		"156.249.2.192 - - [09/Dec/2023:09:16:57 +0000] \"POST /revolutionize/mesh/metrics HTTP/2.0\" 401 5297",
-	}
-	assert.EventuallyWithT(t, func(c *assert.CollectT) {
-		assertExpectedLog(c, entryHandler, expectedLinesAfterRestart)
-	}, 5*time.Second, 100*time.Millisecond, "Expected log lines after restart were not found within the time limit.")
-}
-
-func TestTailerStartStopStressTest(t *testing.T) {
-	server := newDockerServer(t)
-	defer server.Close()
-
-	var (
-		logger       = logging.NewSlogNop()
-		entryHandler = loki.NewCollectingHandler()
-	)
-
-	ps, err := positions.New(logger, positions.Config{
-		Path: t.TempDir() + "/positions.yml",
-	})
-	require.NoError(t, err)
-
-	client, err := client.New(client.WithHost(server.URL))
-	require.NoError(t, err)
-
-	tgt, err := newTailer(
-		newMetrics(prometheus.NewRegistry()),
-		logger,
-		entryHandler.Receiver(),
-		ps,
-		"flog",
-		model.LabelSet{"job": "docker"},
-		[]*relabel.Config{},
-		client,
-		restartInterval,
-		func() bool { return false },
-	)
-	require.NoError(t, err)
-
-	tgt.startIfNotRunning(t.Context())
-
-	// Stress test the concurrency of StartIfNotRunning and Stop
-	wg := sync.WaitGroup{}
-	for range 1000 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			tgt.startIfNotRunning(t.Context())
-		}()
-
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			tgt.stop()
-		}()
-	}
 	wg.Wait()
 }
 
 func TestTailerRestart(t *testing.T) {
-	finishedAt := "2024-05-02T13:11:55.879889Z"
-	runningState := atomic.NewBool(true)
+	base := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-	client := clientMock{
-		logLine:    "2024-05-02T13:11:55.879889Z caller=module_service.go:114 msg=\"module stopped\" module=distributor",
-		running:    func() bool { return runningState.Load() },
-		finishedAt: func() string { return finishedAt },
-	}
-	expectedLogLine := "caller=module_service.go:114 msg=\"module stopped\" module=distributor"
+	server := dockertest.NewServer(t)
+	server.AddContainer("flog")
+	server.Log("flog", base, "line 1")
 
-	tailer, entryHandler := setupTailer(t, client)
+	entryHandler := loki.NewCollectingHandler()
+	tailer := newTestTailer(t, server.URL, entryHandler.Receiver())
 	go tailer.Run(t.Context(), t.Context())
 
 	// The container is already running, expect log lines.
 	assert.EventuallyWithT(t, func(c *assert.CollectT) {
-		logLines := entryHandler.Received()
-		if assert.NotEmpty(c, logLines) {
-			assert.Equal(c, expectedLogLine, logLines[0].Line)
-		}
-	}, time.Second, 20*time.Millisecond, "Expected log lines were not found within the time limit.")
+		assert.Equal(c, []string{"line 1"}, entryLines(entryHandler.Received()))
+	}, time.Second, 20*time.Millisecond)
 
 	// Stops the container.
-	runningState.Store(false)
-	time.Sleep(restartInterval + 10*time.Millisecond) // Sleep for a duration greater than targetRestartInterval to make sure it stops sending log lines.
+	server.Stop("flog", base.Add(time.Second))
 	entryHandler.Clear()
-	time.Sleep(restartInterval + 10*time.Millisecond)
+	time.Sleep(5 * restartInterval)
 	assert.Empty(t, entryHandler.Received()) // No log lines because the container was not running.
 
 	// Restart the container and expect log lines.
-	runningState.Store(true)
+	server.Start("flog")
+	server.Log("flog", base.Add(2*time.Second), "line 2")
+
+	// FIXME(kalleep): positions are whole seconds, so resuming re-sends every
+	// line from the last read second. See https://github.com/grafana/alloy/issues/6954.
 	assert.EventuallyWithT(t, func(c *assert.CollectT) {
-		logLines := entryHandler.Received()
-		if assert.NotEmpty(c, logLines) {
-			assert.Equal(c, expectedLogLine, logLines[0].Line)
-		}
-	}, time.Second, 20*time.Millisecond, "Expected log lines were not found within the time limit after restart.")
+		assert.Equal(c, []string{"line 1", "line 2"}, entryLines(entryHandler.Received()))
+	}, time.Second, 20*time.Millisecond)
 }
 
 func TestTailerNeverStarted(t *testing.T) {
-	runningState := false
-	finishedAt := "2024-05-02T13:11:55.879889Z"
-	client := clientMock{
-		logLine:    "2024-05-02T13:11:55.879889Z caller=module_service.go:114 msg=\"module stopped\" module=distributor",
-		running:    func() bool { return runningState },
-		finishedAt: func() string { return finishedAt },
-	}
-	expectedLogLine := "caller=module_service.go:114 msg=\"module stopped\" module=distributor"
+	base := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-	tailer, entryHandler := setupTailer(t, client)
+	server := dockertest.NewServer(t)
+	server.AddContainer("flog")
+	server.Log("flog", base, "line 1")
+	server.Stop("flog", base)
 
-	ctx, cancel := context.WithCancel(t.Context())
-	go tailer.Run(ctx, ctx)
+	entryHandler := loki.NewCollectingHandler()
+	tailer := newTestTailer(t, server.URL, entryHandler.Receiver())
+
+	go tailer.Run(t.Context(), t.Context())
 
 	assert.EventuallyWithT(t, func(c *assert.CollectT) {
 		logLines := entryHandler.Received()
-		if assert.NotEmpty(c, logLines) {
-			assert.Equal(c, expectedLogLine, logLines[0].Line)
-		}
-	}, time.Second, 20*time.Millisecond, "Expected log lines were not found within the time limit after restart.")
-
-	require.NotPanics(t, func() { cancel() })
+		require.NotEmpty(c, logLines)
+		require.Equal(c, "line 1", logLines[0].Line)
+	}, time.Second, 20*time.Millisecond)
 }
 
 func TestTailerStopsWhenContainerNotFound(t *testing.T) {
-	inspectCount := atomic.NewInt32(0)
-	notFoundAfter := int32(2)
+	server := dockertest.NewServer(t)
+	server.AddContainer("flog")
+	server.Log("flog", time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC), "some log line")
 
-	mock := clientMock{
-		logLine:    "2024-05-02T13:11:55.879889Z some log line",
-		running:    func() bool { return true },
-		finishedAt: func() string { return "0001-01-01T00:00:00Z" },
-		inspectErr: func() error {
-			if inspectCount.Add(1) > notFoundAfter {
-				return cerrdefs.ErrNotFound
-			}
-			return nil
-		},
-	}
-
-	tailer, entryHandler := setupTailer(t, mock)
+	entryHandler := loki.NewCollectingHandler()
+	tailer := newTestTailer(t, server.URL, entryHandler.Receiver())
 
 	done := make(chan struct{})
 	go func() {
@@ -246,18 +129,16 @@ func TestTailerStopsWhenContainerNotFound(t *testing.T) {
 		close(done)
 	}()
 
-	// The container is still readable for the first few ticks, so its logs must
-	// be shipped before the tailer notices the container is gone and stops.
+	// The container's logs must be shipped before it is removed and the tailer stops.
 	assert.EventuallyWithT(t, func(c *assert.CollectT) {
-		logLines := entryHandler.Received()
-		if assert.NotEmpty(c, logLines) {
-			assert.Equal(c, "some log line", logLines[0].Line)
-		}
+		assert.Equal(c, []string{"some log line"}, entryLines(entryHandler.Received()))
 	}, 5*time.Second, 20*time.Millisecond, "expected the container's log line to be shipped before the tailer stopped")
+
+	server.Remove("flog")
 
 	select {
 	case <-done:
-		// Run exited — tailer stopped after getting "not found"
+		// Run exited after the container was not found.
 	case <-time.After(5 * time.Second):
 		t.Fatal("tailer did not stop after container was removed")
 	}
@@ -281,16 +162,13 @@ func TestTailerConsumeLines(t *testing.T) {
 	t.Run("skip empty line", func(t *testing.T) {
 		collector := loki.NewCollectingHandler()
 		tailer := &tailer{
-			logger:            logging.NewSlogNop(),
-			recv:              collector.Receiver(),
-			positions:         positions.NewNop(),
-			containerID:       "test",
-			metrics:           newMetrics(prometheus.DefaultRegisterer),
-			running:           true,
-			wg:                sync.WaitGroup{},
-			last:              atomic.NewInt64(0),
-			since:             atomic.NewInt64(0),
-			componentStopping: func() bool { return false },
+			logger:      logging.NewSlogNop(),
+			recv:        collector.Receiver(),
+			positions:   positions.NewNop(),
+			containerID: "test",
+			metrics:     newMetrics(prometheus.DefaultRegisterer),
+			last:        atomic.NewInt64(0),
+			since:       atomic.NewInt64(0),
 		}
 
 		bb := &bytes.Buffer{}
@@ -298,9 +176,8 @@ func TestTailerConsumeLines(t *testing.T) {
 		_, err := writer.Write([]byte("2023-12-09T12:00:00.000000000Z \n2023-12-09T12:00:00.000000000Z line\n"))
 		require.NoError(t, err)
 
-		tailer.wg.Add(3)
 		go func() {
-			tailer.processLoop(t.Context(), false, newStringReader(bb.String()))
+			tailer.processLoop(t.Context(), t.Context(), false, newStringReader(bb.String()))
 		}()
 
 		require.Eventually(t, func() bool {
@@ -320,16 +197,13 @@ func TestTailerConsumeLines(t *testing.T) {
 	t.Run("bigger than max size", func(t *testing.T) {
 		collector := loki.NewCollectingHandler()
 		tailer := &tailer{
-			logger:            logging.NewSlogNop(),
-			recv:              collector.Receiver(),
-			positions:         positions.NewNop(),
-			containerID:       "test",
-			metrics:           newMetrics(prometheus.DefaultRegisterer),
-			running:           true,
-			wg:                sync.WaitGroup{},
-			last:              atomic.NewInt64(0),
-			since:             atomic.NewInt64(0),
-			componentStopping: func() bool { return false },
+			logger:      logging.NewSlogNop(),
+			recv:        collector.Receiver(),
+			positions:   positions.NewNop(),
+			containerID: "test",
+			metrics:     newMetrics(prometheus.DefaultRegisterer),
+			last:        atomic.NewInt64(0),
+			since:       atomic.NewInt64(0),
 		}
 
 		bb := &bytes.Buffer{}
@@ -344,10 +218,8 @@ func TestTailerConsumeLines(t *testing.T) {
 		_, err = writer.Write([]byte("2023-12-09T12:00:00.000000000Z next line\n"))
 		require.NoError(t, err)
 
-		tailer.wg.Add(3)
-
 		go func() {
-			tailer.processLoop(t.Context(), false, newStringReader(bb.String()))
+			tailer.processLoop(t.Context(), t.Context(), false, newStringReader(bb.String()))
 		}()
 
 		require.Eventually(t, func() bool {
@@ -418,130 +290,6 @@ func TestExtractTsFromBytes(t *testing.T) {
 	})
 }
 
-func newDockerServer(t *testing.T) *httptest.Server {
-	h := func(w http.ResponseWriter, r *http.Request) {
-		path := r.URL.Path
-		ctx := r.Context()
-		var writeErr error
-		switch {
-		case strings.HasSuffix(path, "/logs"):
-			var filePath string
-			if strings.Contains(r.URL.RawQuery, "since=0") {
-				filePath = "testdata/flog.log"
-			} else {
-				filePath = "testdata/flog_after_restart.log"
-			}
-			dat, err := os.ReadFile(filePath)
-			require.NoError(t, err)
-			_, writeErr = w.Write(dat)
-		default:
-			w.Header().Set("Content-Type", "application/json")
-			info := container.InspectResponse{
-				State:           &container.State{},
-				Mounts:          []container.MountPoint{},
-				Config:          &container.Config{Tty: false},
-				NetworkSettings: &container.NetworkSettings{},
-			}
-			writeErr = json.NewEncoder(w).Encode(info)
-		}
-		if writeErr != nil {
-			select {
-			case <-ctx.Done():
-				// Context was done, the write error is likely client disconnect or server shutdown, ignore
-				return
-			default:
-				require.NoError(t, writeErr, "unexpected write error not caused by context being done")
-			}
-		}
-	}
-
-	return httptest.NewServer(http.HandlerFunc(h))
-}
-
-// assertExpectedLog will verify that all expectedLines were received, in any order, without duplicates.
-func assertExpectedLog(c *assert.CollectT, entryHandler *loki.CollectingHandler, expectedLines []string) {
-	logLines := entryHandler.Received()
-	testLogLines := make(map[string]int)
-	for _, l := range logLines {
-		if containsString(expectedLines, l.Line) {
-			testLogLines[l.Line] += 1
-		}
-	}
-	// assert that all log lines were received
-	assert.Len(c, testLogLines, len(expectedLines))
-	// assert that there are no duplicated log lines
-	for _, v := range testLogLines {
-		assert.Equal(c, v, 1)
-	}
-}
-
-func containsString(slice []string, str string) bool {
-	for _, item := range slice {
-		if item == str {
-			return true
-		}
-	}
-	return false
-}
-
-func setupTailer(t *testing.T, client clientMock) (*tailer, *loki.CollectingHandler) {
-	var (
-		logger       = logging.NewSlogNop()
-		entryHandler = loki.NewCollectingHandler()
-	)
-
-	ps, err := positions.New(logger, positions.Config{
-		Path: t.TempDir() + "/positions.yml",
-	})
-	require.NoError(t, err)
-
-	tailer, err := newTailer(
-		newMetrics(prometheus.NewRegistry()),
-		logger,
-		entryHandler.Receiver(),
-		ps,
-		"flog",
-		model.LabelSet{"job": "docker"},
-		[]*relabel.Config{},
-		client,
-		restartInterval,
-		func() bool { return false },
-	)
-	require.NoError(t, err)
-
-	return tailer, entryHandler
-}
-
-type clientMock struct {
-	client.APIClient
-	logLine    string
-	running    func() bool
-	finishedAt func() string
-	inspectErr func() error
-}
-
-func (mock clientMock) ContainerInspect(ctx context.Context, c string, opts client.ContainerInspectOptions) (client.ContainerInspectResult, error) {
-	if mock.inspectErr != nil {
-		if err := mock.inspectErr(); err != nil {
-			return client.ContainerInspectResult{}, err
-		}
-	}
-	return client.ContainerInspectResult{
-		Container: container.InspectResponse{
-			ID: c,
-			State: &container.State{
-				Running:    mock.running(),
-				FinishedAt: mock.finishedAt(),
-			},
-			Config: &container.Config{Tty: true},
-		},
-	}, nil
-}
-
-func (mock clientMock) ContainerLogs(ctx context.Context, id string, options client.ContainerLogsOptions) (client.ContainerLogsResult, error) {
-	return io.NopCloser(strings.NewReader(mock.logLine)), nil
-}
-
 // newStdWriter frames each Write into the multiplexed stream format that
 // stdcopy.StdCopy consumes.
 func newStdWriter(w io.Writer, t stdcopy.StdType) io.Writer {
@@ -561,31 +309,6 @@ func (sw *stdWriter) Write(p []byte) (int, error) {
 		return 0, err
 	}
 	return sw.Writer.Write(p)
-}
-
-// newStallingDockerServer returns a Docker API server whose log stream and
-// container inspect responses only complete once release is closed.
-func newStallingDockerServer(release <-chan struct{}) *httptest.Server {
-	h := func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case strings.HasSuffix(r.URL.Path, "/logs"):
-			w.WriteHeader(http.StatusOK)
-			w.(http.Flusher).Flush()
-			select {
-			case <-release:
-				_, _ = w.Write([]byte("done"))
-			case <-r.Context().Done():
-			}
-		case strings.HasSuffix(r.URL.Path, "/json"):
-			select {
-			case <-release:
-			case <-r.Context().Done():
-			}
-		default:
-			_, _ = w.Write([]byte("OK"))
-		}
-	}
-	return httptest.NewServer(http.HandlerFunc(h))
 }
 
 func TestNewClientDoesNotTimeOutLogStreams(t *testing.T) {
@@ -623,7 +346,7 @@ func TestTailerStartStopsWhenContextIsCanceled(t *testing.T) {
 	cli, err := newClient(args)
 	require.NoError(t, err)
 
-	tailer, _ := setupTailer(t, clientMock{})
+	tailer := newTestTailer(t, server.URL, loki.NewCollectingHandler().Receiver())
 	tailer.client = cli
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -632,18 +355,68 @@ func TestTailerStartStopsWhenContextIsCanceled(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		tailer.startIfNotRunning(ctx)
+		tailer.tail(ctx, ctx)
 		close(done)
 	}()
 
 	select {
 	case <-done:
 	case <-time.After(5 * time.Second):
-		t.Fatal("startIfNotRunning did not return after its context was canceled")
+		t.Fatal("tail did not return after its context was canceled")
 	}
 
-	tailer.mu.Lock()
-	defer tailer.mu.Unlock()
-	require.False(t, tailer.running)
-	require.NoError(t, tailer.err, "a canceled start is a normal stop, not an error")
+	require.False(t, tailer.running.Load())
+	require.NoError(t, tailer.err.Load(), "a canceled tail is a normal stop, not an error")
+}
+
+func newTestTailer(t *testing.T, host string, recv loki.LogsReceiver) *tailer {
+	logger := logging.NewSlogNop()
+
+	cli, err := client.New(client.WithHost(host))
+	require.NoError(t, err)
+
+	ps, err := positions.New(logger, positions.Config{
+		Path: t.TempDir() + "/positions.yml",
+	})
+	require.NoError(t, err)
+
+	tailer, err := newTailer(
+		newMetrics(prometheus.NewRegistry()),
+		logger,
+		recv,
+		ps,
+		"flog",
+		model.LabelSet{"job": "docker"},
+		[]*relabel.Config{},
+		cli,
+		testRestartBackoff,
+	)
+	require.NoError(t, err)
+
+	return tailer
+}
+
+// newStallingDockerServer returns a Docker API server whose log stream and
+// container inspect responses only complete once release is closed.
+func newStallingDockerServer(release <-chan struct{}) *httptest.Server {
+	h := func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/logs"):
+			w.WriteHeader(http.StatusOK)
+			w.(http.Flusher).Flush()
+			select {
+			case <-release:
+				_, _ = w.Write([]byte("done"))
+			case <-r.Context().Done():
+			}
+		case strings.HasSuffix(r.URL.Path, "/json"):
+			select {
+			case <-release:
+			case <-r.Context().Done():
+			}
+		default:
+			_, _ = w.Write([]byte("OK"))
+		}
+	}
+	return httptest.NewServer(http.HandlerFunc(h))
 }

@@ -1,9 +1,5 @@
 package docker
 
-// NOTE: This code is adapted from Promtail (90a1d4593e2d690b37333386383870865fe177bf).
-// The dockertarget package is used to configure and run the targets that can
-// read logs from Docker containers and forward them to other loki components.
-
 import (
 	"bufio"
 	"bytes"
@@ -19,6 +15,7 @@ import (
 	"unsafe"
 
 	cerrdefs "github.com/containerd/errdefs"
+	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/moby/moby/api/pkg/stdcopy"
 	"github.com/moby/moby/client"
@@ -31,37 +28,35 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 )
 
+var restartBackoff = backoff.Config{
+	MinBackoff: time.Second,
+	MaxBackoff: time.Minute,
+}
+
 // tailer for Docker container logs.
 type tailer struct {
-	logger            *slog.Logger
-	recv              loki.LogsReceiver
-	positions         positions.Positions
-	containerID       string
-	labels            model.LabelSet
-	labelsStr         string
-	relabelConfig     []*relabel.Config
-	metrics           *metrics
-	restartInterval   time.Duration
-	componentStopping func() bool
+	logger         *slog.Logger
+	recv           loki.LogsReceiver
+	positions      positions.Positions
+	containerID    string
+	labels         model.LabelSet
+	labelsStr      string
+	relabelConfig  []*relabel.Config
+	metrics        *metrics
+	restartBackoff backoff.Config
 
 	client client.APIClient
 
-	mu      sync.Mutex // protects cancel, running and err fields
-	err     error
-	running bool
-	cancel  context.CancelFunc
-
-	wg sync.WaitGroup
-
-	last  *atomic.Int64
-	since *atomic.Int64
+	running *atomic.Bool
+	err     *atomic.Error
+	last    *atomic.Int64
+	since   *atomic.Int64
 }
 
 // newTailer starts a new tailer to read logs from a given container ID.
 func newTailer(
 	metrics *metrics, logger *slog.Logger, recv loki.LogsReceiver, position positions.Positions, containerID string,
-	labels model.LabelSet, relabelConfig []*relabel.Config, client client.APIClient, restartInterval time.Duration,
-	componentStopping func() bool,
+	labels model.LabelSet, relabelConfig []*relabel.Config, client client.APIClient, restartBackoff backoff.Config,
 ) (*tailer, error) {
 
 	labelsStr := labels.String()
@@ -71,123 +66,118 @@ func newTailer(
 	}
 
 	return &tailer{
-		logger:            logger,
-		recv:              recv,
-		since:             atomic.NewInt64(pos),
-		last:              atomic.NewInt64(0),
-		positions:         position,
-		containerID:       containerID,
-		labels:            labels,
-		labelsStr:         labelsStr,
-		relabelConfig:     relabelConfig,
-		metrics:           metrics,
-		client:            client,
-		restartInterval:   restartInterval,
-		componentStopping: componentStopping,
+		logger:         logger.With("container", containerID),
+		recv:           recv,
+		positions:      position,
+		containerID:    containerID,
+		labels:         labels,
+		labelsStr:      labelsStr,
+		relabelConfig:  relabelConfig,
+		metrics:        metrics,
+		client:         client,
+		restartBackoff: restartBackoff,
+		running:        atomic.NewBool(false),
+		err:            atomic.NewError(nil),
+		since:          atomic.NewInt64(pos),
+		last:           atomic.NewInt64(0),
 	}, nil
 }
 
-func (t *tailer) Run(ctx, _ context.Context) {
-	ticker := time.NewTicker(t.restartInterval)
-	defer ticker.Stop()
-
-	// start on initial call to Run.
-	t.startIfNotRunning(ctx)
-
-	for {
-		select {
-		case <-ticker.C:
-			res, err := t.client.ContainerInspect(ctx, t.containerID, client.ContainerInspectOptions{})
-			if err != nil {
-				if cerrdefs.IsNotFound(err) {
-					t.logger.Info("container no longer exists, stopping tailer", "id", t.containerID)
-					t.stop()
-					return
-				}
-				if !errors.Is(err, context.Canceled) {
-					t.logger.Error("error inspecting Docker container", "id", t.containerID, "error", err)
-				}
-				continue
-			}
-
-			finished, err := time.Parse(time.RFC3339Nano, res.Container.State.FinishedAt)
-			if err != nil {
-				t.logger.Error("error parsing finished time for Docker container", "id", t.containerID, "error", err)
-				finished = time.Unix(0, 0)
-			}
-
-			if res.Container.State.Running || finished.Unix() >= t.last.Load() {
-				t.startIfNotRunning(ctx)
-			}
-		case <-ctx.Done():
-			t.stop()
-			return
-		}
-	}
-}
-
-// startIfNotRunning starts processing container logs. The operation is idempotent, i.e. the processing cannot be started twice.
-func (t *tailer) startIfNotRunning(ctx context.Context) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	if !t.running {
-		t.logger.Debug("starting process loop", "container", t.containerID)
-
-		info, err := t.client.ContainerInspect(ctx, t.containerID, client.ContainerInspectOptions{})
-		if err != nil {
-			if errors.Is(err, context.Canceled) {
-				return
-			}
-			t.logger.Error("could not inspect container info", "container", t.containerID, "err", err)
-			t.err = err
-			return
-		}
-
-		reader, err := t.client.ContainerLogs(ctx, t.containerID, client.ContainerLogsOptions{
-			ShowStdout: true,
-			ShowStderr: true,
-			Follow:     true,
-			Timestamps: true,
-			Since:      strconv.FormatInt(t.since.Load(), 10),
-		})
-		if err != nil {
-			if errors.Is(err, context.Canceled) {
-				return
-			}
-			t.logger.Error("could not fetch logs for container", "container", t.containerID, "err", err)
-			t.err = err
-			return
-		}
-
-		ctx, cancel := context.WithCancel(ctx)
-		t.cancel = cancel
-		t.running = true
-		// processLoop will start 3 goroutines that we need to wait for if Stop is called.
-		t.wg.Add(3)
-		go t.processLoop(ctx, info.Container.Config.Tty, reader)
-	}
-}
-
-// stop shuts down the target.
-func (t *tailer) stop() {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	if t.running {
-		t.running = false
-		if t.cancel != nil {
-			t.cancel()
-		}
-		t.wg.Wait()
-		t.logger.Debug("stopped Docker target", "container", t.containerID)
-
-		// If the component is not stopping, then it means that the target for this component is gone and that
-		// we should clear the entry from the positions file.
-		if !t.componentStopping() {
+func (t *tailer) Run(ctx, stop context.Context) {
+	defer func() {
+		// stop is only canceled on shutdown or reset. Otherwise the target or
+		// container is gone and its position is no longer needed.
+		if stop.Err() == nil {
 			t.positions.Remove(positions.CursorKey(t.containerID), t.labelsStr)
 		}
+	}()
+
+	bo := backoff.New(ctx, t.restartBackoff)
+
+	for bo.Ongoing() {
+		start := time.Now()
+		t.tail(ctx, stop)
+		// Only short-lived sessions can cause a tight restart loop, so a
+		// session that outlived the maximum backoff resets it.
+		if time.Since(start) >= t.restartBackoff.MaxBackoff {
+			bo.Reset()
+		}
+
+		if !t.waitForRestart(ctx, bo) {
+			return
+		}
 	}
+}
+
+// waitForRestart waits until the container has logs to tail again. It returns
+// false if the container no longer exists or ctx is canceled.
+func (t *tailer) waitForRestart(ctx context.Context, bo *backoff.Backoff) bool {
+	for {
+		bo.Wait()
+		if !bo.Ongoing() {
+			return false
+		}
+
+		res, err := t.client.ContainerInspect(ctx, t.containerID, client.ContainerInspectOptions{})
+		if err != nil {
+			if cerrdefs.IsNotFound(err) {
+				t.logger.Info("container no longer exists, stopping tailer")
+				return false
+			}
+			if !errors.Is(err, context.Canceled) {
+				t.logger.Error("error inspecting Docker container", "error", err)
+			}
+			continue
+		}
+
+		finished, err := time.Parse(time.RFC3339Nano, res.Container.State.FinishedAt)
+		if err != nil {
+			t.logger.Error("error parsing finished time for Docker container", "error", err)
+			finished = time.Unix(0, 0)
+		}
+
+		if res.Container.State.Running || finished.Unix() >= t.last.Load() {
+			return true
+		}
+	}
+}
+
+// tail reads container logs until the log stream ends or ctx is canceled.
+// Entries not yet forwarded when stop is canceled are dropped.
+func (t *tailer) tail(ctx, stop context.Context) {
+	t.logger.Info("starting tailing container")
+
+	info, err := t.client.ContainerInspect(ctx, t.containerID, client.ContainerInspectOptions{})
+	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			return
+		}
+		t.logger.Error("could not inspect container info", "err", err)
+		t.err.Store(err)
+		return
+	}
+
+	reader, err := t.client.ContainerLogs(ctx, t.containerID, client.ContainerLogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Follow:     true,
+		Timestamps: true,
+		Since:      strconv.FormatInt(t.since.Load(), 10),
+	})
+	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			return
+		}
+		t.logger.Error("could not fetch logs for container", "err", err)
+		t.err.Store(err)
+		return
+	}
+
+	t.running.Store(true)
+	defer t.running.Store(false)
+
+	t.processLoop(ctx, stop, info.Container.Config.Tty, reader)
+	t.logger.Info("stopped tailing container")
 }
 
 func (t *tailer) Key() positions.Entry {
@@ -198,37 +188,39 @@ func (t *tailer) Key() positions.Entry {
 }
 
 func (t *tailer) DebugInfo() sourceInfo {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	running := t.running
+	var (
+		errMsg string
+		err    = t.err.Load()
+	)
 
-	var errMsg string
-	if t.err != nil {
-		errMsg = t.err.Error()
+	if err != nil {
+		errMsg = err.Error()
 	}
 
 	return sourceInfo{
 		ID:         t.containerID,
 		LastError:  errMsg,
 		Labels:     t.labelsStr,
-		IsRunning:  running,
+		IsRunning:  t.running.Load(),
 		ReadOffset: t.positions.GetString(positions.CursorKey(t.containerID), t.labelsStr),
 	}
 }
 
-func (t *tailer) processLoop(ctx context.Context, tty bool, reader io.ReadCloser) {
+// processLoop reads reader until it ends or ctx is canceled.
+func (t *tailer) processLoop(ctx, stop context.Context, tty bool, reader io.ReadCloser) {
 	defer reader.Close()
+	stopClose := context.AfterFunc(ctx, func() { reader.Close() })
+	defer stopClose()
 
-	// Start transferring
 	rstdout, wstdout := io.Pipe()
 	rstderr, wstderr := io.Pipe()
 
-	go func() {
+	var wg sync.WaitGroup
+
+	wg.Go(func() {
 		defer func() {
-			t.wg.Done()
 			wstdout.Close()
 			wstderr.Close()
-			t.stop()
 		}()
 
 		var (
@@ -248,46 +240,26 @@ func (t *tailer) processLoop(ctx context.Context, tty bool, reader io.ReadCloser
 		}
 
 		if err != nil {
-			t.logger.Warn("could not transfer logs", "written", written, "container", t.containerID, "err", err)
+			t.logger.Warn("could not transfer logs", "written", written, "err", err)
 		} else {
-			t.logger.Info("finished transferring logs", "written", written, "container", t.containerID)
+			t.logger.Info("finished transferring logs", "written", written)
 		}
-	}()
+	})
 
-	// Start processing
-	go func() {
-		defer t.wg.Done()
-		t.process(rstdout, t.getStreamLabels("stdout"))
-	}()
+	wg.Go(func() {
+		defer rstdout.Close()
+		t.processStream(stop, rstdout, t.getStreamLabels("stdout"))
+	})
+	wg.Go(func() {
+		defer rstderr.Close()
+		t.processStream(stop, rstderr, t.getStreamLabels("stderr"))
+	})
 
-	go func() {
-		defer t.wg.Done()
-		t.process(rstderr, t.getStreamLabels("stderr"))
-	}()
-
-	// Wait until done
-	<-ctx.Done()
-	t.logger.Debug("done processing Docker logs", "container", t.containerID)
+	wg.Wait()
+	t.logger.Debug("done processing Docker logs")
 }
 
-// extractTsFromBytes parses an RFC3339Nano timestamp from the byte slice.
-func extractTsFromBytes(line []byte) (time.Time, []byte, error) {
-	spaceIdx := bytes.IndexByte(line, ' ')
-	if spaceIdx == -1 || spaceIdx >= len(line) {
-		return time.Time{}, nil, fmt.Errorf("could not find timestamp in bytes")
-	}
-
-	// The unsafe.String is used here to avoid allocation and string conversion when parsing the timestamp.
-	// This is safe because time.Parse doesn't retain the string after returning and
-	// the underlying bytes aren't modified during parsing.
-	ts, err := time.Parse(time.RFC3339Nano, unsafe.String(&line[0], spaceIdx))
-	if err != nil {
-		return time.Time{}, nil, fmt.Errorf("could not parse timestamp: %w", err)
-	}
-	return ts, line[spaceIdx+1:], nil
-}
-
-func (t *tailer) process(r io.Reader, logStreamLset model.LabelSet) {
+func (t *tailer) processStream(stop context.Context, r io.Reader, logStreamLset model.LabelSet) {
 	const (
 		// initialBufSize is the size that bufio.Scanner would allocate without a Buffer call.
 		initialBufSize = 4096
@@ -340,10 +312,14 @@ func (t *tailer) process(r io.Reader, logStreamLset model.LabelSet) {
 			continue
 		}
 
-		t.recv.Chan() <- loki.NewEntry(logStreamLset, push.Entry{
+		select {
+		case t.recv.Chan() <- loki.NewEntry(logStreamLset, push.Entry{
 			Timestamp: ts,
 			Line:      string(content),
-		})
+		}):
+		case <-stop.Done():
+			return
+		}
 		t.metrics.dockerEntries.Inc()
 
 		// NOTE(@tpaschalis) We don't save the positions entry with the
@@ -380,6 +356,23 @@ func (t *tailer) getStreamLabels(logStream string) model.LabelSet {
 	})
 
 	return filtered
+}
+
+// extractTsFromBytes parses an RFC3339Nano timestamp from the byte slice.
+func extractTsFromBytes(line []byte) (time.Time, []byte, error) {
+	spaceIdx := bytes.IndexByte(line, ' ')
+	if spaceIdx == -1 || spaceIdx >= len(line) {
+		return time.Time{}, nil, fmt.Errorf("could not find timestamp in bytes")
+	}
+
+	// The unsafe.String is used here to avoid allocation and string conversion when parsing the timestamp.
+	// This is safe because time.Parse doesn't retain the string after returning and
+	// the underlying bytes aren't modified during parsing.
+	ts, err := time.Parse(time.RFC3339Nano, unsafe.String(&line[0], spaceIdx))
+	if err != nil {
+		return time.Time{}, nil, fmt.Errorf("could not parse timestamp: %w", err)
+	}
+	return ts, line[spaceIdx+1:], nil
 }
 
 func skipUntilNewline(r *bufio.Reader) error {
@@ -438,7 +431,6 @@ func (fw *dockerChunkWriter) Write(p []byte) (int, error) {
 	// Continuation chunk: strip redundant timestamp and append content.
 	_, content, err := extractTsFromBytes(p)
 	if err != nil {
-		// Should not normally happen, but flog.log has entries like this for some reason.
 		fw.logger.Warn("could not strip timestamp from continuation chunk", "err", err)
 		fw.buffer.Write(p)
 	} else {
