@@ -142,7 +142,7 @@ func (p *passthroughV2) Append(ref storage.SeriesRef, l labels.Labels, st, t int
 
 	// Only float samples are counted, to match the V1 passthrough which only
 	// counts calls to Append.
-	if h == nil && fh == nil && sampleAppended(err) {
+	if h == nil && fh == nil && SampleAppended(err) {
 		p.samplesForwarded.Inc()
 	}
 
@@ -167,10 +167,10 @@ func (p *passthroughV2) recordLatency() {
 	p.writeLatency.Observe(duration.Seconds())
 }
 
-// sampleAppended reports whether a storage.AppenderV2.Append call that
+// SampleAppended reports whether a storage.AppenderV2.Append call that
 // returned err still appended its sample. A *storage.AppendPartialError means
 // the sample was appended but some of its exemplars were not.
-func sampleAppended(err error) bool {
+func SampleAppended(err error) bool {
 	if err == nil {
 		return true
 	}
