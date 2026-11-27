@@ -7,7 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
-review_date: 2026-10-21
+review_date: 2026-11-27
 title: prometheus.exporter.snowflake
 ---
 
@@ -25,7 +25,19 @@ You can specify multiple `prometheus.exporter.snowflake` components by giving th
 prometheus.exporter.snowflake "<LABEL>" {
   account_name = "<SNOWFLAKE_ACCOUNT_NAME>"
   username     = "<SNOWFLAKE_USERNAME>"
+  password     = "<SNOWFLAKE_PASSWORD>"
   warehouse    = "<VIRTUAL_WAREHOUSE>"
+}
+```
+
+or
+
+```alloy
+prometheus.exporter.snowflake "<LABEL>" {
+  account_name     = "<SNOWFLAKE_ACCOUNT_NAME>"
+  username         = "<SNOWFLAKE_USERNAME>"
+  private_key_path = "<PRIVATE_KEY_PATH>"
+  warehouse        = "<VIRTUAL_WAREHOUSE>"
 }
 ```
 

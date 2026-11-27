@@ -7,7 +7,7 @@ labels:
   stage: general-availability
   products:
     - oss
-review_date: 2026-10-21
+review_date: 2026-11-27
 title: prometheus.exporter.squid
 ---
 

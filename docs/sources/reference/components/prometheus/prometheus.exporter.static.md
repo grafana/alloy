@@ -5,7 +5,7 @@ labels:
   stage: experimental
   products:
     - oss
-review_date: 2026-10-21
+review_date: 2026-11-27
 title: prometheus.exporter.static
 ---
 
@@ -34,7 +34,7 @@ You can use the following argument with `prometheus.exporter.static`:
 | `text` | `string` | Text in Prometheus exposition format. |         | yes      |
 
 The `text` argument must use the Prometheus text exposition format.
-Metric names must match the legacy Prometheus format, `[a-zA-Z_:][a-zA-Z0-9_:]*`.
+Metric and label names must match the legacy Prometheus formats, `[a-zA-Z_:][a-zA-Z0-9_:]*` for metric names and `[a-zA-Z_][a-zA-Z0-9_]*` for label names.
 If the component can't parse `text`, it fails with an invalid configuration error.
 
 The component sets the `instance` label on its exported targets to the component ID, for example, `prometheus.exporter.static.demo`.
