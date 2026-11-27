@@ -52,17 +52,8 @@ type QueryDetails struct {
 	normalizer         *sqllexer.Normalizer
 	tableRegistry      *TableRegistry
 
-	// lastEmittedAt records the wall-clock time at which OP_QUERY_ASSOCIATION
-	// was last emitted for a (database, query_hash), used to throttle logging
-	// to at most one emission per EmitInterval per query.
-	lastEmittedAt map[queryMetricsKey]time.Time
-	// unvalidated tracks queries whose parsed tables were emitted before schema
-	// collection populated the database in tableRegistry, so they can be
-	// re-emitted once when the database schema becomes available.
-	unvalidated map[queryMetricsKey]struct{}
-
-	// now allows overriding time.Now() in tests.
-	now func() time.Time
+	lastEmissionByQuery database_observability.EmissionStateByKey[queryMetricsKey]
+	now                 func() time.Time
 
 	logger  *slog.Logger
 	running *atomic.Bool
@@ -85,11 +76,10 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 			sqllexer.WithCollectTables(true),
 			sqllexer.WithKeepIdentifierQuotation(true),
 		),
-		lastEmittedAt: map[queryMetricsKey]time.Time{},
-		unvalidated:   map[queryMetricsKey]struct{}{},
-		now:           time.Now,
-		logger:        args.Logger.With("collector", QueryDetailsCollector),
-		running:       &atomic.Bool{},
+		lastEmissionByQuery: database_observability.EmissionStateByKey[queryMetricsKey]{},
+		now:                 time.Now,
+		logger:              args.Logger.With("collector", QueryDetailsCollector),
+		running:             &atomic.Bool{},
 	}, nil
 }
 
@@ -197,18 +187,16 @@ func (c *QueryDetails) collect(ctx context.Context) error {
 			}
 			seen[key] = struct{}{}
 
-			if last, ok := c.lastEmittedAt[key]; ok && now.Sub(last) < database_observability.EmitInterval {
-				if _, pending := c.unvalidated[key]; !pending || !c.tableRegistry.HasDatabase(database) {
+			if last, ok := c.lastEmissionByQuery[key]; ok && now.Sub(last.LastEmittedAt) < database_observability.EmitInterval {
+				if !last.PendingValidation || !c.tableRegistry.HasDatabase(database) {
 					continue
 				}
 			}
 
 			pendingValidation := c.emit(database, queryHash, queryText)
-			c.lastEmittedAt[key] = now
-			if pendingValidation {
-				c.unvalidated[key] = struct{}{}
-			} else {
-				delete(c.unvalidated, key)
+			c.lastEmissionByQuery[key] = database_observability.EmissionState{
+				LastEmittedAt:     now,
+				PendingValidation: pendingValidation,
 			}
 		}
 
@@ -492,10 +480,9 @@ func isSQLServerTypeStart(char byte) bool {
 // pruneThrottle drops throttle entries whose (database, query_hash) was not
 // observed this cycle so the map stays bounded as queries leave Query Store.
 func (c *QueryDetails) pruneThrottle(seen map[queryMetricsKey]struct{}) {
-	for key := range c.lastEmittedAt {
+	for key := range c.lastEmissionByQuery {
 		if _, ok := seen[key]; !ok {
-			delete(c.lastEmittedAt, key)
-			delete(c.unvalidated, key)
+			delete(c.lastEmissionByQuery, key)
 		}
 	}
 }
