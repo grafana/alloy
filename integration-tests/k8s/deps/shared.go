@@ -60,58 +60,48 @@ func startPortForward(namespace, name, localPort, port string) (func(), error) {
 		return nil, err
 	}
 
-	// exited is closed once the process exits, after waitErr is set.
-	var waitErr error
-	exited := make(chan struct{})
+	exited := make(chan error, 1)
 	go func() {
-		waitErr = cmd.Wait()
-		close(exited)
+		exited <- cmd.Wait()
 	}()
 
-	stop := func() {
-		if cmd.Process != nil {
-			_ = cmd.Process.Kill()
-		}
+	if err := waitForPortForwardReady(localPort, exited); err != nil {
+		_ = cmd.Process.Kill()
+		return nil, err
+	}
+
+	return func() {
+		_ = cmd.Process.Kill()
 		select {
 		case <-exited:
 		case <-time.After(5 * time.Second):
+			fmt.Fprintf(os.Stderr, "warning: port-forward to service/%s didn't exit within 5s of being killed\n", name)
 		}
-	}
-
-	if err := waitForLocalPort(localPort, exited, &waitErr); err != nil {
-		stop()
-		return nil, err
-	}
-	return stop, nil
+	}, nil
 }
 
 // portForwardReadyTimeout is how long to wait for kubectl port-forward to
 // accept connections on the local port.
 const portForwardReadyTimeout = 30 * time.Second
 
-// waitForLocalPort waits until something accepts TCP connections on
-// localPort, or the port-forward process exits. kubectl starts listening some
-// time after it starts, and on a busy runner a fixed delay isn't enough: tests
-// then fail with "connection refused" on the local port.
-func waitForLocalPort(localPort string, exited <-chan struct{}, waitErr *error) error {
+// waitForPortForwardReady waits until the local port accepts connections.
+// kubectl has no command to check this, and a fixed delay isn't enough on a
+// busy runner.
+func waitForPortForwardReady(localPort string, exited <-chan error) error {
 	addr := net.JoinHostPort("localhost", localPort)
-	deadline := time.Now().Add(portForwardReadyTimeout)
+	timeout := time.After(portForwardReadyTimeout)
 	for {
-		select {
-		case <-exited:
-			return fmt.Errorf("port-forward exited early: %w", *waitErr)
-		default:
-		}
-
-		conn, err := net.DialTimeout("tcp", addr, time.Second)
-		if err == nil {
+		if conn, err := net.Dial("tcp", addr); err == nil {
 			_ = conn.Close()
 			return nil
 		}
-		if time.Now().After(deadline) {
-			return fmt.Errorf("port-forward not accepting connections on %s after %s: %w", addr, portForwardReadyTimeout, err)
+		select {
+		case err := <-exited:
+			return fmt.Errorf("port-forward exited early: %w", err)
+		case <-timeout:
+			return fmt.Errorf("port-forward not ready on %s after %s", addr, portForwardReadyTimeout)
+		case <-time.After(100 * time.Millisecond):
 		}
-		time.Sleep(100 * time.Millisecond)
 	}
 }
 

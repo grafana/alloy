@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestWaitForLocalPort(t *testing.T) {
+func TestWaitForPortForwardReady(t *testing.T) {
 	tests := []struct {
 		name    string
 		listen  bool
@@ -37,13 +37,12 @@ func TestWaitForLocalPort(t *testing.T) {
 				t.Cleanup(func() { _ = l.Close() })
 			}
 
-			exited := make(chan struct{})
-			waitErr := tc.exitErr
+			exited := make(chan error, 1)
 			if tc.exitErr != nil {
-				close(exited)
+				exited <- tc.exitErr
 			}
 
-			err = waitForLocalPort(port, exited, &waitErr)
+			err = waitForPortForwardReady(port, exited)
 			if tc.wantErr != "" {
 				require.EqualError(t, err, tc.wantErr)
 				return
