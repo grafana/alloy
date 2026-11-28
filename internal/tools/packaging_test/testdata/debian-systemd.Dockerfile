@@ -1,6 +1,6 @@
 # Build a Debian image with systemd configured to test deb package installation.
 # See the `test-packages` make target and associated script for how this image is used.
-FROM debian:12-slim@sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171
+FROM debian:12-slim@sha256:e67eeead736ff7bbe258ef088bff683635c561b1fcfefad0806c1df4ab49ce0e
 ENV container=docker
 ENV LC_ALL=C
 ENV DEBIAN_FRONTEND=noninteractive
