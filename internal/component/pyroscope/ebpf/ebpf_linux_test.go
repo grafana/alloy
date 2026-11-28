@@ -10,6 +10,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/ebpf-profiler/tracer"
 
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
@@ -132,6 +133,35 @@ u_probe_links = ["/bin/sh:entry"]
 			},
 		},
 		{
+			name: "with-pid-namespace-translation-mode",
+			in: `
+	targets = [{"service_name" = "foo", "container_id"= "cid"}]
+	forward_to = []
+	pid_namespace_translation_mode = "auto"
+	`,
+			expected: func() Arguments {
+				x := NewDefaultArguments()
+				x.Targets = []discovery.Target{
+					discovery.NewTargetFromMap(map[string]string{
+						"container_id": "cid",
+						"service_name": "foo",
+					}),
+				}
+				x.ForwardTo = []pyroscope.Appendable{}
+				x.PIDNamespaceTranslationMode = "auto"
+				return x
+			},
+		},
+		{
+			name: "invalid-pid-namespace-translation-mode",
+			in: `
+	targets = [{"service_name" = "foo", "container_id"= "cid"}]
+	forward_to = []
+	pid_namespace_translation_mode = "invalid"
+	`,
+			expectedErr: `unknown PID namespace translation mode "invalid", valid values are: "none", "auto", "exact", "recursive"`,
+		},
+		{
 			name: "syntax-problem",
 			in: `
 targets = [{"service_name" = "foo", "container_id"= "cid"}]
@@ -176,6 +206,33 @@ func TestConvertNoKernelVersionCheck(t *testing.T) {
 	cfg, err = args.Convert()
 	require.NoError(t, err)
 	require.True(t, cfg.NoKernelVersionCheck)
+}
+
+func TestConvertPIDNamespaceTranslationMode(t *testing.T) {
+	for _, tt := range []struct {
+		mode     string
+		expected tracer.PIDNamespaceTranslationMode
+		wantErr  bool
+	}{
+		{mode: "", expected: tracer.PIDNamespaceTranslationModeNone},
+		{mode: "none", expected: tracer.PIDNamespaceTranslationModeNone},
+		{mode: "auto", expected: tracer.PIDNamespaceTranslationModeAuto},
+		{mode: "exact", expected: tracer.PIDNamespaceTranslationModeExact},
+		{mode: "recursive", expected: tracer.PIDNamespaceTranslationModeRecursive},
+		{mode: "invalid", wantErr: true},
+	} {
+		t.Run(tt.mode, func(t *testing.T) {
+			args := NewDefaultArguments()
+			args.PIDNamespaceTranslationMode = tt.mode
+			cfg, err := args.Convert()
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, cfg.PIDNamespaceTranslationMode)
+		})
+	}
 }
 
 func TestProbeLinks(t *testing.T) {

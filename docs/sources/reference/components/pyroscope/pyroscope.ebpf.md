@@ -23,6 +23,8 @@ The `pyroscope.ebpf` component embeds the [`grafana/opentelemetry-ebpf-profiler`
 
 {{< admonition type="note" >}}
 To use the `pyroscope.ebpf` component you must run {{< param "PRODUCT_NAME" >}} as root and inside the host PID namespace.
+On hosts that isolate the container plane into a non-initial PID namespace (such as Talos Linux with workload isolation enabled), running with `hostPID: true` is not sufficient on its own; set `pid_namespace_translation_mode = "auto"` so the profiler translates PIDs into its namespace.
+Additionally, on hardened kernels where `/proc/kallsyms` addresses are hidden (for example `kernel.kptr_restrict=2` on Talos Linux v1.12+), set `kernel.kptr_restrict=1` so the profiler can read kernel symbols.
 On Kubernetes, the simplest option is to set `securityContext.privileged: true`.
 Users who prefer least-privilege can instead grant the [specific capabilities required][required-privileges].
 
@@ -103,8 +105,9 @@ You can use the following arguments with `pyroscope.ebpf`:
 | `php_enabled`                 | `bool`                   | A flag to enable or disable PHP profiling.                                                                           | `true`           | no       |
 | `pid_cache_size`              | `int`                    | Deprecated (no-op), previously controlled the size of the PID -> proc symbols table LRU cache.                       | `32`             | no       |
 | `pid_label`                   | `bool`                   | Attach the process PID to each pprof sample as a `pid` label.                                                        | `false`          | no       |
-| `pid_map_size`                | `int`                    | Deprecated (no-op), previously controlled the size of eBPF PID map.                                                  | `2048`           | no       |
-| `probe_links`                 | `list(string)`           | List of kernel or user-space probes from which to collect stack traces.                                              |                  | no       |
+| `pid_map_size`                   | `int`                    | Deprecated (no-op), previously controlled the size of eBPF PID map.                                                  | `2048`           | no       |
+| `pid_namespace_translation_mode` | `string`                 | Controls PID namespace translation when the profiler runs in a non-initial PID namespace. One of `none`, `auto`, `exact`, or `recursive`. | `"none"`         | no       |
+| `probe_links`                    | `list(string)`           | List of kernel or user-space probes from which to collect stack traces.                                              |                  | no       |
 | `python_enabled`              | `bool`                   | A flag to enable or disable Python profiling.                                                                        | `true`           | no       |
 | `ruby_enabled`                | `bool`                   | A flag to enable or disable Ruby profiling.                                                                          | `true`           | no       |
 | `same_file_cache_size`        | `int`                    | Deprecated (no-op), previously controlled the size of the elf file -> symbols table LRU cache.                       | `8`              | no       |

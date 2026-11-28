@@ -1,6 +1,8 @@
 package ebpf
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/grafana/alloy/internal/component/discovery"
@@ -28,9 +30,10 @@ type Arguments struct {
 	LoadProbe                bool                   `alloy:"load_probe,attr,optional"`
 	ProbeLinks               []string               `alloy:"probe_links,attr,optional"`
 	VerboseMode              bool                   `alloy:"verbose_mode,attr,optional"`
-	LazyMode                 bool                   `alloy:"lazy_mode,attr,optional"`
-	NoKernelVersionCheck     bool                   `alloy:"no_kernel_version_check,attr,optional"`
-	DeprecatedArguments      DeprecatedArguments    `alloy:",squash"`
+	LazyMode                    bool                   `alloy:"lazy_mode,attr,optional"`
+	NoKernelVersionCheck        bool                   `alloy:"no_kernel_version_check,attr,optional"`
+	PIDNamespaceTranslationMode string                 `alloy:"pid_namespace_translation_mode,attr,optional"`
+	DeprecatedArguments         DeprecatedArguments    `alloy:",squash"`
 
 	// The next four options are intentionally undocumented: internal tuning knobs that may change without notice.
 	PyroscopeDynamicProfilingPolicy bool   `alloy:"targets_only,attr,optional"`
@@ -69,5 +72,13 @@ type DeprecatedArguments struct {
 
 // Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
-	return args.CommMode(a.Comm).Validate()
+	if err := args.CommMode(a.Comm).Validate(); err != nil {
+		return err
+	}
+	switch strings.ToLower(a.PIDNamespaceTranslationMode) {
+	case "", "none", "auto", "exact", "recursive":
+		return nil
+	default:
+		return fmt.Errorf("unknown PID namespace translation mode %q, valid values are: %q, %q, %q, %q", a.PIDNamespaceTranslationMode, "none", "auto", "exact", "recursive")
+	}
 }
