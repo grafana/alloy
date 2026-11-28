@@ -200,7 +200,7 @@ require (
 	github.com/pingcap/tidb/pkg/parser v0.0.0-20250501143621-a50a2323f4ba
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
 	github.com/prometheus-community/elasticsearch_exporter v1.5.0
-	github.com/prometheus-community/postgres_exporter v0.19.0
+	github.com/prometheus-community/postgres_exporter v0.20.1
 	github.com/prometheus-community/stackdriver_exporter v0.18.0
 	github.com/prometheus-community/windows_exporter v0.31.3 // if you update the windows_exporter version, make sure to update the PROM_WIN_EXP_VERSION in _index
 	github.com/prometheus-community/yet-another-cloudwatch-exporter v0.64.0
@@ -1149,8 +1149,9 @@ replace github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-2026102
 // cadvisor v0.60 split its /lib submodule out; its local replace is ignored from a dependency, so redirect /lib to the fork here too. (auto-synced from collector/builder-config.yaml)
 replace github.com/google/cadvisor/lib => github.com/grafana/cadvisor/lib v0.0.0-20261027180521-39c571fbfcf6
 
-// TODO - this tracks exporter-package-v0.19.1 branch of grafana fork; remove once all patches are merged upstream (auto-synced from collector/builder-config.yaml)
-replace github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20260225165717-9c2c77e3702a
+// Tracks exporter-package-v0.20.1 for per-instance collector configuration. (auto-synced from collector/builder-config.yaml)
+// https://github.com/grafana/postgres_exporter/pull/36; remove after the patches are released upstream. (auto-synced from collector/builder-config.yaml)
+replace github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.20.2-0.20261111192754-3ee30dcdcc1a
 
 // TODO - this tracks exporter-package-v0.19.0 branch of grafana fork; remove once all patches are merged upstream (auto-synced from collector/builder-config.yaml)
 replace github.com/prometheus/mysqld_exporter => github.com/grafana/mysqld_exporter v0.0.0-20260319134024-e0461af8db16
